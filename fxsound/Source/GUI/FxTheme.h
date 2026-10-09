@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 /*
 */
 
-enum FxThemeMode : int {Dark=0, Light, Aurora, Dusk, Copper, Midnight, NumModes};
+enum FxThemeMode : int {Dark=0, Light, Aurora, Dusk, Copper, Midnight, Sakura, Arctic, Sandstone, Obsidian, Emerald, DeepSea, NeonTokyo, Synthwave, SolarFlare, Crimson, Mocha, Monochrome, NumModes};
 enum FxColor : int { WindowBackground, WidgetBackground, MenuBackground, Outline, DefaultText, DefaultFill, HighlightedText, HighlightedFill, MenuText,
 					 ComboBoxBackground, TextButtonBackground, ImageButton, HintText, ValidTextBorder, InvalidTextBorder, ControlBackground, SliderTrack, SliderHighlight,
 					 GraphHigh, GraphLow, EqStart, EqEnd, VerticalSliderLow, MenuHighlightBackground, PanelBackground, RowOutline, SelectedRowOutline, NumColors};
@@ -96,6 +96,7 @@ public:
 
 	static FxThemeMode getThemeMode();
     static const char* getThemeName(int index);
+    static bool isLightTheme();
     static bool isReducedMotion() { return reduced_motion_; }
     static void setReducedMotion(bool value);
     float animate(Component&, int channel, float target);
