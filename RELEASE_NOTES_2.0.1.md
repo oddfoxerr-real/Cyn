@@ -1,7 +1,16 @@
 # Cyn 2 — first public preview
 
-Native Windows x64 audio app with Cyn branding, six themes, UI motion,
+Native Windows x64 audio app with Cyn branding, selectable themes, UI motion,
 local preference learning and the FxSound audio engine.
+
+## Thank you, FxSound
+
+Cyn builds on the work of the [FxSound team and contributors](https://github.com/fxsound2/fxsound-app).
+Thank you for making FxSound open source and providing the audio engine that makes
+Cyn possible. If you enjoy Cyn, please [visit FxSound](https://www.fxsound.com/) and
+[support their work](https://www.fxsound.com/contribute) through donations or contributions.
+
+## Installation and preview notes
 
 Download **Cyn-Setup-2.0.1-x64.exe**, exit any running Cyn/FxSound from its menu,
 then run setup. The installer includes the supporting files and signed audio driver;

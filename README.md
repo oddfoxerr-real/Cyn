@@ -2,6 +2,13 @@
 
 Personal audio enhancement for Windows, built on the open-source FxSound engine.
 
+## Thank you, FxSound
+
+Cyn builds on the work of the [FxSound team and contributors](https://github.com/fxsound2/fxsound-app).
+Thank you for making FxSound open source and providing the audio engine that makes
+Cyn possible. If you enjoy Cyn, please [visit FxSound](https://www.fxsound.com/) and
+[support their work](https://www.fxsound.com/contribute) through donations or contributions.
+
 ## Download
 
 Open [Releases](https://github.com/oddfoxerr-real/Cyn/releases) and download the
@@ -15,7 +22,7 @@ Uninstall keeps personal settings/training data and the shared audio driver.
 
 ## Features
 
-- Custom Cyn interface and icons, six themes, animations and reduced-motion option.
+- Custom Cyn interface and icons, selectable themes, animations and reduced-motion option.
 - Presets, output selection, effects and equalizer using the FxSound DSP.
 - Smart listening with sensitivity control and a small local neural preference model.
 - A recent-audio timeline for teaching More/Less Bass, Clarity, Ambience, Surround,

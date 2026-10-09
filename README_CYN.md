@@ -1,6 +1,8 @@
 # Cyn — personal audio
 
-Cyn is a native personal-audio app built on the open-source FxSound DSP, with its own Windows identity, original icons, six themes and an offline neural preference model.
+Cyn is a native personal-audio app built on the open-source FxSound DSP, with its own Windows identity, original icons, selectable themes and an offline neural preference model.
+
+Thank you to the [FxSound team and contributors](https://github.com/fxsound2/fxsound-app) for making FxSound open source and providing the audio engine behind Cyn. If you enjoy Cyn, please [visit FxSound](https://www.fxsound.com/) and [support their work](https://www.fxsound.com/contribute) through donations or contributions.
 
 ## Install with the setup EXE
 
