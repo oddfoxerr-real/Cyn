@@ -55,6 +55,11 @@ jobs:
             } else { throw }
           }
 
+      - name: Verify GitHub updater detects published releases
+        if: steps.inspect.outputs.state != 'published'
+        shell: powershell
+        run: .\scripts\diagnose_cyn_updater.ps1
+
       - name: Compile Cyn native x64
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh
