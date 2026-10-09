@@ -3,6 +3,8 @@ on:
   push:
     paths:
       - '.github/workflows/updater-diagnostic.yml'
+      - 'CynUpdater.ps1'
+      - 'scripts/diagnose_cyn_updater.ps1'
   workflow_dispatch:
 permissions:
   contents: read
