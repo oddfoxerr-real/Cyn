@@ -6,7 +6,7 @@ Thank you to the [FxSound team and contributors](https://github.com/fxsound2/fxs
 
 ## Install with the setup EXE
 
-Exit Cyn/FxSound from the tray menu, then double-click `Cyn-Setup-2.0.2-x64.exe`. It installs the app and all required files into Program Files, adds Start-menu and optional Desktop shortcuts, and registers an uninstaller. Windows 10/11 Intel/AMD x64 and administrator access are required. An existing FxSound driver is reused; otherwise the bundled Microsoft-signed driver is installed. The original FxSound app does not need to run.
+Exit Cyn/FxSound from the tray menu, then double-click `Cyn-Setup-2.0.3-x64.exe`. It installs the app and all required files into Program Files, adds Start-menu and optional Desktop shortcuts, and registers an uninstaller. Windows 10/11 Intel/AMD x64 and administrator access are required. An existing FxSound driver is reused; otherwise the bundled Microsoft-signed driver is installed. The original FxSound app does not need to run.
 
 Remove Cyn through Windows Settings > Apps > Installed apps. Your `%APPDATA%\Cyn` preferences and the shared audio driver are retained. Removing the original FxSound installation may remove that shared driver; rerun Cyn setup if needed. The Cyn installer/app are unsigned community builds; the driver retains its original signature. See `Installer/Cyn/README.md` in the source for verification scope.
 
@@ -34,7 +34,7 @@ Exit the running audio app first. Keep the official FxSound installation for the
 
 ## Appearance and motion
 
-Open the top menu or tray menu and choose **Theme**: Graphite (cyan), Pearl (light), Aurora (mint), Dusk (violet), Copper (warm amber) or Midnight (blue). The palette applies to the workspace, effects, EQ, timeline, menus and controls. **Reduce motion** disables transitions and lowers the spectrum refresh rate. Both choices are saved.
+Open the top menu or tray menu and choose **Theme**. Cyn has 19 native themes. **ChatGPT Desktop** matches the supplied screenshot's layered charcoal colors: `#181818` content, `#191C1E` panels, `#212121` raised surfaces, `#363636` borders, neutral grey controls and bright legible text. The palette applies to the workspace, effects, EQ, timeline, menus and controls. **Reduce motion** disables transitions and lowers the spectrum refresh rate. Both choices are saved.
 
 Navigation crossfades for 220 ms with a sliding sidebar selection; buttons ease on hover/press, toggles slide and sliders show eased hover halos. The audio values themselves remain immediate while you drag.
 
@@ -62,7 +62,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_CYN.ps1
 
 Skip setup when VS 2022 C++ Build Tools and Windows SDK are installed. Output: `dist\Cyn\Cyn.exe` and `dist\Cyn-Windows-x64.zip`. Subsequent builds support `-Incremental`. Optional `-WithMcp` requires Go and builds the repository's existing MCP server.
 
-To build the setup EXE after the app, run `powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_INSTALLER.ps1`. This downloads a pinned, signature-checked Inno Setup compiler into `.build-tools` when needed, verifies the bundled driver hashes, and writes `dist\Cyn-Setup-2.0.2-x64.exe`. Use `-RebuildApp` to rebuild the app too.
+To build the setup EXE after the app, run `powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_INSTALLER.ps1`. This downloads a pinned, signature-checked Inno Setup compiler into `.build-tools` when needed, verifies the bundled driver hashes, and writes `dist\Cyn-Setup-2.0.3-x64.exe`. Use `-RebuildApp` to rebuild the app too.
 
 ## Local control
 

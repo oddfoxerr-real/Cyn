@@ -51,7 +51,9 @@ const uint32 FxTheme::theme_colors_[FxThemeMode::NumModes][FxColor::NumColors] =
   // Mocha: dark palette
   { 0x201a17, 0x2e2520, 0x3a2f29, 0x665044, 0xf5ece6, 0x382d27, 0xf5ece6, 0x594034, 0xf5ece6, 0x382d27, 0x382d27, 0xcbb6a7, 0xcbb6a7, 0xd9a781, 0xe0677c, 0x382d27, 0xd9a781, 0xf1c9a6, 0xf1c9a6, 0xd9a781, 0xd9a781, 0x594034, 0xf1c9a6, 0x594034, 0x2e2520, 0x665044, 0xd9a781 },
   // Monochrome: dark palette
-  { 0x111315, 0x1b1e21, 0x25292c, 0x454d51, 0xf6f7f8, 0x282c30, 0xf6f7f8, 0x3c4449, 0xf6f7f8, 0x282c30, 0x282c30, 0xaeb6bb, 0xaeb6bb, 0xe5e9ed, 0xe0677c, 0x282c30, 0xe5e9ed, 0xffffff, 0xffffff, 0xe5e9ed, 0xe5e9ed, 0x3c4449, 0xffffff, 0x3c4449, 0x1b1e21, 0x454d51, 0xe5e9ed }
+  { 0x111315, 0x1b1e21, 0x25292c, 0x454d51, 0xf6f7f8, 0x282c30, 0xf6f7f8, 0x3c4449, 0xf6f7f8, 0x282c30, 0x282c30, 0xaeb6bb, 0xaeb6bb, 0xe5e9ed, 0xe0677c, 0x282c30, 0xe5e9ed, 0xffffff, 0xffffff, 0xe5e9ed, 0xe5e9ed, 0x3c4449, 0xffffff, 0x3c4449, 0x1b1e21, 0x454d51, 0xe5e9ed },
+  // ChatGPT Desktop: colors sampled from reference screenshot, neutral charcoal layers.
+  { 0x181818, 0x212121, 0x191c1e, 0x363636, 0xe7e7e7, 0x212121, 0xffffff, 0x363636, 0xdcdddd, 0x212121, 0x2b2e30, 0xc8c9c9, 0xa5a5a5, 0x808b94, 0xe0677c, 0x212121, 0x5a5a5a, 0xa9aaab, 0xb8c5cf, 0x74808b, 0x97a3ad, 0xd5dadf, 0x3c3c3c, 0x363636, 0x191c1e, 0x353535, 0x8c969f }
 };
 
 const char* FxTheme::theme_images_[2][FxImage::NumImages] =
@@ -782,7 +784,7 @@ Typeface::Ptr FxTheme::loadTypeface(String fileName)
 bool FxTheme::reduced_motion_ = false;
 const char* FxTheme::getThemeName(int i)
 {
-    static const char* names[] = { "Graphite", "Pearl", "Aurora", "Dusk", "Copper", "Midnight", "Sakura", "Arctic", "Sandstone", "Obsidian", "Emerald", "Deep Sea", "Neon Tokyo", "Synthwave", "Solar Flare", "Crimson", "Mocha", "Monochrome" };
+    static const char* names[] = { "Graphite", "Pearl", "Aurora", "Dusk", "Copper", "Midnight", "Sakura", "Arctic", "Sandstone", "Obsidian", "Emerald", "Deep Sea", "Neon Tokyo", "Synthwave", "Solar Flare", "Crimson", "Mocha", "Monochrome", "ChatGPT Desktop" };
     return names[jlimit(0,(int)FxThemeMode::NumModes-1,i)];
 }
 bool FxTheme::isLightTheme()
