@@ -24,6 +24,7 @@ if (!(Test-Path -LiteralPath $exe)) { throw 'MSBuild did not produce FxSound.exe
 $dist = Join-Path $root 'dist\Cyn'
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 Copy-Item -LiteralPath $exe -Destination (Join-Path $dist 'Cyn.exe') -Force
+Copy-Item -LiteralPath (Join-Path $root 'CynUpdater.ps1') -Destination $dist -Force
 Copy-Item -LiteralPath (Join-Path $root 'branding') -Destination $dist -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $root 'models\cyn-starter.json'),(Join-Path $root 'models\MODEL_CARD.md') -Destination $dist -Force
 Copy-Item -LiteralPath (Join-Path $root 'bin\x64\Factsoft') -Destination $dist -Recurse -Force
