@@ -91,7 +91,7 @@ void FxSystemTrayView::setStatus(bool power, bool processing)
     {
         if (processing)
         {
-            if (FxTheme::getThemeMode() != FxThemeMode::Light)
+            if (!FxTheme::isLightTheme())
             {
                 nid.hIcon = LoadIcon(hInst, L"IDI_LOGO_RED");
             }
@@ -180,7 +180,7 @@ void FxSystemTrayView::addIcon()
     {
         if (FxController::getInstance().isAudioProcessing())
         {
-            if (FxTheme::getThemeMode() != FxThemeMode::Light)
+            if (!FxTheme::isLightTheme())
             {
                 nid.hIcon = LoadIcon(hInst, L"IDI_LOGO_RED");
             }
