@@ -511,9 +511,13 @@ void FxMainWindow::showMenu()
 	};
 
 	auto checkForUpdatesClicked = []() {
-		ChildProcess child_process;
-		child_process.start("updater.exe /checknow");
+		FxController::getInstance().checkUpdates();
 	};
+
+    auto toggleAutoUpdatesClicked = []() {
+        auto& controller = FxController::getInstance();
+        controller.setAutoUpdates(!controller.getAutoUpdates());
+    };
 
 	auto donateClicked = []() {
 		URL url("https://www.paypal.com/donate/?hosted_button_id=JVNQGYXCQ2GPG");
@@ -575,6 +579,10 @@ void FxMainWindow::showMenu()
 	popup_menu.addSeparator();
 	popup_menu.addItem(TRANS("Download Bonus Presets"), downloadClicked);
 	popup_menu.addSeparator();
+	popup_menu.addItem("Check for updates", checkForUpdatesClicked);
+    popup_menu.addItem("Automatically check for updates", true,
+        FxController::getInstance().getAutoUpdates(), toggleAutoUpdatesClicked);
+    popup_menu.addSeparator();
 	popup_menu.addItem("About Cyn", [] { AlertWindow::showMessageBox(AlertWindow::InfoIcon,"Cyn",R"(Personal audio with local learning.
 Built on the open-source FxSound DSP and official audio driver.
 AGPL-3.0-or-later; see the bundled LICENSE and source.)"); });
