@@ -15,7 +15,7 @@ jobs:
         run: .\BUILD_CYN.ps1
       - name: Build Inno Setup installer
         shell: pwsh
-        run: .\BUILD_INSTALLER.ps1 -CompilerPath '${{ env.ProgramFilesX86 }}\Inno Setup 6\ISCC.exe'
+        run: .\BUILD_INSTALLER.ps1
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
