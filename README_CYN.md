@@ -1,0 +1,80 @@
+# Cyn — personal audio
+
+Cyn is a native personal-audio app built on the open-source FxSound DSP, with its own Windows identity, original icons, six themes and an offline neural preference model.
+
+## Install with the setup EXE
+
+Exit Cyn/FxSound from the tray menu, then double-click `Cyn-Setup-2.0.1-x64.exe`. It installs the app and all required files into Program Files, adds Start-menu and optional Desktop shortcuts, and registers an uninstaller. Windows 10/11 Intel/AMD x64 and administrator access are required. An existing FxSound driver is reused; otherwise the bundled Microsoft-signed driver is installed. The original FxSound app does not need to run.
+
+Remove Cyn through Windows Settings > Apps > Installed apps. Your `%APPDATA%\Cyn` preferences and the shared audio driver are retained. Removing the original FxSound installation may remove that shared driver; rerun Cyn setup if needed. The Cyn installer/app are unsigned community builds; the driver retains its original signature. See `Installer/Cyn/README.md` in the source for verification scope.
+
+## Run
+
+Exit any running FxSound or older custom build from its tray menu. Open `Cyn.exe` in this folder, or run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\LAUNCH_CYN.ps1
+```
+
+Keep the presets, fonts and `cyn-starter.json` beside the executable. Closing the window hides the app in the tray. Do not run multiple FxSound variants together.
+
+## Optional install
+
+The setup EXE above is recommended. The older script below only copies app files and requires an existing driver.
+
+From the extracted app folder, this installs Cyn to your user Programs folder and adds its own Start-menu shortcut, without admin access:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\INSTALL_CYN.ps1 -Launch
+```
+
+Exit the running audio app first. Keep the official FxSound installation for the signed driver. This is a script-based install, not a signed MSI.
+
+## Appearance and motion
+
+Open the top menu or tray menu and choose **Theme**: Graphite (cyan), Pearl (light), Aurora (mint), Dusk (violet), Copper (warm amber) or Midnight (blue). The palette applies to the workspace, effects, EQ, timeline, menus and controls. **Reduce motion** disables transitions and lowers the spectrum refresh rate. Both choices are saved.
+
+Navigation crossfades for 220 ms with a sliding sidebar selection; buttons ease on hover/press, toggles slide and sliders show eased hover halos. The audio values themselves remain immediate while you drag.
+
+Cyn has a distinct taskbar/tray icon, IPC identity, startup entry and `%APPDATA%\Cyn` settings. On first use it copies existing FxSound settings, presets, autosave and earlier Cyn learning data into its own folder without overwriting existing Cyn data or changing the old files. It still uses the official signed FxSound virtual audio driver; Windows will retain that device's official name. Exit other FxSound/Cyn variants before starting it. Cyn also holds the upstream single-host lock so stock FxSound cannot start a second processing engine later while Cyn is active. Automatic upstream updates are disabled so they cannot replace the Cyn app.
+
+## Teach your preferences
+
+1. Play audio with processing on and open **Smart listening**. The recent-audio timeline shows time; the Sound studio visualizer still shows frequencies.
+2. Drag over a section of the last minute. The view freezes while you label it. Select at least half a second.
+3. Choose **Bass, Clarity, Ambience, Surround, or Dynamic Boost** and press **More here** or **Less here**. Label both directions, preferably across several songs.
+4. Press **Train my model**. Learning happens locally in the background. Enable Smart listening to apply it and use Sensitivity to adjust its strength.
+
+The optional starter model supplies basic Bass and Clarity examples. Other effects stay manual until taught. Your settings remain the baseline; turning Smart listening off restores them. Learned bass reductions also relax positive EQ boosts below 350 Hz so a Bass Boost preset does not keep the same low-end emphasis during sections you label Less. Manual EQ cuts and higher bands are preserved.
+
+The model analyzes source audio **before** effects, avoiding feedback from its own boosts. Changes now happen over seconds, with bounded smoothing. Labels/weights persist under `%APPDATA%\Cyn`; the timeline does not record or upload audio. See `MODEL_CARD.md` (in `models` in the source package) for limitations. This experimental starter has only synthetic validation, not real-song validation.
+
+## Build the full source
+
+Extract to a short path and open PowerShell in the source directory. JUCE 6.1.6 and resources are bundled.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\SETUP_BUILD_TOOLS.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_CYN.ps1
+```
+
+Skip setup when VS 2022 C++ Build Tools and Windows SDK are installed. Output: `dist\Cyn\Cyn.exe` and `dist\Cyn-Windows-x64.zip`. Subsequent builds support `-Incremental`. Optional `-WithMcp` requires Go and builds the repository's existing MCP server.
+
+To build the setup EXE after the app, run `powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_INSTALLER.ps1`. This downloads a pinned, signature-checked Inno Setup compiler into `.build-tools` when needed, verifies the bundled driver hashes, and writes `dist\Cyn-Setup-2.0.1-x64.exe`. Use `-RebuildApp` to rebuild the app too.
+
+## Local control
+
+```powershell
+.\CYN_CONTROL.ps1 -Action Status
+.\CYN_CONTROL.ps1 -Action Theme -Value Dusk
+.\CYN_CONTROL.ps1 -Action Motion -Value 1
+.\CYN_CONTROL.ps1 -Action Smart -Value 1
+.\CYN_CONTROL.ps1 -Action Sensitivity -Value 50
+.\CYN_CONTROL.ps1 -Action Effects -Value 'bass:6,clarity:3'
+```
+
+The bridge also supports Power, Preset, Eq, Output, PinOutput and Leveling. It uses the existing FxSound CLI and checks that the correct Cyn executable is running. Status includes `cyn_build`, model/learning status and effective low-EQ gains. The FxSound process identity, compatible settings and driver integration are retained internally.
+
+## Provenance and license
+
+Official FxSound source commit `d8e7a23d37ed5939c2a3090a1c1756c7f2500b17`, resources `8f0385f015cd6b10026b2db6a0625a6db4de89b0`, and JUCE 6.1.6 `2f980209cc4091a4490bb1bafc5d530f16834e58`. The original uploaded ZIP was unavailable; the earlier recovered theme patch was applied to official source. FxSound DSP and driver functionality is retained. Cyn is an unofficial custom build. AGPL-3.0-or-later; see LICENSE and bundled JUCE notices. Distribute the corresponding source with binaries.

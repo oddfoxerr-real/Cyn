@@ -1,0 +1,27 @@
+# Local build outputs and user state
+.vs/
+.build-tools/
+build-logs/
+build-tests/
+dist/
+__pycache__/
+*.pyc
+*.obj
+*.pch
+*.pdb
+*.ilk
+*.binlog
+*.log
+*.user
+*.suo
+*.VC.db
+*.VC.VC.opendb
+*.pfx
+.env
+.env.*
+/fxsound/Project/x64/
+/fxsound/Project/Win32/
+/audiopassthru/x64/
+/dsp/x64/
+/fxdiag/x64/
+/training/generated/

@@ -1,0 +1,23 @@
+Cyn - personal audio
+
+Setup installs Cyn, its presets, fonts and starter model, and creates shortcuts.
+Windows 10 or 11, Intel/AMD 64-bit, is required.
+
+Exit Cyn and FxSound from their tray menus before continuing.
+
+Audio driver
+An existing FxSound virtual audio driver is reused. If missing, setup installs
+the bundled, Microsoft-signed FxSound driver. Administrator access is required.
+The audio device retains its official FxSound name. You do not need to launch
+the original FxSound app to use Cyn. Do not run both audio apps together.
+
+Uninstall
+Remove Cyn using Windows Settings > Apps > Installed apps.
+Your preferences and training data in %APPDATA%\Cyn are retained.
+The shared audio driver is retained to avoid breaking other FxSound installations.
+Uninstalling the original FxSound app may remove that shared driver; run this
+installer again if that happens.
+
+This is a community build based on the open-source FxSound engine. The Cyn app
+and installer are not code-signed. The audio driver's signature is unchanged.
+Full edited source and build scripts accompany this release in Cyn-Source-v2.zip.

@@ -1,0 +1,26 @@
+[
+  {
+    "path": "Installer/Drivers/Version14/win10/x64/fxvad.inf",
+    "sha256": "ba175cfddd91b87bdda3f1df2a70249e1742e846b843381eb0438b70f91a110a"
+  },
+  {
+    "path": "Installer/Drivers/Version14/win10/x64/fxvad.sys",
+    "sha256": "425629b6309000013e8cd1a9b827bee365d21c9f743873aadd0c3bc96a999d2a"
+  },
+  {
+    "path": "Installer/Drivers/Version14/win10/x64/fxvadntamd64.cat",
+    "sha256": "25c8dae186155d20f74feedefb4f84161e4215925b8fd0c898f68f3e50ebcd7d"
+  },
+  {
+    "path": "Installer/Drivers/Version14/win10/x64/fxdevcon64.exe",
+    "sha256": "654538f5137413032635b8c67ebd33279848586d6eb0304f348681d47f74bb9b"
+  },
+  {
+    "path": "Installer/Apps/Version14/DfxSetupDrv.exe",
+    "sha256": "b7a727a4bb79dc3f84363d7abd7c2a8a7a24d4db6d4f7273ce039baf00dbca1f"
+  },
+  {
+    "path": "Installer/Cyn/runtime-x86/vcruntime140.dll",
+    "sha256": "a9d7732a3c3de09f0601a7fa2555093dcb49f08e2fc62a86091461f0f38393ed"
+  }
+]

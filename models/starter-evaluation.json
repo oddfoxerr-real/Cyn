@@ -1,0 +1,13 @@
+{
+  "bass": {
+    "synthetic_test_accuracy": 1.0,
+    "false_positive_rate": 0.0,
+    "false_negative_rate": 0.0
+  },
+  "clarity": {
+    "synthetic_test_accuracy": 0.99,
+    "false_positive_rate": 0.01020408163265306,
+    "false_negative_rate": 0.00980392156862745
+  },
+  "limitation": "Synthetic held-out data only; not a vocal detector or real-music accuracy measurement."
+}
