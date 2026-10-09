@@ -1,0 +1,36 @@
+name: Cyn Windows Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Cyn
+        shell: pwsh
+        run: .\BUILD_CYN.ps1
+      - name: Build Inno Setup installer
+        shell: pwsh
+        run: .\BUILD_INSTALLER.ps1 -CompilerPath '${{ env.ProgramFilesX86 }}\Inno Setup 6\ISCC.exe'
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyn-windows-installer
+          path: |
+            dist/Cyn-Setup-2.0.2-x64.exe
+            dist/Cyn-Setup-2.0.2-x64.exe.sha256
+            dist/Cyn-Windows-x64.zip
+      - name: Publish tagged release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view '${{ github.ref_name }}' 2>$null
+          if ($LASTEXITCODE -ne 0) { gh release create '${{ github.ref_name }}' --title 'Cyn 2.0.2' --notes-file RELEASE_NOTES_2.0.2.md --prerelease }
+          gh release upload '${{ github.ref_name }}' 'dist/Cyn-Setup-2.0.2-x64.exe' 'dist/Cyn-Setup-2.0.2-x64.exe.sha256' 'dist/Cyn-Windows-x64.zip' --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Release upload failed' }
