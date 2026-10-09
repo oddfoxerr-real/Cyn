@@ -26,9 +26,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../Utils/SysInfo/SysInfo.h"
 #include <iostream>
 #include <cstdio>
+#include <ctime>
+#include <shellapi.h>
 #ifndef WTS_SESSION_DESKTOP_READY
 #define WTS_SESSION_DESKTOP_READY 0xF
 #endif
+
+namespace {
+void launchCynUpdater(bool interactive)
+{
+    const auto script = File::getSpecialLocation(File::currentExecutableFile).getSiblingFile("CynUpdater.ps1");
+    if (!script.existsAsFile()) {
+        if (interactive) AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "CynUpdater.ps1 is missing. Reinstall Cyn.");
+        return;
+    }
+    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.2" + (interactive ? " -Interactive" : "");
+    auto result = ShellExecuteW(nullptr, L"open", L"powershell.exe", args.toWideCharPointer(), nullptr, SW_HIDE);
+    if (reinterpret_cast<INT_PTR>(result) <= 32 && interactive)
+        AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");
+}
+}
 
 class FxDeviceErrorMessage : public FxWindow
 {
@@ -193,7 +210,7 @@ FxController::FxController() : message_window_(L"CynHotkeys", (WNDPROC)eventCall
 	always_on_top_ = settings_.getBool("always_on_top");
 	hide_help_tooltips_ = settings_.getBool("hide_help_tooltips");
 	hide_notifications_ = settings_.getBool("hide_notifications");
-	auto_updates_ = false; // Upstream updater must not replace the Cyn host.
+	auto_updates_ = settings_.getBool("cyn_automatic_updates", true);
 	max_user_presets_ = settings_.getInt("max_user_presets");
 	if (max_user_presets_ < 10 || max_user_presets_ > 120)
 	{
@@ -2201,11 +2218,17 @@ void FxController::timerCallback()
 		auto_save_counter_ = 0;
 	}
 
-	auto current_time = Time::getCurrentTime();
-	if (auto_updates_ && current_time.getHours() == 10 && current_time.getMinutes() == 00 && current_time.getSeconds() == 0)
-	{
-		checkUpdates();
-	}
+    if (auto_updates_ && ++cyn_update_timer_ticks_ >= 100)
+    {
+        cyn_update_timer_ticks_ = 0;
+        auto now = static_cast<int>(std::time(nullptr));
+        auto last = settings_.getInt("cyn_last_update_check", 0);
+        if (last <= 0 || now < last || now - last >= 86400)
+        {
+            settings_.setInt("cyn_last_update_check", now);
+            launchCynUpdater(false);
+        }
+    }
 }
 
 void FxController::onSoundDeviceChange(bool processing)
@@ -2698,24 +2721,12 @@ bool FxController::getAutoUpdates()
 void FxController::setAutoUpdates(bool enable)
 {
 	auto_updates_ = enable;
-	settings_.setBool("ember_automatic_updates", enable);
+	settings_.setBool("cyn_automatic_updates", enable);
 }
 
 void FxController::checkUpdates()
 {
-	if (!isAudioProcessing())
-	{
-		auto current_time = std::time(nullptr);
-		uint32_t last_update_time = settings_.getInt("last_update_time", 0);
-
-		if ((current_time - last_update_time) > (24 * 60 * 60))
-		{
-			settings_.setInt("last_update_time", static_cast<uint32_t>(current_time));
-
-			ChildProcess child_process;
-			child_process.start("updater.exe /silent");
-		}
-	}
+    launchCynUpdater(true);
 }
 
 void FxController::saveWindowPosition(int x, int y)
