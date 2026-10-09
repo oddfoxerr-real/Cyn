@@ -89,6 +89,8 @@ Earlier Cyn 2.0.2 and 2.0.3 installations can falsely show "up to date" because 
 
 Turn on **Smooth animations** under Settings > Help > Appearance, or using the main or tray menu. When enabled, native popup menus (including combo box drop-down menus) fade into place, the drop-down arrow rotates while opening, and button, toggle, and slider motion uses a gentler easing curve. Menu geometry stays fixed to preserve clicking and keyboard accessibility. The preference persists in `%APPDATA%\Cyn`. **Reduce motion** overrides these animations.
 
-## Cyn v2.0.6 — staged, self-contained updates
+## Seamless updates (v2.0.6)
 
-**Menu → Check for updates** now opens Cyn's themed updater with the actual update stages: GitHub check, real-byte download progress, SHA-256 verification, graceful Cyn shutdown, elevated silent install, and automatic relaunch. The updating window stays visible through installation, with Cyn's icon, ambient particles, glowing core, and orbiting rings. Reduced motion removes the effects. Users only need to approve the new version and Windows UAC when required; exiting Cyn manually is no longer part of the normal update flow. Automatic checks show this experience only if a newer release exists. **Smooth animations** is now enabled by default for fresh installations and popup fades start after JUCE shows the actual native menu.
+GitHub release checks now stage the installer automatically, verify the actual SHA-256 digest, show an animated Cyn window with real download progress, and offer **Install & restart**. The updater requests graceful Cyn shutdown via single-instance IPC, installs silently after Windows' UAC approval, then relaunches Cyn. No downloading EXEs manually or closing the tray app. Automatic checks are quiet when there is no newer version. The installer carries the native update window and separate network worker scripts.
+
+The Smooth animations toggle defaults on unless a user disabled it earlier. Native JUCE popup menus and nested submenus now start their fade at their actual show event, rather than from a too-early LookAndFeel callback. Reduce motion still disables this effect.

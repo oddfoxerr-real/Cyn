@@ -40,14 +40,10 @@ void launchCynUpdater(bool interactive)
         if (interactive) AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "CynUpdater.ps1 is missing. Reinstall Cyn.");
         return;
     }
-    const auto accent = String("#") + Colour(FXCOLOR(SliderTrack)).toDisplayString(false);
-    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"")
-        + script.getFullPathName() + "\" -CurrentVersion 2.0.6 -AccentHex \""
-        + accent + "\"" + (FxTheme::isReducedMotion() ? " -ReducedMotion" : "")
-        + (interactive ? " -Interactive" : "");
+    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.5" + (interactive ? " -Interactive" : "");
     auto result = ShellExecuteW(nullptr, L"open", L"powershell.exe", args.toWideCharPointer(), nullptr, SW_HIDE);
     if (reinterpret_cast<INT_PTR>(result) <= 32 && interactive)
-        AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch Cyn updater.");
+        AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");
 }
 }
 
@@ -2032,14 +2028,8 @@ LRESULT CALLBACK FxController::eventCallback(HWND hwnd, const UINT message, cons
 	FxController* controller = (FxController*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
 	switch (message)
-    {
-    case (WM_APP + 0x4D2): // Graceful update shutdown sent by CynUpdater.ps1.
-        if (controller != nullptr) {
-            controller->exit(); // Save settings and allow audio backend cleanup.
-            return 0;
-        }
-        break;
-    case WM_HOTKEY:
+	{
+	case WM_HOTKEY:
 	{
 		if (w_param == CMD_ON_OFF)
 		{

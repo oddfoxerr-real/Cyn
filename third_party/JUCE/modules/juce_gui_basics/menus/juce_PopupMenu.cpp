@@ -461,6 +461,19 @@ struct MenuWindow  : public Component
         items.clear();
     }
 
+    void revealWithCynAnimation()
+    {
+        // Trigger only after JUCE actually makes the popup visible.
+        // The LookAndFeel prepares the initially transparent window and records
+        // the duration. Animate opacity without changing menu geometry or focus.
+        const int duration = (int) getProperties().getWithDefault("cyn_popup_fade_ms", 0);
+        if (duration > 0 && Desktop::canUseSemiTransparentWindows())
+        {
+            Desktop::getInstance().getAnimator().animateComponent(
+                this, getBounds(), 1.0f, duration, false, 0.0, 0.0);
+        }
+    }
+
     //==============================================================================
     void paint (Graphics& g) override
     {
@@ -1221,13 +1234,7 @@ struct MenuWindow  : public Component
                                                                 false, dismissOnMouseUp, managerOfChosenCommand, scaleFactor));
 
             activeSubMenu->setVisible (true); // (must be called before enterModalState on Windows to avoid DropShadower confusion)
-            // Cyn: LookAndFeel::preparePopupMenuWindow sets alpha to 0.02
-            // when smooth animations are enabled. Animate only after native
-            // visibility is established. The menu stays fixed for hit testing.
-            if (activeSubMenu->getAlpha() < 0.5f)
-                Desktop::getInstance().getAnimator().animateComponent (
-                    activeSubMenu.get(), activeSubMenu->getBounds(),
-                    1.0f, 190, false, 0.0, 0.0);
+            activeSubMenu->revealWithCynAnimation();
             activeSubMenu->enterModalState (false);
             activeSubMenu->toFront (false);
             return true;
@@ -2126,9 +2133,7 @@ int PopupMenu::showWithOptionalCallback (const Options& options,
         PopupMenuSettings::menuWasHiddenBecauseOfAppChange = false;
 
         window->setVisible (true); // (must be called before enterModalState on Windows to avoid DropShadower confusion)
-        if (window->getAlpha() < 0.5f)
-            Desktop::getInstance().getAnimator().animateComponent (
-                window, window->getBounds(), 1.0f, 190, false, 0.0, 0.0);
+        window->revealWithCynAnimation();
         window->enterModalState (false, userCallbackDeleter.release());
         ModalComponentManager::getInstance()->attachCallback (window, callback.release());
 

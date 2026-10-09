@@ -398,11 +398,13 @@ void FxTheme::preparePopupMenuWindow(Component& new_window)
 {
     new_window.setOpaque(false);
     new_window.setMouseCursor(MouseCursor::PointingHandCursor);
-    // Actual fade starts in JUCE's MenuWindow immediately after setVisible(true).
-    // Asynchronous animation here could run before the native popup is shown,
-    // leaving it invisible or jumping to full opacity.
-    if (smooth_animations_ && !reduced_motion_ && Desktop::canUseSemiTransparentWindows())
-        new_window.setAlpha(0.02f);
+
+    // The JUCE MenuWindow now starts the fade immediately after setVisible(true).
+    // Do not schedule it here: that previously raced against popup creation.
+    const bool animateMenu = smooth_animations_ && !reduced_motion_
+        && Desktop::canUseSemiTransparentWindows();
+    new_window.getProperties().set("cyn_popup_fade_ms", animateMenu ? 215 : 0);
+    new_window.setAlpha(animateMenu ? 0.02f : 1.0f);
 
     for (auto* child : new_window.getChildren())
         child->setMouseCursor(MouseCursor::PointingHandCursor);
