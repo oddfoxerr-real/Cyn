@@ -1221,6 +1221,13 @@ struct MenuWindow  : public Component
                                                                 false, dismissOnMouseUp, managerOfChosenCommand, scaleFactor));
 
             activeSubMenu->setVisible (true); // (must be called before enterModalState on Windows to avoid DropShadower confusion)
+            // Cyn: LookAndFeel::preparePopupMenuWindow sets alpha to 0.02
+            // when smooth animations are enabled. Animate only after native
+            // visibility is established. The menu stays fixed for hit testing.
+            if (activeSubMenu->getAlpha() < 0.5f)
+                Desktop::getInstance().getAnimator().animateComponent (
+                    activeSubMenu.get(), activeSubMenu->getBounds(),
+                    1.0f, 190, false, 0.0, 0.0);
             activeSubMenu->enterModalState (false);
             activeSubMenu->toFront (false);
             return true;
@@ -2119,6 +2126,9 @@ int PopupMenu::showWithOptionalCallback (const Options& options,
         PopupMenuSettings::menuWasHiddenBecauseOfAppChange = false;
 
         window->setVisible (true); // (must be called before enterModalState on Windows to avoid DropShadower confusion)
+        if (window->getAlpha() < 0.5f)
+            Desktop::getInstance().getAnimator().animateComponent (
+                window, window->getBounds(), 1.0f, 190, false, 0.0, 0.0);
         window->enterModalState (false, userCallbackDeleter.release());
         ModalComponentManager::getInstance()->attachCallback (window, callback.release());
 

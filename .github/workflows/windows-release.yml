@@ -60,6 +60,11 @@ jobs:
         shell: powershell
         run: .\scripts\diagnose_cyn_updater.ps1
 
+      - name: Test updater visual animation and PowerShell parsing
+        if: steps.inspect.outputs.state != 'published'
+        shell: powershell
+        run: .\scripts\test_cyn_update_ui.ps1
+
       - name: Compile Cyn native x64
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh

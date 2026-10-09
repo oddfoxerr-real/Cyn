@@ -398,30 +398,14 @@ void FxTheme::preparePopupMenuWindow(Component& new_window)
 {
     new_window.setOpaque(false);
     new_window.setMouseCursor(MouseCursor::PointingHandCursor);
-    // PopupMenu constructs the native window before it becomes visible.
-    // Queue the opacity transition until JUCE has shown the menu.
-    // Never move popup geometry: pointer hit targets remain stable.
+    // Actual fade starts in JUCE's MenuWindow immediately after setVisible(true).
+    // Asynchronous animation here could run before the native popup is shown,
+    // leaving it invisible or jumping to full opacity.
     if (smooth_animations_ && !reduced_motion_ && Desktop::canUseSemiTransparentWindows())
-    {
         new_window.setAlpha(0.02f);
-        Component::SafePointer<Component> safeMenu(&new_window);
-        MessageManager::callAsync([safeMenu]()
-        {
-            if (auto* popup = safeMenu.getComponent())
-            {
-                if (popup->isShowing())
-                    Desktop::getInstance().getAnimator().animateComponent(
-                        popup, popup->getBounds(), 1.0f, 190, false, 0.0, 0.0);
-                else
-                    popup->setAlpha(1.0f);
-            }
-        });
-    }
-	auto children = new_window.getChildren();
-	for (auto child : children)
-	{
-		child->setMouseCursor(MouseCursor::PointingHandCursor);
-	}
+
+    for (auto* child : new_window.getChildren())
+        child->setMouseCursor(MouseCursor::PointingHandCursor);
 }
 
 void FxTheme::drawPopupMenuBackground(Graphics& g,int width,int height)
