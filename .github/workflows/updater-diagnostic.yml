@@ -1,0 +1,16 @@
+name: Cyn updater diagnostic
+on:
+  push:
+    paths:
+      - '.github/workflows/updater-diagnostic.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe updater matching logic
+        shell: powershell
+        run: .\scripts\diagnose_cyn_updater.ps1
