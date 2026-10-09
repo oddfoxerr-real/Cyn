@@ -292,6 +292,7 @@ private:
     bool hide_help_tooltips_;
 	bool hide_notifications_;
 	bool auto_updates_;
+    int cyn_update_timer_ticks_ = 0;
 
 	unsigned long audio_process_time_;
 	int audio_process_on_counter_;
