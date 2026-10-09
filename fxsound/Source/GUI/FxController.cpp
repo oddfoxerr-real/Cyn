@@ -40,7 +40,7 @@ void launchCynUpdater(bool interactive)
         if (interactive) AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "CynUpdater.ps1 is missing. Reinstall Cyn.");
         return;
     }
-    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.5" + (interactive ? " -Interactive" : "");
+    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.7" + (interactive ? " -Interactive" : "");
     auto result = ShellExecuteW(nullptr, L"open", L"powershell.exe", args.toWideCharPointer(), nullptr, SW_HIDE);
     if (reinterpret_cast<INT_PTR>(result) <= 32 && interactive)
         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");
@@ -378,6 +378,12 @@ void FxController::initConfig(const String& commandline)
 void FxController::applyConfig(const String& commandline)
 {
 	auto arg_list = ArgumentList(File::getSpecialLocation(File::SpecialLocationType::invokedExecutableFile).getFileName(), commandline);
+    if (arg_list.containsOption("--cyn-exit-for-update"))
+    {
+        // Close through the existing JUCE single-instance channel, preserving presets.
+        exit();
+        return;
+    }
 
 	if (arg_list.containsOption("--status"))
 	{
