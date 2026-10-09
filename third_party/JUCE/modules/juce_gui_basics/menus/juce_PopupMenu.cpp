@@ -185,6 +185,7 @@ struct ItemComponent  : public Component
     }
 
     PopupMenu::Item item;
+    int cynExpandedHeight = 0;
 
 private:
     class ValueInterface  : public AccessibilityValueInterface
@@ -346,7 +347,7 @@ private:
 };
 
 //==============================================================================
-struct MenuWindow  : public Component
+struct MenuWindow  : public Component, private Timer
 {
     MenuWindow (const PopupMenu& menu, MenuWindow* parentWindow,
                 Options opts, bool alignToRectangle, bool shouldDismissOnMouseUp,
@@ -455,6 +456,7 @@ struct MenuWindow  : public Component
 
     ~MenuWindow() override
     {
+        stopTimer();
         getActiveWindows().removeFirstMatchingValue (this);
         Desktop::getInstance().removeGlobalMouseListener (this);
         activeSubMenu.reset();
@@ -949,6 +951,21 @@ struct MenuWindow  : public Component
 
     void layoutMenuItems (const int maxMenuW, const int maxMenuH, int& width, int& height)
     {
+        // Expanding a category preserves one vertical text-button stack.
+        // On short displays JUCE scrolls instead of splitting rows into columns.
+        if ((bool) getProperties().getWithDefault ("cyn_inline_categories", false)
+            && cynCategoryCount > 0)
+        {
+            for (auto* row : items)
+                row->item.shouldBreakAfter = false;
+            numColumns = 1;
+            workOutManualSize (maxMenuW);
+            height = jmin (contentHeight, maxMenuH);
+            needsToScroll = contentHeight > height;
+            width = updateYPositions();
+            return;
+        }
+
         // Ensure we don't try to add an empty column after the final item
         if (auto* last = items.getLast())
             last->item.shouldBreakAfter = false;
@@ -1220,8 +1237,138 @@ struct MenuWindow  : public Component
 
     bool isSubMenuVisible() const noexcept          { return activeSubMenu != nullptr && activeSubMenu->isVisible(); }
 
+    // Inline accordion for Cyn category rows. The menu grows instead of
+    // opening a second floating submenu. Each text-button row unfolds from
+    // behind its header with a small stagger.
+    bool toggleCynCategory (ItemComponent* category)
+    {
+        if (category == nullptr || ! hasActiveSubMenu (category->item))
+            return false;
+
+        if (cynOpenCategory == category)
+        {
+            if (! (bool) getProperties().getWithDefault ("cyn_category_animate", false))
+            {
+                clearCynCategory();
+                return true;
+            }
+            cynClosing = true;
+            cynMotionStart = Time::getMillisecondCounter();
+            startTimerHz (60);
+            return true;
+        }
+
+        clearCynCategory();
+        const int categoryIndex = items.indexOf (category);
+        if (categoryIndex < 0)
+            return false;
+
+        const auto& choices = category->item.subMenu->items;
+        for (int n = 0; n < choices.size(); ++n)
+        {
+            auto* row = new ItemComponent (choices.getReference (n), options, *this);
+            row->cynExpandedHeight = row->getHeight();
+            row->setSize (row->getWidth(), 1);
+            row->setAlpha (0.01f);
+            items.insert (categoryIndex + 1 + n, row);
+        }
+        cynOpenCategory = category;
+        cynCategoryCount = choices.size();
+        cynClosing = false;
+        cynMotionStart = Time::getMillisecondCounter();
+        const bool shouldAnimate = (bool) getProperties().getWithDefault ("cyn_category_animate", false);
+        if (! shouldAnimate)
+        {
+            for (int n = 0; n < cynCategoryCount; ++n)
+            {
+                auto* row = items[categoryIndex + 1 + n];
+                row->setSize (row->getWidth(), row->cynExpandedHeight);
+                row->setAlpha (1.0f);
+            }
+            refreshCynCategoryLayout();
+        }
+        else
+        {
+            refreshCynCategoryLayout();
+            startTimerHz (60);
+        }
+        return true;
+    }
+
+    void clearCynCategory()
+    {
+        if (cynOpenCategory == nullptr)
+            return;
+        const int categoryIndex = items.indexOf (cynOpenCategory.getComponent());
+        if (categoryIndex >= 0)
+        {
+            const int toRemove = jmin (cynCategoryCount, items.size() - categoryIndex - 1);
+            if (toRemove > 0)
+            {
+                setCurrentlyHighlightedChild (nullptr);
+                for (int n = 0; n < toRemove; ++n)
+                    items.remove (categoryIndex + 1);
+            }
+        }
+        cynOpenCategory = nullptr;
+        cynCategoryCount = 0;
+        cynClosing = false;
+        stopTimer();
+        refreshCynCategoryLayout();
+    }
+
+    void refreshCynCategoryLayout()
+    {
+        const auto screenArea = options.getTargetScreenArea() / scaleFactor;
+        calculateWindowPos (screenArea, ! options.getTargetScreenArea().isEmpty());
+        resizeToBestWindowPos();
+        repaint();
+    }
+
+    void timerCallback() override
+    {
+        const int categoryIndex = items.indexOf (cynOpenCategory.getComponent());
+        if (categoryIndex < 0 || cynCategoryCount <= 0)
+        {
+            stopTimer();
+            return;
+        }
+
+        const uint32 elapsed = Time::getMillisecondCounter() - cynMotionStart;
+        bool complete = true;
+        for (int n = 0; n < cynCategoryCount; ++n)
+        {
+            auto* row = items[categoryIndex + 1 + n];
+            if (row == nullptr)
+                continue;
+
+            // Each row falls behind the previous one; stable item identity
+            // keeps pointer and keyboard behaviour intact.
+            const float duration = 195.0f;
+            const float stagger = 23.0f;
+            const float t = jlimit (0.0f, 1.0f,
+                (static_cast<float> (elapsed) - static_cast<float> (cynClosing ? (cynCategoryCount - n - 1) : n) * stagger) / duration);
+            const float eased = 1.0f - std::pow (1.0f - t, 3.0f);
+            const float amount = cynClosing ? 1.0f - eased : eased;
+            const int height = jmax (1, roundToInt (row->cynExpandedHeight * amount));
+            row->setSize (row->getWidth(), height);
+            row->setAlpha (jlimit (0.01f, 1.0f, amount));
+            if (t < 1.0f)
+                complete = false;
+        }
+        refreshCynCategoryLayout();
+        if (complete)
+        {
+            stopTimer();
+            if (cynClosing)
+                clearCynCategory();
+        }
+    }
+
     bool showSubMenuFor (ItemComponent* childComp)
     {
+        if ((bool) getProperties().getWithDefault ("cyn_inline_categories", false))
+            return toggleCynCategory (childComp);
         activeSubMenu.reset();
 
         if (childComp != nullptr
@@ -1245,6 +1392,12 @@ struct MenuWindow  : public Component
 
     void triggerCurrentlyHighlightedItem()
     {
+        if (currentChild != nullptr && hasActiveSubMenu (currentChild->item)
+            && (bool) getProperties().getWithDefault ("cyn_inline_categories", false))
+        {
+            showSubMenuFor (currentChild.getComponent());
+            return;
+        }
         if (currentChild != nullptr && canBeTriggered (currentChild->item))
         {
             dismissMenu (&currentChild->item);
@@ -1336,6 +1489,10 @@ struct MenuWindow  : public Component
     bool dismissOnMouseUp, hideOnExit = false, disableMouseMoves = false, hasAnyJuceCompHadFocus = false;
     int numColumns = 0, contentHeight = 0, childYOffset = 0;
     Component::SafePointer<ItemComponent> currentChild;
+    Component::SafePointer<ItemComponent> cynOpenCategory;
+    int cynCategoryCount = 0;
+    bool cynClosing = false;
+    uint32 cynMotionStart = 0;
     std::unique_ptr<MenuWindow> activeSubMenu;
     Array<int> columnWidths;
     uint32 windowCreationTime, lastFocusedTime, timeEnteredCurrentChildComp;
@@ -1400,7 +1557,8 @@ private:
         if (timeNow > window.timeEnteredCurrentChildComp + 100
              && window.reallyContains (localMousePos, true)
              && window.currentChild != nullptr
-             && ! (window.disableMouseMoves || window.isSubMenuVisible()))
+             && ! (window.disableMouseMoves || window.isSubMenuVisible())
+             && ! (bool) window.getProperties().getWithDefault ("cyn_inline_categories", false))
         {
             window.showSubMenuFor (window.currentChild);
         }

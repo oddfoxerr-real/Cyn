@@ -385,7 +385,7 @@ void FxTheme::drawPopupMenuItem(Graphics& g, const juce::Rectangle<int>& area, b
     if (has_submenu)
     {
         g.setColour(colour.withAlpha(0.72f));
-        g.drawText(CharPointer_UTF8("›"), area.getRight() - 22, area.getY(), 14, area.getHeight(), Justification::centred, false);
+        g.drawText(CharPointer_UTF8("⌄"), area.getRight() - 22, area.getY(), 14, area.getHeight(), Justification::centred, false);
     }
 }
 
@@ -403,6 +403,10 @@ void FxTheme::preparePopupMenuWindow(Component& new_window)
     // Do not schedule it here: that previously raced against popup creation.
     const bool animateMenu = smooth_animations_ && !reduced_motion_
         && Desktop::canUseSemiTransparentWindows();
+    // Category rows are real inline accordions, not detached flyout windows.
+    // Reduce motion removes the tween, without changing the menu layout.
+    new_window.getProperties().set("cyn_inline_categories", true);
+    new_window.getProperties().set("cyn_category_animate", animateMenu);
     new_window.getProperties().set("cyn_popup_fade_ms", animateMenu ? 215 : 0);
     new_window.setAlpha(animateMenu ? 0.02f : 1.0f);
 

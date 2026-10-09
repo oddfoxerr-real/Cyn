@@ -6,7 +6,7 @@ Thank you to the [FxSound team and contributors](https://github.com/fxsound2/fxs
 
 ## Install with the setup EXE
 
-Exit Cyn/FxSound from the tray menu, then double-click `Cyn-Setup-2.0.7-x64.exe`. It installs the app and all required files into Program Files, adds Start-menu and optional Desktop shortcuts, and registers an uninstaller. Windows 10/11 Intel/AMD x64 and administrator access are required. An existing FxSound driver is reused; otherwise the bundled Microsoft-signed driver is installed. The original FxSound app does not need to run.
+Exit Cyn/FxSound from the tray menu, then double-click `Cyn-Setup-2.0.8-x64.exe`. It installs the app and all required files into Program Files, adds Start-menu and optional Desktop shortcuts, and registers an uninstaller. Windows 10/11 Intel/AMD x64 and administrator access are required. An existing FxSound driver is reused; otherwise the bundled Microsoft-signed driver is installed. The original FxSound app does not need to run.
 
 Remove Cyn through Windows Settings > Apps > Installed apps. Your `%APPDATA%\Cyn` preferences and the shared audio driver are retained. Removing the original FxSound installation may remove that shared driver; rerun Cyn setup if needed. The Cyn installer/app are unsigned community builds; the driver retains its original signature. See `Installer/Cyn/README.md` in the source for verification scope.
 
@@ -62,7 +62,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_CYN.ps1
 
 Skip setup when VS 2022 C++ Build Tools and Windows SDK are installed. Output: `dist\Cyn\Cyn.exe` and `dist\Cyn-Windows-x64.zip`. Subsequent builds support `-Incremental`. Optional `-WithMcp` requires Go and builds the repository's existing MCP server.
 
-To build the setup EXE after the app, run `powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_INSTALLER.ps1`. This downloads a pinned, signature-checked Inno Setup compiler into `.build-tools` when needed, verifies the bundled driver hashes, and writes `dist\Cyn-Setup-2.0.7-x64.exe`. Use `-RebuildApp` to rebuild the app too.
+To build the setup EXE after the app, run `powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_INSTALLER.ps1`. This downloads a pinned, signature-checked Inno Setup compiler into `.build-tools` when needed, verifies the bundled driver hashes, and writes `dist\Cyn-Setup-2.0.8-x64.exe`. Use `-RebuildApp` to rebuild the app too.
 
 ## Local control
 
@@ -94,3 +94,7 @@ Turn on **Smooth animations** under Settings > Help > Appearance, or using the m
 GitHub release checks now stage the installer automatically, verify the actual SHA-256 digest, show an animated Cyn window with real download progress, and offer **Install & restart**. The updater requests graceful Cyn shutdown via single-instance IPC, installs silently after Windows' UAC approval, then relaunches Cyn. No downloading EXEs manually or closing the tray app. Automatic checks are quiet when there is no newer version. The installer carries the native update window and separate network worker scripts.
 
 The Smooth animations toggle defaults on unless a user disabled it earlier. Native JUCE popup menus and nested submenus now start their fade at their actual show event, rather than from a too-early LookAndFeel callback. Reduce motion still disables this effect.
+
+## Expanding category controls (v2.0.8)
+
+Click a category in the menu, such as Theme, Save New Preset or Rename Preset. Its text-button options expand **within the same menu**, one after another from underneath the category button, pushing following rows downward. Click again to collapse from bottom to top. The menu uses a single vertical column with scrolling on smaller displays. The Smooth animations option controls the 60Hz cubic-eased stagger; Reduce motion presents the same category hierarchy without animation. Keyboard activation works via Enter and right arrow.
