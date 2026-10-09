@@ -2133,7 +2133,7 @@ int PopupMenu::showWithOptionalCallback (const Options& options,
         PopupMenuSettings::menuWasHiddenBecauseOfAppChange = false;
 
         window->setVisible (true); // (must be called before enterModalState on Windows to avoid DropShadower confusion)
-        window->revealWithCynAnimation();
+        static_cast<HelperClasses::MenuWindow*> (window)->revealWithCynAnimation();
         window->enterModalState (false, userCallbackDeleter.release());
         ModalComponentManager::getInstance()->attachCallback (window, callback.release());
 
