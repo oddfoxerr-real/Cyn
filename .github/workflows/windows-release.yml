@@ -1,36 +1,116 @@
 name: Cyn Windows Release
+
 on:
   push:
+    branches: [main]
     tags: ['v*']
   workflow_dispatch:
+
 permissions:
   contents: write
+
+concurrency:
+  group: cyn-release
+  cancel-in-progress: false
+
 jobs:
-  build:
+  publish:
     runs-on: windows-2022
+    timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
-      - name: Build Cyn
-        shell: pwsh
-        run: .\BUILD_CYN.ps1
-      - name: Build Inno Setup installer
-        shell: pwsh
-        run: .\BUILD_INSTALLER.ps1
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+      - name: Checkout full source
+        uses: actions/checkout@v4
         with:
-          name: cyn-windows-installer
-          path: |
-            dist/Cyn-Setup-2.0.2-x64.exe
-            dist/Cyn-Setup-2.0.2-x64.exe.sha256
-            dist/Cyn-Windows-x64.zip
-      - name: Publish tagged release
-        if: github.ref_type == 'tag'
+          persist-credentials: true
+
+      - name: Resolve release version
+        id: version
+        shell: pwsh
+        run: |
+          $script = Get-Content 'Installer/Cyn/Cyn.iss' -Raw
+          if ($script -notmatch '(?m)^AppVersion=(\d+\.\d+\.\d+)\s*$') { throw 'Unable to read Cyn version from installer.' }
+          $version = $Matches[1]
+          $tag = "v$version"
+          if ('${{ github.ref_type }}' -eq 'tag' -and '${{ github.ref_name }}' -ne $tag) { throw 'Git tag and installer version differ.' }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "installer=Cyn-Setup-$version-x64.exe" >> $env:GITHUB_OUTPUT
+
+      - name: Check published release
+        id: inspect
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
-          gh release view '${{ github.ref_name }}' 2>$null
-          if ($LASTEXITCODE -ne 0) { gh release create '${{ github.ref_name }}' --title 'Cyn 2.0.2' --notes-file RELEASE_NOTES_2.0.2.md --prerelease }
-          gh release upload '${{ github.ref_name }}' 'dist/Cyn-Setup-2.0.2-x64.exe' 'dist/Cyn-Setup-2.0.2-x64.exe.sha256' 'dist/Cyn-Windows-x64.zip' --clobber
-          if ($LASTEXITCODE -ne 0) { throw 'Release upload failed' }
+          $uri = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/releases/tags/$env:RELEASE_TAG"
+          $headers = @{Authorization="Bearer $env:GH_TOKEN"; 'User-Agent'='Cyn-Release-CI'; Accept='application/vnd.github+json'}
+          try {
+            $release = Invoke-RestMethod -Uri $uri -Headers $headers -TimeoutSec 30
+            if ($release.draft) { 'state=draft' >> $env:GITHUB_OUTPUT }
+            else { 'state=published' >> $env:GITHUB_OUTPUT }
+          } catch {
+            if ($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -eq 404) {
+              'state=missing' >> $env:GITHUB_OUTPUT
+            } else { throw }
+          }
+
+      - name: Compile Cyn native x64
+        if: steps.inspect.outputs.state != 'published'
+        shell: pwsh
+        run: .\BUILD_CYN.ps1
+
+      - name: Build Windows installer
+        if: steps.inspect.outputs.state != 'published'
+        shell: pwsh
+        run: .\BUILD_INSTALLER.ps1
+
+      - name: Verify installer and SHA-256
+        if: steps.inspect.outputs.state != 'published'
+        shell: pwsh
+        env:
+          CYN_INSTALLER: ${{ steps.version.outputs.installer }}
+        run: |
+          $exe = Join-Path dist $env:CYN_INSTALLER
+          $checksum = "$exe.sha256"
+          if (!(Test-Path $exe) -or !(Test-Path $checksum)) { throw 'Required installer or SHA-256 asset missing.' }
+          $expected = ((Get-Content -Raw -LiteralPath $checksum).Trim() -split '\s+')[0]
+          $actual = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash
+          if ($actual -ine $expected) { throw 'Installer failed SHA-256 verification.' }
+          if (!(Test-Path 'dist/Cyn-Windows-x64.zip')) { throw 'Portable build missing.' }
+
+      - name: Upload installer artifacts
+        if: steps.inspect.outputs.state != 'published'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyn-windows-${{ steps.version.outputs.version }}
+          path: |
+            dist/${{ steps.version.outputs.installer }}
+            dist/${{ steps.version.outputs.installer }}.sha256
+            dist/Cyn-Windows-x64.zip
+          if-no-files-found: error
+
+      - name: Create draft release if missing
+        if: steps.inspect.outputs.state == 'missing'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          CYN_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create $env:RELEASE_TAG --target $env:GITHUB_SHA --title "Cyn $env:CYN_VERSION — Themes and GitHub Updates" --notes-file RELEASE_NOTES_2.0.2.md --draft --prerelease
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to create draft release.' }
+
+      - name: Publish installer to GitHub Releases
+        if: steps.inspect.outputs.state != 'published'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          CYN_INSTALLER: ${{ steps.version.outputs.installer }}
+        run: |
+          $assets = @("dist/$env:CYN_INSTALLER", "dist/$env:CYN_INSTALLER.sha256", 'dist/Cyn-Windows-x64.zip')
+          gh release upload $env:RELEASE_TAG @assets --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub release asset upload failed.' }
+          gh release edit $env:RELEASE_TAG --draft=false --prerelease
+          if ($LASTEXITCODE -ne 0) { throw 'Could not publish release.' }
