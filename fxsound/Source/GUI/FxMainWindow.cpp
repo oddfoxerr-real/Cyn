@@ -588,6 +588,7 @@ Built on the open-source FxSound DSP and official audio driver.
 AGPL-3.0-or-later; see the bundled LICENSE and source.)"); });
 	popup_menu.addSeparator();
 	popup_menu.addSubMenu(TRANS("Theme"), theme_menu);
+    popup_menu.addItem("Smooth animations", true, FxTheme::isSmoothAnimations(), [] { FxController::getInstance().setSmoothAnimations(!FxTheme::isSmoothAnimations()); });
     popup_menu.addItem("Reduce motion",true,FxTheme::isReducedMotion(),[]{ FxController::getInstance().setReducedMotion(!FxTheme::isReducedMotion()); });
 	popup_menu.addItem(TRANS("Always On Top"), true, isAlwaysOnTop(), alwaysOnTopClicked);
 	popup_menu.addSeparator();

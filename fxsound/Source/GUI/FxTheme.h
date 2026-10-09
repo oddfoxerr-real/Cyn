@@ -99,6 +99,8 @@ public:
     static bool isLightTheme();
     static bool isReducedMotion() { return reduced_motion_; }
     static void setReducedMotion(bool value);
+    static bool isSmoothAnimations() { return smooth_animations_; }
+    static void setSmoothAnimations(bool value);
     float animate(Component&, int channel, float target);
 	static void setThemeMode(FxThemeMode theme_mode);
 	static uint32 getColor(FxColor color);
@@ -111,6 +113,7 @@ private:
     struct Motion { Component::SafePointer<Component> component; std::array<float,4> value{}, target{}; };
     std::vector<Motion> motions_;
     static bool reduced_motion_;
+    static bool smooth_animations_;
 
     TextLayout layoutTooltipText(const String& text, Colour colour) noexcept;
     Typeface::Ptr loadTypeface(String fileName);

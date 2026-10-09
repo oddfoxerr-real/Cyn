@@ -181,6 +181,7 @@ private:
 		FxHyperlink helpcenter_link_;
 		FxHyperlink feedback_link_;
 		ToggleButton auto_updates_toggle_;
+        ToggleButton smooth_animations_toggle_;
 		ToggleButton debug_log_toggle_;
 	};
 

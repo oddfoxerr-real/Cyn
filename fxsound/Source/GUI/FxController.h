@@ -159,6 +159,7 @@ public:
 	FxThemeMode getThemeMode();
 	void setThemeMode(FxThemeMode mode);
     void setReducedMotion(bool value);
+    void setSmoothAnimations(bool value);
 
 	bool isAlwaysOnTop();
 	void setAlwaysOnTop(bool always_on_top);

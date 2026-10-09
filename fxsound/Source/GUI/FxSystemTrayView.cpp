@@ -319,6 +319,7 @@ void FxSystemTrayView::showContextMenu()
     addOutputDeviceMenu(&context_menu);
     context_menu.addItem(settings);
     context_menu.addSubMenu(TRANS("Theme"), theme_menu);
+    context_menu.addItem("Smooth animations", true, FxTheme::isSmoothAnimations(), [] { FxController::getInstance().setSmoothAnimations(!FxTheme::isSmoothAnimations()); });
     context_menu.addItem("Reduce motion",true,FxTheme::isReducedMotion(),[]{ FxController::getInstance().setReducedMotion(!FxTheme::isReducedMotion()); });
     context_menu.addItem(TRANS("Always On Top"), true, FxController::getInstance().getMainWindow()->isAlwaysOnTop(), alwaysOnTopClicked);
     context_menu.addItem(donate);

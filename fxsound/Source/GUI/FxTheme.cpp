@@ -174,7 +174,7 @@ void FxTheme::drawComboBox(Graphics& g, int width, int height, bool,
     g.setGradientFill(fill);
     g.fillRoundedRectangle(bounds, radius);
 
-    const float hover=animate(box,0,box.hasKeyboardFocus(true) || box.isMouseOver() ? 1.0f : 0.0f);
+    const float hover=animate(box,0,box.hasKeyboardFocus(true) || box.isMouseOver() || box.isPopupActive() ? 1.0f : 0.0f);
     outline=outline.interpolatedWith(accent.withAlpha(.65f),hover);
 
     g.setColour(outline);
@@ -183,7 +183,15 @@ void FxTheme::drawComboBox(Graphics& g, int width, int height, bool,
     const int margin = width <= 150 ? 20 : 26;
     g.setColour(box.findColour(ComboBox::arrowColourId).withAlpha(box.isEnabled() ? 0.86f : 0.2f));
     auto* arrow = box.isEnabled() ? drop_down_arrow_.get() : drop_down_arrow_grey_.get();
-    arrow->drawWithin(g, juce::Rectangle<float>((float)width - margin, 0.0f, 11.0f, (float)height), { RectanglePlacement::centred }, 1.0f);
+    const float open = animate(box, 1, box.isPopupActive() ? 1.0f : 0.0f);
+    {
+        Graphics::ScopedSaveState state(g);
+        if (smooth_animations_ && !reduced_motion_)
+            g.addTransform(AffineTransform::rotation(MathConstants<float>::pi * open,
+                static_cast<float>(width - margin) + 5.5f, static_cast<float>(height) * 0.5f));
+        arrow->drawWithin(g, juce::Rectangle<float>((float)width - margin, 0.0f, 11.0f, (float)height),
+            { RectanglePlacement::centred }, 1.0f);
+    }
 }
 
 void FxTheme::drawComboBoxTextWhenNothingSelected(Graphics& g, ComboBox& box, Label& label)
@@ -389,7 +397,26 @@ Font FxTheme::getPopupMenuFont()
 void FxTheme::preparePopupMenuWindow(Component& new_window)
 {
     new_window.setOpaque(false);
-	new_window.setMouseCursor(MouseCursor::PointingHandCursor);
+    new_window.setMouseCursor(MouseCursor::PointingHandCursor);
+    // PopupMenu constructs the native window before it becomes visible.
+    // Queue the opacity transition until JUCE has shown the menu.
+    // Never move popup geometry: pointer hit targets remain stable.
+    if (smooth_animations_ && !reduced_motion_ && Desktop::canUseSemiTransparentWindows())
+    {
+        new_window.setAlpha(0.02f);
+        Component::SafePointer<Component> safeMenu(&new_window);
+        MessageManager::callAsync([safeMenu]()
+        {
+            if (auto* popup = safeMenu.getComponent())
+            {
+                if (popup->isShowing())
+                    Desktop::getInstance().getAnimator().animateComponent(
+                        popup, popup->getBounds(), 1.0f, 190, false, 0.0, 0.0);
+                else
+                    popup->setAlpha(1.0f);
+            }
+        });
+    }
 	auto children = new_window.getChildren();
 	for (auto child : children)
 	{
@@ -782,6 +809,7 @@ Typeface::Ptr FxTheme::loadTypeface(String fileName)
 }
 
 bool FxTheme::reduced_motion_ = false;
+bool FxTheme::smooth_animations_ = false;
 const char* FxTheme::getThemeName(int i)
 {
     static const char* names[] = { "Graphite", "Pearl", "Aurora", "Dusk", "Copper", "Midnight", "Sakura", "Arctic", "Sandstone", "Obsidian", "Emerald", "Deep Sea", "Neon Tokyo", "Synthwave", "Solar Flare", "Crimson", "Mocha", "Monochrome", "ChatGPT Desktop" };
@@ -809,6 +837,16 @@ void FxTheme::setReducedMotion(bool value)
         if(value) theme->stopTimer();
     }
 }
+void FxTheme::setSmoothAnimations(bool value)
+{
+    smooth_animations_ = value;
+    if (auto* theme = dynamic_cast<FxTheme*>(&LookAndFeel::getDefaultLookAndFeel()))
+    {
+        for (auto& motion : theme->motions_)
+            if (motion.component)
+                motion.component->repaint();
+    }
+}
 float FxTheme::animate(Component& component,int channel,float target)
 {
     channel=jlimit(0,3,channel);
@@ -831,7 +869,7 @@ void FxTheme::timerCallback()
         bool changed=false;
         for(int i=0;i<4;++i) {
             const float delta=it->target[i]-it->value[i];
-            if(std::abs(delta)>.001f) { it->value[i]+=delta*.22f; active=changed=true; }
+            if(std::abs(delta)>.001f) { it->value[i]+=delta*(smooth_animations_ ? .13f : .22f); active=changed=true; }
             else it->value[i]=it->target[i];
         }
         if(changed) it->component->repaint();

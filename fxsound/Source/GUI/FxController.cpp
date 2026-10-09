@@ -40,7 +40,7 @@ void launchCynUpdater(bool interactive)
         if (interactive) AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "CynUpdater.ps1 is missing. Reinstall Cyn.");
         return;
     }
-    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.4" + (interactive ? " -Interactive" : "");
+    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.5" + (interactive ? " -Interactive" : "");
     auto result = ShellExecuteW(nullptr, L"open", L"powershell.exe", args.toWideCharPointer(), nullptr, SW_HIDE);
     if (reinterpret_cast<INT_PTR>(result) <= 32 && interactive)
         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");
@@ -817,6 +817,7 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 		showView();
 
 		FxTheme::setReducedMotion(settings_.getBool("cyn_reduce_motion",false));
+        FxTheme::setSmoothAnimations(settings_.getBool("cyn_smooth_animations", false));
         auto theme_mode = settings_.getInt("theme_mode", 0);
 		if (theme_mode < 0 || theme_mode >= static_cast<int>(FxThemeMode::NumModes))
 		{
@@ -3177,4 +3178,11 @@ void FxController::setReducedMotion(bool value)
 {
     FxTheme::setReducedMotion(value); settings_.setBool("cyn_reduce_motion",value);
     if(main_window_) main_window_->sendLookAndFeelChange();
+}
+
+void FxController::setSmoothAnimations(bool value)
+{
+    FxTheme::setSmoothAnimations(value);
+    settings_.setBool("cyn_smooth_animations", value);
+    if (main_window_) main_window_->sendLookAndFeelChange();
 }

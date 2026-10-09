@@ -470,7 +470,7 @@ void FxSettingsDialog::GeneralSettingsPane::setText()
     hotkeys_toggle_.setButtonText(TRANS("Disable keyboard shortcuts"));
 }
 
-FxSettingsDialog::HelpSettingsPane::HelpSettingsPane() : SettingsPane("Help"), auto_updates_toggle_(String("Reduce motion"))
+FxSettingsDialog::HelpSettingsPane::HelpSettingsPane() : SettingsPane("Help"), auto_updates_toggle_(String("Reduce motion")), smooth_animations_toggle_(String("Smooth animations"))
 {	
 	version_title_.setColour(Label::ColourIds::textColourId, getLookAndFeel().findColour(TextButton::textColourOnId));
 	version_title_.setJustificationType(Justification::centredLeft);
@@ -495,8 +495,18 @@ FxSettingsDialog::HelpSettingsPane::HelpSettingsPane() : SettingsPane("Help"), a
 	auto_updates_toggle_.setColour(ToggleButton::ColourIds::textColourId, getLookAndFeel().findColour(TextButton::textColourOnId));
 
 	auto_updates_toggle_.onClick = [this]() {
-		FxController::getInstance().setReducedMotion(auto_updates_toggle_.getToggleState());
-	};
+        FxController::getInstance().setReducedMotion(auto_updates_toggle_.getToggleState());
+    };
+
+    smooth_animations_toggle_.setMouseCursor(MouseCursor::PointingHandCursor);
+    smooth_animations_toggle_.setToggleState(FxTheme::isSmoothAnimations(), NotificationType::dontSendNotification);
+    smooth_animations_toggle_.setColour(ToggleButton::ColourIds::tickColourId,
+        getLookAndFeel().findColour(TextButton::textColourOnId));
+    smooth_animations_toggle_.setColour(ToggleButton::ColourIds::textColourId,
+        getLookAndFeel().findColour(TextButton::textColourOnId));
+    smooth_animations_toggle_.onClick = [this]() {
+        FxController::getInstance().setSmoothAnimations(smooth_animations_toggle_.getToggleState());
+    };
 
     setText();
 
@@ -509,6 +519,7 @@ FxSettingsDialog::HelpSettingsPane::HelpSettingsPane() : SettingsPane("Help"), a
 	addChildComponent(submitlogs_link_);
 	addAndMakeVisible(helpcenter_link_);
 	addAndMakeVisible(auto_updates_toggle_);
+    addAndMakeVisible(smooth_animations_toggle_);
 }
 
 void FxSettingsDialog::HelpSettingsPane::resized()
@@ -523,6 +534,7 @@ void FxSettingsDialog::HelpSettingsPane::resized()
 	helpcenter_link_.setBounds(X_MARGIN+5, support_title_.getBottom()+10, getWidth()-X_MARGIN, HYPERLINK_HEIGHT);
 	maintenance_title_.setBounds(X_MARGIN, helpcenter_link_.getBottom()+20, getWidth()-X_MARGIN, TITLE_HEIGHT);
 	auto_updates_toggle_.setBounds(X_MARGIN + 5, maintenance_title_.getBottom() + 10, BUTTON_WIDTH, TOGGLE_BUTTON_HEIGHT);
+    smooth_animations_toggle_.setBounds(X_MARGIN + 5, auto_updates_toggle_.getBottom() + 8, BUTTON_WIDTH, TOGGLE_BUTTON_HEIGHT);
 }
 
 void FxSettingsDialog::HelpSettingsPane::paint(Graphics& g)
@@ -555,5 +567,6 @@ void FxSettingsDialog::HelpSettingsPane::setText()
     submitlogs_link_.setButtonText(TRANS("Submit debug logs"));
     helpcenter_link_.setButtonText("Audio engine help");
     feedback_link_.setButtonText(TRANS("Feedback"));
-	auto_updates_toggle_.setButtonText(String("Reduce motion"));;
+	auto_updates_toggle_.setButtonText(String("Reduce motion"));
+    smooth_animations_toggle_.setButtonText(String("Smooth animations"));
 }
