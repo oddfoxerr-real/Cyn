@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory=$true)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$CurrentVersion,[switch]$Interactive)
+param([Parameter(Mandatory=$true)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$CurrentVersion,[switch]$Interactive,[switch]$Probe)
 $ErrorActionPreference = 'Stop'
 $repository = 'oddfoxerr-real/Cyn'
 function Show-CynDialog([string]$message,[string]$buttons='OK',[string]$icon='Information') {
@@ -9,7 +9,7 @@ function Show-CynDialog([string]$message,[string]$buttons='OK',[string]$icon='In
 try {
   [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
   $headers = @{'User-Agent'='Cyn-Updater';'Accept'='application/vnd.github+json'}
-  $releases = @(Invoke-RestMethod -Uri "https://api.github.com/repos/$repository/releases?per_page=50" -Headers $headers -TimeoutSec 25)
+  $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$repository/releases?per_page=50" -Headers $headers -TimeoutSec 25
   $available = @(
     foreach($release in $releases) {
       if ($release.draft -or !$release.published_at -or $release.tag_name -notmatch '^v\d+\.\d+\.\d+$') {continue}
@@ -23,6 +23,11 @@ try {
     }
   )
   $latest = $available | Sort-Object Version -Descending | Select-Object -First 1
+  if ($Probe) {
+    if (!$latest) { throw "Updater regression: no newer GitHub Release found for Cyn $CurrentVersion." }
+    Write-Output $latest.Version.ToString(3)
+    return
+  }
   if (!$latest) {
     if ($Interactive) {[void](Show-CynDialog "Cyn $CurrentVersion is up to date.")}
     exit 0
