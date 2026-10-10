@@ -6,10 +6,21 @@
 #include <cmath>
 #include <algorithm>
 #include <cstdint>
+#include <atomic>
 
 struct AudioExample { InputAudioFeatures audio; int effect=4; bool more=false; int64_t id=0; bool starter=false; };
 struct AudioFrame { InputAudioFeatures audio; int64_t id=0; };
 
+// Live inference telemetry, sampled on the JUCE message thread, never audio callback.
+struct NeuralActivitySnapshot {
+    std::array<float,11> inputs {};
+    std::array<float,12> hidden {};
+    std::array<float,5> outputs {};
+    std::array<float,132> inputConnections {};
+    std::array<float,60> outputConnections {};
+    std::array<bool,5> ready {};
+    float rms = 0.0f;
+};
 // 11 inputs -> 12 tanh neurons -> 5 sigmoid outputs (209 learned parameters).
 // No hand-written audio classification rules. Bounds/smoothing live separately.
 class PersonalAudioModel
@@ -37,7 +48,28 @@ public:
         for(int o=0;o<outputs;++o) { float z=weights[204+o]; for(int j=0;j<hidden;++j) z+=h[j]*weights[144+o*hidden+j]; out[o]=1/(1+std::exp(-std::clamp(z,-30.0f,30.0f))); }
         return out;
     }
-    bool fit(const std::vector<AudioExample>& examples) {
+    NeuralActivitySnapshot trace(const InputAudioFeatures& a) const {
+        NeuralActivitySnapshot s;
+        s.inputs=normalize(a); s.ready=ready; s.rms=std::isfinite(a.rms)?a.rms:0.0f;
+        for(int j=0;j<hidden;++j) {
+            float z=weights[132+j];
+            for(int i=0;i<inputs;++i) {
+                const float e=s.inputs[i]*weights[j*inputs+i];
+                s.inputConnections[j*inputs+i]=e; z+=e;
+            }
+            s.hidden[j]=std::tanh(z);
+        }
+        for(int o=0;o<outputs;++o) {
+            float z=weights[204+o];
+            for(int j=0;j<hidden;++j) {
+                const float e=s.hidden[j]*weights[144+o*hidden+j];
+                s.outputConnections[o*hidden+j]=e; z+=e;
+            }
+            s.outputs[o]=1.0f/(1.0f+std::exp(-std::clamp(z,-30.0f,30.0f)));
+        }
+        return s;
+    }
+    bool fit(const std::vector<AudioExample>& examples, std::atomic<int>* epochsDone=nullptr) {
         int counts[outputs][2] {};
         for(auto& e:examples) if(e.effect>=0 && e.effect<outputs) ++counts[e.effect][e.more?1:0];
         bool any=false;
@@ -68,6 +100,7 @@ public:
                 weights[i]-=0.012f*(momentum[i]/(1-beta1))/(std::sqrt(variance[i]/(1-beta2))+1e-7f);
                 if(!std::isfinite(weights[i])) return false;
             }
+            if(epochsDone) epochsDone->store(epoch,std::memory_order_relaxed);
         }
         return true;
     }

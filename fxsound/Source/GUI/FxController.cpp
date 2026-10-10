@@ -3121,14 +3121,29 @@ void FxController::labelAudio(const std::vector<AudioFrame>& frames,int effect,b
     }
     smart_learning_message_="Selection labeled. Train to apply."; saveSmartModel();
 }
+bool FxController::getLiveNeuralActivity(NeuralActivitySnapshot& out) const
+{
+    // The UI and audio-history maintenance run on the message thread; the trainer
+    // optimizes a separate model copy until its message-thread commit callback.
+    if(smart_history_.empty() || !playback_device_available_ ||
+       !FxModel::getModel().getPowerState())
+        return false;
+    const auto& frame=smart_history_.back();
+    if(frame.audio.rms<=0.0001f || Time::currentTimeMillis()-frame.id>1200)
+        return false;
+    out=smart_model_.trace(frame.audio);
+    return true;
+}
 void FxController::trainSmartModel()
 {
     if(smart_training_) return;
     auto examples=smart_examples_; auto model=std::make_shared<PersonalAudioModel>(smart_model_);
+    smart_training_epoch_.store(0,std::memory_order_relaxed);
     smart_training_=true;
     Component::SafePointer<FxMainWindow> window(main_window_);
-    Thread::launch([examples,model,window] {
-        const bool success=model->fit(examples);
+    auto* epochs=&smart_training_epoch_;
+    Thread::launch([examples,model,window,epochs] {
+        const bool success=model->fit(examples,epochs);
         MessageManager::callAsync([model,window,success] {
             if(window==nullptr) return;
             auto& c=FxController::getInstance(); c.smart_training_=false;

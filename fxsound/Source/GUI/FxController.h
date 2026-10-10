@@ -118,6 +118,11 @@ public:
     bool importSmartProfile(const File& file, String& error);
     String getLearningStatus() const;
     bool isSmartTraining() const { return smart_training_; }
+    bool getLiveNeuralActivity(NeuralActivitySnapshot& out) const;
+    float getSmartTrainingProgress() const {
+        return juce::jlimit(0.0f,1.0f,
+            (float)smart_training_epoch_.load(std::memory_order_relaxed)/240.0f);
+    }
     bool isOutputPinned() { return settings_.getBool("ember_pin_output", true); }
     void setOutputPinned(bool pinned) { settings_.setBool("ember_pin_output", pinned); }
 	float getEffectValue(FxEffects::EffectType effect);
@@ -327,6 +332,7 @@ private:
     uint32_t smart_last_sequence_ = 0;
     int smart_stale_ticks_ = 0;
     bool smart_training_ = false;
+    std::atomic<int> smart_training_epoch_ {0};
     String smart_learning_message_;
     bool smart_enabled_ = false;
     float smart_sensitivity_ = 50.0f;
