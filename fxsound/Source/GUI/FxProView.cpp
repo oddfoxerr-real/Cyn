@@ -10,12 +10,14 @@ FxProView::FxProView() : tool_tip_(this)
 {
     for (auto* component : std::initializer_list<Component*> {
         &audio_controls_, &equalizer_, &visualizer_, &sound_nav_, &smart_nav_,
-        &devices_nav_, &home_, &smart_rail_, &devices_rail_, &settings_,
+        &devices_nav_, &ai_hub_nav_, &home_, &smart_rail_, &devices_rail_, &settings_,
         &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &learning_timeline_, &learning_effect_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
         addAndMakeVisible(component);
     sound_nav_.onClick = home_.onClick = [this] { selectPage(0); };
     smart_nav_.onClick = smart_rail_.onClick = [this] { selectPage(1); };
     devices_nav_.onClick = devices_rail_.onClick = [this] { selectPage(2); };
+    ai_hub_nav_.onClick = [] { CynAiHubDialog::show(); };
+    ai_hub_nav_.setTooltip("Manage shared AI profiles in Cyn. No separate website.");
     home_.setTooltip("Sound studio");
     smart_rail_.setTooltip("Smart listening");
     devices_rail_.setTooltip("Output devices");
@@ -122,7 +124,7 @@ void FxProView::selectPage(int page)
     home_.setToggleState(page == 0, dontSendNotification);
     smart_rail_.setToggleState(page == 1, dontSendNotification);
     devices_rail_.setToggleState(page == 2, dontSendNotification);
-    for (auto* button : std::initializer_list<TextButton*> { &sound_nav_, &smart_nav_, &devices_nav_, &home_, &smart_rail_, &devices_rail_ })
+    for (auto* button : std::initializer_list<TextButton*> { &sound_nav_, &smart_nav_, &devices_nav_, &ai_hub_nav_, &home_, &smart_rail_, &devices_rail_ })
     {
         button->setColour(TextButton::buttonColourId, Colours::transparentBlack);
         button->setColour(TextButton::buttonOnColourId, Colours::transparentBlack);
@@ -130,6 +132,8 @@ void FxProView::selectPage(int page)
         button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
         button->getProperties().set("ember_navigation", true);
     }
+    // The AI Hub navigation is available on every main page.
+    ai_hub_nav_.setVisible(true);
     audio_controls_.setVisible(page == 0);
     equalizer_.setVisible(page == 0);
     visualizer_.setVisible(page == 0);
@@ -138,6 +142,14 @@ void FxProView::selectPage(int page)
     refresh_.setVisible(page == 2);
     sensitivity_.setVisible(page == 1);
     resized();
+    if (page_ == 1)
+    {
+        // Keep new AI actions above legacy widgets in the page's z-order.
+        for (auto* button : std::initializer_list<TextButton*> {
+                 &export_ai_, &import_ai_, &browse_ai_ })
+            button->toFront(false);
+    }
+    ai_hub_nav_.toFront(false);
     repaint();
 }
 void FxProView::update()
@@ -200,15 +212,22 @@ void FxProView::resized()
     more_.setBounds(490,433,136,36); less_.setBounds(638,433,136,36);
     train_.setBounds(790,433,210,36); resume_.setBounds(1012,433,170,36);
     sensitivity_.setBounds(444,491,738,28);
-    learning_status_.setBounds(280,542,396,42);
-    export_ai_.setBounds(684,549,96,30);
-    import_ai_.setBounds(790,549,96,30);
-    browse_ai_.setBounds(896,549,106,30);
-    starter_.setBounds(1012,549,170,30);
+    learning_status_.setBounds(280, 542, 390, 42);
+    export_ai_.setBounds(685, 545, 96, 35);
+    import_ai_.setBounds(791, 545, 96, 35);
+    browse_ai_.setBounds(897, 545, 106, 35);
+    starter_.setBounds(1012,545,170,35);
     sound_nav_.setBounds(68, 72, 152, 36);
     smart_nav_.setBounds(68, 114, 152, 36);
     devices_nav_.setBounds(68, 156, 152, 36);
+    ai_hub_nav_.setBounds(68, 198, 152, 36);
     settings_.setBounds(68, 554, 152, 36);
+    ai_hub_nav_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(MenuHighlightBackground)));
+    ai_hub_nav_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)));
+    browse_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(MenuHighlightBackground)));
+    browse_ai_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)));
+    export_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(PanelBackground)));
+    import_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(PanelBackground)));
     live_status_.setBounds(1000, 23, 208, 24);
     preset_list_.setBounds(256, 97, 465, 40);
     endpoint_list_.setBounds(737, 97, 471, 40);
@@ -260,6 +279,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
+    text("Version 2.0.11", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : "Output devices", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
         ? "Teach Cyn how you want your music to feel." : "Your output, with fewer interruptions.", 256, 49, 640, 22, 13, true);
@@ -270,6 +290,7 @@ void FxProView::paint(Graphics& g)
     {
         card(256, 334, 952, 270);
         text("Select a section above, choose an effect, then label More or Less.",280,389,880,28,16);
+        text("AI PROFILES", 688, 521, 310, 18, 10, true);
         text("Sensitivity",280,491,150,28,14);
 
     }

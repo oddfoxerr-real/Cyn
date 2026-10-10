@@ -29,4 +29,15 @@ assert(view.includes("browse_ai_.onClick = [] { CynAiHubDialog::show(); };"),"AI
 assert(!view.includes('URL("https://github.com/oddfoxerr-real/Cyn/tree/main/ai-hub").launchInDefaultBrowser()'),"Website link still exists");
 const build=readFileSync(path("BUILD_CYN.ps1"),"utf8");
 assert(build.includes("CynAiProfiles"),"Installer must bundle the offline community catalogue");
+const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
+assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
+for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [] { CynAiHubDialog::show(); };",
+                  "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
+                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.11"]){
+  assert(view.includes(key),"AI Hub discoverability regression: "+key);
+}
+assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
+assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
+assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
+console.log("PASS: visible native AI sidebar, profile actions and v2.0.11 version marker");
 console.log("PASS: "+catalogue.profiles.length+" native AI profiles, offline catalogue, no AI website");

@@ -81,7 +81,7 @@ private:
     FxEqualizer equalizer_;
     FxVisualizer visualizer_;
     TooltipWindow tool_tip_;
-    TextButton sound_nav_ { "Sound studio" }, smart_nav_ { "Smart listening" }, devices_nav_ { "Output devices" };
+    TextButton sound_nav_ { "Sound studio" }, smart_nav_ { "Smart listening" }, devices_nav_ { "Output devices" }, ai_hub_nav_ { "AI Hub" };
     CynRailButton home_ { "Sound studio", 0 }, smart_rail_ { "Smart listening", 1 }, devices_rail_ { "Output devices", 2 };
     CynRailButton settings_rail_ { "Settings", 3 };
     TextButton settings_ { "Settings" };
