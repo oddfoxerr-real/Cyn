@@ -6,7 +6,7 @@ Completed locally:
 
 - JDK 17 / Gradle 8.11.1 / Android Gradle Plugin 8.9.2 / SDK 35 release build.
 - `:app:assembleRelease :app:lintRelease`: successful; **0 lint errors**.
-  Six warnings concern English-only text formatting/localization. The preview UI is English.
+  Five warnings concern English-only text formatting/localization. The preview UI is English.
 - Pure-Java host test: **32 assertions passed**. Covers finite silence/invalid inputs,
   low/high-frequency discrimination, unsigned waveform decoding, bounded model outputs,
   sensitivity limits, real neural optimization and learned More/Less separation,

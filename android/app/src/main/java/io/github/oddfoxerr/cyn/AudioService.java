@@ -111,10 +111,10 @@ public final class AudioService extends Service {
     }
     private Notification notification() {
         PendingIntent open=PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
-        Notification.Builder b=new Notification.Builder(this,"audio").setSmallIcon(R.drawable.cyn_icon).setContentTitle("Cyn · "+(player!=null?title:"Compatible apps"))
+        Notification.Builder b=new Notification.Builder(this,"audio").setSmallIcon(R.drawable.ic_notification).setContentTitle("Cyn · "+(player!=null?title:"Compatible apps"))
             .setContentText(playing?"Playing with your sound settings":monitor?"Other-app enhancement enabled":"Paused")
-            .setContentIntent(open).setOnlyAlertOnce(true).setOngoing(playing||monitor).addAction(new Notification.Action.Builder(null,"Stop",action(STOP)).build());
-        if(player!=null) b.addAction(new Notification.Action.Builder(null,playing?"Pause":"Play",action(TOGGLE)).build()).setStyle(new Notification.MediaStyle().setMediaSession(mediaSession.getSessionToken()).setShowActionsInCompactView(1,0));
+            .setContentIntent(open).setOnlyAlertOnce(true).setOngoing(playing||monitor).addAction(new Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(this,R.drawable.ic_stop),"Stop",action(STOP)).build());
+        if(player!=null) b.addAction(new Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(this,playing?R.drawable.ic_pause:R.drawable.ic_play),playing?"Pause":"Play",action(TOGGLE)).build()).setStyle(new Notification.MediaStyle().setMediaSession(mediaSession.getSessionToken()).setShowActionsInCompactView(1,0));
         return b.build();
     }
     private void updateNotification() { if(playing||monitor||player!=null) getSystemService(NotificationManager.class).notify(41,notification()); }
