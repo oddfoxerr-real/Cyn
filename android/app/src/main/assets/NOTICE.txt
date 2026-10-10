@@ -1,0 +1,26 @@
+Cyn for Android 0.1.0 preview
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+Based on Cyn desktop v2.0.16, commit bcf2e41ce8842fe009049f1476565142338a3cf1.
+Source: https://github.com/oddfoxerr-real/Cyn
+Android additions and Java neural-model adaptation: 2026 Cyn contributors.
+Modified 2026-10-10: Android audio service, mobile interface, session effects,
+local learning, mobile feature extraction and build scripts.
+
+Thanks to FxSound LLC and the FxSound contributors for the original open-source
+foundation. FxSound: https://www.fxsound.com/ · support: https://www.fxsound.com/donate
+
+This Android APK contains Cyn's own branding, palette values, Java code and the
+Cyn synthetic starter parameters under AGPL-3.0-or-later. It uses Android's
+platform APIs, fonts and audio effects. No Gilroy fonts, JUCE modules, Microsoft
+runtime, Windows drivers, fxdevcon, or DfxSetupDrv are bundled in this APK.
+
+The accompanying Cyn-Android-0.1.0-source.zip contains the corresponding source
+and build instructions. Gradle wrapper is build tooling under Apache-2.0;
+see GRADLE-LICENSE.txt in the source archive. Android SDK and JDK are separate
+build tools, not redistributed inside this APK. No warranty is provided.
+
+Android feature extraction differs from the desktop model's training domain.
+The bundled model is optional and experimental, with no Android or real-song
+accuracy claim. Personal learning trains on this phone. Audio is never recorded
+or uploaded. This APK has no Internet permission.

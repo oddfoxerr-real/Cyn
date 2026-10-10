@@ -1,0 +1,11 @@
+<resources>
+    <style name="CynTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:colorAccent">#6ad4e5</item>
+        <item name="android:windowBackground">#171a20</item>
+        <item name="android:navigationBarColor">#171a20</item>
+        <item name="android:statusBarColor">#171a20</item>
+    </style>
+</resources>
