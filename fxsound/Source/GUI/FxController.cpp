@@ -245,6 +245,7 @@ void FxController::initConfig(const String& commandline)
     smart_sensitivity_ = std::isfinite(saved_sensitivity) ? jlimit(0.0f, 100.0f, saved_sensitivity) : 50.0f;
 	auto arg_list = ArgumentList(File::getSpecialLocation(File::SpecialLocationType::invokedExecutableFile).getFileName(), commandline);
     auto requested_theme=arg_list.getValueForOption("--theme").unquoted();
+    if (requested_theme.equalsIgnoreCase("ChatGPT Desktop")) requested_theme = "Charcoal Desktop";
     for(int i=0;i<(int)FxThemeMode::NumModes;++i)
         if(requested_theme.equalsIgnoreCase(FxTheme::getThemeName(i))) setThemeMode(static_cast<FxThemeMode>(i));
     auto reduced=arg_list.getValueForOption("--reduce_motion");
@@ -392,6 +393,7 @@ void FxController::applyConfig(const String& commandline)
 	}
 
     auto requested_theme=arg_list.getValueForOption("--theme").unquoted();
+    if (requested_theme.equalsIgnoreCase("ChatGPT Desktop")) requested_theme = "Charcoal Desktop";
     for(int i=0;i<(int)FxThemeMode::NumModes;++i)
         if(requested_theme.equalsIgnoreCase(FxTheme::getThemeName(i))) setThemeMode(static_cast<FxThemeMode>(i));
     auto reduced=arg_list.getValueForOption("--reduce_motion");
@@ -665,6 +667,8 @@ void FxController::printStatus()
 	settings->setProperty("version", ProjectInfo::versionString);
 	settings->setProperty("power", model.getPowerState());
     settings->setProperty("cyn_build", "identity-2");
+    settings->setProperty("source_url", "https://github.com/oddfoxerr-real/Cyn");
+    settings->setProperty("license", "AGPL-3.0-or-later; third-party exceptions in THIRD_PARTY_NOTICES.md");
     settings->setProperty("theme", FxTheme::getThemeName((int)FxTheme::getThemeMode()));
     settings->setProperty("reduce_motion", FxTheme::isReducedMotion());
     auto* smart = new DynamicObject();

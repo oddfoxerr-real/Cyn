@@ -3211,13 +3211,13 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\Fonts\Gilroy-Bold.ttf">
+    <None Include="..\Fonts\Manrope-Bold.ttf">
       <Filter>FxSound\Fonts</Filter>
     </None>
-    <None Include="..\Fonts\Gilroy-Regular.ttf">
+    <None Include="..\Fonts\Manrope-Regular.ttf">
       <Filter>FxSound\Fonts</Filter>
     </None>
-    <None Include="..\Fonts\Gilroy-Semibold.ttf">
+    <None Include="..\Fonts\Manrope-Semibold.ttf">
       <Filter>FxSound\Fonts</Filter>
     </None>
     <None Include="..\Images\remove.svg">

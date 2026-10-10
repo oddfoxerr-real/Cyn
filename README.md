@@ -53,6 +53,16 @@ See [the user guide](README_CYN.md), [model card](models/MODEL_CARD.md),
 [installer details](Installer/Cyn/README.md), and [validation](VALIDATION.md).
 Optional MCP compilation requires Go; see `BUILD_CYN.ps1 -WithMcp`.
 
+## Licensing audit
+
+See [the licensing audit](docs/LICENSING_AUDIT.md) and
+[third-party notices](THIRD_PARTY_NOTICES.md). The audit replaces undocumented
+Gilroy fonts with OFL Manrope and adds missing license material. Driver/helper
+source correspondence, separate community-resource permissions and the publisher's
+Microsoft runtime entitlement remain unresolved. Previously published binaries
+are not retroactively changed by these source fixes. New publication is held
+pending the recorded questions; normal local builds remain available.
+
 ## Credits and licensing
 
 Cyn is a modified community version of [FxSound](https://github.com/fxsound2/fxsound-app),

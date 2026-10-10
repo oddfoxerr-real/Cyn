@@ -1,3 +1,4 @@
+// Cyn modification, 2026-10-10: font licensing, source notices and compatible theme naming.
 /*
 FxSound
 Copyright (C) 2025  FxSound LLC
@@ -584,9 +585,19 @@ void FxMainWindow::showMenu()
         FxController::getInstance().getAutoUpdates(), toggleAutoUpdatesClicked);
     popup_menu.addSeparator();
 	popup_menu.addItem("About Cyn", [] { AlertWindow::showMessageBox(AlertWindow::InfoIcon,"Cyn",R"(Personal audio with local learning.
-Built on the open-source FxSound DSP and official audio driver.
-AGPL-3.0-or-later; see the bundled LICENSE and source.)"); });
+Independent modified FxSound application. Thank you, FxSound.
+AGPL-3.0-or-later application; redistribution permitted under its terms.
+NO WARRANTY. Third-party components retain their own licenses.
+Use Source code and licenses below for source and notices.)"); });
 	popup_menu.addSeparator();
+    // Cyn modification 2026-10-10: visible corresponding-source and legal notice access.
+    popup_menu.addItem("Cyn source code", [] { URL("https://github.com/oddfoxerr-real/Cyn").launchInDefaultBrowser(); });
+    popup_menu.addItem("Licenses and third-party notices", [] {
+        const auto notice = File::getSpecialLocation(File::currentExecutableFile)
+            .getParentDirectory().getChildFile("THIRD_PARTY_NOTICES.md");
+        if (!notice.existsAsFile() || !notice.startAsProcess())
+            URL("https://github.com/oddfoxerr-real/Cyn/blob/main/THIRD_PARTY_NOTICES.md").launchInDefaultBrowser();
+    });
 	popup_menu.addSubMenu(TRANS("Theme"), theme_menu);
     popup_menu.addItem("Smooth animations", true, FxTheme::isSmoothAnimations(), [] { FxController::getInstance().setSmoothAnimations(!FxTheme::isSmoothAnimations()); });
     popup_menu.addItem("Reduce motion",true,FxTheme::isReducedMotion(),[]{ FxController::getInstance().setReducedMotion(!FxTheme::isReducedMotion()); });

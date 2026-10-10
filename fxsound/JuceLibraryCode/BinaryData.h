@@ -8,14 +8,14 @@
 
 namespace BinaryData
 {
-    extern const char*   GilroyBold_ttf;
-    const int            GilroyBold_ttfSize = 83456;
+    extern const char*   ManropeBold_ttf;
+    const int            ManropeBold_ttfSize = 97424;
 
-    extern const char*   GilroyRegular_ttf;
-    const int            GilroyRegular_ttfSize = 84300;
+    extern const char*   ManropeRegular_ttf;
+    const int            ManropeRegular_ttfSize = 97436;
 
-    extern const char*   GilroySemibold_ttf;
-    const int            GilroySemibold_ttfSize = 83948;
+    extern const char*   ManropeSemibold_ttf;
+    const int            ManropeSemibold_ttfSize = 97584;
 
     extern const char*   remove_svg;
     const int            remove_svgSize = 269;

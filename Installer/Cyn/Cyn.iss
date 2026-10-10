@@ -47,6 +47,12 @@ Source: "..\Drivers\Version14\win10\x64\fxdevcon64.exe"; Flags: dontcopy
 Source: "..\Apps\Version14\DfxSetupDrv.exe"; Flags: dontcopy
 Source: "runtime-x86\vcruntime140.dll"; Flags: dontcopy
 
+; Cyn modification 2026-10-10: retire the replaced fonts on upgrade only.
+[InstallDelete]
+Type: files; Name: "{app}\Gilroy-Regular.ttf"
+Type: files; Name: "{app}\Gilroy-Semibold.ttf"
+Type: files; Name: "{app}\Gilroy-Bold.ttf"
+
 [Icons]
 Name: "{autoprograms}\Cyn"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Parameters: "--view=2"
 Name: "{autodesktop}\Cyn"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Parameters: "--view=2"; Tasks: desktopicon

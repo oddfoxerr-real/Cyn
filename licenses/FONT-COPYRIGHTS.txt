@@ -1,0 +1,111 @@
+Font copyright notices extracted from the distributed font files.
+All fonts in this inventory use SIL OFL 1.1; see the adjacent family license texts.
+Manrope static 400/600/700 instances generated with fontTools 4.66.1 on 2026-10-10.
+
+fxsound/Fonts/Manrope-Bold.ttf
+Copyright 2019 The Manrope Project Authors (https://github.com/googlefonts/manrope)
+
+fxsound/Fonts/Manrope-Regular.ttf
+Copyright 2019 The Manrope Project Authors (https://github.com/googlefonts/manrope)
+
+fxsound/Fonts/Manrope-Semibold.ttf
+Copyright 2019 The Manrope Project Authors (https://github.com/googlefonts/manrope)
+
+fxsound/Fonts/NotoSansArabic-Medium.ttf
+Copyright 2015-2020 Google LLC. All Rights Reserved.
+
+fxsound/Fonts/NotoSansArabic-Regular.ttf
+Copyright 2015-2020 Google LLC. All Rights Reserved.
+
+fxsound/Fonts/NotoSansKR-Bold.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+fxsound/Fonts/NotoSansKR-Medium.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+fxsound/Fonts/NotoSansKR-Regular.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+fxsound/Fonts/NotoSansSC-Bold.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+fxsound/Fonts/NotoSansSC-Medium.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+fxsound/Fonts/NotoSansSC-Regular.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+fxsound/Fonts/NotoSansTC-Bold.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+fxsound/Fonts/NotoSansTC-Medium.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+fxsound/Fonts/NotoSansTC-Regular.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+fxsound/Fonts/NotoSansThai-Medium.ttf
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/thai)
+
+fxsound/Fonts/NotoSansThai-Regular.ttf
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/thai)
+
+Installer/Resources/Fonts/IBMPlexSansArabic-Bold.ttf
+Copyright 2019 IBM Corp. All rights reserved.
+
+Installer/Resources/Fonts/IBMPlexSansArabic-Medium.ttf
+Copyright 2019 IBM Corp. All rights reserved.
+
+Installer/Resources/Fonts/IBMPlexSansArabic-Regular.ttf
+Copyright 2019 IBM Corp. All rights reserved.
+
+Installer/Resources/Fonts/MontserratAlternates-Bold.ttf
+Copyright 2011 The Montserrat Project Authors (https://github.com/JulietaUla/Montserrat)
+
+Installer/Resources/Fonts/MontserratAlternates-Medium.ttf
+Copyright 2011 The Montserrat Project Authors (https://github.com/JulietaUla/Montserrat)
+
+Installer/Resources/Fonts/MontserratAlternates-Regular.ttf
+Copyright 2011 The Montserrat Project Authors (https://github.com/JulietaUla/Montserrat)
+
+Installer/Resources/Fonts/NotoSansJP-Bold.ttf
+(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+
+Installer/Resources/Fonts/NotoSansJP-Medium.ttf
+(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+
+Installer/Resources/Fonts/NotoSansJP-Regular.ttf
+(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+
+Installer/Resources/Fonts/NotoSansKR-Bold.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+Installer/Resources/Fonts/NotoSansKR-Medium.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+Installer/Resources/Fonts/NotoSansKR-Regular.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+Installer/Resources/Fonts/NotoSansSC-Bold.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+Installer/Resources/Fonts/NotoSansSC-Medium.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+Installer/Resources/Fonts/NotoSansSC-Regular.otf
+© 2014-2020 Adobe (http://www.adobe.com/).
+
+Installer/Resources/Fonts/NotoSansTC-Bold.ttf
+(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+
+Installer/Resources/Fonts/NotoSansTC-Medium.ttf
+(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+
+Installer/Resources/Fonts/NotoSansTC-Regular.ttf
+(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+
+Installer/Resources/Fonts/NotoSansThai-Medium.ttf
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/thai)
+
+Installer/Resources/Fonts/NotoSansThai-Regular.ttf
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/thai)

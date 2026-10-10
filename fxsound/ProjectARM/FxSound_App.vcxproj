@@ -2852,9 +2852,9 @@ copy $(TargetDir)$(TargetName).pdb ..\..\bin\$(PlatformTarget)\ /y
     <ClInclude Include="..\JuceLibraryCode\JuceHeader.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\Fonts\Gilroy-Bold.ttf" />
-    <None Include="..\Fonts\Gilroy-Regular.ttf" />
-    <None Include="..\Fonts\Gilroy-Semibold.ttf" />
+    <None Include="..\Fonts\Manrope-Bold.ttf" />
+    <None Include="..\Fonts\Manrope-Regular.ttf" />
+    <None Include="..\Fonts\Manrope-Semibold.ttf" />
     <None Include="..\Images\remove.svg" />
     <None Include="..\Images\flip.svg" />
     <None Include="..\Images\flip_black.svg" />

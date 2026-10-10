@@ -7,11 +7,11 @@
               cppLanguageStandard="17">
   <MAINGROUP id="fy4sG5" name="Cyn">
     <GROUP id="{9737D476-EEC4-7E5E-0B04-48E2783CC448}" name="Fonts">
-      <FILE id="Z6Zv1m" name="Gilroy-Bold.ttf" compile="0" resource="1" file="Fonts/Gilroy-Bold.ttf"/>
-      <FILE id="pxR00h" name="Gilroy-Regular.ttf" compile="0" resource="1"
-            file="Fonts/Gilroy-Regular.ttf"/>
-      <FILE id="AX57ui" name="Gilroy-Semibold.ttf" compile="0" resource="1"
-            file="Fonts/Gilroy-Semibold.ttf"/>
+      <FILE id="Z6Zv1m" name="Manrope-Bold.ttf" compile="0" resource="1" file="Fonts/Manrope-Bold.ttf"/>
+      <FILE id="pxR00h" name="Manrope-Regular.ttf" compile="0" resource="1"
+            file="Fonts/Manrope-Regular.ttf"/>
+      <FILE id="AX57ui" name="Manrope-Semibold.ttf" compile="0" resource="1"
+            file="Fonts/Manrope-Semibold.ttf"/>
     </GROUP>
     <GROUP id="{1003D6EA-45C1-E8E4-DFD9-451D205D2F09}" name="Images">
       <FILE id="TsoVWk" name="remove.svg" compile="0" resource="1" file="Images/remove.svg"/>

@@ -1,0 +1,24 @@
+{
+  "reviewed_base": "cb05744e2048f658c6e8854a8d736e13621b6602",
+  "review_date": "2026-10-10",
+  "items": [
+    {
+      "id": "driver-and-helper-source",
+      "status": "unresolved",
+      "question": "Establish the corresponding source/build inputs and redistribution terms for the shipped fxvad.sys, fxdevcon64.exe and DfxSetupDrv.exe, and reconcile the driver AGPL/MS-LPL notices.",
+      "evidence": ""
+    },
+    {
+      "id": "resources-permission",
+      "status": "unresolved",
+      "question": "Confirm the license for the separately vendored FxSound Resources translations and community presets at revision 8f0385f015cd6b10026b2db6a0625a6db4de89b0.",
+      "evidence": ""
+    },
+    {
+      "id": "microsoft-runtime-entitlement",
+      "status": "unresolved",
+      "question": "Record the publisher's applicable Visual Studio/Build Tools redistributable license basis for the release DLL and statically linked runtime.",
+      "evidence": ""
+    }
+  ]
+}
