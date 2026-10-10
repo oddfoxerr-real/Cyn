@@ -8,6 +8,7 @@
 #include "FxEqualizer.h"
 #include "FxVisualizer.h"
 #include "AudioLearningTimeline.h"
+#include "CynNeuralActivity.h"
 
 class CynRailButton : public TextButton
 {
@@ -90,6 +91,7 @@ private:
     Label live_status_, smart_status_;
     Slider sensitivity_ { Slider::LinearHorizontal, Slider::TextBoxRight };
     AudioLearningTimeline learning_timeline_;
+    CynNeuralActivity neural_activity_;
     FxComboBox learning_effect_;
     TextButton more_ {"More here"}, less_ {"Less here"}, train_ {"Train my model"}, starter_ {"Reset to starter"}, resume_ {"Resume timeline"};
     TextButton export_ai_ { "Export AI" }, import_ai_ { "Import AI" }, browse_ai_ { "AI Hub" };

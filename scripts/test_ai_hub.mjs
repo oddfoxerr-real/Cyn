@@ -64,3 +64,15 @@ assert(view.includes("button->setColour(TextButton::textColourOffId, Colour(FXCO
 for(const key of ["backgroundColourId","outlineColourId","textColourId"])
   assert(theme.includes("findColour(TooltipWindow::"+key+").withAlpha(1.0f)"),"Tooltip "+key+" not opaque");
 console.log("PASS: visible AI profile buttons and transparent tooltip corners");
+
+// Neon neural visualizer regression: shows the real 11-12-5 topology and tracks training state.
+const neural = readFileSync(path("fxsound/Source/GUI/CynNeuralActivity.h"), "utf8");
+assert(header.includes('#include "CynNeuralActivity.h"'), "Neural visualizer header missing");
+assert(header.includes("CynNeuralActivity neural_activity_"), "Missing visualizer instance");
+assert(neural.includes("std::array<Point<float>, 11> inputs") && neural.includes("std::array<Point<float>, 12> hidden") && neural.includes("std::array<Point<float>, 5> outputs"), "Must match real 11-12-5 model architecture");
+assert(view.includes("neural_activity_.setBounds(72, 247, 148, 226)"), "Must fit empty sidebar without obstructing labeling controls");
+assert(view.includes("neural_activity_.setTrainingActive(controller.isSmartTraining())"), "Brain must reflect actual training state");
+assert(view.includes("neural_activity_.setAnimationEnabled(page == 1)"), "Do not animate on hidden pages");
+assert(neural.includes("FxTheme::isReducedMotion()"), "Respect reduced-motion accessibility setting");
+assert(neural.includes("startTimerHz(24)"), "Use efficient bounded redraw frequency");
+console.log("PASS: neural activity visualization matches model layout and training state");

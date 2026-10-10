@@ -13,7 +13,7 @@ FxProView::FxProView() : tool_tip_(this)
     for (auto* component : std::initializer_list<Component*> {
         &audio_controls_, &equalizer_, &visualizer_, &sound_nav_, &smart_nav_,
         &devices_nav_, &ai_hub_nav_, &home_, &smart_rail_, &devices_rail_, &settings_,
-        &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &learning_timeline_, &learning_effect_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
+        &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &learning_timeline_, &neural_activity_, &learning_effect_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
         addAndMakeVisible(component);
     sound_nav_.onClick = home_.onClick = [this] { selectPage(0); };
     smart_nav_.onClick = smart_rail_.onClick = [this] { selectPage(1); };
@@ -44,7 +44,10 @@ FxProView::FxProView() : tool_tip_(this)
         learning_timeline_.clearSelection(); timerCallback();
     };
     more_.onClick=[label]{label(true);}; less_.onClick=[label]{label(false);};
-    train_.onClick=[] { FxController::getInstance().trainSmartModel(); };
+    train_.onClick=[this] {
+        FxController::getInstance().trainSmartModel();
+        neural_activity_.setTrainingActive(FxController::getInstance().isSmartTraining());
+    };
     resume_.onClick=[this]{learning_timeline_.clearSelection();timerCallback();};
     starter_.onClick=[] {
         if(AlertWindow::showOkCancelBox(AlertWindow::QuestionIcon,"Reset personal learning?",
@@ -143,6 +146,8 @@ void FxProView::selectPage(int page)
     pin_toggle_.setVisible(page == 2);
     refresh_.setVisible(page == 2);
     sensitivity_.setVisible(page == 1);
+    neural_activity_.setVisible(page == 1);
+    neural_activity_.setAnimationEnabled(page == 1);
     resized();
     if (page_ == 1)
     {
@@ -183,6 +188,7 @@ void FxProView::timerCallback()
     if(now-last_status_update_<500) return;
     last_status_update_=now;
     auto& controller = FxController::getInstance();
+    neural_activity_.setTrainingActive(controller.isSmartTraining());
     learning_timeline_.updateFrames(controller.getRecentAudio());
     learning_status_.setText(controller.getLearningStatus(),dontSendNotification);
     const bool selected=learning_timeline_.selection().size()>=5;
@@ -209,6 +215,8 @@ void FxProView::resized()
     smart_rail_.setBounds(10, 64, 32, 34);
     devices_rail_.setBounds(10, 110, 32, 34);
     settings_rail_.setBounds(10, 565, 32, 34);
+    // Reserve the empty sidebar area for the native neural-activity animation.
+    neural_activity_.setBounds(72, 247, 148, 226);
     learning_timeline_.setBounds(256,164,952,156);
     learning_effect_.setBounds(280,433,194,36);
     more_.setBounds(490,433,136,36); less_.setBounds(638,433,136,36);
@@ -332,6 +340,7 @@ void FxProView::lookAndFeelChanged()
     transition_image_=Image();
     if(FxTheme::isReducedMotion()) startTimer(500); else startTimerHz(60);
     selectPage(page_);
+    neural_activity_.setAnimationEnabled(page_ == 1);
     learning_status_.setColour(Label::textColourId,Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     repaint();
 }
