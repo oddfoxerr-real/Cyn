@@ -1,13 +1,79 @@
 {
-  "bass": {
-    "synthetic_test_accuracy": 1.0,
-    "false_positive_rate": 0.0,
-    "false_negative_rate": 0.0
+  "training": {
+    "actual_gradient_seconds": 3600.0000391900003,
+    "optimizer_steps": 33175712,
+    "validated_improvements": 49,
+    "synthetic_train_mixtures": 1800,
+    "synthetic_validation_mixtures": 500,
+    "synthetic_test_mixtures": 500
   },
-  "clarity": {
-    "synthetic_test_accuracy": 0.99,
-    "false_positive_rate": 0.01020408163265306,
-    "false_negative_rate": 0.00980392156862745
+  "baseline_validation": {
+    "clarity": {
+      "accuracy": 0.992,
+      "balanced_accuracy": 0.9921995377503852,
+      "log_loss": 0.043902978679522635,
+      "false_positive_rate": 0.011363636363636364,
+      "false_negative_rate": 0.00423728813559322
+    },
+    "bass": {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "log_loss": 0.012162992834878143,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.0
+    },
+    "mean_log_loss": 0.02803298575720039
   },
-  "limitation": "Synthetic held-out data only; not a vocal detector or real-music accuracy measurement."
+  "trained_validation": {
+    "clarity": {
+      "accuracy": 0.992,
+      "balanced_accuracy": 0.9921995377503852,
+      "log_loss": 0.029625437356454752,
+      "false_positive_rate": 0.011363636363636364,
+      "false_negative_rate": 0.00423728813559322
+    },
+    "bass": {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "log_loss": 0.00021604410145531345,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.0
+    },
+    "mean_log_loss": 0.014920740728955034
+  },
+  "baseline_test": {
+    "clarity": {
+      "accuracy": 0.986,
+      "balanced_accuracy": 0.986342299620308,
+      "log_loss": 0.04927500286583876,
+      "false_positive_rate": 0.023166023166023165,
+      "false_negative_rate": 0.004149377593360996
+    },
+    "bass": {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "log_loss": 0.009300583969803352,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.0
+    },
+    "mean_log_loss": 0.029287793417821055
+  },
+  "trained_test": {
+    "clarity": {
+      "accuracy": 0.986,
+      "balanced_accuracy": 0.9860539258879508,
+      "log_loss": 0.03219257924566824,
+      "false_positive_rate": 0.015444015444015444,
+      "false_negative_rate": 0.012448132780082987
+    },
+    "bass": {
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "log_loss": 0.00015031390593094426,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.0
+    },
+    "mean_log_loss": 0.016171446575799595
+  },
+  "limitation": "Synthetic signal mixtures, not real songs or personal listening preferences."
 }

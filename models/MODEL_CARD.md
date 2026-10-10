@@ -28,3 +28,16 @@ python training\generate_starter.py finalize
 ```
 
 Feature extraction in the generator uses steady-state filter frequency responses; live extraction uses the matching causal biquad bank in 50 ms windows. Transient differences are a known domain gap. All starter data is generated locally; there are no third-party training recordings. Code and generated parameters are supplied with the app's AGPL license.
+
+## Hour-trained experimental Cyn base
+Gradient optimization: **3600.0s**; **33,175,712 gradient updates**; 49 validated checkpoints.
+
+| Synthetic held-out metric | Original | Hour-trained |
+|---|---:|---:|
+| Clarity balanced accuracy | 98.63% | 98.61% |
+| Clarity log loss | 0.049275 | 0.032193 |
+| Bass balanced accuracy | 100.00% | 100.00% |
+| Bass log loss | 0.009301 | 0.000150 |
+
+**Limitations:** All examples were synthetically generated. No real music, human preferences, vocal detection or source separation was evaluated. Only Bass and Clarity have starter labels.
+Existing personal learning remains intact. Select **Reset to starter** in Smart listening to activate the new bundled base model on an existing installation.
