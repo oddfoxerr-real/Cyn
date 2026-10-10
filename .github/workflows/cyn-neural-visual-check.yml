@@ -1,0 +1,30 @@
+name: Cyn Neural Animation Validation
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/cyn-neural-visual-check.yml
+      - fxsound/Source/GUI/CynNeuralActivity.h
+      - fxsound/Source/GUI/FxProView.h
+      - fxsound/Source/GUI/FxProView.cpp
+      - scripts/test_ai_hub.mjs
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-build:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate neural animation and AI Hub regression checks
+        shell: pwsh
+        run: node scripts/test_ai_hub.mjs
+      - name: Compile native Cyn x64 with neural animation
+        shell: pwsh
+        run: ./BUILD_CYN.ps1
+      - name: Confirm runnable binary was built
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'dist/Cyn/Cyn.exe')) { throw 'Native Cyn application missing' }
+          if (!(Test-Path 'dist/Cyn-Windows-x64.zip')) { throw 'Portable archive missing' }
