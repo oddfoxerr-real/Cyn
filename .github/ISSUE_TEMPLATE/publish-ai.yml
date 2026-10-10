@@ -1,0 +1,51 @@
+name: "Publish a Cyn AI profile"
+description: "Submit an exported .cynai.json package for review and listing in the Cyn AI Hub"
+title: "[AI Hub profile] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for sharing! Export from **Cyn → Smart listening → Export AI** or the [Cyn AI Hub Studio](https://github.com/oddfoxerr-real/Cyn/tree/main/ai-hub). Upload your `.cynai.json` as a ZIP attachment or provide a direct download link / public Gist.
+
+        **Never attach `%APPDATA%\Cyn\preferences.json`, your private examples, raw audio, personal logs, or account tokens.**
+  - type: input
+    id: profile_name
+    attributes:
+      label: Profile name
+      placeholder: Warm evenings
+    validations:
+      required: true
+  - type: input
+    id: profile_link
+    attributes:
+      label: Public profile download URL
+      description: Link to your exported .cynai.json or a ZIP containing only that exported profile.
+      placeholder: https://gist.github.com/...
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options: [music, gaming, voice, balanced]
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What makes this model special?
+      description: Describe music, games, listening devices, trained effects and intended sound.
+    validations:
+      required: true
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Sharing permissions and privacy
+      options:
+        - label: I made or have permission to redistribute this trained model and license it as CC BY 4.0 or CC0.
+          required: true
+        - label: My submission contains only a Cyn AI profile and does not contain private audio, examples or credentials.
+          required: true
+        - label: I understand submissions may be reviewed before appearing in the public catalogue.
+          required: true

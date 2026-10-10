@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "profiles": [
+    {
+      "id": "cyn-starter",
+      "name": "Cyn Starter",
+      "author": "Cyn contributors",
+      "category": "balanced",
+      "description": "Gentle starting profile for Clarity and Bass, derived from Cyn's existing starter learning examples. Best used as a baseline to personalise.",
+      "file": "cyn-starter.cynai.json",
+      "issue": 1,
+      "license": "CC-BY-4.0"
+    }
+  ]
+}

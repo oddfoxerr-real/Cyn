@@ -40,7 +40,7 @@ void launchCynUpdater(bool interactive)
         if (interactive) AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "CynUpdater.ps1 is missing. Reinstall Cyn.");
         return;
     }
-    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.8" + (interactive ? " -Interactive" : "");
+    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.9" + (interactive ? " -Interactive" : "");
     auto result = ShellExecuteW(nullptr, L"open", L"powershell.exe", args.toWideCharPointer(), nullptr, SW_HIDE);
     if (reinterpret_cast<INT_PTR>(result) <= 32 && interactive)
         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");
@@ -3178,6 +3178,131 @@ void FxController::useStarterModel()
     if(smart_training_) return;
     restoreSmartBaseline(); smart_model_=PersonalAudioModel(); smart_examples_.clear(); loadSmartModel(true); saveSmartModel();
     smart_learning_message_="Starter restored. Teach it your preferences.";
+}
+
+bool FxController::exportSmartProfile(const File& destination, const String& name, String& error) const
+{
+    if (smart_training_)
+    {
+        error = "Wait until local model training finishes.";
+        return false;
+    }
+    const String safeName = name.trim().substring(0, 80);
+    if (safeName.isEmpty())
+    {
+        error = "Enter a profile name before exporting.";
+        return false;
+    }
+    auto* root = new DynamicObject();
+    root->setProperty("format", "cyn-ai-profile");
+    root->setProperty("schema", 1);
+    auto* meta = new DynamicObject();
+    meta->setProperty("name", safeName);
+    meta->setProperty("description", "");
+    meta->setProperty("author", "");
+    meta->setProperty("license", "CC-BY-4.0");
+    root->setProperty("profile", var(meta));
+
+    auto* model = new DynamicObject();
+    model->setProperty("schema", 1);
+    model->setProperty("architecture", "cyn-audio-11x12x5");
+    Array<var> weights, ready;
+    for (const float weight : smart_model_.weights) weights.add(weight);
+    for (const bool trained : smart_model_.ready) ready.add(trained);
+    model->setProperty("weights", weights);
+    model->setProperty("ready", ready);
+    root->setProperty("model", var(model));
+
+    // No audio samples, device names, private labels or training timestamps are shared.
+    if (!destination.replaceWithText(JSON::toString(var(root), false)))
+    {
+        error = "Could not save the AI profile. Check write permissions.";
+        return false;
+    }
+    error.clear();
+    return true;
+}
+
+bool FxController::importSmartProfile(const File& source, String& error)
+{
+    if (smart_training_)
+    {
+        error = "Wait for the current training to finish before importing.";
+        return false;
+    }
+    if (!source.existsAsFile() || source.getSize() > 2 * 1024 * 1024)
+    {
+        error = "This is not a valid Cyn AI profile file (2 MB maximum).";
+        return false;
+    }
+
+    const auto package = JSON::parse(source);
+    if (!package.isObject()
+        || package["format"].toString() != "cyn-ai-profile"
+        || (int)package["schema"] != 1)
+    {
+        error = "Expected a Cyn AI Hub profile (format cyn-ai-profile, schema 1).";
+        return false;
+    }
+    const auto model = package["model"];
+    const auto* weights = model["weights"].getArray();
+    const auto* ready = model["ready"].getArray();
+    if ((int)model["schema"] != 1
+        || model["architecture"].toString() != "cyn-audio-11x12x5"
+        || weights == nullptr || weights->size() != PersonalAudioModel::weightCount
+        || ready == nullptr || ready->size() != PersonalAudioModel::outputs)
+    {
+        error = "This profile uses an unsupported or invalid neural model.";
+        return false;
+    }
+
+    PersonalAudioModel incoming;
+    for (int i = 0; i < PersonalAudioModel::weightCount; ++i)
+    {
+        const auto& input = weights->getReference(i);
+        if (!input.isDouble() && !input.isInt() && !input.isInt64())
+        {
+            error = "The profile contains a nonnumeric model weight.";
+            return false;
+        }
+        const double value = (double)input;
+        if (!std::isfinite(value) || std::abs(value) > 100.0)
+        {
+            error = "The profile contains an unsafe or invalid model weight.";
+            return false;
+        }
+        incoming.weights[i] = (float)value;
+    }
+    for (int i = 0; i < PersonalAudioModel::outputs; ++i)
+    {
+        const auto& flag = ready->getReference(i);
+        if (!flag.isBool())
+        {
+            error = "The profile contains an invalid trained-effect flag.";
+            return false;
+        }
+        incoming.ready[i] = (bool)flag;
+    }
+
+    const auto preferences = File::getSpecialLocation(File::userApplicationDataDirectory)
+        .getChildFile("Cyn/preferences.json");
+    if (preferences.existsAsFile())
+    {
+        const auto backup = preferences.getSiblingFile("preferences-before-import.json");
+        if (!preferences.copyFileTo(backup))
+        {
+            error = "Could not back up your existing learning data. Import cancelled.";
+            return false;
+        }
+    }
+
+    restoreSmartBaseline();
+    smart_model_ = incoming;
+    smart_examples_.clear();  // Imported public models never carry another person's labels.
+    smart_learning_message_ = "AI Hub profile loaded. Teach it with new audio labels to personalise it.";
+    saveSmartModel();
+    error.clear();
+    return true;
 }
 
 void FxController::setReducedMotion(bool value)

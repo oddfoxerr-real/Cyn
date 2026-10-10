@@ -65,6 +65,13 @@ jobs:
         shell: powershell
         run: .\scripts\test_cyn_updater_ui.ps1
 
+      - name: Validate AI Hub website and importable model
+        if: steps.inspect.outputs.state != 'published'
+        shell: pwsh
+        run: |
+          node --check ai-hub/app.js
+          node scripts/test_ai_hub.mjs
+
       - name: Compile Cyn native x64
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh

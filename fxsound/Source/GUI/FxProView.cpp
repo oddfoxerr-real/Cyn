@@ -10,7 +10,7 @@ FxProView::FxProView() : tool_tip_(this)
     for (auto* component : std::initializer_list<Component*> {
         &audio_controls_, &equalizer_, &visualizer_, &sound_nav_, &smart_nav_,
         &devices_nav_, &home_, &smart_rail_, &devices_rail_, &settings_,
-        &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &learning_timeline_, &learning_effect_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_ })
+        &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &learning_timeline_, &learning_effect_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
         addAndMakeVisible(component);
     sound_nav_.onClick = home_.onClick = [this] { selectPage(0); };
     smart_nav_.onClick = smart_rail_.onClick = [this] { selectPage(1); };
@@ -46,6 +46,44 @@ FxProView::FxProView() : tool_tip_(this)
             "Replace your saved labels and learned preferences with the optional starter model?","Reset","Cancel"))
             FxController::getInstance().useStarterModel();
     };
+    export_ai_.onClick = [] {
+        const auto location = File::getSpecialLocation(File::userDocumentsDirectory)
+            .getChildFile("My Cyn AI.cynai.json");
+        FileChooser chooser("Export a portable Cyn AI profile", location, "*.cynai.json");
+        if (!chooser.browseForFileToSave(true))
+            return;
+        const auto file = chooser.getResult();
+        String error;
+        if (FxController::getInstance().exportSmartProfile(
+                file, file.getFileNameWithoutExtension().replace(".cynai", ""), error))
+            AlertWindow::showMessageBoxAsync(AlertWindow::InfoIcon, "AI exported",
+                "Your neural profile was exported without private audio samples or labels.\n"
+                "You can share it through the Cyn AI Hub.");
+        else
+            AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Export failed", error);
+    };
+    import_ai_.onClick = [] {
+        FileChooser chooser("Import a Cyn AI Hub profile",
+            File::getSpecialLocation(File::userDocumentsDirectory), "*.cynai.json;*.json");
+        if (!chooser.browseForFileToOpen())
+            return;
+        if (!AlertWindow::showOkCancelBox(AlertWindow::QuestionIcon, "Import this AI?",
+            "This replaces your current neural model. Cyn will first back up your existing "
+            "learning data to preferences-before-import.json.\nImport this model?", "Import", "Cancel"))
+            return;
+        String error;
+        if (FxController::getInstance().importSmartProfile(chooser.getResult(), error))
+            AlertWindow::showMessageBoxAsync(AlertWindow::InfoIcon, "AI imported",
+                "The new AI profile is now active. You can keep training it locally with More / Less.");
+        else
+            AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Import failed", error);
+    };
+    browse_ai_.onClick = [] {
+        URL("https://github.com/oddfoxerr-real/Cyn/tree/main/ai-hub").launchInDefaultBrowser();
+    };
+    export_ai_.setTooltip("Export your trained weights, without audio or training history.");
+    import_ai_.setTooltip("Import and use a shared Cyn AI model; backs up your existing model.");
+    browse_ai_.setTooltip("Browse the separate Cyn AI Hub web project.");
     learning_status_.setFont(13); learning_status_.setColour(Label::textColourId,Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     refresh_.onClick = [] { FxController::getInstance().checkDeviceChanges(); FxController::getInstance().refreshOutputList(); };
     smart_toggle_.onClick = [this] {
@@ -96,7 +134,7 @@ void FxProView::selectPage(int page)
     audio_controls_.setVisible(page == 0);
     equalizer_.setVisible(page == 0);
     visualizer_.setVisible(page == 0);
-    for(auto* c : std::initializer_list<Component*> {&learning_timeline_, &learning_effect_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_}) c->setVisible(page==1);
+    for(auto* c : std::initializer_list<Component*> {&learning_timeline_, &learning_effect_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_}) c->setVisible(page==1);
     pin_toggle_.setVisible(page == 2);
     refresh_.setVisible(page == 2);
     sensitivity_.setVisible(page == 1);
@@ -137,6 +175,7 @@ void FxProView::timerCallback()
     const bool selected=learning_timeline_.selection().size()>=5;
     more_.setEnabled(selected && !controller.isSmartTraining()); less_.setEnabled(selected && !controller.isSmartTraining());
     train_.setEnabled(!controller.isSmartTraining()); starter_.setEnabled(!controller.isSmartTraining());
+    export_ai_.setEnabled(!controller.isSmartTraining()); import_ai_.setEnabled(!controller.isSmartTraining());
     smart_toggle_.setToggleState(controller.isSmartListening(), dontSendNotification);
     pin_toggle_.setToggleState(controller.isOutputPinned(), dontSendNotification);
     smart_status_.setText(controller.getSmartSummary(), dontSendNotification);
@@ -162,7 +201,10 @@ void FxProView::resized()
     more_.setBounds(490,433,136,36); less_.setBounds(638,433,136,36);
     train_.setBounds(790,433,210,36); resume_.setBounds(1012,433,170,36);
     sensitivity_.setBounds(444,491,738,28);
-    learning_status_.setBounds(280,542,700,42);
+    learning_status_.setBounds(280,542,396,42);
+    export_ai_.setBounds(684,549,96,30);
+    import_ai_.setBounds(790,549,96,30);
+    browse_ai_.setBounds(896,549,106,30);
     starter_.setBounds(1012,549,170,30);
     sound_nav_.setBounds(68, 72, 152, 36);
     smart_nav_.setBounds(68, 114, 152, 36);

@@ -1,0 +1,27 @@
+name: "Review a Cyn AI profile"
+description: "Share your experience with a community AI model"
+title: "[AI Hub review] "
+labels: []
+body:
+  - type: input
+    id: model
+    attributes:
+      label: Profile name or link
+      description: Prefer the existing profile's dedicated issue thread if one exists.
+    validations:
+      required: true
+  - type: dropdown
+    id: score
+    attributes:
+      label: Your personal score
+      description: Subjective impression, not an objective sound-quality benchmark.
+      options: ["5 — Excellent", "4 — Good", "3 — Mixed", "2 — Needs work", "1 — Not for me"]
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: What did you listen to and what happened?
+      placeholder: Headphones/speakers, genre/game, trained effects, positives and issues.
+    validations:
+      required: true

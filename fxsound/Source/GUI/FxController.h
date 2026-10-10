@@ -113,6 +113,9 @@ public:
     void labelAudio(const std::vector<AudioFrame>& frames, int effect, bool more);
     void trainSmartModel();
     void useStarterModel();
+    // Portable Cyn AI Hub interchange: model weights only, never private audio labels.
+    bool exportSmartProfile(const File& file, const String& name, String& error) const;
+    bool importSmartProfile(const File& file, String& error);
     String getLearningStatus() const;
     bool isSmartTraining() const { return smart_training_; }
     bool isOutputPinned() { return settings_.getBool("ember_pin_output", true); }

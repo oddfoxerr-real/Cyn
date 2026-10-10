@@ -92,6 +92,7 @@ private:
     AudioLearningTimeline learning_timeline_;
     FxComboBox learning_effect_;
     TextButton more_ {"More here"}, less_ {"Less here"}, train_ {"Train my model"}, starter_ {"Reset to starter"}, resume_ {"Resume timeline"};
+    TextButton export_ai_ { "Export AI" }, import_ai_ { "Import AI" }, browse_ai_ { "AI Hub" };
     Label learning_status_;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FxProView)
 };
