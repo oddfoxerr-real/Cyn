@@ -1,0 +1,92 @@
+name: Cyn Trained Base Follow-up Release
+
+on:
+  workflow_run:
+    workflows: ["Cyn One-Hour Base AI Training and Release"]
+    types: [completed]
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: cyn-trained-follow-up-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # Only the original 3600s training workflow is authorized to supply this artifact.
+    if: github.event.workflow_run.id == 38048876900 && github.event.workflow_run.head_repository.full_name == 'oddfoxerr-real/Cyn'
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Download verified trainer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hour-trained-base
+          path: training-output
+          run-id: 38048876900
+          github-token: ${{ github.token }}
+      - name: Check base version is published and unchanged
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version=[regex]::Match((Get-Content Installer/Cyn/Cyn.iss -Raw),'(?m)^AppVersion=(\S+)').Groups[1].Value
+          if ($version -ne '2.0.14') { throw "Expected UI release v2.0.14, found $version. A newer release exists; stop." }
+          gh release view v2.0.14 --json isDraft --jq '.isDraft == false'
+          if ($LASTEXITCODE -ne 0) { throw 'UI release was not published' }
+      - name: Create independent trained-model v2.0.15 source
+        run: python scripts/finalize_trained_followup.py
+      - name: Verify AI Hub and updating regressions
+        shell: pwsh
+        run: |
+          node scripts/test_ai_hub.mjs
+          ./scripts/test_cyn_updater_ui.ps1
+      - name: Build the native x64 application
+        shell: pwsh
+        run: ./BUILD_CYN.ps1
+      - name: Build verified Windows installer
+        shell: pwsh
+        run: ./BUILD_INSTALLER.ps1
+      - name: Verify checksum and bundled starter
+        shell: pwsh
+        run: |
+          $installer='dist/Cyn-Setup-2.0.15-x64.exe'
+          if (!(Test-Path $installer) -or !(Test-Path "$installer.sha256") -or
+              !(Test-Path 'dist/Cyn/cyn-starter.json') -or
+              !(Test-Path 'dist/Cyn-Windows-x64.zip')) {
+            throw 'Missing verified installer or trained model'
+          }
+          $expected=((Get-Content "$installer.sha256" -Raw).Trim() -split '\s+')[0]
+          $actual=(Get-FileHash $installer -Algorithm SHA256).Hash
+          if ($expected -ine $actual) { throw 'Installer checksum mismatch' }
+      - name: Commit and push final training model
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add models README_CYN.md RELEASE_NOTES_2.0.15.md BUILD_INSTALLER.ps1 Installer/Cyn/Cyn.iss fxsound scripts/test_ai_hub.mjs
+          git commit -m "feat(cyn): validated hour-trained base model (v2.0.15)"
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to commit validated neural model' }
+          git push origin HEAD:main
+          if ($LASTEXITCODE -ne 0) { throw 'Main branch changed; refuse stale release' }
+      - name: Publish v2.0.15 with installer artifacts
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $sha=(git rev-parse HEAD).Trim()
+          gh release create v2.0.15 --target $sha --title "Cyn 2.0.15 - One-hour trained base model" --notes-file RELEASE_NOTES_2.0.15.md --draft
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to create draft release' }
+          gh release upload v2.0.15 dist/Cyn-Setup-2.0.15-x64.exe dist/Cyn-Setup-2.0.15-x64.exe.sha256 dist/Cyn-Windows-x64.zip
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to upload release assets' }
+          gh release edit v2.0.15 --draft=false
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to publish installer release' }
