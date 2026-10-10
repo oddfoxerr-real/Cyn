@@ -12,6 +12,7 @@ class CynAiHubContent final : public juce::Component, private juce::ListBoxModel
 public:
     CynAiHubContent()
     {
+        setOpaque (true); // Opaque content: never reveal Smart listening through this dialog.
         setSize (790, 490);
         for (auto* component : std::initializer_list<juce::Component*> {
             &title_, &subtitle_, &list_, &description_, &status_,
@@ -20,15 +21,15 @@ public:
 
         title_.setText ("Cyn AI Hub", juce::dontSendNotification);
         title_.setFont (juce::Font (26.0f, juce::Font::bold));
-        title_.setColour (juce::Label::textColourId, juce::Colour (FXCOLOR(DefaultText)));
+        title_.setColour (juce::Label::textColourId, juce::Colour (FXCOLOR(DefaultText)).withAlpha (1.0f));
         subtitle_.setText ("Discover, import and share personal audio models — right inside Cyn.",
                            juce::dontSendNotification);
-        subtitle_.setColour (juce::Label::textColourId, juce::Colour (FXCOLOR(HintText)));
+        subtitle_.setColour (juce::Label::textColourId, juce::Colour (FXCOLOR(HintText)).withAlpha (1.0f));
 
         list_.setModel (this);
         list_.setRowHeight (55);
-        list_.setColour (juce::ListBox::backgroundColourId, juce::Colour (FXCOLOR(ControlBackground)));
-        list_.setColour (juce::ListBox::outlineColourId, juce::Colour (FXCOLOR(RowOutline)));
+        list_.setColour (juce::ListBox::backgroundColourId, juce::Colour (FXCOLOR(ControlBackground)).withAlpha (1.0f));
+        list_.setColour (juce::ListBox::outlineColourId, juce::Colour (FXCOLOR(RowOutline)).withAlpha (1.0f));
         list_.setOutlineThickness (1);
         // ListBoxModel::selectedRowsChanged handles selection notifications.
 
@@ -36,12 +37,12 @@ public:
         description_.setReadOnly (true);
         description_.setScrollbarsShown (true);
         description_.setCaretVisible (false);
-        description_.setColour (juce::TextEditor::backgroundColourId, juce::Colour (FXCOLOR(ControlBackground)));
-        description_.setColour (juce::TextEditor::textColourId, juce::Colour (FXCOLOR(DefaultText)));
-        description_.setColour (juce::TextEditor::outlineColourId, juce::Colour (FXCOLOR(RowOutline)));
-        description_.setColour (juce::TextEditor::focusedOutlineColourId, juce::Colour (FXCOLOR(RowOutline)));
+        description_.setColour (juce::TextEditor::backgroundColourId, juce::Colour (FXCOLOR(ControlBackground)).withAlpha (1.0f));
+        description_.setColour (juce::TextEditor::textColourId, juce::Colour (FXCOLOR(DefaultText)).withAlpha (1.0f));
+        description_.setColour (juce::TextEditor::outlineColourId, juce::Colour (FXCOLOR(RowOutline)).withAlpha (1.0f));
+        description_.setColour (juce::TextEditor::focusedOutlineColourId, juce::Colour (FXCOLOR(RowOutline)).withAlpha (1.0f));
 
-        status_.setColour (juce::Label::textColourId, juce::Colour (FXCOLOR(HintText)));
+        status_.setColour (juce::Label::textColourId, juce::Colour (FXCOLOR(HintText)).withAlpha (1.0f));
         status_.setJustificationType (juce::Justification::centredLeft);
         status_.setText ("Offline profiles load automatically. Refresh to check GitHub community submissions.",
                          juce::dontSendNotification);
@@ -90,8 +91,8 @@ public:
 
     void paint (juce::Graphics& g) override
     {
-        g.fillAll (juce::Colour (FXCOLOR(WindowBackground)));
-        g.setColour (juce::Colour (FXCOLOR(RowOutline)));
+        g.fillAll (juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f));
+        g.setColour (juce::Colour (FXCOLOR(RowOutline)).withAlpha (1.0f));
         g.drawHorizontalLine (84, 24.0f, static_cast<float> (getWidth() - 24));
     }
 
@@ -124,14 +125,14 @@ private:
         const auto& item = profiles_[static_cast<size_t> (row)];
         if (selectedRow)
         {
-            g.setColour (juce::Colour (FXCOLOR(MenuHighlightBackground)));
+            g.setColour (juce::Colour (FXCOLOR(MenuHighlightBackground)).withAlpha (1.0f));
             g.fillRoundedRectangle (2.0f, 2.0f, static_cast<float> (width - 4),
                                     static_cast<float> (height - 4), 8.0f);
         }
-        g.setColour (juce::Colour (FXCOLOR(DefaultText)));
+        g.setColour (juce::Colour (FXCOLOR(DefaultText)).withAlpha (1.0f));
         g.setFont (juce::Font (15.0f, juce::Font::bold));
         g.drawText (item.name, 12, 6, width - 24, 23, juce::Justification::centredLeft);
-        g.setColour (juce::Colour (FXCOLOR(HintText)));
+        g.setColour (juce::Colour (FXCOLOR(HintText)).withAlpha (1.0f));
         g.setFont (12.0f);
         g.drawText (item.author + "  •  " + item.category, 12, 29,
                     width - 24, 17, juce::Justification::centredLeft);
@@ -325,12 +326,13 @@ private:
 
 struct CynAiHubDialog
 {
-    static void show()
+    static void show (juce::Component* owner = nullptr)
     {
         juce::DialogWindow::LaunchOptions options;
         options.content.setOwned (new CynAiHubContent());
         options.dialogTitle = "Cyn AI Hub";
-        options.dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground));
+        options.componentToCentreAround = owner; // Anchor to Cyn rather than desktop origin.
+        options.dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f);
         options.escapeKeyTriggersCloseButton = true;
         options.useNativeTitleBar = false;
         options.resizable = false;
