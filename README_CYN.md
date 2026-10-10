@@ -6,7 +6,7 @@ Thank you to the [FxSound team and contributors](https://github.com/fxsound2/fxs
 
 ## Install with the setup EXE
 
-Exit Cyn/FxSound from the tray menu, then double-click `Cyn-Setup-2.0.9-x64.exe`. It installs the app and all required files into Program Files, adds Start-menu and optional Desktop shortcuts, and registers an uninstaller. Windows 10/11 Intel/AMD x64 and administrator access are required. An existing FxSound driver is reused; otherwise the bundled Microsoft-signed driver is installed. The original FxSound app does not need to run.
+Exit Cyn/FxSound from the tray menu, then double-click `Cyn-Setup-2.0.10-x64.exe`. It installs the app and all required files into Program Files, adds Start-menu and optional Desktop shortcuts, and registers an uninstaller. Windows 10/11 Intel/AMD x64 and administrator access are required. An existing FxSound driver is reused; otherwise the bundled Microsoft-signed driver is installed. The original FxSound app does not need to run.
 
 Remove Cyn through Windows Settings > Apps > Installed apps. Your `%APPDATA%\Cyn` preferences and the shared audio driver are retained. Removing the original FxSound installation may remove that shared driver; rerun Cyn setup if needed. The Cyn installer/app are unsigned community builds; the driver retains its original signature. See `Installer/Cyn/README.md` in the source for verification scope.
 
@@ -62,7 +62,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_CYN.ps1
 
 Skip setup when VS 2022 C++ Build Tools and Windows SDK are installed. Output: `dist\Cyn\Cyn.exe` and `dist\Cyn-Windows-x64.zip`. Subsequent builds support `-Incremental`. Optional `-WithMcp` requires Go and builds the repository's existing MCP server.
 
-To build the setup EXE after the app, run `powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_INSTALLER.ps1`. This downloads a pinned, signature-checked Inno Setup compiler into `.build-tools` when needed, verifies the bundled driver hashes, and writes `dist\Cyn-Setup-2.0.9-x64.exe`. Use `-RebuildApp` to rebuild the app too.
+To build the setup EXE after the app, run `powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_INSTALLER.ps1`. This downloads a pinned, signature-checked Inno Setup compiler into `.build-tools` when needed, verifies the bundled driver hashes, and writes `dist\Cyn-Setup-2.0.10-x64.exe`. Use `-RebuildApp` to rebuild the app too.
 
 ## Local control
 
@@ -99,8 +99,12 @@ The Smooth animations toggle defaults on unless a user disabled it earlier. Nati
 
 Click a category in the menu, such as Theme, Save New Preset or Rename Preset. Its text-button options expand **within the same menu**, one after another from underneath the category button, pushing following rows downward. Click again to collapse from bottom to top. The menu uses a single vertical column with scrolling on smaller displays. The Smooth animations option controls the 60Hz cubic-eased stagger; Reduce motion presents the same category hierarchy without animation. Keyboard activation works via Enter and right arrow.
 
-## Cyn AI Hub — portable neural profiles (v2.0.9)
+## Cyn AI Hub — native, no website (v2.0.10)
 
-Cyn's **Smart listening** page now includes **Export AI**, **Import AI**, and **AI Hub** links. Exported `.cynai.json` files contain the trained 209 weights and five readiness flags but **no raw audio, local labelled frames, history, device names or paths**. Import validates the format and writes a backup to `%APPDATA%\\Cyn\\preferences-before-import.json` before replacing the model. Imported profiles can continue learning from your own labels. All processing remains local and no cloud AI account is required.
+**The AI Hub lives inside Cyn.exe**, under **Smart listening → AI Hub**. No separate website, self-hosted server, GitHub Pages, domain, account, or launcher is required. Cyn bundles an offline community catalogue and starter model inside `CynAiProfiles/`. Open the native AI Hub window to browse, read profile descriptions, and activate an AI model.
 
-The self-contained site lives at [Cyn AI Hub](ai-hub/), with offline browser retraining from private Cyn learning files, public community profile JSON, GitHub issue-based user submissions and per-profile review threads. Hosting it as a standalone GitHub Pages site requires enabling Pages in repository Settings or copying `ai-hub/` to its own repository.
+**Optional community connectivity:** Refresh community reads a static, public JSON catalogue from the same existing GitHub repository; Cyn only downloads model JSON when you explicitly choose Import. Public profile reviews and new submissions use GitHub Issues through the user's browser when those actions are selected. Without internet, installed profiles, offline training, local import and local export remain available.
+
+The existing 209-parameter neural model is trained locally using the Smart listening timeline and your More/Less feedback. Exported `.cynai.json` packages contain only weights, trained-effect flags and public metadata — **not** sound recordings or private labelled examples. Import backs up your original preferences before replacing the model.
+
+The earlier standalone web prototype and GitHub Pages workflow were removed from v2.0.10. The `ai-hub/community/` folder in the **source repository** is simply the data catalogue used by Cyn, not a website.

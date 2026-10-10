@@ -69,7 +69,6 @@ jobs:
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh
         run: |
-          node --check ai-hub/app.js
           node scripts/test_ai_hub.mjs
 
       - name: Compile Cyn native x64

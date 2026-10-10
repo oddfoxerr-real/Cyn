@@ -4,6 +4,7 @@
 #include "FxController.h"
 #include "FxTheme.h"
 #include "FxSettingsDialog.h"
+#include "CynAiHubDialog.h"
 
 FxProView::FxProView() : tool_tip_(this)
 {
@@ -78,12 +79,10 @@ FxProView::FxProView() : tool_tip_(this)
         else
             AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Import failed", error);
     };
-    browse_ai_.onClick = [] {
-        URL("https://github.com/oddfoxerr-real/Cyn/tree/main/ai-hub").launchInDefaultBrowser();
-    };
+    browse_ai_.onClick = [] { CynAiHubDialog::show(); };
     export_ai_.setTooltip("Export your trained weights, without audio or training history.");
     import_ai_.setTooltip("Import and use a shared Cyn AI model; backs up your existing model.");
-    browse_ai_.setTooltip("Browse the separate Cyn AI Hub web project.");
+    browse_ai_.setTooltip("Browse AI profiles inside Cyn. No website or server needed.");
     learning_status_.setFont(13); learning_status_.setColour(Label::textColourId,Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     refresh_.onClick = [] { FxController::getInstance().checkDeviceChanges(); FxController::getInstance().refreshOutputList(); };
     smart_toggle_.onClick = [this] {
