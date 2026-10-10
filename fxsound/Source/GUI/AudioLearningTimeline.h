@@ -22,7 +22,7 @@ public:
         g.setColour(Colour(FXCOLOR(ControlBackground)).withAlpha(1.0f)); g.fillRoundedRectangle(bounds,16);
         g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(1.0f)); g.drawRoundedRectangle(bounds.reduced(.5f),16,1);
         g.setFont(13); g.setColour(Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
-        g.drawText(selected_?"Selection paused / label this section, or drag to change it":"RECENT AUDIO / drag across a section to teach Cyn",16,10,getWidth()-32,22,Justification::centredLeft);
+        g.drawText(selected_?"Selection paused / label this section, or drag to change it":"ALL AUDIO / drag to teach Cyn (music, films, TV, games)",16,10,getWidth()-32,22,Justification::centredLeft);
         float left=18,right=(float)getWidth()-18,center=82;
         auto xpos=[&](int64_t id){return left+(right-left)*(float)(id-(end_-60000))/60000;};
         if(selected_) {
@@ -38,7 +38,7 @@ public:
         g.setFont(11); g.setColour(Colour(FXCOLOR(HintText)).withAlpha(1.0f));
         g.drawText("60 seconds ago",18,132,150,20,Justification::centredLeft);
         g.drawText(selected_?"Frozen selection":"Now",getWidth()-140,132,122,20,Justification::centredRight);
-        if(frames_.empty()) g.drawText("Play audio with Cyn processing on to fill this timeline.",60,65,getWidth()-120,32,Justification::centred);
+        if(frames_.empty()) g.drawText("Play any audio (music, films, shows, games) to start learning.",60,65,getWidth()-120,32,Justification::centred);
     }
     void mouseDown(const MouseEvent& e) override { if(frames_.empty()) return; dragging_=true; selected_=true; from_=to_=timeAt(e.x); repaint(); }
     void mouseDrag(const MouseEvent& e) override { if(dragging_) { to_=timeAt(e.x); repaint(); } }

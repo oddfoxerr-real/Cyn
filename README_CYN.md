@@ -6,7 +6,7 @@ Thank you to the [FxSound team and contributors](https://github.com/fxsound2/fxs
 
 ## Install with the setup EXE
 
-Exit Cyn/FxSound from the tray menu, then double-click `Cyn-Setup-2.0.13-x64.exe`. It installs the app and all required files into Program Files, adds Start-menu and optional Desktop shortcuts, and registers an uninstaller. Windows 10/11 Intel/AMD x64 and administrator access are required. An existing FxSound driver is reused; otherwise the bundled Microsoft-signed driver is installed. The original FxSound app does not need to run.
+Exit Cyn/FxSound from the tray menu, then double-click `Cyn-Setup-2.0.14-x64.exe`. It installs the app and all required files into Program Files, adds Start-menu and optional Desktop shortcuts, and registers an uninstaller. Windows 10/11 Intel/AMD x64 and administrator access are required. An existing FxSound driver is reused; otherwise the bundled Microsoft-signed driver is installed. The original FxSound app does not need to run.
 
 Remove Cyn through Windows Settings > Apps > Installed apps. Your `%APPDATA%\Cyn` preferences and the shared audio driver are retained. Removing the original FxSound installation may remove that shared driver; rerun Cyn setup if needed. The Cyn installer/app are unsigned community builds; the driver retains its original signature. See `Installer/Cyn/README.md` in the source for verification scope.
 
@@ -62,7 +62,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_CYN.ps1
 
 Skip setup when VS 2022 C++ Build Tools and Windows SDK are installed. Output: `dist\Cyn\Cyn.exe` and `dist\Cyn-Windows-x64.zip`. Subsequent builds support `-Incremental`. Optional `-WithMcp` requires Go and builds the repository's existing MCP server.
 
-To build the setup EXE after the app, run `powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_INSTALLER.ps1`. This downloads a pinned, signature-checked Inno Setup compiler into `.build-tools` when needed, verifies the bundled driver hashes, and writes `dist\Cyn-Setup-2.0.13-x64.exe`. Use `-RebuildApp` to rebuild the app too.
+To build the setup EXE after the app, run `powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_INSTALLER.ps1`. This downloads a pinned, signature-checked Inno Setup compiler into `.build-tools` when needed, verifies the bundled driver hashes, and writes `dist\Cyn-Setup-2.0.14-x64.exe`. Use `-RebuildApp` to rebuild the app too.
 
 ## Local control
 
@@ -122,3 +122,7 @@ The experimental category accordion in the low-level JUCE popup code was interru
 ## Cyn 2.0.13 — visible AI controls and seamless tooltips
 
 The Smart listening AI actions now use opaque colours for both backgrounds and labels. Tooltips composite with properly rounded transparent corners rather than showing black rectangles. A source regression check runs in the Windows release workflow. All existing models, user labels, effects, and updater behaviour are preserved. This UI release does not claim any additional model training.
+
+## Cyn 2.0.14: Neural Activity & All Audio
+
+The native Smart Listening page includes an animated amber neural-activity network reflecting the 11–12–5 model topology and the application training state. It supports reduced motion and uses a bounded repaint timer. Smart Listening can learn from **any** audio playing through the configured Windows output: music, films, series episodes, podcasts, spoken dialogue, or games. The model is not a source classifier or speech recognizer; the current starter is trained only on synthetic Bass and Clarity examples, with personal More/Less labels for other effects. The longer-running base-model training will be delivered as a **separate subsequent update**, not included in this UI-focused build.

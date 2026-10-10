@@ -97,7 +97,7 @@ FxProView::FxProView() : tool_tip_(this)
         update();
     };
     pin_toggle_.onClick = [this] { FxController::getInstance().setOutputPinned(pin_toggle_.getToggleState()); };
-    smart_toggle_.setTooltip("Apply your locally trained preferences. Select recent audio and teach More / Less on the Smart listening page.");
+    smart_toggle_.setTooltip("Learn your sound preferences from any audio: movies, TV episodes, games, podcasts, music or dialogue. Select recent audio and teach More / Less.");
     pin_toggle_.setTooltip("Ignore newly connected higher-priority devices while your current output is available. Fall back when it is unplugged.");
     live_status_.setJustificationType(Justification::centredRight);
     live_status_.setInterceptsMouseClicks(false, false);
@@ -296,17 +296,17 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.13", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.14", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : "Output devices", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
-        ? "Teach Cyn how you want your music to feel." : "Your output, with fewer interruptions.", 256, 49, 640, 22, 13, true);
+        ? "Teach Cyn your preferences for music, movies, shows and games." : "Your output, with fewer interruptions.", 256, 49, 640, 22, 13, true);
     text("PRESET", 260, 78, 300, 16, 10, true);
     text("OUTPUT DEVICE", 741, 78, 300, 16, 10, true);
     if (page_ == 0) card(256, 556, 952, 48);
     else if (page_ == 1)
     {
         card(256, 334, 952, 270);
-        text("Select a section above, choose an effect, then label More or Less.",280,389,880,28,16);
+        text("Play any audio, select a section above and teach More or Less.",280,389,880,28,16);
         text("AI PROFILES", 688, 521, 310, 18, 10, true);
         text("Sensitivity",280,491,150,28,14);
 
