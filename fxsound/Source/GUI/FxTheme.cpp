@@ -624,13 +624,13 @@ void FxTheme::drawTooltip(Graphics& g, const String& text, int width, int height
     juce::Rectangle<int> bounds(width, height);
     auto cornerSize = 12.0f;
 
-    g.setColour(findColour(TooltipWindow::backgroundColourId));
+    g.setColour(findColour(TooltipWindow::backgroundColourId).withAlpha(1.0f));
     g.fillRoundedRectangle(bounds.toFloat(), cornerSize);
 
-    g.setColour(findColour(TooltipWindow::outlineColourId));
+    g.setColour(findColour(TooltipWindow::outlineColourId).withAlpha(1.0f));
     g.drawRoundedRectangle(bounds.toFloat().reduced(0.5f, 0.5f), cornerSize, 1.0f);
 
-    layoutTooltipText(text, findColour(TooltipWindow::textColourId))
+    layoutTooltipText(text, findColour(TooltipWindow::textColourId).withAlpha(1.0f))
         .draw(g, bounds.toFloat().reduced(10, 0));
 }
 

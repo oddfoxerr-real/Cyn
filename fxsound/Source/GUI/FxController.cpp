@@ -40,7 +40,7 @@ void launchCynUpdater(bool interactive)
         if (interactive) AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "CynUpdater.ps1 is missing. Reinstall Cyn.");
         return;
     }
-    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.12" + (interactive ? " -Interactive" : "");
+    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.13" + (interactive ? " -Interactive" : "");
     auto result = ShellExecuteW(nullptr, L"open", L"powershell.exe", args.toWideCharPointer(), nullptr, SW_HIDE);
     if (reinterpret_cast<INT_PTR>(result) <= 32 && interactive)
         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");

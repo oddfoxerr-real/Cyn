@@ -8,6 +8,8 @@
 
 FxProView::FxProView() : tool_tip_(this)
 {
+    // JUCE TooltipWindow is opaque by default; our rounded corners require compositing.
+    tool_tip_.setOpaque(false);
     for (auto* component : std::initializer_list<Component*> {
         &audio_controls_, &equalizer_, &visualizer_, &sound_nav_, &smart_nav_,
         &devices_nav_, &ai_hub_nav_, &home_, &smart_rail_, &devices_rail_, &settings_,
@@ -222,12 +224,19 @@ void FxProView::resized()
     devices_nav_.setBounds(68, 156, 152, 36);
     ai_hub_nav_.setBounds(68, 198, 152, 36);
     settings_.setBounds(68, 554, 152, 36);
-    ai_hub_nav_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(MenuHighlightBackground)));
-    ai_hub_nav_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)));
-    browse_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(MenuHighlightBackground)));
-    browse_ai_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)));
-    export_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(PanelBackground)));
-    import_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(PanelBackground)));
+    ai_hub_nav_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(MenuHighlightBackground)).withAlpha(1.0f));
+    ai_hub_nav_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
+    browse_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(MenuHighlightBackground)).withAlpha(1.0f));
+    browse_ai_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
+    export_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(PanelBackground)).withAlpha(1.0f));
+    import_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(PanelBackground)).withAlpha(1.0f));
+    for (auto* button : std::initializer_list<TextButton*> { &export_ai_, &import_ai_ })
+    {
+        button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
+        button->setColour(TextButton::textColourOnId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
+    }
+    browse_ai_.setColour(TextButton::textColourOnId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
+    ai_hub_nav_.setColour(TextButton::textColourOnId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
     live_status_.setBounds(1000, 23, 208, 24);
     preset_list_.setBounds(256, 97, 465, 40);
     endpoint_list_.setBounds(737, 97, 471, 40);
@@ -279,7 +288,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.12", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.13", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : "Output devices", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
         ? "Teach Cyn how you want your music to feel." : "Your output, with fewer interruptions.", 256, 49, 640, 22, 13, true);
