@@ -7,12 +7,17 @@
 #include <algorithm>
 #include <cstdint>
 #include <atomic>
+#include <functional>
+#include <mutex>
 
 struct AudioExample { InputAudioFeatures audio; int effect=4; bool more=false; int64_t id=0; bool starter=false; };
 struct AudioFrame { InputAudioFeatures audio; int64_t id=0; };
 
 // Live inference telemetry, sampled on the JUCE message thread, never audio callback.
 struct NeuralActivitySnapshot {
+    uint32_t sequence = 0;
+    bool applied = false, training = false;
+    int epoch = 0;
     std::array<float,11> inputs {};
     std::array<float,12> hidden {};
     std::array<float,5> outputs {};
@@ -20,6 +25,22 @@ struct NeuralActivitySnapshot {
     std::array<float,60> outputConnections {};
     std::array<bool,5> ready {};
     float rms = 0.0f;
+};
+// Only the background trainer takes this lock; no audio callback uses it.
+struct NeuralTrainingTelemetry {
+    mutable std::mutex mutex;
+    NeuralActivitySnapshot snapshot {};
+    bool available = false;
+    void publish(NeuralActivitySnapshot value, int epoch) {
+        std::lock_guard<std::mutex> guard(mutex);
+        value.training=true; value.epoch=epoch; value.sequence=epoch;
+        snapshot=value; available=true;
+    }
+    bool read(NeuralActivitySnapshot& value) const {
+        std::lock_guard<std::mutex> guard(mutex);
+        if(available) value=snapshot;
+        return available;
+    }
 };
 // 11 inputs -> 12 tanh neurons -> 5 sigmoid outputs (209 learned parameters).
 // No hand-written audio classification rules. Bounds/smoothing live separately.
@@ -50,6 +71,7 @@ public:
     }
     NeuralActivitySnapshot trace(const InputAudioFeatures& a) const {
         NeuralActivitySnapshot s;
+        s.sequence=a.sequence;
         s.inputs=normalize(a); s.ready=ready; s.rms=std::isfinite(a.rms)?a.rms:0.0f;
         for(int j=0;j<hidden;++j) {
             float z=weights[132+j];
@@ -69,7 +91,8 @@ public:
         }
         return s;
     }
-    bool fit(const std::vector<AudioExample>& examples, std::atomic<int>* epochsDone=nullptr) {
+    bool fit(const std::vector<AudioExample>& examples, std::atomic<int>* epochsDone=nullptr,
+             std::function<void(const NeuralActivitySnapshot&,int)> telemetry={}) {
         int counts[outputs][2] {};
         for(auto& e:examples) if(e.effect>=0 && e.effect<outputs) ++counts[e.effect][e.more?1:0];
         bool any=false;
@@ -101,6 +124,11 @@ public:
                 if(!std::isfinite(weights[i])) return false;
             }
             if(epochsDone) epochsDone->store(epoch,std::memory_order_relaxed);
+            if(telemetry && (epoch==1 || epoch%12==0)) {
+                for(const auto& e:examples) if(e.effect>=0 && e.effect<outputs && ready[e.effect]) {
+                    telemetry(trace(e.audio),epoch); break;
+                }
+            }
         }
         return true;
     }

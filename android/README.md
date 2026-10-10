@@ -1,4 +1,4 @@
-# Cyn for Android — 0.1.0 preview
+# Cyn for Android — 0.1.1 preview
 
 An installable, signed Android app based on the current Cyn repository at
 `bcf2e41ce8842fe009049f1476565142338a3cf1` (desktop v2.0.16). The Android code is
@@ -8,18 +8,20 @@ and layout testing; compilation and host tests cannot establish device compatibi
 
 ## Install and use
 
-1. Transfer `Cyn-Android-0.1.0-preview.apk` to your phone and open it in Files.
+**Updating from 0.1.0:** install the new APK over Cyn; do not uninstall. The application ID and signing key are unchanged and versionCode is now 2. Your model, labels and settings remain in the same app storage.
+
+1. Transfer `Cyn-Android-0.1.1-preview.apk` to your phone and open it in Files.
 2. If Android asks, allow that Files/browser app to install unknown apps, then install.
 3. Open Cyn → **Studio → Open audio file**. Choose music through Android's file picker.
    Play/pause and seeking work inside Cyn; the notification also offers Pause and Stop.
 4. For another player, open **Other music apps → Enable compatible-app enhancement**
    before starting/reopening its playback. If that player has an equalizer selector,
-   select Cyn. The Studio status lists the session and effects actually available.
+   select Cyn. The Studio status reports whether Android granted EQ control and enabled it. Connection diagnostics includes phone/build/session state. An effects-control intent without a session now starts monitoring instead of being ignored.
    Stop the monitor from Cyn or its notification when finished.
 
 Other players must expose an Android audio-effects session. This is **not universal
 system-wide capture** and does not guarantee Spotify, browsers, DRM playback or any
-specific phone. No root is required. Audio session 0 is deliberately not used.
+specific phone. No root is required. An explicit **Try legacy compatibility** option requests the deprecated output-mix session (0) for devices that still support it. It replaces per-session effects while enabled to avoid stacking. Support on Galaxy A56 firmware is unverified; owning an effect does not prove Spotify is routed through it.
 Enabling the monitor does not take audio focus away from another app. The built-in
 player requests focus, pauses for calls/other focus owners and headphone disconnects,
 and follows Android's chosen output. Cyn never sets system volume or forces routing.
@@ -33,8 +35,8 @@ and follows Android's chosen output. Cyn never sets system volume or forces rout
 - Bass, clarity, a five-point EQ curve mapped to the device's native bands, optional
   Android virtualizer width and loudness enhancement where the session supports them.
 - Local neural learning for **bass and clarity**, selectable feature timeline,
-  More/Less labels, training progress, sensitivity and actual hidden-neuron activity.
-- Persistent effects/theme/model/feedback settings; no network permission or uploads.
+  More/Less labels, training progress, sensitivity and measured input/hidden/output activations, signed weighted connections and applied-offset status.
+- Persistent effects/theme/model/feedback settings; no audio/feedback uploads; user-initiated GitHub update checks.
 - In-app AGPL text, FxSound credit/support link and corresponding-source notice.
 
 ## Smart listening
@@ -77,7 +79,7 @@ This is an Android adaptation, **not the FxSound Windows DSP/driver in an APK**.
 Android's Equalizer/Virtualizer/LoudnessEnhancer implement the effects. Available bands
 and effects vary by device/session. Loudness is manual gain, not desktop Dynamic Boost
 or automatic volume leveling. Desktop ambience, driver routing, CLI/MCP, AI Hub sharing,
-desktop model exchange and automatic app updates are not included. The Android source
+desktop model exchange and unattended app installation are not included. Themes → Check for Android updates checks only Android releases, then opens the newer APK download for Android to install with your confirmation. The Android source
 does not remove any Windows features. One local audio file plays at a time; there is
 no library scanner, streaming login or playlist manager in this preview.
 
@@ -106,7 +108,7 @@ On Linux/macOS with JDK 17 and SDK 35 configured:
 chmod +x gradlew
 ./gradlew :app:assembleDebug :app:lintDebug
 mkdir -p app/build/host-tests
-javac -d app/build/host-tests app/src/main/java/io/github/oddfoxerr/cyn/PreferenceModel.java app/src/main/java/io/github/oddfoxerr/cyn/AudioFeatures.java tests/AudioModelTest.java
+javac -d app/build/host-tests app/src/main/java/io/github/oddfoxerr/cyn/PreferenceModel.java app/src/main/java/io/github/oddfoxerr/cyn/AudioFeatures.java app/src/main/java/io/github/oddfoxerr/cyn/AndroidRelease.java tests/AudioModelTest.java
 java -cp app/build/host-tests io.github.oddfoxerr.cyn.AudioModelTest
 ```
 

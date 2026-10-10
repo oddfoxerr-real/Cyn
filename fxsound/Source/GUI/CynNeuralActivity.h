@@ -1,183 +1,84 @@
-// Cyn live neural telemetry visualizer. SPDX-License-Identifier: AGPL-3.0-or-later
+// Cyn measured neural telemetry. SPDX-License-Identifier: AGPL-3.0-or-later
 #pragma once
 #include <JuceHeader.h>
 #include "FxTheme.h"
 #include "PersonalAudioModel.h"
-#include <array>
-#include <cmath>
 
-// A faithful visualization of Cyn's 11 -> 12 -> 5 inference topology.
-// Each node tracks the actual normalized input, tanh hidden activation, or
-// sigmoid output. Connection brightness tracks the actual weighted contribution.
-// The moving dots indicate signal flow, NOT individual weight changes.
-// No separate audio capture, training loop, file I/O or real-time DSP work here.
-class CynNeuralActivity : public juce::Component, private juce::Timer
+// No animation clock: every node and connection comes from one forward pass.
+class CynNeuralActivity : public juce::Component, public juce::SettableTooltipClient
 {
 public:
-    CynNeuralActivity() {
-        setInterceptsMouseClicks(false,false);
-        setOpaque(false);
+    CynNeuralActivity() { setOpaque(false); }
+    void setTrainingActive(bool active) { training_=active; }
+    void setAnimationEnabled(bool) {} // Telemetry updates are data driven, including reduced motion.
+    void setActivity(const NeuralActivitySnapshot* snapshot,float fraction) {
+        available_=snapshot!=nullptr;
+        data_=snapshot?*snapshot:NeuralActivitySnapshot{};
+        progress_=juce::jlimit(0.0f,1.0f,fraction);
+        juce::String tip="Measured normalized inputs, tanh activations and weighted contributions. Cyan: positive; amber: negative.\n";
+        const char* names[]={"Clarity","Ambience","Surround","Dynamic","Bass"};
+        for(int i=0;i<5;++i) tip+=juce::String(names[i])+": "+
+            (available_ && data_.ready[i]?juce::String(data_.outputs[i],4):"not trained / no input")+"\n";
+        setTooltip(tip); repaint();
     }
-    ~CynNeuralActivity() override { stopTimer(); }
-
-    void setTrainingActive(bool active) {
-        if (training_ == active) return;
-        if (training_ && !active)
-            completionUntil_ = juce::Time::getMillisecondCounterHiRes() + 1800.0;
-        if (active) completionUntil_ = 0.0;
-        training_ = active;
-        repaint();
-    }
-
-    // UI message-thread snapshots only. Invalid/stale input fades to darkness.
-    void setActivity(const NeuralActivitySnapshot* snapshot, float epochFraction) {
-        hasAudio_ = snapshot != nullptr;
-        target_ = snapshot ? *snapshot : NeuralActivitySnapshot {};
-        progress_ = juce::jlimit(0.0f,1.0f,epochFraction);
-        if (!animating_) { displayed_ = target_; signal_ = hasAudio_ ? 1.0f : 0.0f; }
-        repaint();
-    }
-
-    void setAnimationEnabled(bool enabled) {
-        const bool shouldRun = enabled && !FxTheme::isReducedMotion();
-        if (shouldRun == animating_) return;
-        animating_ = shouldRun;
-        if (animating_) startTimerHz(24);
-        else stopTimer();
-        repaint();
-    }
-
     void paint(juce::Graphics& g) override {
         using namespace juce;
-        if (getWidth() < 64 || getHeight() < 90) return;
-        const Colour accent(0xffeeb060), bright(0xffffdd9b);
+        if(getWidth()<64 || getHeight()<90) return;
+        const Colour positive(0xff6ad4e5),negative(0xffeeb060);
         const Colour text(Colour(FXCOLOR(HintText)).withAlpha(1.0f));
-        const Colour border(Colour(FXCOLOR(RowOutline)).withAlpha(1.0f));
-        const Colour bg(Colour(FXCOLOR(ControlBackground)).withAlpha(1.0f));
-        const auto bounds = getLocalBounds().toFloat();
-        g.setColour(bg); g.fillRoundedRectangle(bounds,12.0f);
-        g.setColour(border.withAlpha(0.65f));
-        g.drawRoundedRectangle(bounds.reduced(0.5f),12.0f,1.0f);
-
-        g.setColour(text);
-        g.setFont(Font(10.0f,Font::bold));
-        g.drawText("LIVE NEURAL ACTIVITY", 9, 9, getWidth()-18, 16,
-                   Justification::centred, false);
-
-        const float x1=16.0f,x2=(float)getWidth()-16.0f;
-        const float y1=47.0f,y3=(float)getHeight()-57.0f;
-        const float y2=y1+(y3-y1)*0.51f;
-        std::array<Point<float>, 11> inputs {};
-        std::array<Point<float>, 12> hidden {};
-        std::array<Point<float>, 5> outputs {};
-        for(int i=0;i<11;++i)
-            inputs[(size_t)i] = { jmap((float)i,0.0f,10.0f,x1,x2),y1 };
-        for(int i=0;i<12;++i)
-            hidden[(size_t)i] = { jmap((float)i,0.0f,11.0f,x1+3.0f,x2-3.0f),y2 };
-        for(int i=0;i<5;++i)
-            outputs[(size_t)i] = { jmap((float)i,0.0f,4.0f,x1+15.0f,x2-15.0f),y3 };
-
-        const float timeSeconds = animating_
-            ? (float)(Time::getMillisecondCounterHiRes()*0.001) : 0.0f;
-        const float trainingGlow = training_ ? 0.14f+0.14f*progress_ : 0.0f;
-
-        // All 192 physical neural connections; their contribution is the
-        // current activation times the trained weight for that connection.
-        auto drawConnections = [&](const auto& from, const auto& to,
-                                   const auto& contributions, int fromCount,
-                                   bool second) {
-            for (size_t j=0;j<to.size();++j) {
-                for (size_t i=0;i<from.size();++i) {
-                    const size_t index=j*(size_t)fromCount+i;
-                    const float influence = std::abs(contributions[index]);
-                    const float activity = signal_ *
-                        (1.0f-std::exp(-influence*(second?0.50f:0.80f)));
-                    const float lum = juce::jlimit(0.0f,1.0f,activity+trainingGlow);
-                    g.setColour(accent.withAlpha(0.038f+lum*0.54f));
-                    g.drawLine(Line<float>(from[i],to[j]),0.75f+lum*0.7f);
-
-                    // Draw moving particles only for connections currently
-                    // carrying meaningful inference signal (or local training).
-                    if (animating_ && lum>0.26f && (index%7==0 || lum>0.75f)) {
-                        const float speed=0.34f+lum*0.9f+(training_?0.6f:0.0f);
-                        const float pos=std::fmod(timeSeconds*speed+
-                            (float)((index*19)%37)/37.0f,1.0f);
-                        const auto dot=from[i]+(to[j]-from[i])*pos;
-                        g.setColour(accent.withAlpha(0.22f*lum));
-                        g.fillEllipse(dot.x-4.5f,dot.y-4.5f,9.0f,9.0f);
-                        g.setColour(bright.withAlpha(0.92f*lum));
-                        g.fillEllipse(dot.x-1.65f,dot.y-1.65f,3.3f,3.3f);
-                    }
-                }
+        g.setColour(Colour(FXCOLOR(ControlBackground)).withAlpha(1.0f));
+        g.fillRoundedRectangle(getLocalBounds().toFloat(),12.0f);
+        g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(1.0f));
+        g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(0.5f),12.0f,1.0f);
+        g.setColour(text); g.setFont(Font(10.0f,Font::bold));
+        g.drawText("NEURAL ACTIVITY",6,7,getWidth()-12,16,Justification::centred);
+        g.setFont(9.0f);
+        g.drawText(available_?(data_.training?"Training sample":"Audio frame")+String(" #")+String(data_.sequence):"No current input",
+                   6,23,getWidth()-12,13,Justification::centred);
+        const float left=16.0f,right=(float)getWidth()-16.0f;
+        const float y1=48.0f,y3=(float)getHeight()-72.0f,y2=(y1+y3)*0.5f;
+        std::array<Point<float>,11> inputs{};
+        std::array<Point<float>,12> hidden{};
+        std::array<Point<float>,5> outputs{};
+        for(int i=0;i<11;++i) inputs[i]={jmap((float)i,0.0f,10.0f,left,right),y1};
+        for(int i=0;i<12;++i) hidden[i]={jmap((float)i,0.0f,11.0f,left,right),y2};
+        for(int i=0;i<5;++i) outputs[i]={jmap((float)i,0.0f,4.0f,left,right),y3};
+        auto connections=[&](const auto& from,const auto& to,const auto& values) {
+            for(size_t j=0;j<to.size();++j) for(size_t i=0;i<from.size();++i) {
+                const float v=available_?values[j*from.size()+i]:0.0f;
+                const float strength=1.0f-std::exp(-std::abs(v));
+                g.setColour((v<0?negative:positive).withAlpha(0.03f+strength*0.7f));
+                g.drawLine(Line<float>(from[i],to[j]),0.6f+strength);
             }
         };
-        drawConnections(inputs,hidden,displayed_.inputConnections,11,false);
-        drawConnections(hidden,outputs,displayed_.outputConnections,12,true);
-
-        auto drawNode=[&](Point<float> p,float activation,bool ready) {
-            const float strength=juce::jlimit(0.0f,1.0f,
-                (ready?activation:activation*0.35f)*signal_ + trainingGlow);
-            g.setColour(accent.withAlpha(0.06f+strength*0.29f));
-            g.fillEllipse(p.x-5.5f,p.y-5.5f,11.0f,11.0f);
-            g.setColour(accent.withAlpha(0.30f+strength*0.68f));
-            g.fillEllipse(p.x-2.9f,p.y-2.9f,5.8f,5.8f);
-            g.setColour(bright.withAlpha(0.36f+strength*0.60f));
-            g.fillEllipse(p.x-1.1f,p.y-1.1f,2.2f,2.2f);
+        connections(inputs,hidden,data_.inputConnections);
+        connections(hidden,outputs,data_.outputConnections);
+        auto node=[&](Point<float> p,float v,bool ready) {
+            const float strength=available_ && ready?jlimit(0.0f,1.0f,std::abs(v)):0.0f;
+            g.setColour((v<0?negative:positive).withAlpha(0.15f+strength*0.85f));
+            g.fillEllipse(p.x-2.8f,p.y-2.8f,5.6f,5.6f);
         };
-
-        for(size_t i=0;i<inputs.size();++i)
-            drawNode(inputs[i],std::abs(displayed_.inputs[i]),true);
-        for(size_t i=0;i<hidden.size();++i)
-            drawNode(hidden[i],std::abs(displayed_.hidden[i]),true);
-        for(size_t i=0;i<outputs.size();++i)
-            drawNode(outputs[i],std::abs(2.0f*displayed_.outputs[i]-1.0f),
-                     displayed_.ready[i]);
-
-        const bool finished=!training_ &&
-            Time::getMillisecondCounterHiRes()<completionUntil_;
-        const String status=training_
-            ? "LEARNING " + String(juce::roundToInt(progress_*100.0f)) + "%"
-            : finished ? "TRAINING COMPLETE"
-            : hasAudio_ ? "PROCESSING AUDIO" : "WAITING FOR AUDIO";
-        g.setColour((training_||hasAudio_||finished?accent:text).withAlpha(1.0f));
-        g.setFont(Font(9.5f,Font::bold));
-        g.drawText(status,6,getHeight()-41,getWidth()-12,16,
-                   Justification::centred,false);
-
-        if(training_) {
-            const float width=(float)getWidth()-24.0f;
-            g.setColour(accent.withAlpha(0.17f));
-            g.fillRoundedRectangle(12.0f,(float)getHeight()-20,width,4.0f,2.0f);
-            g.setColour(bright.withAlpha(0.95f));
-            g.fillRoundedRectangle(12.0f,(float)getHeight()-20,
-                                   width*progress_,4.0f,2.0f);
-        } else {
-            g.setColour(text.withAlpha(0.9f)); g.setFont(Font(9.0f));
-            g.drawText("11 INPUT  /  12 HIDDEN  /  5 OUTPUT",
-                       3,getHeight()-23,getWidth()-6,15,
-                       Justification::centred,false);
+        for(int i=0;i<11;++i) node(inputs[i],data_.inputs[i],true);
+        for(int i=0;i<12;++i) node(hidden[i],data_.hidden[i],true);
+        const char* labels[]={"C","A","S","D","B"};
+        for(int i=0;i<5;++i) {
+            node(outputs[i],2*data_.outputs[i]-1,data_.ready[i]);
+            g.setColour(text); g.setFont(8.5f);
+            g.drawText(labels[i],(int)outputs[i].x-12,(int)y3+5,24,12,Justification::centred);
+            g.drawText(available_ && data_.ready[i]?String(roundToInt(data_.outputs[i]*100))+"%":"--",
+                       (int)outputs[i].x-15,(int)y3+17,30,12,Justification::centred);
         }
+        const String status=training_?"TRAINING "+String(roundToInt(progress_*240))+" / 240":
+            !available_?"WAITING FOR AUDIO":data_.applied?"ADJUSTMENTS ACTIVE":"PREVIEW / NOT APPLIED";
+        g.setColour(positive); g.setFont(Font(9.0f,Font::bold));
+        g.drawText(status,4,getHeight()-36,getWidth()-8,15,Justification::centred);
+        g.setColour(text); g.setFont(8.5f);
+        g.drawText(training_?"Candidate weights / example input":"Outputs: learned preference for more",
+                   4,getHeight()-20,getWidth()-8,13,Justification::centred);
     }
-
 private:
-    void timerCallback() override {
-        if(!isShowing()) return;
-        auto smooth=[](auto& value,const auto& wanted) {
-            for(size_t i=0;i<value.size();++i)
-                value[i]+=(wanted[i]-value[i])*0.24f;
-        };
-        smooth(displayed_.inputs,target_.inputs);
-        smooth(displayed_.hidden,target_.hidden);
-        smooth(displayed_.outputs,target_.outputs);
-        smooth(displayed_.inputConnections,target_.inputConnections);
-        smooth(displayed_.outputConnections,target_.outputConnections);
-        displayed_.ready=target_.ready;
-        signal_+=((hasAudio_?1.0f:0.0f)-signal_)*0.24f;
-        repaint();
-    }
-    NeuralActivitySnapshot target_ {},displayed_ {};
-    bool training_=false,hasAudio_=false,animating_=false;
-    float signal_=0.0f,progress_=0.0f;
-    double completionUntil_=0.0;
+    NeuralActivitySnapshot data_{};
+    bool available_=false,training_=false;
+    float progress_=0;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CynNeuralActivity)
 };

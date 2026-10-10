@@ -8,8 +8,8 @@
 [Setup]
 AppId={{3049F105-E971-49A1-876E-50FDB14EF351}
 AppName=Cyn
-AppVersion=2.0.16
-AppVerName=Cyn 2.0.16
+AppVersion=2.0.17
+AppVerName=Cyn 2.0.17
 AppPublisher=Cyn contributors
 DefaultDirName={autopf}\Cyn
 DefaultGroupName=Cyn
@@ -19,7 +19,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 PrivilegesRequired=admin
 OutputDir={#OutputDir}
-OutputBaseFilename=Cyn-Setup-2.0.16-x64
+OutputBaseFilename=Cyn-Setup-2.0.17-x64
 SetupIconFile=..\..\fxsound\Project\icon.ico
 UninstallDisplayIcon={app}\Cyn.exe
 LicenseFile=..\..\LICENSE
@@ -31,7 +31,8 @@ DisableWelcomePage=no
 CloseApplications=no
 RestartApplications=no
 SetupLogging=yes
-VersionInfoVersion=2.0.16.0
+SetupMutex=Global\CynSetup
+VersionInfoVersion=2.0.17.0
 
 [Tasks]
 Name: desktopicon; Description: "Create a &desktop shortcut"; GroupDescription: "Shortcuts:"
@@ -109,9 +110,18 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Code: Integer;
+  InstalledMS, InstalledLS, SetupMS, SetupLS: Cardinal;
   Details: AnsiString;
   ResultPath, Params: String;
 begin
+  Result := '';
+  if GetVersionNumbers(ExpandConstant('{app}\Cyn.exe'), InstalledMS, InstalledLS) and
+     GetVersionNumbers(ExpandConstant('{srcexe}'), SetupMS, SetupLS) then begin
+    if (InstalledMS > SetupMS) or ((InstalledMS = SetupMS) and (InstalledLS > SetupLS)) then begin
+      Result := 'A newer Cyn version is already installed. Use the current installer instead.';
+      exit;
+    end;
+  end;
   Result := WaitForAudioAppsToExit(WizardSilent);
   if Result <> '' then exit;
   if DriverReady then exit;

@@ -24,7 +24,7 @@ if (!(Test-Path -LiteralPath $exe)) { throw 'MSBuild did not produce FxSound.exe
 $dist = Join-Path $root 'dist\Cyn'
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 Copy-Item -LiteralPath $exe -Destination (Join-Path $dist 'Cyn.exe') -Force
-Copy-Item -LiteralPath (Join-Path $root 'CynUpdater.ps1'),(Join-Path $root 'CynUpdaterWorker.ps1'),(Join-Path $root 'CynUpdateWindow.xaml') -Destination $dist -Force
+Copy-Item -LiteralPath (Join-Path $root 'CynUpdater.ps1'),(Join-Path $root 'CynUpdaterWorker.ps1'),(Join-Path $root 'CynUpdatePolicy.ps1'),(Join-Path $root 'CynUpdateWindow.xaml') -Destination $dist -Force
 Copy-Item -LiteralPath (Join-Path $root 'branding') -Destination $dist -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $root 'models\cyn-starter.json'),(Join-Path $root 'models\MODEL_CARD.md') -Destination $dist -Force
 # Built-in AI catalogue is native app data, not a website or hosted service.

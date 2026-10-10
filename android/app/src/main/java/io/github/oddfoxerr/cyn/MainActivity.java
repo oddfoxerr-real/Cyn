@@ -30,6 +30,7 @@ public final class MainActivity extends Activity {
     int page=0, feedbackEffect=4;
     int bg=0xff171a20, card=0xff1e222a, text=0xfff0f3f7, hint=0xffabb6c5, accent=0xff6ad4e5, outline=0xff39424f;
     boolean bound, seeking, reduced;
+    boolean checkingUpdate;
     JSONArray themes;
     final ServiceConnection connection=new ServiceConnection() {
         @Override public void onServiceConnected(ComponentName name,IBinder binder) { service=((AudioService.LocalBinder)binder).service(); build(); processControlIntent(getIntent()); }
@@ -46,7 +47,7 @@ public final class MainActivity extends Activity {
     void processControlIntent(Intent i) {
         if(service!=null&&AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL.equals(i.getAction())) {
             int session=i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1);
-            if(session>0) { startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("session",session)); i.setAction(null); }
+            startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("session",session)); i.setAction(null);
         }
     }
     String asset(String name) throws IOException { try(InputStream in=getAssets().open(name)) { return Streams.text(in); } }
@@ -130,6 +131,9 @@ public final class MainActivity extends Activity {
         category(source,"Other music apps",body->{
             add(body,label("Enable this before opening a compatible player's equalizer. Android must share that player's audio session with Cyn. Support varies by app and phone; Spotify is not guaranteed.",12,hint));
             add(body,button("Enable compatible-app enhancement",()->{ notifications(); startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR)); toast("Now reopen playback in your music app, or choose Cyn in its equalizer settings."); })); gap(body,8);
+            add(body,button("Try legacy compatibility",()->new AlertDialog.Builder(this).setTitle("Try output-mix effects?").setMessage("For players that do not share a session, this requests Android's legacy output-mix equalizer. It can affect all music on the phone and may not work on Samsung firmware. Turn off other equalizers first. Stop other-app enhancement restores normal routing; Cyn never changes your device volume.").setPositiveButton("Try",(d,w)->{ notifications(); startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("legacy",true)); }).setNegativeButton("Cancel",null).show())); gap(body,8);
+            add(body,button("Connection diagnostics",()->showText("Audio connection",service.diagnostics()))); gap(body,8);
+            add(body,label("For Spotify: start monitoring first, restart playback on this phone, then open Spotify Settings → Playback → Equalizer and select Cyn if offered. Remote Spotify Connect playback cannot be processed on this phone.",12,hint));
             add(body,button("Stop other-app enhancement",()->service.stopMonitor()));
         });
         liveStatus=label("",12,accent); add(source,liveStatus);
@@ -177,8 +181,8 @@ public final class MainActivity extends Activity {
         add(c,button("More here",()->labelFrames(true))); gap(c,8); add(c,button("Less here",()->labelFrames(false)));
         learningStatus=label("",12,accent); add(c,learningStatus);
         add(c,button("Train my model",()->{ if(service.training) toast("Training is already running."); else service.train(); }));
-        LinearLayout network=section("Local neural activity","Real hidden-neuron activations from the current session. No audio goes to a server.");
-        neural=new NeuralView(); network.addView(neural,new LinearLayout.LayoutParams(-1,dp(90))); liveStatus=label("",12,hint); add(network,liveStatus);
+        LinearLayout network=section("Local neural activity","Actual inputs → hidden activations → outputs from one forward pass. Cyan is positive; amber is negative. No audio goes to a server.");
+        neural=new NeuralView(); network.addView(neural,new LinearLayout.LayoutParams(-1,dp(220))); liveStatus=label("",12,hint); add(network,liveStatus);
         add(network,button("Enable audio analysis",()->{ service.smart=true; service.changed(); requestAnalysis(); }));
         LinearLayout starter=section("Your starting point","Personal learning starts neutral. Bass and clarity adapt after you train; width and loudness remain manual in this Android preview.");
         add(starter,label("For each effect, label at least five frames More and five Less across varied songs. Android captures a mono, processed spectrum; this differs from desktop Cyn's input analysis.",12,hint));
@@ -198,12 +202,59 @@ public final class MainActivity extends Activity {
             for(int i=0;i<themes.length();i++) { final int id=i; JSONObject theme=themes.optJSONObject(i); TextView b=button(theme.optString("name"),()->{ ui.edit().putInt("theme",id).apply(); build(); }); b.setTextColor(theme.optInt("accent",accent)); add(body,b); }
         });
         toggle(c,"Reduce motion",reduced,on->{ ui.edit().putBoolean("reduce",on).apply(); reduced=on; });
-        LinearLayout about=section("Cyn for Android","0.1.0 preview · based on desktop v2.0.16");
+        LinearLayout about=section("Cyn for Android",BuildConfig.VERSION_NAME+" · build "+BuildConfig.VERSION_CODE);
         add(about,label("Thank you, FxSound, for the open-source foundation. Android uses Android audio effects; it does not contain the Windows FxSound driver or claim identical DSP. Windows features such as AI Hub sharing and driver routing are not included in this preview.",13,hint));
+        add(about,button("Check for Android updates",this::checkUpdates)); gap(about,8);
+        add(about,label("Install newer APKs over this app to retain your feedback. Android verifies the app identity, signing key and version. Windows releases are separate.",12,hint));
         add(about,button("Support FxSound",()->browser("https://www.fxsound.com/donate"))); gap(about,8);
         add(about,button("Cyn source on GitHub",()->browser("https://github.com/oddfoxerr-real/Cyn"))); gap(about,8);
         add(about,button("Licenses and credits",()->{ try { showText("Licenses and credits",asset("NOTICE.txt")+"\n\n"+asset("LICENSE.txt")); } catch(Exception e) { toast("License file unavailable."); } }));
-        add(about,label("Cyn has no Internet permission. Files are opened through Android's file picker. Personal feedback stays in app-private storage and is removed when the app is uninstalled.",12,hint));
+        add(about,label("Only update checks contact GitHub when you tap Check for Android updates. Audio and feedback are never uploaded. Files are opened through Android's file picker. Personal feedback stays in app-private storage and is removed when the app is uninstalled.",12,hint));
+    }
+    void checkUpdates() {
+        if(checkingUpdate) { toast("An update check is already running."); return; }
+        checkingUpdate=true; toast("Checking Android releases…");
+        new Thread(()->{
+            String found=null,problem=null;
+            try {
+                for(int page=1;page<=3;page++) {
+                    javax.net.ssl.HttpsURLConnection connection=(javax.net.ssl.HttpsURLConnection)new java.net.URL("https://api.github.com/repos/oddfoxerr-real/Cyn/releases?per_page=50&page="+page).openConnection();
+                    connection.setConnectTimeout(12000); connection.setReadTimeout(12000);
+                    connection.setRequestProperty("User-Agent","Cyn-Android/"+BuildConfig.VERSION_NAME);
+                    connection.setRequestProperty("Accept","application/vnd.github+json");
+                    JSONArray releases;
+                    try {
+                        if(connection.getResponseCode()!=200) throw new IOException("GitHub returned "+connection.getResponseCode());
+                        try(InputStream input=connection.getInputStream(); ByteArrayOutputStream output=new ByteArrayOutputStream()) {
+                            byte[] buffer=new byte[8192]; int count;
+                            while((count=input.read(buffer))!=-1) { if(output.size()+count>4*1024*1024) throw new IOException("Release response too large"); output.write(buffer,0,count); }
+                            releases=new JSONArray(output.toString("UTF-8"));
+                        }
+                    } finally { connection.disconnect(); }
+                    for(int i=0;i<releases.length();i++) {
+                        JSONObject release=releases.getJSONObject(i);
+                        if(release.optBoolean("draft")||release.isNull("published_at")) continue;
+                        String v=AndroidRelease.newerVersion(release.optString("tag_name"),BuildConfig.VERSION_NAME);
+                        if(v==null) continue;
+                        JSONArray assets=release.optJSONArray("assets"); if(assets==null) continue;
+                        for(int a=0;a<assets.length();a++) {
+                            JSONObject asset=assets.getJSONObject(a);
+                            if("uploaded".equals(asset.optString("state"))&&AndroidRelease.assetUrl(v).equals(asset.optString("browser_download_url"))&&
+                                (found==null||AndroidRelease.number(v)>AndroidRelease.number(found))) found=v;
+                        }
+                    }
+                    if(releases.length()<50) break;
+                }
+            } catch(Exception e) { problem=e.getMessage(); }
+            final String version=found,error=problem;
+            handler.post(()->{
+                checkingUpdate=false; if(isFinishing()||isDestroyed()) return;
+                if(error!=null) { showText("Update check failed",error+"\nTry again later. Your installed app has not changed."); return; }
+                if(version==null) { toast("Cyn "+BuildConfig.VERSION_NAME+" is the newest available Android preview."); return; }
+                new AlertDialog.Builder(this).setTitle("Cyn "+version+" is available").setMessage("Download the APK, then open it and choose Update. Keep this app installed so your settings and personal model are preserved. Android will ask you to confirm installation.")
+                    .setPositiveButton("Download update",(d,w)->browser(AndroidRelease.assetUrl(version))).setNegativeButton("Later",null).show();
+            });
+        },"Cyn-update-check").start();
     }
     void browser(String url) { try { startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url))); } catch(ActivityNotFoundException e) { toast("No browser is installed."); } }
     void showText(String title,String value) { ScrollView s=new ScrollView(this); s.setBackgroundColor(card); TextView t=label(value,13,text); t.setPadding(dp(20),dp(12),dp(20),dp(12)); t.setTextIsSelectable(true); s.addView(t); new AlertDialog.Builder(this).setTitle(title).setView(s).setPositiveButton("Close",null).show(); }
@@ -217,7 +268,7 @@ public final class MainActivity extends Activity {
         if(liveStatus!=null) {
             StringBuilder state=new StringBuilder(page==1?service.analysis:service.status);
             if(page==0) { if(service.monitor&&service.chains.isEmpty()) state.append("\nWaiting for a compatible player session."); for(AudioService.Chain c:service.chains.values()) state.append("\n").append(c.description()); }
-            if(page==1) state.append("\nBass ").append(Math.round(service.predictions[4]*100)).append("% · Clarity ").append(Math.round(service.predictions[0]*100)).append("% model outputs");
+            if(page==1) state.append("\n").append(service.neuralStatus());
             liveStatus.setText(state.toString());
         }
         if(learningStatus!=null) {
@@ -265,7 +316,35 @@ public final class MainActivity extends Activity {
     }
     final class NeuralView extends View {
         final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
-        NeuralView() { super(MainActivity.this); setContentDescription("Twelve hidden neuron activations from the actual local model."); }
-        @Override protected void onDraw(Canvas c) { super.onDraw(c); for(int i=0;i<12;i++) { p.setColor(accent); p.setAlpha(45+(int)(Math.abs(service.neurons[i])*210)); float x=(i%6+.5f)*getWidth()/6,y=(i/6+.5f)*getHeight()/2; c.drawCircle(x,y,dp(8)+(float)Math.abs(service.neurons[i])*dp(5),p); } }
+        final double[] direction=new double[5];
+        final String[] names={"Clarity","Ambience","Surround","Dynamic","Bass"};
+        NeuralView() { super(MainActivity.this); setContentDescription("Measured 11 input, 12 hidden and 5 output neural activations; no decorative animation."); }
+        float x(int i,int count) { return dp(10)+(getWidth()-dp(20))*i/(count-1f); }
+        void edges(Canvas c,double[] values,int from,int to,float y1,float y2) {
+            p.setStrokeWidth(dp(.8f));
+            for(int j=0;j<to;j++) for(int i=0;i<from;i++) {
+                double v=values[j*from+i]; p.setColor(v<0?0xffeeb060:accent); p.setAlpha(10+(int)(170*(1-Math.exp(-Math.abs(v)))));
+                c.drawLine(x(i,from),y1,x(j,to),y2,p);
+            }
+        }
+        void nodes(Canvas c,double[] values,float y) {
+            for(int i=0;i<values.length;i++) { double v=values[i]; p.setColor(v<0?0xffeeb060:accent); p.setAlpha(35+(int)(220*Math.min(1,Math.abs(v)))); c.drawCircle(x(i,values.length),y,dp(3.5f),p); }
+        }
+        @Override protected void onDraw(Canvas c) {
+            super.onDraw(c); PreferenceModel.Trace t=service.neuralTrace();
+            p.setAlpha(255); p.setColor(hint); p.setTextSize(dp(12));
+            if(t==null) { c.drawText(service.training?"Waiting for a training epoch":"Waiting for fresh audio analysis",dp(4),getHeight()/2f,p); return; }
+            float y1=dp(20),y2=getHeight()*.42f,y3=getHeight()-dp(55);
+            edges(c,t.inputConnections,11,12,y1,y2); edges(c,t.outputConnections,12,5,y2,y3);
+            nodes(c,t.inputs,y1); nodes(c,t.hidden,y2);
+            for(int i=0;i<5;i++) direction[i]=t.ready[i]?t.outputs[i]*2-1:0; nodes(c,direction,y3);
+            p.setTextAlign(Paint.Align.CENTER); p.setAlpha(255); p.setColor(hint); p.setTextSize(dp(9));
+            for(int i=0;i<5;i++) {
+                float labelX=dp(23)+(getWidth()-dp(46))*i/4f;
+                c.drawText(names[i],labelX,y3+dp(19),p);
+                c.drawText(t.ready[i]?Math.round(t.outputs[i]*100)+"%":"--",labelX,y3+dp(34),p);
+            }
+            p.setTextAlign(Paint.Align.LEFT);
+        }
     }
 }

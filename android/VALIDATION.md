@@ -1,28 +1,27 @@
-# Android preview validation — 2026-10-10
+# Android 0.1.1 preview validation — 2026-10-11
 
-Desktop base: `bcf2e41ce8842fe009049f1476565142338a3cf1` (v2.0.16).
+Built locally with JDK 17, Gradle 8.11.1, AGP 8.9.2 and Android SDK 35.
 
-Completed locally:
-
-- JDK 17 / Gradle 8.11.1 / Android Gradle Plugin 8.9.2 / SDK 35 release build.
-- `:app:assembleRelease :app:lintRelease`: successful; **0 lint errors**.
-  Five warnings concern English-only text formatting/localization. The preview UI is English.
-- Pure-Java host test: **32 assertions passed**. Covers finite silence/invalid inputs,
-  low/high-frequency discrimination, unsigned waveform decoding, bounded model outputs,
-  sensitivity limits, real neural optimization and learned More/Less separation,
-  insufficient-label rejection, completed epochs and training-copy isolation.
-- Android `apksigner verify --verbose --print-certs`: signature verified, APK v2 signing,
-  RSA 3072. Certificate SHA-256:
+- `:app:assembleRelease :app:lintRelease` succeeds. Zero lint errors; five
+  existing English localization warnings. No drawing-allocation warning remains.
+- Pure-Java host tests: **285 assertions passed**. Covers audio feature extraction,
+  learned More/Less separation, inference/telemetry equivalence, every connection's
+  contribution, real candidate-training snapshots and Android-only version selection.
+- Package: `io.github.oddfoxerr.cyn`, versionCode **2**, versionName **0.1.1-preview**,
+  minimum SDK 28, target SDK 35. Original package identity retained.
+- Release signing key retained from 0.1.0. Certificate SHA-256:
   `20698db6b762137a5e5199c0c5a6c728e8b90374d9dc76973c6ea21c005ee13d`.
-- Android `aapt dump badging`: package `io.github.oddfoxerr.cyn`, versionCode 1,
-  versionName `0.1.0-preview`, minSdk 28, targetSdk 35. Launcher is MainActivity.
-  No Internet permission. Microphone hardware is optional.
+- Internet permission is used for explicit GitHub update checks. No audio, numerical
+  features, model weights or user feedback are sent. Android's installer handles
+  installing the downloaded APK and enforcing its signature/version.
 
-Not validated: installation, rendering, actual audio, battery behavior, Bluetooth,
-notifications or external music-app compatibility on a physical Android device.
-`adb devices` returned no connected devices. There was no emulator available.
-No claim of Android or real-song model accuracy, full desktop feature parity,
-universal external-app processing or a finished stable mobile release is made.
+**Not device-tested:** Galaxy A56/Spotify routing, legacy output-mix support,
+rendering, phone permissions, playback/Bluetooth, and installing over 0.1.0 on a
+physical phone. No device or emulator was available. EQ control status reports
+Android's API state and cannot establish that a particular external app is audible
+through that effect. Compare Enhancement on/off using the same music section.
 
-Build and signing happen locally. This task does not publish an APK to GitHub or a
-store, install software onto a phone, change Windows audio routing or run an installer.
+Install the new APK over the existing Cyn app to preserve model, labels and settings.
+Do not uninstall first. The signing key and its encrypted password are excluded from
+Git and source ZIPs. This remains a preview, not a claim of universal system-wide
+Android processing or real-song model accuracy.

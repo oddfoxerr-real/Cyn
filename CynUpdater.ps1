@@ -8,6 +8,19 @@ param(
 )
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
+# One updater per login session, including download and install phases.
+$updateMutex=[Threading.Mutex]::new($false,'Local\Cyn.Update')
+$ownsMutex=$false
+try { $ownsMutex=$updateMutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $ownsMutex=$true }
+if(!$ownsMutex) {
+    if($Interactive) { Add-Type -AssemblyName PresentationFramework; [Windows.MessageBox]::Show('A Cyn update is already open. Finish or close that update first.','Cyn Updates') | Out-Null }
+    $updateMutex.Dispose(); exit 0
+}
+try {
+. (Join-Path $PSScriptRoot 'CynUpdatePolicy.ps1')
+$registered=@(Get-CynRegisteredDirectories)
+$installDirectory=Resolve-CynInstallDirectory $PSScriptRoot $registered
+$CurrentVersion=(Get-CynVersionFloor ([version]$CurrentVersion) (@($PSScriptRoot)+$registered)).ToString(3)
 $workerPath=Join-Path $PSScriptRoot 'CynUpdaterWorker.ps1'
 $xamlPath=Join-Path $PSScriptRoot 'CynUpdateWindow.xaml'
 if (!(Test-Path -LiteralPath $workerPath)) {
@@ -102,6 +115,20 @@ function Spark-Reveal {
 }
 
 $actionButton.Add_Click({
+    if ($script:phase -eq 'stuck') {
+        # Explicit user action, limited to the exact processes seen at timeout.
+        try {
+            foreach($old in $script:stuckProcesses) {
+                $process=Get-Process -Id $old.Id -ErrorAction SilentlyContinue
+                if($process -and $process.ProcessName -eq 'Cyn' -and $process.StartTime -eq $old.StartTime -and $process.SessionId -eq $old.SessionId) {
+                    Stop-Process -InputObject $process -ErrorAction Stop
+                }
+            }
+            $script:phase='closing'; $script:exitRequestedAt=[datetime]::UtcNow
+            $actionButton.IsEnabled=$false; $laterButton.Visibility='Collapsed'
+        } catch { Show-Error ('Unable to close Cyn: '+$_.Exception.Message) }
+        return
+    }
     if ($script:phase -eq 'ready') {
         $script:installRequested=$true
         $script:phase='closing'
@@ -109,7 +136,7 @@ $actionButton.Add_Click({
         $actionButton.IsEnabled=$false
         $laterButton.Visibility='Collapsed'
         Update-Label 'Preparing installation' 'Safely saving audio settings and closing Cyn...'
-        $cyn=Join-Path $PSScriptRoot 'Cyn.exe'
+        $cyn=Join-Path $installDirectory 'Cyn.exe'
         if (Test-Path -LiteralPath $cyn) {
             try {
                 # JUCE single-instance IPC forwards this to the active Cyn process.
@@ -139,12 +166,12 @@ $clock=New-Object Windows.Threading.DispatcherTimer
 $clock.Interval=[TimeSpan]::FromMilliseconds(140)
 $clock.Add_Tick({
     if ($script:phase -eq 'closing') {
-        $running=@(Get-Process -Name Cyn -ErrorAction SilentlyContinue | Where-Object {
-            try { $_.Path -ieq (Join-Path $PSScriptRoot 'Cyn.exe') } catch { $false }
-        })
+        $running=@(Get-CynSessionProcesses)
         if ($running.Count -eq 0) {
             try {
-                $script:installProcess=Start-Process -FilePath $script:installerPath -Verb RunAs -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -PassThru
+                $floor=Get-CynVersionFloor ([version]$CurrentVersion) @($installDirectory)
+                if([version]$script:newVersion -lt $floor) { throw 'A newer version is already installed. This update was cancelled.' }
+                $script:installProcess=Start-Process -FilePath $script:installerPath -Verb RunAs -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="'+$installDirectory+'"') -PassThru
                 $script:phase='installing'
                 Update-Label 'Installing Cyn' 'Windows is applying the verified update...'
                 $progressText.Text='Installation in progress'
@@ -153,7 +180,11 @@ $clock.Add_Tick({
                 Show-Error ("Installer could not start: "+$_.Exception.Message)
             }
         } elseif (([datetime]::UtcNow - $script:exitRequestedAt).TotalSeconds -gt 25) {
-            Show-Error 'Cyn did not exit cleanly. Try again after closing other audio apps.'
+            $script:stuckProcesses=@($running | Select-Object Id,StartTime,SessionId)
+            $script:phase='stuck'
+            Update-Label 'Cyn is still running' 'The audio app did not respond to Exit. You can close the stuck Cyn process here; unsaved settings may be lost.'
+            $actionButton.Content='Close stuck Cyn & retry'; $actionButton.IsEnabled=$true
+            $laterButton.Content='Cancel update'; $laterButton.Visibility='Visible'
         }
         return
     }
@@ -163,6 +194,9 @@ $clock.Add_Tick({
                 Show-Error ("Installer returned error "+$script:installProcess.ExitCode+". Your previous installation remains available.")
                 return
             }
+            try { Assert-CynInstalledVersion $installDirectory ([version]$script:newVersion) }
+            catch { Show-Error $_.Exception.Message; return }
+            try { Repair-CynUserLaunchers $installDirectory } catch { $script:launcherWarning=$_.Exception.Message }
             $script:phase='complete'
             $script:finishedAt=[datetime]::UtcNow
             Update-Label 'Update complete' ("Cyn "+$script:newVersion+" is ready. Launching...")
@@ -174,13 +208,16 @@ $clock.Add_Tick({
     }
     if ($script:phase -eq 'complete') {
         if (([datetime]::UtcNow-$script:finishedAt).TotalMilliseconds -gt 1500) {
-            try { Start-Process -FilePath (Join-Path $PSScriptRoot 'Cyn.exe') -WorkingDirectory $PSScriptRoot | Out-Null } catch {}
+            try {
+                Assert-CynInstalledVersion $installDirectory ([version]$script:newVersion)
+                Start-Process -FilePath (Join-Path $installDirectory 'Cyn.exe') -WorkingDirectory $installDirectory | Out-Null
+            } catch { Show-Error ('Updated app could not launch: '+$_.Exception.Message); return }
             $script:allowedToClose=$true
             $window.Close()
         }
         return
     }
-    if ($script:phase -in @('ready','error','current')) { return }
+    if ($script:phase -in @('ready','error','current','stuck')) { return }
     if (Test-Path -LiteralPath $status) {
         try {
             $data=Get-Content -LiteralPath $status -Raw | ConvertFrom-Json
@@ -232,3 +269,5 @@ try {
     Remove-Item -LiteralPath $status -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath "$status.tmp" -Force -ErrorAction SilentlyContinue
 }
+
+} finally { if($ownsMutex){$updateMutex.ReleaseMutex()}; $updateMutex.Dispose() }

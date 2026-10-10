@@ -12,7 +12,7 @@ Cyn possible. If you enjoy Cyn, please [visit FxSound](https://www.fxsound.com/)
 ## Download
 
 Open [Releases](https://github.com/oddfoxerr-real/Cyn/releases) and download the
-latest **Cyn-Setup-2.0.1-x64.exe**. Exit any running Cyn or FxSound using its menu
+Windows **Cyn-Setup** installer for the desired release. Exit any running Cyn or FxSound using its menu
 before installing. Windows 10/11 on Intel/AMD x64 and administrator access are required.
 
 Setup includes presets, fonts, the starter model and the original signed FxSound
@@ -32,8 +32,9 @@ Uninstall keeps personal settings/training data and the shared audio driver.
 The starter model has synthetic training/validation only. Real-song quality,
 hardware reconnection behavior and clean-PC installer/uninstaller integration
 still need testing. The app and setup are unsigned community builds; the included
-driver retains its Microsoft signature. **Built-in update delivery is not implemented.**
-Releases currently provide manual downloads.
+driver retains its Microsoft signature. Windows includes a GitHub updater with download verification and installation confirmation. Android has a separate update check in Themes; Android confirms APK installation.
+
+[Android preview and download instructions](android/README.md).
 
 ## Build
 
@@ -47,7 +48,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_INSTALLER.ps1
 
 If build tools are missing, `SETUP_BUILD_TOOLS.ps1` can install the prerequisites.
 The installer script obtains a pinned, signature-verified Inno Setup compiler
-when needed. Output: `dist/Cyn/Cyn.exe` and `dist/Cyn-Setup-2.0.1-x64.exe`.
+when needed. Output: `dist/Cyn/Cyn.exe` and `dist/Cyn-Setup-2.0.17-x64.exe`.
 
 See [the user guide](README_CYN.md), [model card](models/MODEL_CARD.md),
 [installer details](Installer/Cyn/README.md), and [validation](VALIDATION.md).

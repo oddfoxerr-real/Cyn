@@ -25,3 +25,6 @@ __pycache__/
 /dsp/x64/
 /fxdiag/x64/
 /training/generated/
+
+/lib/
+/bin/x64/FxSound.exe

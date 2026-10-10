@@ -40,7 +40,7 @@ void launchCynUpdater(bool interactive)
         if (interactive) AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "CynUpdater.ps1 is missing. Reinstall Cyn.");
         return;
     }
-    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.16" + (interactive ? " -Interactive" : "");
+    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion " + JUCEApplication::getInstance()->getApplicationVersion().upToLastOccurrenceOf(".",false,false) + (interactive ? " -Interactive" : "");
     auto result = ShellExecuteW(nullptr, L"open", L"powershell.exe", args.toWideCharPointer(), nullptr, SW_HIDE);
     if (reinterpret_cast<INT_PTR>(result) <= 32 && interactive)
         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");
@@ -3068,11 +3068,15 @@ void FxController::updateSmartListening()
     smart_stale_ticks_=fresh?0:jmin(100,smart_stale_ticks_+1);
     smart_last_sequence_=input.sequence;
     const bool active=audio_process_on_ && playback_device_available_ && FxModel::getModel().getPowerState();
-    if(fresh && active && input.rms>0.0001f) smart_history_.push_back({input,now});
+    if(fresh && active && input.rms>0.0001f) {
+        smart_history_.push_back({input,now});
+        smart_activity_=smart_model_.trace(input);
+        smart_activity_at_=now;
+    } else if(fresh || !active) { smart_activity_={}; smart_activity_at_=0; }
     while(!smart_history_.empty() && (smart_history_.front().id<now-60000 || smart_history_.size()>600)) smart_history_.erase(smart_history_.begin());
     if(!smart_enabled_) return;
     const bool listening=active && smart_stale_ticks_<4 && input.rms>0.0001f;
-    const auto predictions=smart_model_.predict(input);
+    const auto& predictions=smart_activity_.outputs;
     const float amount=smart_sensitivity_/100.0f,depth=jmin(1.0f,amount*2);
     const float up[5]={3,2,2,2,4},down[5]={0.65f,0.9f,0.9f,0.65f,0.9f};
     for(int e=0;e<5;++e) {
@@ -3129,13 +3133,15 @@ bool FxController::getLiveNeuralActivity(NeuralActivitySnapshot& out) const
 {
     // The UI and audio-history maintenance run on the message thread; the trainer
     // optimizes a separate model copy until its message-thread commit callback.
-    if(smart_history_.empty() || !playback_device_available_ ||
+    if(smart_training_) return smart_training_activity_ && smart_training_activity_->read(out);
+    if(!audio_process_on_ || !smart_activity_.sequence || smart_stale_ticks_>=4 || !playback_device_available_ ||
        !FxModel::getModel().getPowerState())
         return false;
-    const auto& frame=smart_history_.back();
-    if(frame.audio.rms<=0.0001f || Time::currentTimeMillis()-frame.id>1200)
+    if(smart_activity_.rms<=0.0001f || Time::currentTimeMillis()-smart_activity_at_>450)
         return false;
-    out=smart_model_.trace(frame.audio);
+    out=smart_activity_;
+    out.applied=smart_enabled_ && smart_sensitivity_>0 &&
+        std::any_of(out.ready.begin(),out.ready.end(),[](bool ready){return ready;});
     return true;
 }
 void FxController::trainSmartModel()
@@ -3143,11 +3149,15 @@ void FxController::trainSmartModel()
     if(smart_training_) return;
     auto examples=smart_examples_; auto model=std::make_shared<PersonalAudioModel>(smart_model_);
     smart_training_epoch_.store(0,std::memory_order_relaxed);
+    smart_training_activity_=std::make_shared<NeuralTrainingTelemetry>();
+    auto telemetry=smart_training_activity_;
     smart_training_=true;
     Component::SafePointer<FxMainWindow> window(main_window_);
     auto* epochs=&smart_training_epoch_;
-    Thread::launch([examples,model,window,epochs] {
-        const bool success=model->fit(examples,epochs);
+    Thread::launch([examples,model,window,epochs,telemetry] {
+        const bool success=model->fit(examples,epochs,[telemetry](const NeuralActivitySnapshot& s,int epoch) {
+            telemetry->publish(s,epoch);
+        });
         MessageManager::callAsync([model,window,success] {
             if(window==nullptr) return;
             auto& c=FxController::getInstance(); c.smart_training_=false;

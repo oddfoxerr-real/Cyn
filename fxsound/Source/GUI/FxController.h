@@ -325,6 +325,9 @@ private:
     void loadSmartModel(bool starterOnly = false);
     void saveSmartModel();
     PersonalAudioModel smart_model_;
+    NeuralActivitySnapshot smart_activity_ {};
+    int64_t smart_activity_at_ = 0;
+    std::shared_ptr<NeuralTrainingTelemetry> smart_training_activity_;
     std::vector<AudioExample> smart_examples_;
     std::vector<AudioFrame> smart_history_;
     std::array<float,5> smart_effects_ {}, smart_scores_ {{0.5f,0.5f,0.5f,0.5f,0.5f}};

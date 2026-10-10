@@ -29,7 +29,29 @@ int main(int argc,char** argv) {
         labels.push_back({b,4,true,i,false}); labels.push_back({t,4,false,100+i,false});
         labels.push_back({b,0,false,200+i,false}); labels.push_back({t,0,true,300+i,false});
     }
-    assert(learned.fit(labels));
+    int telemetryEpoch=0, telemetryFrames=0;
+    std::atomic<int> completed {0};
+    assert(learned.fit(labels,&completed,[&](const NeuralActivitySnapshot& s,int epoch) {
+        assert(epoch>telemetryEpoch); telemetryEpoch=epoch; ++telemetryFrames;
+        assert(s.outputs==learned.trace(labels.front().audio).outputs);
+    }));
+    assert(telemetryEpoch==240 && completed==240 && telemetryFrames==21);
+    const auto trace=learned.trace(bass);
+    assert(trace.sequence==bass.sequence && trace.outputs==learned.predict(bass));
+    for(int j=0;j<12;++j) {
+        float sum=learned.weights[132+j];
+        for(int i=0;i<11;++i) {
+            assert(trace.inputConnections[j*11+i]==trace.inputs[i]*learned.weights[j*11+i]);
+            sum+=trace.inputConnections[j*11+i];
+        }
+        assert(std::abs(trace.hidden[j]-std::tanh(sum))<1e-6f);
+    }
+    for(int o=0;o<5;++o) for(int j=0;j<12;++j)
+        assert(trace.outputConnections[o*12+j]==trace.hidden[j]*learned.weights[144+o*12+j]);
+    NeuralTrainingTelemetry telemetry;
+    NeuralActivitySnapshot copy;
+    assert(!telemetry.read(copy)); telemetry.publish(trace,240);
+    assert(telemetry.read(copy) && copy.training && copy.epoch==240 && copy.outputs==trace.outputs);
     assert(learned.ready[4] && learned.ready[0] && !learned.ready[1] && !learned.ready[2] && !learned.ready[3]);
     assert(learned.predict(bass)[4]>.85 && learned.predict(treble)[4]<.15);
     assert(learned.predict(bass)[0]<.15 && learned.predict(treble)[0]>.85);

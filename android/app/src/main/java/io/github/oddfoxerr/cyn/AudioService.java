@@ -37,12 +37,38 @@ public final class AudioService extends Service {
     final float[] eq=new float[5];
     String title="Choose a song", status="Ready", analysis="Enable analysis to use Smart listening.";
     double[] predictions=new double[5], neurons=new double[12];
-    private long lastFrame;
+    private long lastFrame, traceAt;
+    private PreferenceModel.Trace liveTrace, trainingTrace;
+    int traceSequence;
+    boolean legacy;
+    PreferenceModel.Trace neuralTrace() { return training?trainingTrace:enabled&&smart&&SystemClock.elapsedRealtime()-traceAt<900?liveTrace:null; }
+    Chain displayedChain() { return chains.get(legacy?0:playing?playerSession:activeSession); }
+    String neuralStatus() {
+        if(training) return "Training candidate · epoch "+trainingEpoch+" / 240 · example input";
+        PreferenceModel.Trace t=neuralTrace(); Chain c=displayedChain();
+        if(t==null) return "No fresh audio analysis · no live model values";
+        String outputs="Frame #"+traceSequence+" · Bass "+(t.ready[4]?Math.round(t.outputs[4]*100)+"%":"untrained")+" · Clarity "+(t.ready[0]?Math.round(t.outputs[0]*100)+"%":"untrained");
+        boolean applied=c!=null&&c.controlsEq()&&sensitivity>0&&(t.ready[4]||t.ready[0]);
+        return outputs+"\n"+(applied?"Adjustments sent to Android EQ":"Preview only · adjustments not applied")+
+            (c==null?"":String.format(Locale.ROOT,"\nEQ offsets requested: bass %+.2f dB · clarity %+.2f dB",c.controlsEq()?PreferenceModel.clamp(bass+c.bassOffset,0,6)-bass:0,c.controlsEq()?PreferenceModel.clamp(clarity+c.clarityOffset,0,6)-clarity:0));
+    }
+    void clearTrace() { liveTrace=null; traceAt=0; Arrays.fill(predictions,0); Arrays.fill(neurons,0); }
+    String diagnostics() {
+        StringBuilder s=new StringBuilder("Cyn "+BuildConfig.VERSION_NAME+" ("+BuildConfig.VERSION_CODE+")\n"+Build.MANUFACTURER+" "+Build.MODEL+" · Android "+Build.VERSION.RELEASE+"\nMonitor: "+monitor+" · legacy output mix: "+legacy+"\n"+neuralStatus());
+        for(Chain c:chains.values()) s.append("\n").append(c.description());
+        if(chains.isEmpty()) s.append("\nNo audio session received. Start monitoring, then reopen playback or select Cyn in the music app's equalizer.");
+        return s.toString();
+    }
+    void startLegacy() {
+        for(Integer id:new ArrayList<>(chains.keySet())) detach(id);
+        legacy=true; monitor=true; attach(0,"Legacy output mix (device dependent)");
+        status="Legacy compatibility requested; compare sound with Enhancement on/off. Effect ownership does not prove this phone routes Spotify through it.";
+    }
     private final BroadcastReceiver receiver=new BroadcastReceiver() {
         @Override public void onReceive(Context c,Intent i) {
             String action=i.getAction();
             if(AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(action)) { if(playing) pause(); return; }
-            if(!monitor) return;
+            if(!monitor||legacy) return;
             int id=i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1);
             if(id<=0||id==playerSession) return;
             if(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION.equals(action)) attach(id,i.getStringExtra(AudioEffect.EXTRA_PACKAGE_NAME));
@@ -87,15 +113,24 @@ public final class AudioService extends Service {
         try {
             String action=i.getAction();
             if(STOP.equals(action)) { stopAll(); return START_NOT_STICKY; }
-            if(MONITOR.equals(action)) { monitor=true; foreground(); int id=i.getIntExtra("session",-1); if(id>0&&id!=playerSession) attach(id,"Music app"); status="Listening for compatible music apps"; }
+            if(MONITOR.equals(action)) {
+                monitor=true; foreground();
+                if(i.getBooleanExtra("legacy",false)) startLegacy();
+                else {
+                    if(legacy) { detach(0); legacy=false; if(playerSession>0) attach(playerSession,"Cyn player"); }
+                    int id=i.getIntExtra("session",-1); if(id>0&&id!=playerSession) attach(id,"Music app");
+                    status="Waiting for a music app to share its audio session";
+                }
+            }
             else if(PLAY.equals(action)&&i.getData()!=null) { foreground(); open(i.getData()); }
             else if(TOGGLE.equals(action)) { if(playing) pause(); else { foreground(); startPlayback(); } }
         } catch(Exception e) { status="Audio could not start: "+e.getClass().getSimpleName(); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); }
         return START_NOT_STICKY;
     }
     void stopMonitor() {
-        monitor=false; for(Integer id:new ArrayList<>(chains.keySet())) if(id!=playerSession) detach(id);
+        monitor=false; legacy=false; for(Integer id:new ArrayList<>(chains.keySet())) if(id!=playerSession) detach(id);
         if(playing||preparing) foreground(); else { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); }
+        if(playerSession>0) attach(playerSession,"Cyn player");
         status="Other-app enhancement stopped";
     }
     private void foreground() {
@@ -156,29 +191,31 @@ public final class AudioService extends Service {
         if(playerSession>0) detach(playerSession); playerSession=-1;
         if(player!=null) { player.release(); player=null; } playing=false; preparing=false; audio.abandonAudioFocusRequest(focus);
     }
-    void stopAll() { monitor=false; releasePlayer(); for(Integer id:new ArrayList<>(chains.keySet())) detach(id); mediaSession.setActive(false); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); status="Stopped"; }
+    void stopAll() { monitor=false; legacy=false; clearTrace(); releasePlayer(); for(Integer id:new ArrayList<>(chains.keySet())) detach(id); mediaSession.setActive(false); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); status="Stopped"; }
     private void attach(int id,String owner) {
-        if(id<=0||chains.containsKey(id)) return;
+        if(id<0||(!legacy&&id==0)||(legacy&&id!=0)||chains.containsKey(id)) return;
         if(chains.size()>=8) { status="Too many audio sessions; close an unused player."; return; }
-        Chain c=new Chain(id,owner==null?"Music app":owner); chains.put(id,c); activeSession=id; frames.clear(); c.apply(); c.analyze();
+        clearTrace(); Chain c=new Chain(id,owner==null?"Music app":owner); chains.put(id,c); activeSession=id; frames.clear(); c.apply(); c.analyze();
     }
     private void detach(int id) {
-        Chain c=chains.remove(id); if(c!=null) c.close();
+        clearTrace(); Chain c=chains.remove(id); if(c!=null) c.close();
         if(activeSession==id) { activeSession=chains.isEmpty()?-1:chains.keySet().iterator().next(); frames.clear(); }
     }
     void changed() {
         SharedPreferences.Editor e=prefs.edit().putBoolean("enabled",enabled).putBoolean("smart",smart).putFloat("sensitivity",sensitivity).putFloat("bass",bass).putFloat("clarity",clarity).putFloat("width",width).putFloat("loudness",loudness);
         for(int i=0;i<5;i++) e.putFloat("eq"+i,eq[i]); e.apply();
         for(Chain c:chains.values()) { c.apply(); c.analyze(); }
-        if(!smart||!enabled) { Arrays.fill(predictions,0); Arrays.fill(neurons,0); analysis="Analysis off · manual settings restored"; }
+        if(!smart||!enabled) { clearTrace(); analysis="Analysis off · manual settings restored"; }
     }
     void train() {
-        if(training) return; training=true; trainingEpoch=0;
+        if(training) return; training=true; trainingEpoch=0; trainingTrace=null;
         PreferenceModel candidate=learning.model.copy(); ArrayList<PreferenceModel.Example> labels=new ArrayList<>(learning.examples);
         trainer.execute(()->{
-            boolean success=candidate.fit(labels,epoch->handler.post(()->trainingEpoch=epoch));
+            boolean success=candidate.fit(labels,epoch->{},(trace,epoch)->handler.post(()->{
+                if(!destroyed) { trainingEpoch=epoch; trainingTrace=trace; }
+            }));
             handler.post(()->{
-                if(destroyed) return; training=false;
+                if(destroyed) return; training=false; trainingTrace=null; clearTrace();
                 if(success) { learning.model=candidate; learning.message="Training complete · 240 real epochs on your feedback."; try { learning.save(); } catch(Exception e) { learning.message="Trained, but could not save the model."; } }
                 else learning.message="Each effect needs at least five More and five Less frames.";
             });
@@ -187,9 +224,9 @@ public final class AudioService extends Service {
     private final Runnable tick=new Runnable() {
         @Override public void run() {
             if(destroyed) return;
-            for(Chain c:chains.values()) { if(SystemClock.elapsedRealtime()-c.lastCapture>2000) c.targetBass=c.targetClarity=0; c.bassOffset+=(c.targetBass-c.bassOffset)*.12; c.clarityOffset+=(c.targetClarity-c.clarityOffset)*.12; c.apply(); }
+            for(Chain c:chains.values()) { if(SystemClock.elapsedRealtime()-c.lastCapture>900) c.targetBass=c.targetClarity=0; c.bassOffset+=(c.targetBass-c.bassOffset)*.12; c.clarityOffset+=(c.targetClarity-c.clarityOffset)*.12; c.apply(); }
             long now=SystemClock.elapsedRealtime();
-            if(now-lastFrame>2500) { Arrays.fill(predictions,0); Arrays.fill(neurons,0); if(smart&&enabled) analysis="Waiting for session analysis · enable permission if needed"; }
+            if(now-traceAt>900) { clearTrace(); if(smart&&enabled) analysis="Waiting for session analysis · enable permission if needed"; }
             long cutoff=System.nanoTime()-60_000_000_000L; while(!frames.isEmpty()&&frames.get(0).id<cutoff) frames.remove(0);
             handler.postDelayed(this,150);
         }
@@ -216,14 +253,16 @@ public final class AudioService extends Service {
                 visualizer.setDataCaptureListener(new Visualizer.OnDataCaptureListener() {
                     @Override public void onWaveFormDataCapture(Visualizer v,byte[] wave,int rate) { double[] levels=AudioFeatures.levels(wave); rms=levels[0]; peak=levels[1]; }
                     @Override public void onFftDataCapture(Visualizer v,byte[] fft,int rate) {
+                        if(destroyed||v!=visualizer||!smart||!enabled||chains.get(id)!=Chain.this) return;
                         lastCapture=SystemClock.elapsedRealtime();
                         double[] x=AudioFeatures.fromFft(fft,rate/1000,rms,peak);
-                        double[] p=learning.model.predict(x);
+                        PreferenceModel.Trace trace=learning.model.trace(x); double[] p=trace.outputs;
                         // Do not boost silence. The model does not control Android volume or routing.
                         targetBass=rms>.01&&learning.model.ready[4]?(p[4]*2-1)*bass*sensitivity:0;
                         targetClarity=rms>.01&&learning.model.ready[0]?(p[0]*2-1)*clarity*sensitivity:0;
-                        if((playing&&id==playerSession)||(!playing&&id==activeSession)) {
-                            predictions=p; neurons=learning.model.hidden(x); analysis=rms>.01?"Live session analysis · features stay on this phone":"Waiting for audible audio";
+                        if(id==0||(playing&&id==playerSession)||(!playing&&id==activeSession)) {
+                            if(rms>.01) { liveTrace=trace; traceAt=lastCapture; traceSequence++; } else clearTrace();
+                            predictions=p; neurons=trace.hidden; analysis=rms>.01?"Live session analysis · features stay on this phone":"Waiting for audible audio";
                             if(rms>.01&&lastCapture-lastFrame>=240) { lastFrame=lastCapture; frames.add(new Frame(x,(float)Math.min(1,rms*4))); while(frames.size()>240) frames.remove(0); }
                         }
                     }
@@ -232,10 +271,12 @@ public final class AudioService extends Service {
         }
         void apply() {
             String signature=enabled+":"+bass+":"+clarity+":"+width+":"+loudness+":"+Arrays.toString(eq)+":"+Math.round(bassOffset*50)+":"+Math.round(clarityOffset*50);
-            if(signature.equals(lastSettings)) return;
+            if(signature.equals(lastSettings)&&(!enabled||controlsEq())) return;
             try {
                 if(equalizer!=null) {
-                    equalizer.setEnabled(enabled); short[] range=equalizer.getBandLevelRange();
+                    if(!equalizer.hasControl()) { failure="Another equalizer owns this session. Disable competing equalizers and reconnect."; lastSettings=""; return; }
+                    if(equalizer.setEnabled(enabled)!=AudioEffect.SUCCESS || equalizer.getEnabled()!=enabled) { failure="Android rejected the requested EQ state"; lastSettings=""; return; }
+                    short[] range=equalizer.getBandLevelRange();
                     for(short i=0;i<equalizer.getNumberOfBands();i++) {
                         double hz=equalizer.getCenterFreq(i)/1000.0;
                         double pos=PreferenceModel.clamp(Math.log(Math.max(60,hz)/60)/Math.log(14000.0/60)*4,0,4);
@@ -247,11 +288,12 @@ public final class AudioService extends Service {
                 }
                 if(virtualizer!=null) { virtualizer.setEnabled(enabled&&width>0); if(virtualizer.getStrengthSupported()) virtualizer.setStrength((short)(width*10)); }
                 if(enhancer!=null) { enhancer.setEnabled(enabled&&loudness>0); enhancer.setTargetGain((int)(loudness*100)); }
-                lastSettings=signature;
+                failure=equalizer==null?"Equalizer unavailable on this session":""; lastSettings=signature;
             } catch(RuntimeException e) { failure="Effect control unavailable or owned by another equalizer"; }
         }
         void close() { if(visualizer!=null) visualizer.release(); if(equalizer!=null) equalizer.release(); if(virtualizer!=null) virtualizer.release(); if(enhancer!=null) enhancer.release(); }
-        String description() { return owner+" · session "+id+"\n"+(equalizer!=null?"EQ, bass and clarity":"No equalizer")+(virtualizer!=null?" · width":"")+(enhancer!=null?" · loudness":"")+(failure.isEmpty()?"":"\n"+failure); }
+        boolean controlsEq() { try { return enabled&&equalizer!=null&&equalizer.hasControl()&&equalizer.getEnabled()&&failure.isEmpty(); } catch(RuntimeException e) { return false; } }
+        String description() { return owner+" · session "+id+"\n"+(controlsEq()?"EQ enabled and controlled":enabled?"EQ not active":"Enhancement disabled")+(virtualizer!=null?" · width":"")+(enhancer!=null?" · loudness":"")+(failure.isEmpty()?"":"\n"+failure); }
     }
     @Override public void onDestroy() {
         destroyed=true; handler.removeCallbacksAndMessages(null); trainer.shutdownNow(); unregisterReceiver(receiver); releasePlayer();

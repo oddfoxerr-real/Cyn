@@ -26,6 +26,8 @@ function Send-State([string]$phase, [string]$message, [int]$percent=0, [long]$by
 }
 
 try {
+    . (Join-Path $PSScriptRoot 'CynUpdatePolicy.ps1')
+    $CurrentVersion=(Get-CynVersionFloor ([version]$CurrentVersion) (@($PSScriptRoot)+@(Get-CynRegisteredDirectories))).ToString(3)
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Send-State 'checking' 'Checking GitHub releases...'
     $headers=@{'User-Agent'='Cyn-Updater';'Accept'='application/vnd.github+json'}
