@@ -185,6 +185,17 @@ void FxProView::timerCallback()
         if(FxTheme::isReducedMotion() || now-transition_start_>=220) transition_image_=Image();
         repaint();
     }
+    // A separate 100ms UI telemetry sample keeps audio-responsive glow smooth
+    // without forcing the other status controls to refresh at 10Hz.
+    if(page_==1 && now-last_neural_update_>=100) {
+        last_neural_update_=now;
+        auto& brainController=FxController::getInstance();
+        NeuralActivitySnapshot snapshot;
+        const bool hasAudio=brainController.getLiveNeuralActivity(snapshot);
+        neural_activity_.setTrainingActive(brainController.isSmartTraining());
+        neural_activity_.setActivity(hasAudio?&snapshot:nullptr,
+                                     brainController.getSmartTrainingProgress());
+    }
     if(now-last_status_update_<500) return;
     last_status_update_=now;
     auto& controller = FxController::getInstance();

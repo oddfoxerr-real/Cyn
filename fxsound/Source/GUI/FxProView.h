@@ -77,7 +77,7 @@ private:
     void openSettings();
     int page_ = 0;
     Image transition_image_;
-    double transition_start_=0, last_status_update_=0;
+    double transition_start_=0, last_status_update_=0, last_neural_update_=0;
     FxAudioControls audio_controls_;
     FxEqualizer equalizer_;
     FxVisualizer visualizer_;

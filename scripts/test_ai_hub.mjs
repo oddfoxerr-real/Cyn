@@ -76,3 +76,18 @@ assert(view.includes("neural_activity_.setAnimationEnabled(page == 1)"), "Do not
 assert(neural.includes("FxTheme::isReducedMotion()"), "Respect reduced-motion accessibility setting");
 assert(neural.includes("startTimerHz(24)"), "Use efficient bounded redraw frequency");
 console.log("PASS: neural activity visualization matches model layout and training state");
+
+// Live neural telemetry must be linked to inference and supervised training epochs.
+const model=readFileSync(path("fxsound/Source/GUI/PersonalAudioModel.h"),"utf8");
+const controllerHeader=readFileSync(path("fxsound/Source/GUI/FxController.h"),"utf8");
+const controllerSource=readFileSync(path("fxsound/Source/GUI/FxController.cpp"),"utf8");
+assert(model.includes("NeuralActivitySnapshot trace("),"Model must expose real feed-forward activity");
+assert(model.includes("s.inputConnections[j*inputs+i]=e")&&model.includes("s.outputConnections[o*hidden+j]=e"),"Glow must represent real weights and activations");
+assert(model.includes("epochsDone->store(epoch"),"Training progress must reflect real completed optimization epochs");
+assert(controllerHeader.includes("getLiveNeuralActivity(")&&controllerHeader.includes("getSmartTrainingProgress()"),"Missing live neural telemetry API");
+assert(controllerSource.includes("out=smart_model_.trace(frame.audio)"),"Activity must sample live neural inference");
+assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Visualizer never reads real audio");
+assert(view.includes("brainController.getSmartTrainingProgress()"),"Visualizer does not display real training progress");
+assert(neural.includes("displayed_.inputConnections")&&neural.includes("displayed_.outputConnections"),"Connections must react to real neural signals");
+assert(neural.includes("WAITING FOR AUDIO")&&neural.includes("PROCESSING AUDIO"),"Must differentiate silence from playback");
+console.log("PASS: live neural inference and supervised epoch animation");
