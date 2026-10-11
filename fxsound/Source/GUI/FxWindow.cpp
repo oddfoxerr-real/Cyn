@@ -122,8 +122,13 @@ void FxWindow::paint(Graphics& g)
     if (ember_shell_)
     {
         // A continuous top bar / rail surrounds the inset workspace.
-        g.setColour(Colour(FXCOLOR(PanelBackground)).withAlpha(1.0f));
-        g.fillRoundedRectangle(getLocalBounds().toFloat(), (float)FxTheme::WINDOW_CORNER_RADIUS);
+        const auto bounds=getLocalBounds().toFloat();
+        const auto base=Colour(FXCOLOR(PanelBackground)).withAlpha(1.0f);
+        ColourGradient shell(base.brighter(0.09f),bounds.getX(),bounds.getY(),
+                             base.darker(0.11f),bounds.getRight(),bounds.getBottom(),false);
+        shell.addColour(0.45,base);
+        g.setGradientFill(shell);
+        g.fillRoundedRectangle(bounds,(float)FxTheme::WINDOW_CORNER_RADIUS);
         return;
     }
     auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());

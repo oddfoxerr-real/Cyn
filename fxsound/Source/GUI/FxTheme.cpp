@@ -420,8 +420,16 @@ void FxTheme::preparePopupMenuWindow(Component& new_window)
 void FxTheme::drawPopupMenuBackground(Graphics& g,int width,int height)
 {
     const auto bounds=juce::Rectangle<float>(0,0,(float)width,(float)height).reduced(0.5f);
-    g.setColour(Colour(FXCOLOR(MenuBackground)).withAlpha(1.0f)); g.fillRoundedRectangle(bounds,14);
-    g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(1.0f)); g.drawRoundedRectangle(bounds,14,1);
+    const auto fill=Colour(FXCOLOR(MenuBackground)).withAlpha(1.0f);
+    ColourGradient glass(fill.brighter(0.095f),0.0f,0.0f,
+                         fill.darker(0.085f),(float)width,(float)height,false);
+    glass.addColour(0.48,fill);
+    g.setGradientFill(glass);
+    g.fillRoundedRectangle(bounds,14.0f);
+    g.setColour(Colour(FXCOLOR(DefaultText)).withAlpha(0.075f));
+    g.drawLine(14.0f,1.5f,(float)width-14.0f,1.5f,0.8f);
+    g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(0.85f));
+    g.drawRoundedRectangle(bounds,14.0f,1.0f);
 }
 
 void FxTheme::loadFont(String language)
@@ -516,8 +524,17 @@ void FxTheme::drawButtonBackground(Graphics& g, Button& button, const Colour& ba
     auto bounds = button.getLocalBounds().toFloat().reduced(0.5f + press);
     auto fill = backgroundColour.interpolatedWith(Colour(FXCOLOR(MenuHighlightBackground)).withAlpha(1.0f),hover);
     fill = fill.interpolatedWith(Colour(FXCOLOR(SliderTrack)).withAlpha(.25f),press);
-    g.setColour(fill); g.fillRoundedRectangle(bounds,jmin(12.0f,bounds.getHeight()*.36f));
-    if (button.getProperties().getWithDefault("ember_navigation",false)) return;
+    const float radius=jmin(12.0f,bounds.getHeight()*0.36f);
+    if (button.getProperties().getWithDefault("ember_navigation",false)) {
+        g.setColour(fill); g.fillRoundedRectangle(bounds,radius);
+        return;
+    }
+    ColourGradient material(fill.brighter(0.105f),bounds.getX(),bounds.getY(),
+                            fill.darker(0.065f),bounds.getRight(),bounds.getBottom(),false);
+    g.setGradientFill(material); g.fillRoundedRectangle(bounds,radius);
+    g.setColour(Colour(FXCOLOR(DefaultText)).withAlpha(0.09f+hover*0.07f));
+    g.drawLine(bounds.getX()+10.0f,bounds.getY()+1.0f,
+               bounds.getRight()-10.0f,bounds.getY()+1.0f,0.8f);
     g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(.74f).interpolatedWith(Colour(FXCOLOR(SliderTrack)).withAlpha(.6f),hover));
     g.drawRoundedRectangle(bounds,jmin(12.0f,bounds.getHeight()*.36f),1);
 

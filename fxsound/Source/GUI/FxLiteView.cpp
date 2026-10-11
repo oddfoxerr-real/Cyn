@@ -48,11 +48,16 @@ void FxLiteView::paint(Graphics& g)
 {
     auto& theme = dynamic_cast<LookAndFeel_V4&>(getLookAndFeel());
     auto bounds = getLocalBounds().toFloat();
-    g.fillAll(theme.getCurrentColourScheme().getUIColour(LookAndFeel_V4::ColourScheme::windowBackground).withAlpha(0.78f));
+    const auto backdrop=theme.getCurrentColourScheme().getUIColour(LookAndFeel_V4::ColourScheme::windowBackground).withAlpha(1.0f);
+    g.setGradientFill(ColourGradient(backdrop.brighter(0.07f),0.0f,0.0f,
+                                      backdrop.darker(0.08f),(float)getWidth(),(float)getHeight(),false));
+    g.fillAll();
 
     auto card = juce::Rectangle<float>(20.0f, 18.0f, (float)BACKGROUND_WIDTH, (float)BACKGROUND_HEIGHT);
-    g.setColour(Colour(FXCOLOR(PanelBackground)).withAlpha(0.94f));
-    g.fillRoundedRectangle(card, 18.0f);
+    const auto panel=Colour(FXCOLOR(PanelBackground)).withAlpha(1.0f);
+    g.setGradientFill(ColourGradient(panel.brighter(0.09f),card.getX(),card.getY(),
+                                      panel.darker(0.09f),card.getRight(),card.getBottom(),false));
+    g.fillRoundedRectangle(card,18.0f);
     g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(0.88f));
     g.drawRoundedRectangle(card.reduced(0.5f), 18.0f, 1.0f);
 
