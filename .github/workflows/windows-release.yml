@@ -58,6 +58,8 @@ jobs:
       - name: Verify GitHub updater detects published releases
         if: steps.inspect.outputs.state != 'published'
         shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: .\scripts\diagnose_cyn_updater.ps1
 
       - name: Validate updater animation XAML

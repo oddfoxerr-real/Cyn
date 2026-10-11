@@ -29,6 +29,9 @@ try {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Send-State 'checking' 'Checking GitHub releases...'
     $headers=@{'User-Agent'='Cyn-Updater';'Accept'='application/vnd.github+json'}
+    # GitHub Actions may use the ephemeral build token to avoid public API rate limits.
+    # Regular Cyn users are never asked for or required to provide a token.
+    if ($env:GH_TOKEN) { $headers['Authorization'] = 'Bearer ' + $env:GH_TOKEN }
     # Do not wrap Invoke-RestMethod in @(...). In Windows PowerShell 5.1
     # this creates a nested array and treats all releases as one object.
     $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases?per_page=50" -Headers $headers -TimeoutSec 25
