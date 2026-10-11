@@ -85,7 +85,7 @@ assert(model.includes("NeuralActivitySnapshot trace("),"Model must expose real f
 assert(model.includes("s.inputConnections[j*inputs+i]=e")&&model.includes("s.outputConnections[o*hidden+j]=e"),"Glow must represent real weights and activations");
 assert(model.includes("epochsDone->store(epoch"),"Training progress must reflect real completed optimization epochs");
 assert(controllerHeader.includes("getLiveNeuralActivity(")&&controllerHeader.includes("getSmartTrainingProgress()"),"Missing live neural telemetry API");
-assert(controllerSource.includes("out=smart_model_.trace(frame.audio)"),"Activity must sample live neural inference");
+assert(controllerSource.includes("out=(smart_mode_==1?movie_model_:smart_model_).trace(frame.audio)"),"Activity must sample live neural inference");
 assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Visualizer never reads real audio");
 assert(view.includes("brainController.getSmartTrainingProgress()"),"Visualizer does not display real training progress");
 assert(neural.includes("displayed_.inputConnections")&&neural.includes("displayed_.outputConnections"),"Connections must react to real neural signals");
