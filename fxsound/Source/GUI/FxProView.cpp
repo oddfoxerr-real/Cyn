@@ -325,7 +325,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.18", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.19", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : "Output devices", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
         ? "Choose Music AI or Movie AI. Each learns your preferences separately." : "Your output, with fewer interruptions.", 256, 49, 640, 22, 13, true);

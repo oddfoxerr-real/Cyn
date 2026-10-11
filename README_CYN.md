@@ -6,7 +6,7 @@ Thank you to the [FxSound team and contributors](https://github.com/fxsound2/fxs
 
 ## Install with the setup EXE
 
-Exit Cyn/FxSound from the tray menu, then double-click `Cyn-Setup-2.0.18-x64.exe`. It installs the app and all required files into Program Files, adds Start-menu and optional Desktop shortcuts, and registers an uninstaller. Windows 10/11 Intel/AMD x64 and administrator access are required. An existing FxSound driver is reused; otherwise the bundled Microsoft-signed driver is installed. The original FxSound app does not need to run.
+Exit Cyn/FxSound from the tray menu, then double-click `Cyn-Setup-2.0.19-x64.exe`. It installs the app and all required files into Program Files, adds Start-menu and optional Desktop shortcuts, and registers an uninstaller. Windows 10/11 Intel/AMD x64 and administrator access are required. An existing FxSound driver is reused; otherwise the bundled Microsoft-signed driver is installed. The original FxSound app does not need to run.
 
 Remove Cyn through Windows Settings > Apps > Installed apps. Your `%APPDATA%\Cyn` preferences and the shared audio driver are retained. Removing the original FxSound installation may remove that shared driver; rerun Cyn setup if needed. The Cyn installer/app are unsigned community builds; the driver retains its original signature. See `Installer/Cyn/README.md` in the source for verification scope.
 
@@ -62,7 +62,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_CYN.ps1
 
 Skip setup when VS 2022 C++ Build Tools and Windows SDK are installed. Output: `dist\Cyn\Cyn.exe` and `dist\Cyn-Windows-x64.zip`. Subsequent builds support `-Incremental`. Optional `-WithMcp` requires Go and builds the repository's existing MCP server.
 
-To build the setup EXE after the app, run `powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_INSTALLER.ps1`. This downloads a pinned, signature-checked Inno Setup compiler into `.build-tools` when needed, verifies the bundled driver hashes, and writes `dist\Cyn-Setup-2.0.18-x64.exe`. Use `-RebuildApp` to rebuild the app too.
+To build the setup EXE after the app, run `powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_INSTALLER.ps1`. This downloads a pinned, signature-checked Inno Setup compiler into `.build-tools` when needed, verifies the bundled driver hashes, and writes `dist\Cyn-Setup-2.0.19-x64.exe`. Use `-RebuildApp` to rebuild the app too.
 
 ## Local control
 
@@ -145,3 +145,9 @@ The **Reset** control resets only the selected mode; exporting/importing AI prof
 Cyn now uses a pretrained YAMNet ONNX model asynchronously for live audio-event recognition (including speech, music and impact/explosions) while the original 11-input personal model continues handling learned effect preferences. The selected Movie or Music mode uses conservative Bass limits; no local labels are uploaded. The DSP callback uses a bounded 16 kHz mono pre-effects waveform tap and **never waits for neural inference**. A verified ONNX model and Windows x64 ONNX Runtime DLL are bundled with the installer and portable build. If YAMNet is missing, slow or fails, the existing personal AI remains the fallback.
 
 YAMNet recognizes acoustic-event categories; it does not understand movie plots or provide word-level speech recognition. Windows compilation and fixed-input ONNX inference are tested, but listening quality and latency across user hardware require real-world evaluation.
+
+## Cyn 2.0.19 — YAMNet flagship DJ and cinema
+
+Music and Movie AI now use YAMNet as the primary sound-perception engine, not only three classification scores. Its 521 AudioSet event scores and every dimension of the 1024D embedding inform a compact scene context. Music dynamically combines bass drum, electronic rhythm, spectral low-end balance and pre-effects peak headroom to shape bass, EQ, clarity and punch; the arbitrary 58%/6.5 Bass limits are removed. Movie AI independently prioritizes dialogue. New More/Less feedback stores 24D YAMNet context locally and the old private 209-weight models remain fallbacks. The background inference worker never executes on the real-time audio thread.
+
+This is experimental scene-driven DSP, not a pretrained professional mixing engineer. A pre-effects peak estimate cannot replace an output true-peak limiter. Listening and performance on actual music, films and devices remain unverified.

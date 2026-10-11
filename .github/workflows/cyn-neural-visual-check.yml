@@ -11,6 +11,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
   native-build:
     runs-on: windows-2022
@@ -22,6 +23,8 @@ jobs:
         run: node scripts/test_ai_hub.mjs
       - name: Compile native Cyn x64 with neural animation
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: ./BUILD_CYN.ps1
       - name: Confirm runnable binary was built
         shell: pwsh

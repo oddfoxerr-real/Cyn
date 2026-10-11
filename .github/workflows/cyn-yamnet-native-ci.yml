@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   native:
@@ -42,6 +43,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'YAMNet flagship C++ policy tests failed' }
       - name: Compile native x64 Cyn with YAMNet worker
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: .\BUILD_CYN.ps1
       - name: Verify built Windows application exists
         shell: pwsh
