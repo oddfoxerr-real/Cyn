@@ -1,0 +1,45 @@
+name: Cyn Music AI Candidate Benchmarks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/cyn-music-ai-candidates.yml
+      - experiments/music-ai/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pretrained-beat-this:
+    name: Pretrained Beat This small0 / offline CPU feasibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU-only PyTorch
+        run: |
+          python -m pip install --disable-pip-version-check \
+            torch==2.5.1 torchaudio==2.5.1 \
+            --index-url https://download.pytorch.org/whl/cpu
+      - name: Install official beat tracking implementation
+        run: |
+          python -m pip install --disable-pip-version-check \
+            "beat-this>=0.2,<1" soxr einops rotary-embedding-torch scipy
+      - name: Infer official small0 pretrained model on reproducible synthetic beat
+        env:
+          CUDA_VISIBLE_DEVICES: "-1"
+          OMP_NUM_THREADS: "2"
+          MKL_NUM_THREADS: "2"
+        run: |
+          python -u experiments/music-ai/probe_beat_this.py
+      - name: Upload model evaluation (no audio or checkpoint redistribution)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyn-beat-this-candidate-evaluation
+          path: music-ai-benchmark/beat_this_small0.json
+          if-no-files-found: error
