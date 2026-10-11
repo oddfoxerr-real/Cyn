@@ -50,6 +50,9 @@ public:
     //==============================================================================
     void initialise (const String& commandline) override
     {
+        // IPC already delivered this command if an instance was running. If none
+        // exists, do not start a new audio host just to ask it to exit.
+        if(ArgumentList("Cyn",commandline).containsOption("--cyn-exit-for-update")) { quit(); return; }
         // This method is where you should put your application's initialisation code..
         try
         {

@@ -34,7 +34,7 @@ Exit the running audio app first. Keep the official FxSound installation for the
 
 ## Appearance and motion
 
-Open the top menu or tray menu and choose **Theme**. Cyn has 19 native themes. **ChatGPT Desktop** matches the supplied screenshot's layered charcoal colors: `#181818` content, `#191C1E` panels, `#212121` raised surfaces, `#363636` borders, neutral grey controls and bright legible text. The palette applies to the workspace, effects, EQ, timeline, menus and controls. **Reduce motion** disables transitions and lowers the spectrum refresh rate. Both choices are saved.
+Open the top menu or tray menu and choose **Theme**. Cyn has selectable native themes. **Charcoal Desktop** matches the supplied screenshot's layered charcoal colors: `#181818` content, `#191C1E` panels, `#212121` raised surfaces, `#363636` borders, neutral grey controls and bright legible text. The palette applies to the workspace, effects, EQ, timeline, menus and controls. **Reduce motion** disables transitions and lowers the spectrum refresh rate. Both choices are saved.
 
 Navigation crossfades for 220 ms with a sliding sidebar selection; buttons ease on hover/press, toggles slide and sliders show eased hover halos. The audio values themselves remain immediate while you drag.
 

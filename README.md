@@ -12,7 +12,7 @@ Cyn possible. If you enjoy Cyn, please [visit FxSound](https://www.fxsound.com/)
 ## Download
 
 Open [Releases](https://github.com/oddfoxerr-real/Cyn/releases) and download the
-latest **Cyn-Setup-2.0.1-x64.exe**. Exit any running Cyn or FxSound using its menu
+Windows **Cyn-Setup** installer for the desired release. Exit any running Cyn or FxSound using its menu
 before installing. Windows 10/11 on Intel/AMD x64 and administrator access are required.
 
 Setup includes presets, fonts, the starter model and the original signed FxSound
@@ -32,8 +32,9 @@ Uninstall keeps personal settings/training data and the shared audio driver.
 The starter model has synthetic training/validation only. Real-song quality,
 hardware reconnection behavior and clean-PC installer/uninstaller integration
 still need testing. The app and setup are unsigned community builds; the included
-driver retains its Microsoft signature. **Built-in update delivery is not implemented.**
-Releases currently provide manual downloads.
+driver retains its Microsoft signature. Windows includes a GitHub updater with download verification and installation confirmation. Android has a separate update check in Themes; Android confirms APK installation.
+
+[Android preview and download instructions](android/README.md).
 
 ## Build
 
@@ -47,11 +48,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_INSTALLER.ps1
 
 If build tools are missing, `SETUP_BUILD_TOOLS.ps1` can install the prerequisites.
 The installer script obtains a pinned, signature-verified Inno Setup compiler
-when needed. Output: `dist/Cyn/Cyn.exe` and `dist/Cyn-Setup-2.0.1-x64.exe`.
+when needed. Output: `dist/Cyn/Cyn.exe` and `dist/Cyn-Setup-2.0.18-x64.exe`.
 
 See [the user guide](README_CYN.md), [model card](models/MODEL_CARD.md),
 [installer details](Installer/Cyn/README.md), and [validation](VALIDATION.md).
 Optional MCP compilation requires Go; see `BUILD_CYN.ps1 -WithMcp`.
+
+## Licensing audit
+
+See [the licensing audit](docs/LICENSING_AUDIT.md) and
+[third-party notices](THIRD_PARTY_NOTICES.md). The audit replaces undocumented
+Gilroy fonts with OFL Manrope and adds missing license material. Driver/helper
+source correspondence, separate community-resource permissions and the publisher's
+Microsoft runtime entitlement remain unresolved. Previously published binaries
+are not retroactively changed by these source fixes. New publication is held
+pending the recorded questions; normal local builds remain available.
 
 ## Credits and licensing
 

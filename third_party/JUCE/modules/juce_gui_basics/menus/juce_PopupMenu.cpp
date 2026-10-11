@@ -1,3 +1,4 @@
+// Modified by Cyn contributors, 2026-10-09: animated popup menus and accordion categories.
 /*
   ==============================================================================
 

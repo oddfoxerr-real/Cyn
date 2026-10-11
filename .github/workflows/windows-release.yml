@@ -23,6 +23,10 @@ jobs:
         with:
           persist-credentials: true
 
+      - name: Check unresolved distribution questions
+        shell: pwsh
+        run: python scripts/check_license_release.py
+
       - name: Resolve release version
         id: version
         shell: pwsh
@@ -95,6 +99,15 @@ jobs:
           if ($actual -ine $expected) { throw 'Installer failed SHA-256 verification.' }
           if (!(Test-Path 'dist/Cyn-Windows-x64.zip')) { throw 'Portable build missing.' }
 
+      - name: Package corresponding source and notices
+        if: steps.inspect.outputs.state != 'published'
+        shell: pwsh
+        env:
+          CYN_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git archive --format=zip --output="dist/Cyn-Source-$env:CYN_VERSION.zip" HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Corresponding source archive failed.' }
+
       - name: Upload installer artifacts
         if: steps.inspect.outputs.state != 'published'
         uses: actions/upload-artifact@v4
@@ -104,6 +117,7 @@ jobs:
             dist/${{ steps.version.outputs.installer }}
             dist/${{ steps.version.outputs.installer }}.sha256
             dist/Cyn-Windows-x64.zip
+            dist/Cyn-Source-${{ steps.version.outputs.version }}.zip
           if-no-files-found: error
 
       - name: Create draft release if missing
@@ -125,7 +139,7 @@ jobs:
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
           CYN_INSTALLER: ${{ steps.version.outputs.installer }}
         run: |
-          $assets = @("dist/$env:CYN_INSTALLER", "dist/$env:CYN_INSTALLER.sha256", 'dist/Cyn-Windows-x64.zip')
+          $assets = @("dist/$env:CYN_INSTALLER", "dist/$env:CYN_INSTALLER.sha256", 'dist/Cyn-Windows-x64.zip', "dist/Cyn-Source-${{ steps.version.outputs.version }}.zip")
           gh release upload $env:RELEASE_TAG @assets --clobber
           if ($LASTEXITCODE -ne 0) { throw 'GitHub release asset upload failed.' }
           gh release edit $env:RELEASE_TAG --draft=false --prerelease

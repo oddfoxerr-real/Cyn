@@ -33,13 +33,13 @@ const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
                   "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.16"]){
+                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.18"]){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
 assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
 assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
-console.log("PASS: visible native AI sidebar, profile actions and v2.0.16 version marker");
+console.log("PASS: visible native AI sidebar, profile actions and v2.0.18 version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
 assert(native.includes("componentToCentreAround = owner"),"AI Hub must be positioned over Cyn");
 assert(native.includes("dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f)"),"Dialog background is transparent");
@@ -69,12 +69,12 @@ console.log("PASS: visible AI profile buttons and transparent tooltip corners");
 const neural = readFileSync(path("fxsound/Source/GUI/CynNeuralActivity.h"), "utf8");
 assert(header.includes('#include "CynNeuralActivity.h"'), "Neural visualizer header missing");
 assert(header.includes("CynNeuralActivity neural_activity_"), "Missing visualizer instance");
-assert(neural.includes("std::array<Point<float>, 11> inputs") && neural.includes("std::array<Point<float>, 12> hidden") && neural.includes("std::array<Point<float>, 5> outputs"), "Must match real 11-12-5 model architecture");
+assert(neural.includes("std::array<Point<float>,11> inputs") && neural.includes("std::array<Point<float>,12> hidden") && neural.includes("std::array<Point<float>,5> outputs"), "Must match real 11-12-5 model architecture");
 assert(view.includes("neural_activity_.setBounds(72, 247, 148, 226)"), "Must fit empty sidebar without obstructing labeling controls");
 assert(view.includes("neural_activity_.setTrainingActive(controller.isSmartTraining())"), "Brain must reflect actual training state");
 assert(view.includes("neural_activity_.setAnimationEnabled(page == 1)"), "Do not animate on hidden pages");
-assert(neural.includes("FxTheme::isReducedMotion()"), "Respect reduced-motion accessibility setting");
-assert(neural.includes("startTimerHz(24)"), "Use efficient bounded redraw frequency");
+assert(!neural.includes("getMillisecondCounter") && !neural.includes("std::fmod"), "Activity cannot be synthesized by an animation clock");
+assert(!neural.includes("startTimerHz"), "Repaint only when measured telemetry arrives");
 console.log("PASS: neural activity visualization matches model layout and training state");
 
 // Live neural telemetry must be linked to inference and supervised training epochs.
@@ -85,9 +85,9 @@ assert(model.includes("NeuralActivitySnapshot trace("),"Model must expose real f
 assert(model.includes("s.inputConnections[j*inputs+i]=e")&&model.includes("s.outputConnections[o*hidden+j]=e"),"Glow must represent real weights and activations");
 assert(model.includes("epochsDone->store(epoch"),"Training progress must reflect real completed optimization epochs");
 assert(controllerHeader.includes("getLiveNeuralActivity(")&&controllerHeader.includes("getSmartTrainingProgress()"),"Missing live neural telemetry API");
-assert(controllerSource.includes("out=smart_model_.trace(frame.audio)"),"Activity must sample live neural inference");
+assert(controllerSource.includes("out=smart_activity_"),"Activity must sample live neural inference");
 assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Visualizer never reads real audio");
 assert(view.includes("brainController.getSmartTrainingProgress()"),"Visualizer does not display real training progress");
-assert(neural.includes("displayed_.inputConnections")&&neural.includes("displayed_.outputConnections"),"Connections must react to real neural signals");
-assert(neural.includes("WAITING FOR AUDIO")&&neural.includes("PROCESSING AUDIO"),"Must differentiate silence from playback");
+assert(neural.includes("data_.inputConnections")&&neural.includes("data_.outputConnections"),"Connections must react to real neural signals");
+assert(neural.includes("WAITING FOR AUDIO")&&neural.includes("ADJUSTMENTS ACTIVE")&&neural.includes("PREVIEW / NOT APPLIED"),"Must differentiate silence from playback");
 console.log("PASS: live neural inference and supervised epoch animation");

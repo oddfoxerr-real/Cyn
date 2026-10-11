@@ -1,0 +1,862 @@
+[
+  {
+    "path": "fxsound/Fonts/Manrope-Bold.ttf",
+    "sha256": "ed47cf88940b2e932e59821a50a78632e68861b8982c9cbc5ff61cee61a0f5be",
+    "names": {
+      "0": [
+        "Copyright 2019 The Manrope Project Authors (https://github.com/googlefonts/manrope)"
+      ],
+      "1": [
+        "Manrope"
+      ],
+      "2": [
+        "Bold"
+      ],
+      "5": [
+        "Version 4.505"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://openfontlicense.org"
+      ],
+      "14": [
+        "https://openfontlicense.org"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/Manrope-Regular.ttf",
+    "sha256": "fd24a5b7d7b85997f5c638b7d5517786a120552a67ee49ca4451114b4912c925",
+    "names": {
+      "0": [
+        "Copyright 2019 The Manrope Project Authors (https://github.com/googlefonts/manrope)"
+      ],
+      "1": [
+        "Manrope"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 4.505"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://openfontlicense.org"
+      ],
+      "14": [
+        "https://openfontlicense.org"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/Manrope-Semibold.ttf",
+    "sha256": "da239b437b22ba5d039ca650258f055257747dab102ad21f5eba099e27b507df",
+    "names": {
+      "0": [
+        "Copyright 2019 The Manrope Project Authors (https://github.com/googlefonts/manrope)"
+      ],
+      "1": [
+        "Manrope SemiBold"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 4.505"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://openfontlicense.org"
+      ],
+      "14": [
+        "https://openfontlicense.org"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/NotoSansArabic-Medium.ttf",
+    "sha256": "a7d26bee1debb31f28e79bcf6f4d1f33d2e129cd21401c8ad3bdaad496c816d1",
+    "names": {
+      "0": [
+        "Copyright 2015-2020 Google LLC. All Rights Reserved."
+      ],
+      "1": [
+        "Noto Sans Arabic Medium"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.004"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/NotoSansArabic-Regular.ttf",
+    "sha256": "90f50de40af560ad55f2fcf460af8205f842b534b057bd8b8bcf7d3e10d3223a",
+    "names": {
+      "0": [
+        "Copyright 2015-2020 Google LLC. All Rights Reserved."
+      ],
+      "1": [
+        "Noto Sans Arabic"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.004"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/NotoSansKR-Bold.otf",
+    "sha256": "e7be1cdb169344a75bdf09f8563dcf5e662194be3064873b6b4ca57e0ba0774f",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans KR"
+      ],
+      "2": [
+        "Bold"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/NotoSansKR-Medium.otf",
+    "sha256": "256bb06b91d974ddbc0e3c063c85522cda6187cc638f0c6ae5d752efa63fe093",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans KR Medium"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/NotoSansKR-Regular.otf",
+    "sha256": "29445948e432137e0de104dec389e956d72633aa0e4cb04ca572bb8e378e3d35",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans KR"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/NotoSansSC-Bold.otf",
+    "sha256": "d1961be1161ea1be08496c920862d06ea5c23a757628f4fd69368de1d9f51bed",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans SC"
+      ],
+      "2": [
+        "Bold"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/NotoSansSC-Medium.otf",
+    "sha256": "9c62ceb174d7529ae4a7f2071f6531991cfadbc2f1897910b48ba951a580ac57",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans SC Medium"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/NotoSansSC-Regular.otf",
+    "sha256": "a2b93e6c2db05d6bbbf6f27d413ec73269735b7b679019c8a5aa9670ff0ffbf2",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans SC"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/NotoSansTC-Bold.otf",
+    "sha256": "0ec69b757289fe2a8245424f0fb2f5d3f5bf2e98cf239d9ab4545544cd525f65",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans TC"
+      ],
+      "2": [
+        "Bold"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/NotoSansTC-Medium.otf",
+    "sha256": "0bf34a98c9a41a8f6a0ce4a4ae29aebec222992b306756fb4121d9aef024e836",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans TC Medium"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/NotoSansTC-Regular.otf",
+    "sha256": "8d9cd5f210c0204d2a1ddaeaf82db1071e242126f4e18b9c350d8b1680bae400",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans TC"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/NotoSansThai-Medium.ttf",
+    "sha256": "27759b4747b759ec022f53ffed2a8a47abcd290e830c2a4cc33499b3df210a65",
+    "names": {
+      "0": [
+        "Copyright 2022 The Noto Project Authors (https://github.com/notofonts/thai)"
+      ],
+      "1": [
+        "Noto Sans Thai Medium"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.001"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://scripts.sil.org/OFL"
+      ],
+      "14": [
+        "https://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "fxsound/Fonts/NotoSansThai-Regular.ttf",
+    "sha256": "f73be376b0e1704da118312e202be49e8ac04a6b2e19b588cdfc2707c7f3e25d",
+    "names": {
+      "0": [
+        "Copyright 2022 The Noto Project Authors (https://github.com/notofonts/thai)"
+      ],
+      "1": [
+        "Noto Sans Thai"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.001"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://scripts.sil.org/OFL"
+      ],
+      "14": [
+        "https://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/IBMPlexSansArabic-Bold.ttf",
+    "sha256": "863a038c6afe94ec626bc5bfb94ce37f26196c1f1d50289f4f7c88e339b0aa41",
+    "names": {
+      "0": [
+        "Copyright 2019 IBM Corp. All rights reserved."
+      ],
+      "1": [
+        "IBM Plex Sans Arabic"
+      ],
+      "2": [
+        "Bold"
+      ],
+      "5": [
+        "Version 1.1"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: http://scripts.sil.org/OFL"
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/IBMPlexSansArabic-Medium.ttf",
+    "sha256": "5f220108d9fc890453e157cda6d5ed4936e2ccd62fab3b16f06ea34c7975d0ed",
+    "names": {
+      "0": [
+        "Copyright 2019 IBM Corp. All rights reserved."
+      ],
+      "1": [
+        "IBM Plex Sans Arabic Medium"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 1.1"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: http://scripts.sil.org/OFL"
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/IBMPlexSansArabic-Regular.ttf",
+    "sha256": "1118a402b5eabda347c416e49391bdc156836abfc0aca93ae9f1fbddfab2af28",
+    "names": {
+      "0": [
+        "Copyright 2019 IBM Corp. All rights reserved."
+      ],
+      "1": [
+        "IBM Plex Sans Arabic"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 1.1"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: http://scripts.sil.org/OFL"
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/MontserratAlternates-Bold.ttf",
+    "sha256": "4a204f20f82129d09196fa3f16f2340b9cbbe2fc5e27038e0e57f76e03d96e38",
+    "names": {
+      "0": [
+        "Copyright 2011 The Montserrat Project Authors (https://github.com/JulietaUla/Montserrat)"
+      ],
+      "1": [
+        "Montserrat Alternates"
+      ],
+      "2": [
+        "Bold"
+      ],
+      "5": [
+        "Version 7.200"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: http://scripts.sil.org/OFL"
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/MontserratAlternates-Medium.ttf",
+    "sha256": "02cf88921629eebfb25fbbcf5d46d0ef5bb307bb0d8af482f47a65bb6620b088",
+    "names": {
+      "0": [
+        "Copyright 2011 The Montserrat Project Authors (https://github.com/JulietaUla/Montserrat)"
+      ],
+      "1": [
+        "Montserrat Alternates Medium"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 7.200"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: http://scripts.sil.org/OFL"
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/MontserratAlternates-Regular.ttf",
+    "sha256": "720187e6f1fec0d3510a9407bfdf8b952dc61bd990edebaa477fbd72f66775c5",
+    "names": {
+      "0": [
+        "Copyright 2011 The Montserrat Project Authors (https://github.com/JulietaUla/Montserrat)"
+      ],
+      "1": [
+        "Montserrat Alternates"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 7.200"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: http://scripts.sil.org/OFL"
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/NotoSansJP-Bold.ttf",
+    "sha256": "778214c61deec84ce9f74164f1be5756807a9895feac2d7a553fdd7d410070d4",
+    "names": {
+      "0": [
+        "(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'."
+      ],
+      "1": [
+        "Noto Sans JP"
+      ],
+      "2": [
+        "Bold"
+      ],
+      "5": [
+        "Version 2.004-H2;hotconv 1.0.118;makeotfexe 2.5.65603"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://scripts.sil.org/OFL"
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/NotoSansJP-Medium.ttf",
+    "sha256": "fdb4044741bc68f30ea8b92c1aefd920530a2d044f8753a6148148abdeb33958",
+    "names": {
+      "0": [
+        "(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'."
+      ],
+      "1": [
+        "Noto Sans JP Medium"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.004-H2;hotconv 1.0.118;makeotfexe 2.5.65603"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://scripts.sil.org/OFL"
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/NotoSansJP-Regular.ttf",
+    "sha256": "fb3df01b4182734d021d79ec5bac17903bb681e926a059c59ed81a373d612241",
+    "names": {
+      "0": [
+        "(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'."
+      ],
+      "1": [
+        "Noto Sans JP"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.004-H2;hotconv 1.0.118;makeotfexe 2.5.65603"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://scripts.sil.org/OFL"
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/NotoSansKR-Bold.otf",
+    "sha256": "e7be1cdb169344a75bdf09f8563dcf5e662194be3064873b6b4ca57e0ba0774f",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans KR"
+      ],
+      "2": [
+        "Bold"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/NotoSansKR-Medium.otf",
+    "sha256": "256bb06b91d974ddbc0e3c063c85522cda6187cc638f0c6ae5d752efa63fe093",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans KR Medium"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/NotoSansKR-Regular.otf",
+    "sha256": "29445948e432137e0de104dec389e956d72633aa0e4cb04ca572bb8e378e3d35",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans KR"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/NotoSansSC-Bold.otf",
+    "sha256": "d1961be1161ea1be08496c920862d06ea5c23a757628f4fd69368de1d9f51bed",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans SC"
+      ],
+      "2": [
+        "Bold"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/NotoSansSC-Medium.otf",
+    "sha256": "9c62ceb174d7529ae4a7f2071f6531991cfadbc2f1897910b48ba951a580ac57",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans SC Medium"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/NotoSansSC-Regular.otf",
+    "sha256": "a2b93e6c2db05d6bbbf6f27d413ec73269735b7b679019c8a5aa9670ff0ffbf2",
+    "names": {
+      "0": [
+        "© 2014-2020 Adobe (http://www.adobe.com/)."
+      ],
+      "1": [
+        "Noto Sans SC"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.002;hotconv 1.0.116;makeotfexe 2.5.65601"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software."
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/NotoSansTC-Bold.ttf",
+    "sha256": "d6748bf86e76740d592ff143af61d0c80b453f5f8544c2c71cdfc52ea0dc0f30",
+    "names": {
+      "0": [
+        "(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'."
+      ],
+      "1": [
+        "Noto Sans TC"
+      ],
+      "2": [
+        "Bold"
+      ],
+      "5": [
+        "Version 2.004-H2;hotconv 1.0.118;makeotfexe 2.5.65603"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://scripts.sil.org/OFL"
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/NotoSansTC-Medium.ttf",
+    "sha256": "6dab5509da393017701282da4f8373731ff5471bdeab05c08cf06be2a2738b1e",
+    "names": {
+      "0": [
+        "(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'."
+      ],
+      "1": [
+        "Noto Sans TC Medium"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.004-H2;hotconv 1.0.118;makeotfexe 2.5.65603"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://scripts.sil.org/OFL"
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/NotoSansTC-Regular.ttf",
+    "sha256": "f78e4152bf5364f8b7f503bd339a18f3eca55300587e105e5fe5e267acd125f4",
+    "names": {
+      "0": [
+        "(c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'."
+      ],
+      "1": [
+        "Noto Sans TC"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.004-H2;hotconv 1.0.118;makeotfexe 2.5.65603"
+      ],
+      "13": [
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://scripts.sil.org/OFL"
+      ],
+      "14": [
+        "http://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/NotoSansThai-Medium.ttf",
+    "sha256": "6acdbf858f40bcc0fa57b3971b1c5fe904c46b38df8e4073556bd51f22fed358",
+    "names": {
+      "0": [
+        "Copyright 2022 The Noto Project Authors (https://github.com/notofonts/thai)"
+      ],
+      "1": [
+        "Noto Sans Thai Medium"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.001"
+      ],
+      "13": [],
+      "14": [
+        "https://scripts.sil.org/OFL"
+      ]
+    }
+  },
+  {
+    "path": "Installer/Resources/Fonts/NotoSansThai-Regular.ttf",
+    "sha256": "2166ddd8dd7650ac7a7d81fd229cacbe99c06cf559d93db3b37d356312deb405",
+    "names": {
+      "0": [
+        "Copyright 2022 The Noto Project Authors (https://github.com/notofonts/thai)"
+      ],
+      "1": [
+        "Noto Sans Thai"
+      ],
+      "2": [
+        "Regular"
+      ],
+      "5": [
+        "Version 2.001"
+      ],
+      "13": [],
+      "14": [
+        "https://scripts.sil.org/OFL"
+      ]
+    }
+  }
+]

@@ -1,3 +1,4 @@
+// Cyn modification, 2026-10-10: font licensing, source notices and compatible theme naming.
 /*
 FxSound
 Copyright (C) 2025  FxSound LLC
@@ -52,7 +53,7 @@ const uint32 FxTheme::theme_colors_[FxThemeMode::NumModes][FxColor::NumColors] =
   { 0x201a17, 0x2e2520, 0x3a2f29, 0x665044, 0xf5ece6, 0x382d27, 0xf5ece6, 0x594034, 0xf5ece6, 0x382d27, 0x382d27, 0xcbb6a7, 0xcbb6a7, 0xd9a781, 0xe0677c, 0x382d27, 0xd9a781, 0xf1c9a6, 0xf1c9a6, 0xd9a781, 0xd9a781, 0x594034, 0xf1c9a6, 0x594034, 0x2e2520, 0x665044, 0xd9a781 },
   // Monochrome: dark palette
   { 0x111315, 0x1b1e21, 0x25292c, 0x454d51, 0xf6f7f8, 0x282c30, 0xf6f7f8, 0x3c4449, 0xf6f7f8, 0x282c30, 0x282c30, 0xaeb6bb, 0xaeb6bb, 0xe5e9ed, 0xe0677c, 0x282c30, 0xe5e9ed, 0xffffff, 0xffffff, 0xe5e9ed, 0xe5e9ed, 0x3c4449, 0xffffff, 0x3c4449, 0x1b1e21, 0x454d51, 0xe5e9ed },
-  // ChatGPT Desktop: colors sampled from reference screenshot, neutral charcoal layers.
+  // Charcoal Desktop: colors sampled from reference screenshot, neutral charcoal layers.
   { 0x181818, 0x212121, 0x191c1e, 0x363636, 0xe7e7e7, 0x212121, 0xffffff, 0x363636, 0xdcdddd, 0x212121, 0x2b2e30, 0xc8c9c9, 0xa5a5a5, 0x808b94, 0xe0677c, 0x212121, 0x5a5a5a, 0xa9aaab, 0xb8c5cf, 0x74808b, 0x97a3ad, 0xd5dadf, 0x3c3c3c, 0x363636, 0x191c1e, 0x353535, 0x8c969f }
 };
 
@@ -120,9 +121,9 @@ void FxTheme::init()
 	setColour(Slider::ColourIds::rotarySliderFillColourId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
 	setColour(ScrollBar::thumbColourId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
 
-	font_400_ = Typeface::createSystemTypefaceFor(BinaryData::GilroyRegular_ttf, BinaryData::GilroyRegular_ttfSize);
-	font_600_ = Typeface::createSystemTypefaceFor(BinaryData::GilroySemibold_ttf, BinaryData::GilroySemibold_ttfSize);
-	font_700_ = Typeface::createSystemTypefaceFor(BinaryData::GilroyBold_ttf, BinaryData::GilroyBold_ttfSize);
+	font_400_ = Typeface::createSystemTypefaceFor(BinaryData::ManropeRegular_ttf, BinaryData::ManropeRegular_ttfSize);
+	font_600_ = Typeface::createSystemTypefaceFor(BinaryData::ManropeSemibold_ttf, BinaryData::ManropeSemibold_ttfSize);
+	font_700_ = Typeface::createSystemTypefaceFor(BinaryData::ManropeBold_ttf, BinaryData::ManropeBold_ttfSize);
 
 	drop_down_arrow_ = Drawable::createFromImageData(FXIMAGE(DropDownArrowHover), FXIMAGESIZE(DropDownArrowHover));
 	slider_thumb_ = Drawable::createFromImageData(FXIMAGE(SliderThumb), FXIMAGESIZE(SliderThumb));
@@ -425,9 +426,9 @@ void FxTheme::loadFont(String language)
 {
     if (language.startsWithIgnoreCase("en"))
     {
-        font_400_ = Typeface::createSystemTypefaceFor(BinaryData::GilroyRegular_ttf, BinaryData::GilroyRegular_ttfSize);
-        font_600_ = Typeface::createSystemTypefaceFor(BinaryData::GilroySemibold_ttf, BinaryData::GilroySemibold_ttfSize);
-        font_700_ = Typeface::createSystemTypefaceFor(BinaryData::GilroyBold_ttf, BinaryData::GilroyBold_ttfSize);
+        font_400_ = Typeface::createSystemTypefaceFor(BinaryData::ManropeRegular_ttf, BinaryData::ManropeRegular_ttfSize);
+        font_600_ = Typeface::createSystemTypefaceFor(BinaryData::ManropeSemibold_ttf, BinaryData::ManropeSemibold_ttfSize);
+        font_700_ = Typeface::createSystemTypefaceFor(BinaryData::ManropeBold_ttf, BinaryData::ManropeBold_ttfSize);
     }
     else if (language.startsWithIgnoreCase("ko"))
     {
@@ -479,22 +480,22 @@ void FxTheme::loadFont(String language)
 	}
     else
     {
-        font_400_ = Typeface::createSystemTypefaceFor(BinaryData::GilroyRegular_ttf, BinaryData::GilroyRegular_ttfSize);
-        font_600_ = Typeface::createSystemTypefaceFor(BinaryData::GilroySemibold_ttf, BinaryData::GilroySemibold_ttfSize);
-        font_700_ = Typeface::createSystemTypefaceFor(BinaryData::GilroyBold_ttf, BinaryData::GilroyBold_ttfSize);
+        font_400_ = Typeface::createSystemTypefaceFor(BinaryData::ManropeRegular_ttf, BinaryData::ManropeRegular_ttfSize);
+        font_600_ = Typeface::createSystemTypefaceFor(BinaryData::ManropeSemibold_ttf, BinaryData::ManropeSemibold_ttfSize);
+        font_700_ = Typeface::createSystemTypefaceFor(BinaryData::ManropeBold_ttf, BinaryData::ManropeBold_ttfSize);
     }
 	
     if (font_400_ == nullptr)
     {
-        font_400_ = Typeface::createSystemTypefaceFor(BinaryData::GilroyRegular_ttf, BinaryData::GilroyRegular_ttfSize);
+        font_400_ = Typeface::createSystemTypefaceFor(BinaryData::ManropeRegular_ttf, BinaryData::ManropeRegular_ttfSize);
     }
     if (font_600_ == nullptr)
     {
-        font_600_ = Typeface::createSystemTypefaceFor(BinaryData::GilroySemibold_ttf, BinaryData::GilroySemibold_ttfSize);
+        font_600_ = Typeface::createSystemTypefaceFor(BinaryData::ManropeSemibold_ttf, BinaryData::ManropeSemibold_ttfSize);
     }
     if (font_700_ == nullptr)
     {
-        font_700_ = Typeface::createSystemTypefaceFor(BinaryData::GilroyBold_ttf, BinaryData::GilroyBold_ttfSize);
+        font_700_ = Typeface::createSystemTypefaceFor(BinaryData::ManropeBold_ttf, BinaryData::ManropeBold_ttfSize);
     }
 
     setDefaultSansSerifTypeface(font_600_);
@@ -802,7 +803,7 @@ bool FxTheme::reduced_motion_ = false;
 bool FxTheme::smooth_animations_ = false;
 const char* FxTheme::getThemeName(int i)
 {
-    static const char* names[] = { "Graphite", "Pearl", "Aurora", "Dusk", "Copper", "Midnight", "Sakura", "Arctic", "Sandstone", "Obsidian", "Emerald", "Deep Sea", "Neon Tokyo", "Synthwave", "Solar Flare", "Crimson", "Mocha", "Monochrome", "ChatGPT Desktop" };
+    static const char* names[] = { "Graphite", "Pearl", "Aurora", "Dusk", "Copper", "Midnight", "Sakura", "Arctic", "Sandstone", "Obsidian", "Emerald", "Deep Sea", "Neon Tokyo", "Synthwave", "Solar Flare", "Crimson", "Mocha", "Monochrome", "Charcoal Desktop" };
     return names[jlimit(0,(int)FxThemeMode::NumModes-1,i)];
 }
 bool FxTheme::isLightTheme()

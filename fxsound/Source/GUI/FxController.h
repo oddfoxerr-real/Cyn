@@ -325,6 +325,9 @@ private:
     void loadSmartModel(bool starterOnly = false);
     void saveSmartModel();
     PersonalAudioModel smart_model_;
+    NeuralActivitySnapshot smart_activity_ {};
+    int64_t smart_activity_at_ = 0;
+    std::shared_ptr<NeuralTrainingTelemetry> smart_training_activity_;
     std::vector<AudioExample> smart_examples_;
     std::vector<AudioFrame> smart_history_;
     std::array<float,5> smart_effects_ {}, smart_scores_ {{0.5f,0.5f,0.5f,0.5f,0.5f}};
@@ -337,6 +340,8 @@ private:
     bool smart_enabled_ = false;
     float smart_sensitivity_ = 50.0f;
     float smart_bass_ = 0, smart_clarity_ = 0, smart_leveling_ = 0;
+    float smart_bass_activity_ = 0;
+    float smart_effective_bass_ = 0, smart_effective_clarity_ = 0;
 	CriticalSection lock_;
 	CriticalSection save_lock_;
 };

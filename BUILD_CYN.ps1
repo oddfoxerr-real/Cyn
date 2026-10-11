@@ -24,7 +24,7 @@ if (!(Test-Path -LiteralPath $exe)) { throw 'MSBuild did not produce FxSound.exe
 $dist = Join-Path $root 'dist\Cyn'
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 Copy-Item -LiteralPath $exe -Destination (Join-Path $dist 'Cyn.exe') -Force
-Copy-Item -LiteralPath (Join-Path $root 'CynUpdater.ps1'),(Join-Path $root 'CynUpdaterWorker.ps1'),(Join-Path $root 'CynUpdateWindow.xaml') -Destination $dist -Force
+Copy-Item -LiteralPath (Join-Path $root 'CynUpdater.ps1'),(Join-Path $root 'CynUpdaterWorker.ps1'),(Join-Path $root 'CynUpdatePolicy.ps1'),(Join-Path $root 'CynUpdateWindow.xaml') -Destination $dist -Force
 Copy-Item -LiteralPath (Join-Path $root 'branding') -Destination $dist -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $root 'models\cyn-starter.json'),(Join-Path $root 'models\MODEL_CARD.md') -Destination $dist -Force
 # Built-in AI catalogue is native app data, not a website or hosted service.
@@ -32,7 +32,18 @@ $aiProfiles = Join-Path $dist 'CynAiProfiles'
 New-Item -ItemType Directory -Path $aiProfiles -Force | Out-Null
 Copy-Item -Path (Join-Path $root 'ai-hub\community\*') -Destination $aiProfiles -Force
 Copy-Item -LiteralPath (Join-Path $root 'bin\x64\Factsoft') -Destination $dist -Recurse -Force
+# Cyn modification 2026-10-10: ship every language font and its license notices.
+# Remove only obsolete font files from a reused staging directory.
+foreach ($obsoleteFont in @('Gilroy-Regular.ttf', 'Gilroy-Semibold.ttf', 'Gilroy-Bold.ttf')) {
+    $obsoletePath = Join-Path $dist $obsoleteFont
+    if (Test-Path -LiteralPath $obsoletePath) { Remove-Item -LiteralPath $obsoletePath -Force }
+}
 Get-ChildItem -LiteralPath (Join-Path $root 'fxsound\Fonts') -File | Copy-Item -Destination $dist -Force
+Get-ChildItem -LiteralPath (Join-Path $root 'Installer\Resources\Fonts') -File | Copy-Item -Destination $dist -Force
+Copy-Item -LiteralPath (Join-Path $root 'licenses') -Destination $dist -Recurse -Force
+Copy-Item -LiteralPath (Join-Path $root 'THIRD_PARTY_NOTICES.md'),(Join-Path $root 'MODIFICATIONS.md') -Destination $dist -Force
+New-Item -ItemType Directory -Force -Path (Join-Path $dist 'docs') | Out-Null
+Copy-Item -LiteralPath (Join-Path $root 'docs\LICENSING_AUDIT.md') -Destination (Join-Path $dist 'docs') -Force
 Copy-Item -LiteralPath (Join-Path $root 'LICENSE'),(Join-Path $root 'README_CYN.md'),(Join-Path $root 'VALIDATION.md'),(Join-Path $root 'RELEASE_CHECKS.md'),(Join-Path $root 'CYN_CONTROL.ps1'),(Join-Path $root 'LAUNCH_CYN.ps1'),(Join-Path $root 'INSTALL_CYN.ps1') -Destination $dist -Force
 Copy-Item -LiteralPath (Join-Path $root 'third_party\JUCE\LICENSE.md') -Destination (Join-Path $dist 'JUCE-LICENSE.md') -Force
 if ($WithMcp) {

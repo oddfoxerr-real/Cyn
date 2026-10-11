@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "FxController.h"
+#include "SmartBassControl.h"
 #include "FxMainWindow.h"
 #include "FxSystemTrayView.h"
 #include "FxMessage.h"
@@ -40,7 +41,7 @@ void launchCynUpdater(bool interactive)
         if (interactive) AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "CynUpdater.ps1 is missing. Reinstall Cyn.");
         return;
     }
-    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.16" + (interactive ? " -Interactive" : "");
+    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion " + JUCEApplication::getInstance()->getApplicationVersion().upToLastOccurrenceOf(".",false,false) + (interactive ? " -Interactive" : "");
     auto result = ShellExecuteW(nullptr, L"open", L"powershell.exe", args.toWideCharPointer(), nullptr, SW_HIDE);
     if (reinterpret_cast<INT_PTR>(result) <= 32 && interactive)
         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");
@@ -245,6 +246,7 @@ void FxController::initConfig(const String& commandline)
     smart_sensitivity_ = std::isfinite(saved_sensitivity) ? jlimit(0.0f, 100.0f, saved_sensitivity) : 50.0f;
 	auto arg_list = ArgumentList(File::getSpecialLocation(File::SpecialLocationType::invokedExecutableFile).getFileName(), commandline);
     auto requested_theme=arg_list.getValueForOption("--theme").unquoted();
+    if (requested_theme.equalsIgnoreCase("ChatGPT Desktop")) requested_theme = "Charcoal Desktop";
     for(int i=0;i<(int)FxThemeMode::NumModes;++i)
         if(requested_theme.equalsIgnoreCase(FxTheme::getThemeName(i))) setThemeMode(static_cast<FxThemeMode>(i));
     auto reduced=arg_list.getValueForOption("--reduce_motion");
@@ -392,6 +394,7 @@ void FxController::applyConfig(const String& commandline)
 	}
 
     auto requested_theme=arg_list.getValueForOption("--theme").unquoted();
+    if (requested_theme.equalsIgnoreCase("ChatGPT Desktop")) requested_theme = "Charcoal Desktop";
     for(int i=0;i<(int)FxThemeMode::NumModes;++i)
         if(requested_theme.equalsIgnoreCase(FxTheme::getThemeName(i))) setThemeMode(static_cast<FxThemeMode>(i));
     auto reduced=arg_list.getValueForOption("--reduce_motion");
@@ -665,6 +668,8 @@ void FxController::printStatus()
 	settings->setProperty("version", ProjectInfo::versionString);
 	settings->setProperty("power", model.getPowerState());
     settings->setProperty("cyn_build", "identity-2");
+    settings->setProperty("source_url", "https://github.com/oddfoxerr-real/Cyn");
+    settings->setProperty("license", "AGPL-3.0-or-later; third-party exceptions in THIRD_PARTY_NOTICES.md");
     settings->setProperty("theme", FxTheme::getThemeName((int)FxTheme::getThemeMode()));
     settings->setProperty("reduce_motion", FxTheme::isReducedMotion());
     auto* smart = new DynamicObject();
@@ -674,6 +679,8 @@ void FxController::printStatus()
     smart->setProperty("model", "local 11-12-5 neural preference model");
     smart->setProperty("learning", getLearningStatus());
     smart->setProperty("bass_preference", smart_scores_[4]);
+    smart->setProperty("raw_bass_preference", smart_activity_.outputs[4]);
+    smart->setProperty("low_bass_activity", smart_bass_activity_);
     smart->setProperty("clarity_preference", smart_scores_[0]);
     smart->setProperty("effective_bass", dfx_dsp_.getEffectValue(DfxDsp::Effect::Bass) * 10.0f);
     smart->setProperty("effective_clarity", dfx_dsp_.getEffectValue(DfxDsp::Effect::Fidelity) * 10.0f);
@@ -3064,21 +3071,28 @@ void FxController::updateSmartListening()
     smart_stale_ticks_=fresh?0:jmin(100,smart_stale_ticks_+1);
     smart_last_sequence_=input.sequence;
     const bool active=audio_process_on_ && playback_device_available_ && FxModel::getModel().getPowerState();
-    if(fresh && active && input.rms>0.0001f) smart_history_.push_back({input,now});
+    if(fresh && active && input.rms>0.0001f) {
+        smart_history_.push_back({input,now});
+        smart_activity_=smart_model_.trace(input);
+        smart_activity_at_=now;
+    } else if(fresh || !active) { smart_activity_={}; smart_activity_at_=0; }
     while(!smart_history_.empty() && (smart_history_.front().id<now-60000 || smart_history_.size()>600)) smart_history_.erase(smart_history_.begin());
     if(!smart_enabled_) return;
     const bool listening=active && smart_stale_ticks_<4 && input.rms>0.0001f;
-    const auto predictions=smart_model_.predict(input);
+    smart_bass_activity_=listening?SmartBassControl::activity(input):0.0f;
+    const auto& predictions=smart_activity_.outputs;
     const float amount=smart_sensitivity_/100.0f,depth=jmin(1.0f,amount*2);
     const float up[5]={3,2,2,2,4},down[5]={0.65f,0.9f,0.9f,0.65f,0.9f};
     for(int e=0;e<5;++e) {
-        const float desired=listening && smart_model_.ready[e]?predictions[e]:0.5f;
-        smart_scores_[e]+=(desired-smart_scores_[e])*(desired>smart_scores_[e]?0.5f:0.3f);
+        float desired=listening && smart_model_.ready[e]?predictions[e]:0.5f;
+        if(e==4 && listening && smart_model_.ready[e]) desired=SmartBassControl::limit(desired,smart_bass_activity_);
+        if(e==4) smart_scores_[e]=SmartBassControl::follow(smart_scores_[e],desired);
+        else smart_scores_[e]+=(desired-smart_scores_[e])*(desired>smart_scores_[e]?0.5f:0.3f);
         float direction=2*(smart_scores_[e]-0.5f);
         float target=smart_effects_[e]+(direction>0?direction*up[e]*amount:direction*smart_effects_[e]*down[e]*depth);
         target=jlimit(0.0f,10.0f,target);
         const float current=dfx_dsp_.getEffectValue((DfxDsp::Effect)e)*10;
-        if(std::abs(target-current)>0.04f) dfx_dsp_.setEffectValue((DfxDsp::Effect)e,current+jlimit(-0.7f,0.7f,target-current));
+        if(std::abs(target-current)>0.04f) dfx_dsp_.setEffectValue((DfxDsp::Effect)e,current+jlimit(e==4?-1.2f:-0.7f,e==4?0.4f:0.7f,target-current));
     }
     // A bass preset may also contain static low-EQ boosts. Temporarily relax
     // only positive low-band gains when the learned bass preference decreases.
@@ -3088,18 +3102,22 @@ void FxController::updateSmartListening()
         const float weight=jlimit(0.0f,1.0f,(350-frequency)/150);
         const float target=smart_eq_[b]>0?smart_eq_[b]*(1+bassDirection*depth*0.9f*weight):smart_eq_[b];
         const float current=dfx_dsp_.getEqBandBoostCut(b);
-        if(std::abs(target-current)>0.05f) dfx_dsp_.setEqBandBoostCut(b,current+jlimit(-0.35f,0.35f,target-current));
+        if(std::abs(target-current)>0.05f) dfx_dsp_.setEqBandBoostCut(b,current+jlimit(-0.8f,0.25f,target-current));
     }
     // Keep loudness handling in the existing DSP. Never write endpoint volume.
     const float leveling=active?jmax(smart_leveling_,2.0f):smart_leveling_;
     if(dfx_dsp_.getVolumeLeveling()!=leveling) dfx_dsp_.setVolumeLeveling(leveling);
+    smart_effective_bass_=dfx_dsp_.getEffectValue(DfxDsp::Effect::Bass)*10.0f;
+    smart_effective_clarity_=dfx_dsp_.getEffectValue(DfxDsp::Effect::Fidelity)*10.0f;
 }
 String FxController::getSmartSummary() const
 {
     if(!smart_enabled_) return "Manual sound / learning timeline available";
     if(std::none_of(smart_model_.ready.begin(),smart_model_.ready.end(),[](bool b){return b;})) return "Add More / Less examples, then train";
     if(smart_stale_ticks_>=4) return "Waiting for audio";
-    return "Personal AI / Bass " + String(smart_scores_[4]*100,0) + "% more / Clarity " + String(smart_scores_[0]*100,0) + "% more";
+    return "Bass " + String(smart_effective_bass_,1) +
+        " / 10 | Low-bass activity: " + (smart_bass_activity_<0.2f?String("low"):smart_bass_activity_<0.7f?String("moderate"):String("strong")) +
+        " | Clarity " + String(smart_effective_clarity_,1) + " / 10";
 }
 String FxController::getLearningStatus() const
 {
@@ -3125,13 +3143,15 @@ bool FxController::getLiveNeuralActivity(NeuralActivitySnapshot& out) const
 {
     // The UI and audio-history maintenance run on the message thread; the trainer
     // optimizes a separate model copy until its message-thread commit callback.
-    if(smart_history_.empty() || !playback_device_available_ ||
+    if(smart_training_) return smart_training_activity_ && smart_training_activity_->read(out);
+    if(!audio_process_on_ || !smart_activity_.sequence || smart_stale_ticks_>=4 || !playback_device_available_ ||
        !FxModel::getModel().getPowerState())
         return false;
-    const auto& frame=smart_history_.back();
-    if(frame.audio.rms<=0.0001f || Time::currentTimeMillis()-frame.id>1200)
+    if(smart_activity_.rms<=0.0001f || Time::currentTimeMillis()-smart_activity_at_>450)
         return false;
-    out=smart_model_.trace(frame.audio);
+    out=smart_activity_;
+    out.applied=smart_enabled_ && smart_sensitivity_>0 &&
+        std::any_of(out.ready.begin(),out.ready.end(),[](bool ready){return ready;});
     return true;
 }
 void FxController::trainSmartModel()
@@ -3139,11 +3159,15 @@ void FxController::trainSmartModel()
     if(smart_training_) return;
     auto examples=smart_examples_; auto model=std::make_shared<PersonalAudioModel>(smart_model_);
     smart_training_epoch_.store(0,std::memory_order_relaxed);
+    smart_training_activity_=std::make_shared<NeuralTrainingTelemetry>();
+    auto telemetry=smart_training_activity_;
     smart_training_=true;
     Component::SafePointer<FxMainWindow> window(main_window_);
     auto* epochs=&smart_training_epoch_;
-    Thread::launch([examples,model,window,epochs] {
-        const bool success=model->fit(examples,epochs);
+    Thread::launch([examples,model,window,epochs,telemetry] {
+        const bool success=model->fit(examples,epochs,[telemetry](const NeuralActivitySnapshot& s,int epoch) {
+            telemetry->publish(s,epoch);
+        });
         MessageManager::callAsync([model,window,success] {
             if(window==nullptr) return;
             auto& c=FxController::getInstance(); c.smart_training_=false;
