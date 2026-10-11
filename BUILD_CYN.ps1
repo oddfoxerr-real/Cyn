@@ -51,9 +51,9 @@ if ($WithMcp) {
 Compress-Archive -Path (Join-Path $dist '*') -DestinationPath (Join-Path $root 'dist\Cyn-Windows-x64.zip') -Force
 # Require genuine native ONNX model packaging for Cyn 2.0.18+ releases.
 $manifest=Get-Content (Join-Path $root 'Installer/Cyn/Cyn.iss') -Raw
-$published=[regex]::Match($manifest,'(?m)^AppVersion=(d+.d+.d+)').Groups[1].Value
+$published=[regex]::Match($manifest,'(?m)^AppVersion=([0-9]+\.[0-9]+\.[0-9]+)').Groups[1].Value
 if ([version]$published -ge [version]'2.0.18') {
-    $onnxStage=Join-Path $root '.build-toolsyamnet-package'
+    $onnxStage=Join-Path $root '.build-tools\yamnet-package'
     & (Join-Path $root 'PREPARE_CYN_YAMNET.ps1') -Destination $onnxStage
     foreach ($f in @('onnxruntime.dll','yamnet-16k-0p975s.onnx','yamnet-manifest.json')) {
         Copy-Item -LiteralPath (Join-Path $onnxStage $f) -Destination $dist -Force
