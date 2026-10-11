@@ -3241,6 +3241,22 @@ void FxController::trainSmartModel()
         });
     });
 }
+void FxController::rebuildScenePreferences()
+{
+    music_scene_preferences_.clear();
+    movie_scene_preferences_.clear();
+    for(const auto& example:smart_examples_) {
+        if(!example.starter && example.effect>=0 && example.effect<5 &&
+           smart_model_.ready[(size_t)example.effect])
+            music_scene_preferences_.observe(example.scene,example.effect,example.more);
+    }
+    for(const auto& example:movie_examples_) {
+        if(!example.starter && example.effect>=0 && example.effect<5 &&
+           movie_model_.ready[(size_t)example.effect])
+            movie_scene_preferences_.observe(example.scene,example.effect,example.more);
+    }
+}
+
 void FxController::saveSmartModel()
 {
     auto* root=new DynamicObject(); root->setProperty("schema",1);
@@ -3249,7 +3265,12 @@ void FxController::saveSmartModel()
     for(auto& e:smart_examples_) {
         auto* item=new DynamicObject(); Array<var> x; for(float f:e.audio.values) x.add(f);
         item->setProperty("x",x); item->setProperty("effect",e.effect); item->setProperty("more",e.more);
-        item->setProperty("id",(int64)e.id); item->setProperty("starter",e.starter); examples.add(var(item));
+        item->setProperty("id",(int64)e.id); item->setProperty("starter",e.starter);
+        if(e.scene.valid) {
+            Array<var> context; for(float feature:e.scene.embedding) context.add(feature);
+            item->setProperty("yamnet",context);
+        }
+        examples.add(var(item));
     }
     root->setProperty("weights",weights); root->setProperty("ready",ready); root->setProperty("examples",examples);
     // Movie AI has a separate model and label history inside the same local
@@ -3268,6 +3289,10 @@ void FxController::saveSmartModel()
         item->setProperty("more",e.more);
         item->setProperty("id",(int64)e.id);
         item->setProperty("starter",e.starter);
+        if(e.scene.valid) {
+            Array<var> context; for(float feature:e.scene.embedding) context.add(feature);
+            item->setProperty("yamnet",context);
+        }
         movieRows.add(var(item));
     }
     movie->setProperty("weights",movieWeights);
@@ -3359,7 +3384,17 @@ void FxController::loadSmartModel(bool starterOnly)
         AudioExample e; bool valid=true;
         for(int i=0;i<11;++i) { e.audio.values[i]=(float)(double)x->getReference(i); valid=valid && std::isfinite(e.audio.values[i]); }
         if(!valid) continue;
-        e.effect=effect; e.more=(bool)row["more"]; e.id=(int64)row["id"]; e.starter=(bool)row["starter"]; examples.push_back(e);
+        e.effect=effect; e.more=(bool)row["more"]; e.id=(int64)row["id"]; e.starter=(bool)row["starter"];
+        if(auto* context=row["yamnet"].getArray()) if(context->size()==CynAudioScene::embeddingSize) {
+            bool ok=true;
+            for(int i=0;i<CynAudioScene::embeddingSize;++i) {
+                float x=(float)(double)context->getReference(i);
+                if(!std::isfinite(x) || std::abs(x)>1.1f) {ok=false; break;}
+                e.scene.embedding[(size_t)i]=x;
+            }
+            e.scene.valid=ok;
+        }
+        examples.push_back(e);
     }
     smart_model_=next; smart_examples_=std::move(examples);
     if(!starterOnly) {
@@ -3402,6 +3437,15 @@ void FxController::loadSmartModel(bool starterOnly)
                         example.more=(bool)row["more"];
                         example.id=(int64)row["id"];
                         example.starter=(bool)row["starter"];
+                        if(auto* context=row["yamnet"].getArray()) if(context->size()==CynAudioScene::embeddingSize) {
+                            bool ok=true;
+                            for(int i=0;i<CynAudioScene::embeddingSize;++i) {
+                                float x=(float)(double)context->getReference(i);
+                                if(!std::isfinite(x) || std::abs(x)>1.1f) {ok=false; break;}
+                                example.scene.embedding[(size_t)i]=x;
+                            }
+                            example.scene.valid=ok;
+                        }
                         movieRows.push_back(example);
                     }
                 }
@@ -3410,6 +3454,7 @@ void FxController::loadSmartModel(bool starterOnly)
             }
         }
     }
+    rebuildScenePreferences();
 }
 void FxController::useStarterModel()
 {
@@ -3426,6 +3471,7 @@ void FxController::useStarterModel()
         loadSmartModel(true);
         smart_learning_message_="Music AI starter restored. Teach your music preferences.";
     }
+    rebuildScenePreferences();
     saveSmartModel();
 }
 
@@ -3556,6 +3602,7 @@ bool FxController::importSmartProfile(const File& source, String& error)
         smart_examples_.clear();
     } // Imported public models never carry another person's labels.
     smart_learning_message_="AI Hub model imported into the selected listening mode.";
+    rebuildScenePreferences();
     saveSmartModel();
     error.clear();
     return true;
