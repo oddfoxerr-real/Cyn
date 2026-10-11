@@ -227,6 +227,8 @@ FxController::FxController() : message_window_(L"CynHotkeys", (WNDPROC)eventCall
 
 FxController::~FxController()
 {
+    // Stop asynchronous inference before the audio DSP is destroyed.
+    yamnet_worker_.reset();
 	if (powerNotify_ != nullptr && unregister_suspend_resume_notification_ != nullptr)
 	{
 		unregister_suspend_resume_notification_(powerNotify_);
@@ -819,6 +821,8 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 		setPreset(preset_name);
         initialiseMovieStarter();
         loadSmartModel();
+        yamnet_worker_=std::make_unique<CynYamNetWorker>(dfx_dsp_);
+        yamnet_worker_->startIfAvailable();
         smart_mode_=jlimit(0,1,settings_.getInt("cyn_ai_listening_mode",0));
         setSmartListening(settings_.getBool("ember_smart_listening", false));
 
@@ -3086,6 +3090,9 @@ void FxController::updateSmartListening()
     const bool movie=smart_mode_==1;
     const auto& model=movie?movie_model_:smart_model_;
     const auto predictions=model.predict(input);
+    float yamSpeech=0.0f,yamMusic=0.0f,yamImpact=0.0f;
+    const bool yamnetLive=yamnet_worker_ &&
+        yamnet_worker_->latest(yamSpeech,yamMusic,yamImpact);
     const float amount=smart_sensitivity_/100.0f,depth=jmin(1.0f,amount*2);
 
     // This is a conservative mid-band presence estimate, NOT speech
@@ -3110,6 +3117,15 @@ void FxController::updateSmartListening()
             else if(movie && e==0) desired=0.50f+midFocus*0.28f;
             else if(movie && e==4) desired=0.38f;
             else if(movie && e==3) desired=0.45f;
+            // Official pretrained YAMNet predictions refine context for the
+            // learned per-effect model. Audio classification is not user taste:
+            // never treat an explosion as a request for maximal Bass.
+            if(yamnetLive && movie && e==0)
+                desired=jlimit(0.35f,0.88f,desired+0.18f*yamSpeech-0.03f*yamMusic);
+            if(yamnetLive && movie && e==4)
+                desired=jmin(desired,0.49f-0.08f*yamImpact-0.04f*yamSpeech);
+            if(yamnetLive && !movie && e==4)
+                desired=jmin(desired,0.58f); // Don't allow Music mode Bass runaway.
         }
         smart_scores_[e]+=(desired-smart_scores_[e])*(desired>smart_scores_[e]?0.30f:0.22f);
         const float direction=2.0f*(smart_scores_[e]-0.5f);
@@ -3148,6 +3164,12 @@ String FxController::getSmartSummary() const
     const bool any=std::any_of(model.ready.begin(),model.ready.end(),[](bool b){return b;});
     if(smart_mode_==1 && !any) return "Movie AI / adaptive dialogue-band focus / teach your preferences";
     if(!any) return "Music AI / label More and Less, then train";
+    if(yamnet_worker_) {
+        float speech=0,music=0,impact=0;
+        if(yamnet_worker_->latest(speech,music,impact))
+            return mode+" / YAMNet live / speech "+String(speech*100,0)+"% / music "+
+                   String(music*100,0)+"% / Bass limited";
+    }
     return mode+" / learned preferences active / Bass boosts limited";
 }
 String FxController::getLearningStatus() const

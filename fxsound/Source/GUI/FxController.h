@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <JuceHeader.h>
 #include "FxModel.h"
 #include "PersonalAudioModel.h"
+#include "CynYamNetWorker.h"
 #include "FxTheme.h"
 #include "FxAudioControls.h"
 #include "../Source/Utils/Settings/Settings.h"
@@ -328,6 +329,7 @@ private:
     void loadSmartModel(bool starterOnly = false);
     void initialiseMovieStarter();
     void saveSmartModel();
+    std::unique_ptr<CynYamNetWorker> yamnet_worker_;
     PersonalAudioModel smart_model_;
     std::vector<AudioExample> smart_examples_;
     PersonalAudioModel movie_model_;
