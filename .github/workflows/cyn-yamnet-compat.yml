@@ -1,0 +1,50 @@
+name: Cyn YAMNet Compatibility
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/cyn-yamnet-compat.yml
+      - experiments/yamnet/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-pretrained-yamnet:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install compatible TensorFlow and YAMNet dependencies
+        run: |
+          python -m pip install --disable-pip-version-check \
+            tensorflow-cpu==2.15.1 tensorflow-hub==0.16.1 \
+            tf-keras==2.15.1 scipy==1.15.3 numpy==1.26.4
+      - name: Load official pretrained Google YAMNet and perform real inference
+        env:
+          TF_CPP_MIN_LOG_LEVEL: "2"
+          CUDA_VISIBLE_DEVICES: "-1"
+        run: |
+          python -u experiments/yamnet/probe_yamnet.py \
+            --json yamnet-test-report.json
+      - name: Verify tested architecture
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open('yamnet-test-report.json'))
+          assert r['class_scores']==521
+          assert r['embedding_dimensions']==1024
+          assert r['patches']>=1
+          assert r['integrated_into_cyn'] is False
+          print('PASS: official 521-class pretrained YAMNet produced real embeddings')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yamnet-compatibility-report
+          path: yamnet-test-report.json
+          if-no-files-found: error
