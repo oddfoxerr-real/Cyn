@@ -119,9 +119,9 @@ private:
                 if(valid && scores!=nullptr) {
                     // Verified official AudioSet class positions: speech 0,2,3;
                     // music 132,133; explosion/gunshot 420,421.
-                    const float speech=std::clamp(std::max({scores[0],scores[2],scores[3]}),0.0f,1.0f);
-                    const float music=std::clamp(std::max(scores[132],scores[133]),0.0f,1.0f);
-                    const float impact=std::clamp(std::max(scores[420],scores[421]),0.0f,1.0f);
+                    const float speech=std::clamp((std::max)((std::max)(scores[0],scores[2]),scores[3]),0.0f,1.0f);
+                    const float music=std::clamp((std::max)(scores[132],scores[133]),0.0f,1.0f);
+                    const float impact=std::clamp((std::max)(scores[420],scores[421]),0.0f,1.0f);
                     const auto blend=[](std::atomic<float>& store,float value) {
                         const float old=store.load(std::memory_order_relaxed);
                         store.store(old*0.65f+value*0.35f,std::memory_order_relaxed);
