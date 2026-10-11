@@ -10,7 +10,7 @@ assert(src.includes("std::array<std::atomic<float>,yamnetRingCapacity>"),"Wavefo
 assert(src.includes("std::memory_order_release"),"Producer must publish atomically");
 assert(worker.includes("juce::Thread")&&worker.includes("stopThread(15000)"),"Inference needs isolated worker");
 assert(worker.includes("api->Run(session")&&worker.includes("api->CreateSession("),"Worker must actually execute pretrained ONNX model");
-assert(worker.includes("scores[0]")&&worker.includes("scores[132]")&&worker.includes("scores[420]"),"Must classify actual YAMNet labels");
+assert(worker.includes("top(0,2)")&&worker.includes("top(132,133)")&&worker.includes("top(420,421)"),"Must use verified AudioSet class indices");
 assert(worker.includes("source_.copyYamNetWindow"),"Worker must use bounded waveform tap");
 assert(controller.includes("yamnet_worker_->startIfAvailable()"),"Live YAMNet never starts");
 assert(controller.includes("yamnet_worker_->latest("), "Predictions must inform DSP");
