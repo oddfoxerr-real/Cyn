@@ -48,7 +48,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\BUILD_INSTALLER.ps1
 
 If build tools are missing, `SETUP_BUILD_TOOLS.ps1` can install the prerequisites.
 The installer script obtains a pinned, signature-verified Inno Setup compiler
-when needed. Output: `dist/Cyn/Cyn.exe` and `dist/Cyn-Setup-2.0.17-x64.exe`.
+when needed. Output: `dist/Cyn/Cyn.exe` and `dist/Cyn-Setup-2.0.18-x64.exe`.
 
 See [the user guide](README_CYN.md), [model card](models/MODEL_CARD.md),
 [installer details](Installer/Cyn/README.md), and [validation](VALIDATION.md).

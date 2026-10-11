@@ -22,7 +22,7 @@ public:
         g.setColour(Colour(FXCOLOR(ControlBackground)).withAlpha(1.0f)); g.fillRoundedRectangle(bounds,16);
         g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(1.0f)); g.drawRoundedRectangle(bounds.reduced(.5f),16,1);
         g.setFont(13); g.setColour(Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
-        g.drawText(selected_?"Selection paused / label this section, or drag to change it":"ALL AUDIO / drag to teach Cyn (music, films, TV, games)",16,10,getWidth()-32,22,Justification::centredLeft);
+        g.drawText(selected_?"Selection paused / label this section, or drag to change it":"LOUDNESS TIMELINE / bar height shows volume, not bass / drag to teach Cyn",16,10,getWidth()-32,22,Justification::centredLeft);
         float left=18,right=(float)getWidth()-18,center=82;
         auto xpos=[&](int64_t id){return left+(right-left)*(float)(id-(end_-60000))/60000;};
         if(selected_) {

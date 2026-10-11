@@ -10,6 +10,14 @@ Training uses 1,800 generated mixtures, with bass stems and dull/bright variants
 
 The model learns from spectral ratios, crest factor, stereo width and level. It has no long-term song context or source separation. More/Less labels express a listener's preference, not an objective fact about a song. User training keeps a small starter example set at reduced sample weight; each personal example has five times the weight of a starter example before class balancing. Adjacent frames are correlated, so many frames from one selection do not equal many independently labeled songs.
 
+Windows 2.0.18 adds a **separate low-bass control limit**, not new model weights.
+Relative pre-effect 45/75 Hz activity constrains bass proposals when those bands are
+weak against 120/200/400 Hz. This index does not use loudness or stereo width and is
+not a calibrated probability or source classifier. Saved models are preserved;
+their raw output can differ from the limited, smoothed effect setting. Upper-bass
+instruments can also be attenuated by this conservative limit. See
+`RELEASE_NOTES_2.0.18.md` for tests and limitations.
+
 ## Personal learning
 
 The timeline retains at most 60 seconds of **features**, not recorded audio. Selecting a range freezes the displayed timeline; Resume timeline returns to live history. Choose an effect, label More here or Less here, then Train my model. Supply both directions across several varied songs. Each output needs at least five frames in each direction before it is trained. Training runs in a background thread. Relabeling the same selected frame/effect replaces its old label. At most 2,208 examples are retained including starter examples; the oldest personal labels are removed when the limit is exceeded.

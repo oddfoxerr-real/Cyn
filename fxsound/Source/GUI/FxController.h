@@ -340,6 +340,8 @@ private:
     bool smart_enabled_ = false;
     float smart_sensitivity_ = 50.0f;
     float smart_bass_ = 0, smart_clarity_ = 0, smart_leveling_ = 0;
+    float smart_bass_activity_ = 0;
+    float smart_effective_bass_ = 0, smart_effective_clarity_ = 0;
 	CriticalSection lock_;
 	CriticalSection save_lock_;
 };
