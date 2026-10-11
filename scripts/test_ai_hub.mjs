@@ -102,7 +102,7 @@ for (const marker of ['movie_model_', 'movie_examples_', 'getSmartListeningMode(
   assert(movieHeader.includes(marker), 'Missing independent Movie AI model or controller API: '+marker);
 for (const marker of ['root->setProperty("movie_ai"', 'savedMovie=root["movie_ai"]',
       'initialiseMovieStarter()', 'candidate.ready.fill(false)', 'movie?movie_model_:smart_model_',
-      'movie?4.8f:6.5f', 'jmax(smart_effects_[4],movie?4.8f:6.5f)',
+      'CynFlagshipMixer::decide(scene,input,movie)', 'sceneHead.predict(scene,e,contextual,confidence)',
       'trainingMode==1?movie_examples_:smart_examples_', 'c.movie_model_=*model',
       '(smart_mode_==1?movie_model_:smart_model_).trace(frame.audio)', 'settings_.setInt("cyn_ai_listening_mode",mode)'])
   assert(movieCtrl.includes(marker), 'Movie AI regression: '+marker);
@@ -113,7 +113,7 @@ assert(movieUi.includes('Train Movie AI'), 'Movie mode has no training action');
 assert(promotion.includes('independent_human_labels') && promotion.includes('log_loss') &&
   promotion.includes('domain') && promotion.includes('balanced_accuracy'),
   'Starter promotion must require held-out human movie and music evaluation');
-console.log('PASS: separate Movie AI model and labels, bass guard, starter promotion gate');
+console.log('PASS: independent Movie AI and labels, YAMNet flagship, starter promotion gate');
 
 // A separately trained Cinema AI profile is used as Movie AI's default when bundled.
 assert(movieCtrl.includes('getChildFile("cyn-cinema.cynai.json")'), 'Movie AI must use bundled Cyn Cinema model');

@@ -14,6 +14,13 @@ assert(worker.includes("scores[0]")&&worker.includes("scores[132]")&&worker.incl
 assert(worker.includes("source_.copyYamNetWindow"),"Worker must use bounded waveform tap");
 assert(controller.includes("yamnet_worker_->startIfAvailable()"),"Live YAMNet never starts");
 assert(controller.includes("yamnet_worker_->latest("), "Predictions must inform DSP");
-assert(controller.includes("if(yamnetLive && movie && e==0)")&&controller.includes("if(yamnetLive && movie && e==4)"),"Movie AI not YAMNet aware");
+const engine=readFileSync(path("fxsound/Source/GUI/CynFlagshipMixer.h"),"utf8");
+assert(controller.includes("CynFlagshipMixer::decide(scene,input,movie)"),"YAMNet must drive Music/Movie mix decisions");
+assert(controller.includes("sceneHead.predict(scene,e,contextual,confidence)"),"Learned context must alter real DSP");
+assert(worker.includes("for(int i=0;i<521;++i)") && worker.includes("for(int i=0;i<1024;++i)"),"All 521 classes and 1024 embedding dimensions must be used");
+assert(engine.includes("class CynScenePreference") && engine.includes("CynFlagshipMixer"),"Missing local neural scene preference head");
+assert(!controller.includes("desired=jmin(desired,0.58f)") && !controller.includes("movie?4.8f:6.5f"),"Arbitrary Music Bass limiter returned");
+assert(controller.includes("decision.lowEqDb*amount*weight"),"YAMNet DJ mixing must control sub-bass EQ");
+assert(controller.includes("rebuildScenePreferences()"),"Embedding-learning persistence missing");
 assert(model.includes("onnxruntime"),"Missing tested pretrained model conversion");
-console.log("PASS: native YAMNet audio tap, ONNX inference and limited-bass control");
+console.log("PASS: native YAMNet audio tap, ONNX inference and embedding-driven flagship and dynamic bass control");

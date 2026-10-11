@@ -6,6 +6,10 @@ on:
     paths:
       - .github/workflows/cyn-yamnet-native-ci.yml
       - fxsound/Source/GUI/CynYamNetWorker.h
+      - fxsound/Source/GUI/CynFlagshipMixer.h
+      - fxsound/Source/GUI/PersonalAudioModel.h
+      - scripts/test_yamnet_native.mjs
+      - tests/cyn_flagship_mixer_test.cpp
       - fxsound/Source/GUI/FxController.h
       - fxsound/Source/GUI/FxController.cpp
       - dsp/include/SourceAudioAnalyzer.h
@@ -25,6 +29,17 @@ jobs:
       - name: Check native source contracts
         shell: pwsh
         run: node scripts/test_yamnet_native.mjs
+      - name: Unit-test YAMNet flagship DSP policy on Windows
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vs = & $vswhere -latest -version '[17.0,18.0)' -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (!$vs) { throw 'Visual Studio C++ toolchain is missing' }
+          $envScript = Join-Path $vs 'VC/Auxiliary/Build/vcvars64.bat'
+          $binary = Join-Path $env:RUNNER_TEMP 'cyn-flagship-policy.exe'
+          $command = 'call "' + $envScript + '" >NUL && cl /nologo /EHsc /std:c++17 /I"dsp\\include" /I"fxsound\\Source\\GUI" tests\\cyn_flagship_mixer_test.cpp /Fe:"' + $binary + '" && "' + $binary + '"'
+          cmd.exe /D /C $command
+          if ($LASTEXITCODE -ne 0) { throw 'YAMNet flagship C++ policy tests failed' }
       - name: Compile native x64 Cyn with YAMNet worker
         shell: pwsh
         run: .\BUILD_CYN.ps1
