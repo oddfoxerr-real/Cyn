@@ -1,6 +1,7 @@
 // Cyn local preference learning. SPDX-License-Identifier: AGPL-3.0-or-later
 #pragma once
 #include "InputAudioFeatures.h"
+#include "CynFlagshipMixer.h"
 #include <array>
 #include <vector>
 #include <cmath>
@@ -8,8 +9,8 @@
 #include <cstdint>
 #include <atomic>
 
-struct AudioExample { InputAudioFeatures audio; int effect=4; bool more=false; int64_t id=0; bool starter=false; };
-struct AudioFrame { InputAudioFeatures audio; int64_t id=0; };
+struct AudioExample { InputAudioFeatures audio; int effect=4; bool more=false; int64_t id=0; bool starter=false; CynAudioScene scene {}; };
+struct AudioFrame { InputAudioFeatures audio; int64_t id=0; CynAudioScene scene {}; };
 
 // Live inference telemetry, sampled on the JUCE message thread, never audio callback.
 struct NeuralActivitySnapshot {
