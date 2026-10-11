@@ -202,3 +202,5 @@ void DfxDsp::getSpectrumBandValues(float* rp_band_values, int i_array_size)
 
 InputAudioFeatures DfxDsp::getInputAudioFeatures() { return data_->source_analyzer_.snapshot(); }
 
+bool DfxDsp::copyYamNetWindow(std::array<float,15600>& out,uint64_t& sampleNumber) const
+{ return data_->source_analyzer_.copyYamNetWindow(out,sampleNumber); }

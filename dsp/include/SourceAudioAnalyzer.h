@@ -4,19 +4,23 @@
 #include <atomic>
 #include <cmath>
 #include <algorithm>
+#include <array>
+#include <cstdint>
 
 // Audio thread owns filters/accumulators. Published atomic snapshots are read
 // by the UI; no allocation, lock, model inference or audio modification here.
 class SourceAudioAnalyzer
 {
 public:
-    SourceAudioAnalyzer() { for (auto& value : published_) value.store(0); }
+    SourceAudioAnalyzer() { for (auto& value : published_) value.store(0); for(auto& sample:yamnet_ring_) sample.store(0.0f,std::memory_order_relaxed); }
     void setFormat(int bits, int channels, int rate)
     {
         if (bits != 32 || channels < 1 || channels > 8 || rate < 8000 || rate > 384000)
         { channels = 0; rate = 0; }
         if (channels_ == channels && rate_ == rate) return;
         channels_ = channels; rate_ = rate; clearWindow();
+        yamnet_phase_ = 0; yamnet_sum_ = 0; yamnet_count_ = 0;
+        yamnet_write_.store(0,std::memory_order_release);
         filters_ = {}; publish({});
         if (!channels_) return;
         static const double centers[8] = {45,75,120,200,400,900,2200,5000};
@@ -35,15 +39,19 @@ public:
         if (!audio || frames <= 0 || !channels_) return;
         for (int frame=0;frame<frames;++frame)
         {
+            double monoSum=0;
             for (int c=0;c<channels_;++c)
             {
                 double x=audio[frame*channels_+c];
                 if (!std::isfinite(x)) x=0;
                 x=(std::max)(-4.0,(std::min)(4.0,x));
+                monoSum+=x;
                 full_ += x*x;
                 peak_=(std::max)(peak_,std::abs(x));
                 for (int b=0;b<8;++b) { double y=filters_[c][b].tick(x); energies_[b]+=y*y; }
             }
+            // Real-time thread never blocks or invokes neural inference.
+            feedYamNet((float)(monoSum/channels_));
             if (channels_ > 1) {
                 double l=audio[frame*channels_],r=audio[frame*channels_+1];
                 if (std::isfinite(l) && std::isfinite(r)) { stereo_+=(l-r)*(l-r); stereoPower_+=l*l+r*r; }
@@ -61,6 +69,20 @@ public:
             }
         }
     }
+    static constexpr size_t yamnetSamples=15600;
+    bool copyYamNetWindow(std::array<float,yamnetSamples>& out,
+                          uint64_t& sampleNumber) const
+    {
+        const auto end=yamnet_write_.load(std::memory_order_acquire);
+        if (end<yamnetSamples || end==sampleNumber) return false;
+        const auto start=end-yamnetSamples;
+        for(size_t i=0;i<yamnetSamples;++i)
+            out[i]=yamnet_ring_[(start+i)%yamnetRingCapacity].load(std::memory_order_relaxed);
+        if(yamnet_write_.load(std::memory_order_acquire)-end >= yamnetRingCapacity-yamnetSamples)
+            return false;
+        sampleNumber=end;
+        return true;
+    }
     InputAudioFeatures snapshot() const
     {
         for (int retry=0;retry<3;++retry)
@@ -76,6 +98,27 @@ public:
         return {};
     }
 private:
+    static constexpr size_t yamnetRingCapacity=65536;
+    std::array<std::atomic<float>,yamnetRingCapacity> yamnet_ring_ {};
+    std::atomic<uint64_t> yamnet_write_ {0};
+    int yamnet_phase_=0,yamnet_count_=0;
+    double yamnet_sum_=0;
+    void feedYamNet(float mono) noexcept
+    {
+        yamnet_phase_ += 16000;
+        yamnet_sum_+=mono;
+        ++yamnet_count_;
+        if(yamnet_phase_ < rate_) return;
+        const float averaged=(float)(yamnet_sum_/yamnet_count_);
+        while(yamnet_phase_ >= rate_) {
+            const auto index=yamnet_write_.load(std::memory_order_relaxed);
+            yamnet_ring_[index%yamnetRingCapacity].store(averaged,std::memory_order_relaxed);
+            yamnet_write_.store(index+1,std::memory_order_release);
+            yamnet_phase_-=rate_;
+        }
+        yamnet_sum_=0;
+        yamnet_count_=0;
+    }
     struct Filter {
         double b0=0,b2=0,a1=0,a2=0,z1=0,z2=0;
         double tick(double x) { double y=b0*x+z1; z1=-a1*y+z2; z2=b2*x-a2*y; return y; }

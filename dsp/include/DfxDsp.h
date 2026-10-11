@@ -25,6 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define _DFX_DSP_H_
 
 #include <string>
+#include <array>
+#include <cstdint>
 #include "InputAudioFeatures.h"
 
 struct DfxPreset {
@@ -73,6 +75,7 @@ public:
 	void resetTotalAudioProcessedTime();
     void getSpectrumBandValues(float* rp_band_values, int i_array_size);
     InputAudioFeatures getInputAudioFeatures();
+    bool copyYamNetWindow(std::array<float,15600>& out,uint64_t& sampleNumber) const;
 
 private:
 	DfxDspPrivate *data_;
