@@ -33,13 +33,13 @@ const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
                   "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.16"]){
+                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.17"]){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
 assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
 assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
-console.log("PASS: visible native AI sidebar, profile actions and v2.0.16 version marker");
+console.log("PASS: visible native AI sidebar, profile actions and v2.0.17 version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
 assert(native.includes("componentToCentreAround = owner"),"AI Hub must be positioned over Cyn");
 assert(native.includes("dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f)"),"Dialog background is transparent");
@@ -91,3 +91,32 @@ assert(view.includes("brainController.getSmartTrainingProgress()"),"Visualizer d
 assert(neural.includes("displayed_.inputConnections")&&neural.includes("displayed_.outputConnections"),"Connections must react to real neural signals");
 assert(neural.includes("WAITING FOR AUDIO")&&neural.includes("PROCESSING AUDIO"),"Must differentiate silence from playback");
 console.log("PASS: live neural inference and supervised epoch animation");
+
+// Music/Movie AI regression: distinct weights, saved labels and sound limits.
+const movieCtrl=readFileSync(path("fxsound/Source/GUI/FxController.cpp"),"utf8");
+const movieHeader=readFileSync(path("fxsound/Source/GUI/FxController.h"),"utf8");
+const movieUi=readFileSync(path("fxsound/Source/GUI/FxProView.cpp"),"utf8");
+const movieUiHeader=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
+const promotion=readFileSync(path("scripts/evaluate_starter_candidates.py"),"utf8");
+for (const marker of ['movie_model_', 'movie_examples_', 'getSmartListeningMode()', 'setSmartListeningMode(int mode)'])
+  assert(movieHeader.includes(marker), 'Missing independent Movie AI model or controller API: '+marker);
+for (const marker of ['root->setProperty("movie_ai"', 'savedMovie=root["movie_ai"]',
+      'initialiseMovieStarter()', 'candidate.ready.fill(false)', 'movie?movie_model_:smart_model_',
+      'movie?4.8f:6.5f', 'jmax(smart_effects_[4],movie?4.8f:6.5f)',
+      'trainingMode==1?movie_examples_:smart_examples_', 'c.movie_model_=*model',
+      '(smart_mode_==1?movie_model_:smart_model_).trace(frame.audio)', 'settings_.setInt("cyn_ai_listening_mode",mode)'])
+  assert(movieCtrl.includes(marker), 'Movie AI regression: '+marker);
+assert(movieUiHeader.includes('FxComboBox listening_mode_'), 'Mode picker missing');
+assert(movieUi.includes('{"Music AI", "Movie & TV AI"}'), 'Movie mode absent from native UI');
+assert(movieUi.includes('listening_mode_.setEnabled(!controller.isSmartTraining())'), 'Cannot switch models mid-train');
+assert(movieUi.includes('Train Movie AI'), 'Movie mode has no training action');
+assert(promotion.includes('independent_human_labels') && promotion.includes('log_loss') &&
+  promotion.includes('domain') && promotion.includes('balanced_accuracy'),
+  'Starter promotion must require held-out human movie and music evaluation');
+console.log('PASS: separate Movie AI model and labels, bass guard, starter promotion gate');
+
+// A separately trained Cinema AI profile is used as Movie AI's default when bundled.
+assert(movieCtrl.includes('getChildFile("cyn-cinema.cynai.json")'), 'Movie AI must use bundled Cyn Cinema model');
+assert(movieCtrl.includes('package["format"].toString()=="cyn-ai-profile"'), 'Movie model format must be validated');
+assert(movieCtrl.includes('movie_model_=candidate;'), 'Default Movie AI needs candidate model weights');
+console.log('PASS: tested Cinema AI profile seeds Movie AI, generic starter fallback preserved');

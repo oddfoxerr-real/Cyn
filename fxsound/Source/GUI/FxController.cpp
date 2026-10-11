@@ -40,7 +40,7 @@ void launchCynUpdater(bool interactive)
         if (interactive) AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "CynUpdater.ps1 is missing. Reinstall Cyn.");
         return;
     }
-    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.16" + (interactive ? " -Interactive" : "");
+    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.17" + (interactive ? " -Interactive" : "");
     auto result = ShellExecuteW(nullptr, L"open", L"powershell.exe", args.toWideCharPointer(), nullptr, SW_HIDE);
     if (reinterpret_cast<INT_PTR>(result) <= 32 && interactive)
         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");
@@ -817,7 +817,9 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 
 		auto preset_name = settings_.getString("preset");
 		setPreset(preset_name);
+        initialiseMovieStarter();
         loadSmartModel();
+        smart_mode_=jlimit(0,1,settings_.getInt("cyn_ai_listening_mode",0));
         setSmartListening(settings_.getBool("ember_smart_listening", false));
 
 		showView();
@@ -3049,6 +3051,19 @@ void FxController::setSmartListening(bool enabled)
     if(enabled!=smart_enabled_) { if(enabled) captureSmartBaseline(); else restoreSmartBaseline(); smart_enabled_=enabled; }
     settings_.setBool("ember_smart_listening",enabled); // Retain the old preference when upgrading.
 }
+void FxController::setSmartListeningMode(int mode)
+{
+    mode=jlimit(0,1,mode);
+    if(smart_training_ || mode==smart_mode_) return;
+    // Switching must never inherit temporary DSP settings from the old model.
+    if(smart_enabled_) restoreSmartBaseline();
+    smart_mode_=mode;
+    if(smart_enabled_) captureSmartBaseline();
+    settings_.setInt("cyn_ai_listening_mode",mode);
+    smart_learning_message_=mode==1 ?
+        "Movie AI is separate. Label dialogue, music and effects with More / Less." :
+        "Music AI selected. Your music training remains independent.";
+}
 void FxController::setSmartSensitivity(float percent)
 {
     if(!std::isfinite(percent)) return;
@@ -3068,17 +3083,47 @@ void FxController::updateSmartListening()
     while(!smart_history_.empty() && (smart_history_.front().id<now-60000 || smart_history_.size()>600)) smart_history_.erase(smart_history_.begin());
     if(!smart_enabled_) return;
     const bool listening=active && smart_stale_ticks_<4 && input.rms>0.0001f;
-    const auto predictions=smart_model_.predict(input);
+    const bool movie=smart_mode_==1;
+    const auto& model=movie?movie_model_:smart_model_;
+    const auto predictions=model.predict(input);
     const float amount=smart_sensitivity_/100.0f,depth=jmin(1.0f,amount*2);
-    const float up[5]={3,2,2,2,4},down[5]={0.65f,0.9f,0.9f,0.65f,0.9f};
+
+    // This is a conservative mid-band presence estimate, NOT speech
+    // separation or an assertion that dialogue is present.
+    const auto energy=[&](int i) {
+        return std::exp(jlimit(-8.0f,0.0f,std::isfinite(input.values[i])?input.values[i]:-8.0f));
+    };
+    const float mid=(energy(2)+energy(3)+energy(4)+energy(5))*0.25f;
+    const float low=(energy(0)+energy(1))*0.5f;
+    const float midFocus=jlimit(0.0f,1.0f,1.5f*(mid/(mid+low+0.00001f)-0.30f));
+
+    // Music AI no longer gives Bass the largest upward gain.
+    // Movie AI softly favors intelligibility and holds dynamics and bass in
+    // check; each ready movie-model output is trained ONLY on movie labels.
+    const float musicUp[5]={2.7f,1.3f,1.2f,1.3f,1.5f};
+    const float movieUp[5]={2.5f,0.8f,1.0f,0.7f,0.65f};
+    const float down[5]={0.65f,0.9f,0.9f,0.65f,0.9f};
     for(int e=0;e<5;++e) {
-        const float desired=listening && smart_model_.ready[e]?predictions[e]:0.5f;
-        smart_scores_[e]+=(desired-smart_scores_[e])*(desired>smart_scores_[e]?0.5f:0.3f);
-        float direction=2*(smart_scores_[e]-0.5f);
-        float target=smart_effects_[e]+(direction>0?direction*up[e]*amount:direction*smart_effects_[e]*down[e]*depth);
+        float desired=0.5f;
+        if(listening) {
+            if(model.ready[e]) desired=predictions[e];
+            else if(movie && e==0) desired=0.50f+midFocus*0.28f;
+            else if(movie && e==4) desired=0.38f;
+            else if(movie && e==3) desired=0.45f;
+        }
+        smart_scores_[e]+=(desired-smart_scores_[e])*(desired>smart_scores_[e]?0.30f:0.22f);
+        const float direction=2.0f*(smart_scores_[e]-0.5f);
+        const float up=movie?movieUp[e]:musicUp[e];
+        float target=smart_effects_[e]+
+            (direction>0?direction*up*amount:direction*smart_effects_[e]*down[e]*depth);
+        // Respect deliberately high manual settings, but never boost them
+        // further; otherwise keep automatic Bass below a conservative ceiling.
+        if(e==4) target=jmin(target,jmax(smart_effects_[4],movie?4.8f:6.5f));
+        if(movie && e==3) target=jmin(target,jmax(smart_effects_[3],5.0f));
         target=jlimit(0.0f,10.0f,target);
         const float current=dfx_dsp_.getEffectValue((DfxDsp::Effect)e)*10;
-        if(std::abs(target-current)>0.04f) dfx_dsp_.setEffectValue((DfxDsp::Effect)e,current+jlimit(-0.7f,0.7f,target-current));
+        if(std::abs(target-current)>0.04f)
+            dfx_dsp_.setEffectValue((DfxDsp::Effect)e,current+jlimit(-0.45f,0.45f,target-current));
     }
     // A bass preset may also contain static low-EQ boosts. Temporarily relax
     // only positive low-band gains when the learned bass preference decreases.
@@ -3096,30 +3141,47 @@ void FxController::updateSmartListening()
 }
 String FxController::getSmartSummary() const
 {
-    if(!smart_enabled_) return "Manual sound / learning timeline available";
-    if(std::none_of(smart_model_.ready.begin(),smart_model_.ready.end(),[](bool b){return b;})) return "Add More / Less examples, then train";
-    if(smart_stale_ticks_>=4) return "Waiting for audio";
-    return "Personal AI / Bass " + String(smart_scores_[4]*100,0) + "% more / Clarity " + String(smart_scores_[0]*100,0) + "% more";
+    const auto& model=smart_mode_==1?movie_model_:smart_model_;
+    const String mode=smart_mode_==1?"Movie AI":"Music AI";
+    if(!smart_enabled_) return mode+" / learning available (processing off)";
+    if(smart_stale_ticks_>=4) return mode+" / waiting for audio";
+    const bool any=std::any_of(model.ready.begin(),model.ready.end(),[](bool b){return b;});
+    if(smart_mode_==1 && !any) return "Movie AI / adaptive dialogue-band focus / teach your preferences";
+    if(!any) return "Music AI / label More and Less, then train";
+    return mode+" / learned preferences active / Bass boosts limited";
 }
 String FxController::getLearningStatus() const
 {
     if(smart_training_) return "Training locally...";
-    int user=0,heads=0; for(auto& e:smart_examples_) if(!e.starter) ++user; for(bool r:smart_model_.ready) if(r) ++heads;
-    return String(user)+" personal frames / "+String(heads)+" effects learned. "+smart_learning_message_;
+    const auto& examples=smart_mode_==1?movie_examples_:smart_examples_;
+    const auto& model=smart_mode_==1?movie_model_:smart_model_;
+    int user=0,heads=0;
+    for(const auto& e:examples) if(!e.starter) ++user;
+    for(bool r:model.ready) if(r) ++heads;
+    return String(smart_mode_==1?"Movie AI / ":"Music AI / ")+String(user)+
+        " labeled frames / "+String(heads)+" effects trained. "+smart_learning_message_;
 }
 void FxController::labelAudio(const std::vector<AudioFrame>& frames,int effect,bool more)
 {
     if(smart_training_ || effect<0 || effect>=5 || frames.empty()) return;
-    for(auto& frame:frames) {
-        auto existing=std::find_if(smart_examples_.begin(),smart_examples_.end(),[&](const AudioExample& e){return !e.starter && e.id==frame.id && e.effect==effect;});
+    auto& examples=smart_mode_==1?movie_examples_:smart_examples_;
+    for(const auto& frame:frames) {
+        auto existing=std::find_if(examples.begin(),examples.end(),[&](const AudioExample& e){
+            return !e.starter && e.id==frame.id && e.effect==effect;
+        });
         AudioExample example {frame.audio,effect,more,frame.id,false};
-        if(existing!=smart_examples_.end()) *existing=example; else smart_examples_.push_back(example);
+        if(existing!=examples.end()) *existing=example;
+        else examples.push_back(example);
     }
-    while(smart_examples_.size()>2208) {
-        auto oldest=std::find_if(smart_examples_.begin(),smart_examples_.end(),[](const AudioExample& e){return !e.starter;});
-        if(oldest==smart_examples_.end()) break; smart_examples_.erase(oldest);
+    while(examples.size()>2208) {
+        auto oldest=std::find_if(examples.begin(),examples.end(),[](const AudioExample& e){return !e.starter;});
+        if(oldest==examples.end()) break;
+        examples.erase(oldest);
     }
-    smart_learning_message_="Selection labeled. Train to apply."; saveSmartModel();
+    smart_learning_message_=smart_mode_==1 ?
+        "Movie feedback stored. Train Movie AI to apply." :
+        "Music feedback stored. Train Music AI to apply.";
+    saveSmartModel();
 }
 bool FxController::getLiveNeuralActivity(NeuralActivitySnapshot& out) const
 {
@@ -3131,24 +3193,35 @@ bool FxController::getLiveNeuralActivity(NeuralActivitySnapshot& out) const
     const auto& frame=smart_history_.back();
     if(frame.audio.rms<=0.0001f || Time::currentTimeMillis()-frame.id>1200)
         return false;
-    out=smart_model_.trace(frame.audio);
+    out=(smart_mode_==1?movie_model_:smart_model_).trace(frame.audio);
     return true;
 }
 void FxController::trainSmartModel()
 {
     if(smart_training_) return;
-    auto examples=smart_examples_; auto model=std::make_shared<PersonalAudioModel>(smart_model_);
+    const int trainingMode=smart_mode_;
+    auto examples=trainingMode==1?movie_examples_:smart_examples_;
+    auto model=std::make_shared<PersonalAudioModel>(trainingMode==1?movie_model_:smart_model_);
     smart_training_epoch_.store(0,std::memory_order_relaxed);
     smart_training_=true;
     Component::SafePointer<FxMainWindow> window(main_window_);
     auto* epochs=&smart_training_epoch_;
-    Thread::launch([examples,model,window,epochs] {
+    Thread::launch([examples,model,window,epochs,trainingMode] {
         const bool success=model->fit(examples,epochs);
-        MessageManager::callAsync([model,window,success] {
+        MessageManager::callAsync([model,window,success,trainingMode] {
             if(window==nullptr) return;
             auto& c=FxController::getInstance(); c.smart_training_=false;
-            if(success) { c.restoreSmartBaseline(); c.smart_model_=*model; c.saveSmartModel(); c.smart_learning_message_="Trained. Listen and refine your labels."; }
-            else c.smart_learning_message_="Select at least 0.5 seconds of More and Less for an effect.";
+            if(success) {
+                c.restoreSmartBaseline();
+                if(trainingMode==1) c.movie_model_=*model;
+                else c.smart_model_=*model;
+                c.saveSmartModel();
+                c.smart_learning_message_=trainingMode==1 ?
+                    "Movie AI trained. Refine dialogue and sound-effect labels." :
+                    "Music AI trained. Refine your listening preferences.";
+            } else {
+                c.smart_learning_message_="Label More and Less for the same effect before training.";
+            }
         });
     });
 }
@@ -3163,9 +3236,95 @@ void FxController::saveSmartModel()
         item->setProperty("id",(int64)e.id); item->setProperty("starter",e.starter); examples.add(var(item));
     }
     root->setProperty("weights",weights); root->setProperty("ready",ready); root->setProperty("examples",examples);
+    // Movie AI has a separate model and label history inside the same local
+    // preference file. Existing music-only preferences load unchanged.
+    auto* movie=new DynamicObject();
+    movie->setProperty("schema",1);
+    Array<var> movieWeights,movieReady,movieRows;
+    for(float w:movie_model_.weights) movieWeights.add(w);
+    for(bool ready:movie_model_.ready) movieReady.add(ready);
+    for(const auto& e:movie_examples_) {
+        auto* item=new DynamicObject();
+        Array<var> features;
+        for(float val:e.audio.values) features.add(val);
+        item->setProperty("x",features);
+        item->setProperty("effect",e.effect);
+        item->setProperty("more",e.more);
+        item->setProperty("id",(int64)e.id);
+        item->setProperty("starter",e.starter);
+        movieRows.add(var(item));
+    }
+    movie->setProperty("weights",movieWeights);
+    movie->setProperty("ready",movieReady);
+    movie->setProperty("examples",movieRows);
+    root->setProperty("movie_ai",var(movie));
     const auto file=File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Cyn/preferences.json");
     file.getParentDirectory().createDirectory();
     if(!file.replaceWithText(JSON::toString(var(root)))) smart_learning_message_="Could not save local learning data.";
+}
+void FxController::initialiseMovieStarter()
+{
+    // Prefer the separate, bundled Cinema AI model trained for movie-like
+    // spectral targets. It has only synthetic evaluation, not validated speech
+    // recognition or proven real-world dialogue intelligibility. Never use
+    // private Music AI weights as an implicit Movie AI seed.
+    movie_model_=PersonalAudioModel();
+    movie_model_.ready.fill(false);
+    const auto app=File::getSpecialLocation(File::currentExecutableFile);
+    const auto cinema=app.getSiblingFile("CynAiProfiles")
+        .getChildFile("cyn-cinema.cynai.json");
+    if(cinema.existsAsFile() && cinema.getSize()<2*1024*1024) {
+        const auto package=JSON::parse(cinema);
+        const auto nested=package["model"];
+        const auto* weights=nested["weights"].getArray();
+        const auto* ready=nested["ready"].getArray();
+        if(package["format"].toString()=="cyn-ai-profile" &&
+           (int)nested["schema"]==1 &&
+           nested["architecture"].toString()=="cyn-audio-11x12x5" &&
+           weights && weights->size()==PersonalAudioModel::weightCount &&
+           ready && ready->size()==PersonalAudioModel::outputs) {
+            PersonalAudioModel candidate;
+            bool valid=true;
+            for(int i=0;i<weights->size();++i) {
+                const auto& item=weights->getReference(i);
+                if(!item.isDouble() && !item.isInt() && !item.isInt64()) {
+                    valid=false; break;
+                }
+                const float value=(float)(double)item;
+                if(!std::isfinite(value) || std::abs(value)>100.0f) {
+                    valid=false; break;
+                }
+                candidate.weights[i]=value;
+            }
+            for(int i=0;i<PersonalAudioModel::outputs;++i) {
+                if(!ready->getReference(i).isBool()) valid=false;
+                else candidate.ready[i]=(bool)ready->getReference(i);
+            }
+            if(valid) {
+                movie_model_=candidate;
+                return;
+            }
+        }
+    }
+    // Fallback for portable layouts that lack the Cinema AI bundle:
+    // share the tested base acoustic representation, but do NOT activate
+    // heads trained only on generic synthetic music-like examples.
+    const auto starter=app.getSiblingFile("cyn-starter.json");
+    if(!starter.existsAsFile() || starter.getSize()>4*1024*1024) return;
+    const auto data=JSON::parse(starter);
+    const auto* weights=data["weights"].getArray();
+    if((int)data["schema"]!=1 || weights==nullptr ||
+       weights->size()!=PersonalAudioModel::weightCount) return;
+    PersonalAudioModel candidate;
+    for(int i=0;i<weights->size();++i) {
+        const auto& item=weights->getReference(i);
+        if(!item.isDouble() && !item.isInt() && !item.isInt64()) return;
+        const float value=(float)(double)item;
+        if(!std::isfinite(value) || std::abs(value)>100.0f) return;
+        candidate.weights[i]=value;
+    }
+    candidate.ready.fill(false);
+    movie_model_=candidate;
 }
 void FxController::loadSmartModel(bool starterOnly)
 {
@@ -3187,12 +3346,71 @@ void FxController::loadSmartModel(bool starterOnly)
         e.effect=effect; e.more=(bool)row["more"]; e.id=(int64)row["id"]; e.starter=(bool)row["starter"]; examples.push_back(e);
     }
     smart_model_=next; smart_examples_=std::move(examples);
+    if(!starterOnly) {
+        // Movie entries are optional for previous versions of Cyn. Validate
+        // every weight before accepting the separate film model.
+        auto savedMovie=root["movie_ai"];
+        auto* movieWeights=savedMovie["weights"].getArray();
+        auto* movieReady=savedMovie["ready"].getArray();
+        if((int)savedMovie["schema"]==1 && movieWeights &&
+           movieWeights->size()==PersonalAudioModel::weightCount &&
+           movieReady && movieReady->size()==PersonalAudioModel::outputs) {
+            PersonalAudioModel movieNext;
+            bool valid=true;
+            for(int i=0;i<movieWeights->size();++i) {
+                const auto& weight=movieWeights->getReference(i);
+                const float value=(float)(double)weight;
+                if(!std::isfinite(value) || std::abs(value)>100.0f) {
+                    valid=false; break;
+                }
+                movieNext.weights[i]=value;
+            }
+            if(valid) {
+                for(int i=0;i<PersonalAudioModel::outputs;++i)
+                    movieNext.ready[i]=(bool)movieReady->getReference(i);
+                std::vector<AudioExample> movieRows;
+                if(auto* rows=savedMovie["examples"].getArray()) {
+                    for(const auto& row:*rows) {
+                        if(movieRows.size()>=2208) break;
+                        auto* features=row["x"].getArray();
+                        int effect=(int)row["effect"];
+                        if(!features || features->size()!=11 || effect<0 || effect>=5) continue;
+                        AudioExample example;
+                        bool valuesValid=true;
+                        for(int i=0;i<11;++i) {
+                            example.audio.values[i]=(float)(double)features->getReference(i);
+                            valuesValid=valuesValid && std::isfinite(example.audio.values[i]);
+                        }
+                        if(!valuesValid) continue;
+                        example.effect=effect;
+                        example.more=(bool)row["more"];
+                        example.id=(int64)row["id"];
+                        example.starter=(bool)row["starter"];
+                        movieRows.push_back(example);
+                    }
+                }
+                movie_model_=movieNext;
+                movie_examples_=std::move(movieRows);
+            }
+        }
+    }
 }
 void FxController::useStarterModel()
 {
     if(smart_training_) return;
-    restoreSmartBaseline(); smart_model_=PersonalAudioModel(); smart_examples_.clear(); loadSmartModel(true); saveSmartModel();
-    smart_learning_message_="Starter restored. Teach it your preferences.";
+    restoreSmartBaseline();
+    if(smart_mode_==1) {
+        // Resetting movies must never remove music labels or user music weights.
+        initialiseMovieStarter();
+        movie_examples_.clear();
+        smart_learning_message_="Movie AI reset. Dialogue focus starts conservatively; train with your film labels.";
+    } else {
+        smart_model_=PersonalAudioModel();
+        smart_examples_.clear();
+        loadSmartModel(true);
+        smart_learning_message_="Music AI starter restored. Teach your music preferences.";
+    }
+    saveSmartModel();
 }
 
 bool FxController::exportSmartProfile(const File& destination, const String& name, String& error) const
@@ -3216,14 +3434,16 @@ bool FxController::exportSmartProfile(const File& destination, const String& nam
     meta->setProperty("description", "");
     meta->setProperty("author", "");
     meta->setProperty("license", "CC-BY-4.0");
+    meta->setProperty("listeningMode", smart_mode_==1 ? "movie" : "music");
     root->setProperty("profile", var(meta));
 
     auto* model = new DynamicObject();
     model->setProperty("schema", 1);
     model->setProperty("architecture", "cyn-audio-11x12x5");
     Array<var> weights, ready;
-    for (const float weight : smart_model_.weights) weights.add(weight);
-    for (const bool trained : smart_model_.ready) ready.add(trained);
+    const auto& selected=smart_mode_==1?movie_model_:smart_model_;
+    for (const float weight : selected.weights) weights.add(weight);
+    for (const bool trained : selected.ready) ready.add(trained);
     model->setProperty("weights", weights);
     model->setProperty("ready", ready);
     root->setProperty("model", var(model));
@@ -3312,9 +3532,14 @@ bool FxController::importSmartProfile(const File& source, String& error)
     }
 
     restoreSmartBaseline();
-    smart_model_ = incoming;
-    smart_examples_.clear();  // Imported public models never carry another person's labels.
-    smart_learning_message_ = "AI Hub profile loaded. Teach it with new audio labels to personalise it.";
+    if(smart_mode_==1) {
+        movie_model_=incoming;
+        movie_examples_.clear();
+    } else {
+        smart_model_=incoming;
+        smart_examples_.clear();
+    } // Imported public models never carry another person's labels.
+    smart_learning_message_="AI Hub model imported into the selected listening mode.";
     saveSmartModel();
     error.clear();
     return true;

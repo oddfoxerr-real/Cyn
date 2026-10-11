@@ -13,7 +13,7 @@ FxProView::FxProView() : tool_tip_(this)
     for (auto* component : std::initializer_list<Component*> {
         &audio_controls_, &equalizer_, &visualizer_, &sound_nav_, &smart_nav_,
         &devices_nav_, &ai_hub_nav_, &home_, &smart_rail_, &devices_rail_, &settings_,
-        &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &learning_timeline_, &neural_activity_, &learning_effect_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
+        &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &learning_timeline_, &neural_activity_, &learning_effect_, &listening_mode_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
         addAndMakeVisible(component);
     sound_nav_.onClick = home_.onClick = [this] { selectPage(0); };
     smart_nav_.onClick = smart_rail_.onClick = [this] { selectPage(1); };
@@ -34,8 +34,18 @@ FxProView::FxProView() : tool_tip_(this)
     sensitivity_.onValueChange = [this] {
         FxController::getInstance().setSmartSensitivity((float)sensitivity_.getValue());
     };
+    listening_mode_.addItemList({"Music AI", "Movie & TV AI"},1);
+    listening_mode_.setSelectedId(1,dontSendNotification);
+    listening_mode_.setTooltip("Music and movies have separate neural models and learning history. Movie AI uses conservative dialogue-focused sound shaping until trained.");
+    listening_mode_.onChange=[this] {
+        auto& controller=FxController::getInstance();
+        controller.setSmartListeningMode(listening_mode_.getSelectedId()-1);
+        listening_mode_.setSelectedId(controller.getSmartListeningMode()+1,dontSendNotification);
+        learning_timeline_.clearSelection();
+        update();
+    };
     learning_effect_.addItemList({"Clarity", "Ambience", "Surround", "Dynamic Boost", "Bass"},1);
-    learning_effect_.setSelectedId(5,dontSendNotification);
+    learning_effect_.setSelectedId(1,dontSendNotification);
     learning_effect_.setTooltip("Choose the effect to teach for the selected time range.");
     auto label=[this](bool more) {
         auto selected=learning_timeline_.selection();
@@ -51,7 +61,10 @@ FxProView::FxProView() : tool_tip_(this)
     resume_.onClick=[this]{learning_timeline_.clearSelection();timerCallback();};
     starter_.onClick=[] {
         if(AlertWindow::showOkCancelBox(AlertWindow::QuestionIcon,"Reset personal learning?",
-            "Replace your saved labels and learned preferences with the optional starter model?","Reset","Cancel"))
+            FxController::getInstance().getSmartListeningMode()==1 ?
+                "Reset Movie AI and its labels? Music AI will be preserved." :
+                "Reset Music AI and its labels to the starter model? Movie AI will be preserved.",
+            "Reset","Cancel"))
             FxController::getInstance().useStarterModel();
     };
     export_ai_.onClick = [] {
@@ -142,7 +155,7 @@ void FxProView::selectPage(int page)
     audio_controls_.setVisible(page == 0);
     equalizer_.setVisible(page == 0);
     visualizer_.setVisible(page == 0);
-    for(auto* c : std::initializer_list<Component*> {&learning_timeline_, &learning_effect_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_}) c->setVisible(page==1);
+    for(auto* c : std::initializer_list<Component*> {&learning_timeline_, &learning_effect_, &listening_mode_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_}) c->setVisible(page==1);
     pin_toggle_.setVisible(page == 2);
     refresh_.setVisible(page == 2);
     sensitivity_.setVisible(page == 1);
@@ -167,6 +180,9 @@ void FxProView::update()
     audio_controls_.showValues(true);
     auto& controller = FxController::getInstance();
     smart_toggle_.setToggleState(controller.isSmartListening(), dontSendNotification);
+    listening_mode_.setSelectedId(controller.getSmartListeningMode()+1,dontSendNotification);
+    train_.setButtonText(controller.getSmartListeningMode()==1?"Train Movie AI":"Train Music AI");
+    starter_.setButtonText(controller.getSmartListeningMode()==1?"Reset Movie AI":"Reset to starter");
     pin_toggle_.setToggleState(controller.isOutputPinned(), dontSendNotification);
     auto power = FxModel::getModel().getPowerState();
     preset_list_.setEnabled(power);
@@ -204,6 +220,7 @@ void FxProView::timerCallback()
     learning_status_.setText(controller.getLearningStatus(),dontSendNotification);
     const bool selected=learning_timeline_.selection().size()>=5;
     more_.setEnabled(selected && !controller.isSmartTraining()); less_.setEnabled(selected && !controller.isSmartTraining());
+    listening_mode_.setEnabled(!controller.isSmartTraining());
     train_.setEnabled(!controller.isSmartTraining()); starter_.setEnabled(!controller.isSmartTraining());
     export_ai_.setEnabled(!controller.isSmartTraining()); import_ai_.setEnabled(!controller.isSmartTraining());
     smart_toggle_.setToggleState(controller.isSmartListening(), dontSendNotification);
@@ -230,6 +247,7 @@ void FxProView::resized()
     neural_activity_.setBounds(72, 247, 148, 226);
     learning_timeline_.setBounds(256,164,952,156);
     learning_effect_.setBounds(280,433,194,36);
+    listening_mode_.setBounds(280,386,235,33);
     more_.setBounds(490,433,136,36); less_.setBounds(638,433,136,36);
     train_.setBounds(790,433,210,36); resume_.setBounds(1012,433,170,36);
     sensitivity_.setBounds(444,491,738,28);
@@ -307,17 +325,17 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.16", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.17", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : "Output devices", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
-        ? "Teach Cyn your preferences for music, movies, shows and games." : "Your output, with fewer interruptions.", 256, 49, 640, 22, 13, true);
+        ? "Choose Music AI or Movie AI. Each learns your preferences separately." : "Your output, with fewer interruptions.", 256, 49, 640, 22, 13, true);
     text("PRESET", 260, 78, 300, 16, 10, true);
     text("OUTPUT DEVICE", 741, 78, 300, 16, 10, true);
     if (page_ == 0) card(256, 556, 952, 48);
     else if (page_ == 1)
     {
         card(256, 334, 952, 270);
-        text("Play any audio, select a section above and teach More or Less.",280,389,880,28,16);
+        text("Select audio above, then label More or Less for this AI.",535,386,640,33,13);
         text("AI PROFILES", 688, 521, 310, 18, 10, true);
         text("Sensitivity",280,491,150,28,14);
 

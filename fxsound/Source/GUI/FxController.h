@@ -108,6 +108,9 @@ public:
     void setSmartSensitivity(float percent);
     float getSmartSensitivity() const { return smart_sensitivity_; }
     bool isSmartListening() const { return smart_enabled_; }
+    // Separate Music AI and Movie / TV AI models, labels and settings.
+    int getSmartListeningMode() const { return smart_mode_; }
+    void setSmartListeningMode(int mode);
     String getSmartSummary() const;
     const std::vector<AudioFrame>& getRecentAudio() const { return smart_history_; }
     void labelAudio(const std::vector<AudioFrame>& frames, int effect, bool more);
@@ -323,9 +326,13 @@ private:
     void captureSmartBaseline();
     void saveManualPreset(const wchar_t* name, const wchar_t* directory);
     void loadSmartModel(bool starterOnly = false);
+    void initialiseMovieStarter();
     void saveSmartModel();
     PersonalAudioModel smart_model_;
     std::vector<AudioExample> smart_examples_;
+    PersonalAudioModel movie_model_;
+    std::vector<AudioExample> movie_examples_;
+    int smart_mode_ = 0; // 0 music, 1 movie/TV; this is not an automatic classifier.
     std::vector<AudioFrame> smart_history_;
     std::array<float,5> smart_effects_ {}, smart_scores_ {{0.5f,0.5f,0.5f,0.5f,0.5f}};
     std::vector<float> smart_eq_;
