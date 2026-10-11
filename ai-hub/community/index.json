@@ -10,6 +10,16 @@
       "file": "cyn-starter.cynai.json",
       "issue": 1,
       "license": "CC-BY-4.0"
+    },
+    {
+      "id": "cyn-cinema",
+      "name": "Cyn Cinema AI",
+      "author": "Cyn contributors",
+      "category": "cinema",
+      "description": "Experimental Movie & Series profile: dialogue-forward Clarity and restrained Bass; synthetic-feature-trained, not speech-aware. Start here and teach your preferences with More/Less.",
+      "file": "cyn-cinema.cynai.json",
+      "issue": 0,
+      "license": "CC-BY-4.0"
     }
   ]
 }

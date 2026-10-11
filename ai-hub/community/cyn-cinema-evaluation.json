@@ -1,0 +1,30 @@
+{
+  "description": "Experimental synthetic-feature training for Movie & Series profile",
+  "optimizer_steps": 6000,
+  "dataset": {
+    "train": 2200,
+    "validation": 500,
+    "test": 500,
+    "all_synthetic": true,
+    "independent_seeds": true
+  },
+  "baseline_heldout": {
+    "clarity_mse": 0.4637853878682779,
+    "bass_mse": 0.3216726019382542,
+    "mean_mse": 0.39272899490326607,
+    "mean_clarity_prediction": 4.227875512401037e-06,
+    "mean_bass_prediction": 0.9833726869153603,
+    "max_bass_prediction": 0.9999999615587766,
+    "percentage_bass_above_0_65": 0.988
+  },
+  "cinema_heldout": {
+    "clarity_mse": 0.0035058888996290067,
+    "bass_mse": 0.0016332416527381087,
+    "mean_mse": 0.0025695652761835576,
+    "mean_clarity_prediction": 0.6722761819390469,
+    "mean_bass_prediction": 0.4272818348922955,
+    "max_bass_prediction": 0.44429498941479495,
+    "percentage_bass_above_0_65": 0.0
+  },
+  "limit": "Synthetic heuristics only. Not tested against real movie dialogue, listener choices, source separation, or loudness standards. No speech understanding."
+}
