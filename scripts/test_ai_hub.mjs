@@ -72,7 +72,8 @@ assert(header.includes("CynNeuralActivity neural_activity_"), "Missing visualize
 assert(neural.includes("std::array<Point<float>, 11> inputs") && neural.includes("std::array<Point<float>, 12> hidden") && neural.includes("std::array<Point<float>, 5> outputs"), "Must match real 11-12-5 model architecture");
 assert(view.includes("neural_activity_.setBounds(72, 247, 148, 226)"), "Must fit empty sidebar without obstructing labeling controls");
 assert(view.includes("neural_activity_.setTrainingActive(controller.isSmartTraining())"), "Brain must reflect actual training state");
-assert(view.includes("neural_activity_.setAnimationEnabled(page == 1)"), "Do not animate on hidden pages");
+assert(view.includes("neural_activity_.setAnimationEnabled(page==1 || neuralCore)") ||
+       view.includes("neural_activity_.setAnimationEnabled(page_==1 ||"),"Neural activity should animate on Smart page or selected Neural Core theme only");
 assert(neural.includes("FxTheme::isReducedMotion()"), "Respect reduced-motion accessibility setting");
 assert(neural.includes("startTimerHz(24)"), "Use efficient bounded redraw frequency");
 console.log("PASS: neural activity visualization matches model layout and training state");
@@ -91,6 +92,23 @@ assert(view.includes("brainController.getSmartTrainingProgress()"),"Visualizer d
 assert(neural.includes("displayed_.inputConnections")&&neural.includes("displayed_.outputConnections"),"Connections must react to real neural signals");
 assert(neural.includes("WAITING FOR AUDIO")&&neural.includes("PROCESSING AUDIO"),"Must differentiate silence from playback");
 console.log("PASS: live neural inference and supervised epoch animation");
+
+// Neural Core is a real audio-responsive theme, not a decorative animation.
+// The existing personal-model network must be labeled separately from pretrained
+// YAMNet event classifications; no fabricated YAMNet weight-node activity.
+const themeHeader=readFileSync(path("fxsound/Source/GUI/FxTheme.h"),"utf8");
+assert(themeHeader.includes("ChatGPTDesktop, NeuralCore, NumModes"),"Neural Core must preserve existing saved theme IDs");
+assert(theme.includes('"ChatGPT Desktop", "Neural Core"'),"Neural Core missing from Theme menu names");
+assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Neural theme must use real personal model activations");
+assert(view.includes("brainController.getLiveYamNetScene(scene)"),"Neural theme must read real YAMNet classifications");
+assert(controllerHeader.includes("getLiveYamNetScene(CynAudioScene& out)"),"Missing native read-only scene telemetry API");
+assert(controllerSource.includes("return yamnet_worker_->latest(out)"),"Neural theme must use actual async ONNX scene data");
+assert(view.includes("neural_core_live_?neural_core_scene_"),"No fade-to-idle for stale YAMNet output");
+assert(view.includes("now-last_neural_theme_repaint_>=42"),"UI repaint must remain <=24Hz");
+assert(neural.includes("neuralCore?0xff67edee"),"Neural Core must have its own network lighting");
+assert(neural.includes("PERSONAL NEURAL NETWORK"),"Do not confuse small preference model with YAMNet internals");
+assert(view.includes("FxTheme::isReducedMotion()"),"Neural theme must respect reduced-motion");
+console.log("PASS: Neural Core live inference visualization, distinct AI identities and bounded redraw");
 
 // Music/Movie AI regression: distinct weights, saved labels and sound limits.
 const movieCtrl=readFileSync(path("fxsound/Source/GUI/FxController.cpp"),"utf8");
