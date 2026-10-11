@@ -3083,94 +3083,87 @@ void FxController::updateSmartListening()
     smart_stale_ticks_=fresh?0:jmin(100,smart_stale_ticks_+1);
     smart_last_sequence_=input.sequence;
     const bool active=audio_process_on_ && playback_device_available_ && FxModel::getModel().getPowerState();
-    if(fresh && active && input.rms>0.0001f) smart_history_.push_back({input,now});
+    CynAudioScene scene;
+    const bool yamnetLive=yamnet_worker_ && yamnet_worker_->latest(scene);
+    if(fresh && active && input.rms>0.0001f) smart_history_.push_back({input,now,scene});
     while(!smart_history_.empty() && (smart_history_.front().id<now-60000 || smart_history_.size()>600)) smart_history_.erase(smart_history_.begin());
     if(!smart_enabled_) return;
     const bool listening=active && smart_stale_ticks_<4 && input.rms>0.0001f;
     const bool movie=smart_mode_==1;
     const auto& model=movie?movie_model_:smart_model_;
     const auto predictions=model.predict(input);
-    float yamSpeech=0.0f,yamMusic=0.0f,yamImpact=0.0f;
-    const bool yamnetLive=yamnet_worker_ &&
-        yamnet_worker_->latest(yamSpeech,yamMusic,yamImpact);
+    const auto& sceneHead=movie?movie_scene_preferences_:music_scene_preferences_;
+    const CynMixDecision decision=CynFlagshipMixer::decide(scene,input,movie);
     const float amount=smart_sensitivity_/100.0f,depth=jmin(1.0f,amount*2);
 
-    // This is a conservative mid-band presence estimate, NOT speech
-    // separation or an assertion that dialogue is present.
-    const auto energy=[&](int i) {
-        return std::exp(jlimit(-8.0f,0.0f,std::isfinite(input.values[i])?input.values[i]:-8.0f));
-    };
-    const float mid=(energy(2)+energy(3)+energy(4)+energy(5))*0.25f;
-    const float low=(energy(0)+energy(1))*0.5f;
-    const float midFocus=jlimit(0.0f,1.0f,1.5f*(mid/(mid+low+0.00001f)-0.30f));
-
-    // Music AI no longer gives Bass the largest upward gain.
-    // Movie AI softly favors intelligibility and holds dynamics and bass in
-    // check; each ready movie-model output is trained ONLY on movie labels.
-    const float musicUp[5]={2.7f,1.3f,1.2f,1.3f,1.5f};
-    const float movieUp[5]={2.5f,0.8f,1.0f,0.7f,0.65f};
-    const float down[5]={0.65f,0.9f,0.9f,0.65f,0.9f};
+    // The pretrained YAMNet scene is PRIMARY; local personal model adds
+    // feedback and acts as fallback when YAMNet is unavailable.
+    const float musicUp[5]={3.0f,1.4f,1.4f,3.3f,4.1f};
+    const float movieUp[5]={2.5f,0.8f,1.0f,0.8f,0.8f};
+    const float down[5]={0.65f,0.9f,0.9f,0.65f,0.85f};
     for(int e=0;e<5;++e) {
         float desired=0.5f;
         if(listening) {
-            if(model.ready[e]) desired=predictions[e];
-            else if(movie && e==0) desired=0.50f+midFocus*0.28f;
-            else if(movie && e==4) desired=0.38f;
-            else if(movie && e==3) desired=0.45f;
-            // Official pretrained YAMNet predictions refine context for the
-            // learned per-effect model. Audio classification is not user taste:
-            // never treat an explosion as a request for maximal Bass.
-            if(yamnetLive && movie && e==0)
-                desired=jlimit(0.35f,0.88f,desired+0.18f*yamSpeech-0.03f*yamMusic);
-            if(yamnetLive && movie && e==4)
-                desired=jmin(desired,0.49f-0.08f*yamImpact-0.04f*yamSpeech);
-            if(yamnetLive && !movie && e==4)
-                desired=jmin(desired,0.58f); // Don't allow Music mode Bass runaway.
+            if(yamnetLive) {
+                desired=decision.preference[(size_t)e];
+                if(model.ready[e])
+                    desired=0.78f*desired+0.22f*predictions[(size_t)e];
+                float contextual=0.5f,confidence=0;
+                if(sceneHead.predict(scene,e,contextual,confidence))
+                    desired=(1.0f-confidence)*desired+confidence*contextual;
+            } else if(model.ready[e]) desired=predictions[(size_t)e];
+            else if(movie && e==0) desired=0.58f;
         }
-        smart_scores_[e]+=(desired-smart_scores_[e])*(desired>smart_scores_[e]?0.30f:0.22f);
+        desired=jlimit(0.0f,1.0f,desired);
+        smart_scores_[e]+=(desired-smart_scores_[e])*(desired>smart_scores_[e]?0.18f:0.12f);
         const float direction=2.0f*(smart_scores_[e]-0.5f);
         const float up=movie?movieUp[e]:musicUp[e];
         float target=smart_effects_[e]+
             (direction>0?direction*up*amount:direction*smart_effects_[e]*down[e]*depth);
-        // Respect deliberately high manual settings, but never boost them
-        // further; otherwise keep automatic Bass below a conservative ceiling.
-        if(e==4) target=jmin(target,jmax(smart_effects_[4],movie?4.8f:6.5f));
+        // No arbitrary Music Bass ceiling or 58% preference clamp.
+        // When input peaks approach clipping, back off added gain smoothly.
+        if(!movie && yamnetLive && listening && (e==4 || e==3))
+            target=smart_effects_[e]+(target-smart_effects_[e])*
+                   (0.50f+0.50f*decision.headroom);
+        if(movie && e==4) target=jmin(target,jmax(smart_effects_[4],6.3f));
         if(movie && e==3) target=jmin(target,jmax(smart_effects_[3],5.0f));
         target=jlimit(0.0f,10.0f,target);
         const float current=dfx_dsp_.getEffectValue((DfxDsp::Effect)e)*10;
         if(std::abs(target-current)>0.04f)
-            dfx_dsp_.setEffectValue((DfxDsp::Effect)e,current+jlimit(-0.45f,0.45f,target-current));
+            dfx_dsp_.setEffectValue((DfxDsp::Effect)e,current+jlimit(-0.30f,0.30f,target-current));
     }
-    // A bass preset may also contain static low-EQ boosts. Temporarily relax
-    // only positive low-band gains when the learned bass preference decreases.
-    const float bassDirection=jmin(0.0f,2*(smart_scores_[4]-0.5f));
+    // Temporary punch for thin, beat-heavy tracks; revert when stopped.
+    const float bassDirection=jmin(0.0f,2.0f*(smart_scores_[4]-0.5f));
     for(int b=0;b<jmin(getNumEqBands(),(int)smart_eq_.size());++b) {
-        const float frequency=dfx_dsp_.getEqBandFrequency(b);
-        const float weight=jlimit(0.0f,1.0f,(350-frequency)/150);
-        const float target=smart_eq_[b]>0?smart_eq_[b]*(1+bassDirection*depth*0.9f*weight):smart_eq_[b];
+        const float freq=dfx_dsp_.getEqBandFrequency(b);
+        const float weight=jlimit(0.0f,1.0f,(300.0f-freq)/200.0f);
+        float target=smart_eq_[(size_t)b];
+        if(movie && target>0)
+            target*=1.0f+bassDirection*depth*0.65f*weight;
+        else if(!movie && yamnetLive && listening)
+            target+=decision.lowEqDb*amount*weight;
         const float current=dfx_dsp_.getEqBandBoostCut(b);
-        if(std::abs(target-current)>0.05f) dfx_dsp_.setEqBandBoostCut(b,current+jlimit(-0.35f,0.35f,target-current));
+        if(std::abs(target-current)>0.04f)
+            dfx_dsp_.setEqBandBoostCut(b,current+jlimit(-0.20f,0.20f,target-current));
     }
-    // Keep loudness handling in the existing DSP. Never write endpoint volume.
-    const float leveling=active?jmax(smart_leveling_,2.0f):smart_leveling_;
-    if(dfx_dsp_.getVolumeLeveling()!=leveling) dfx_dsp_.setVolumeLeveling(leveling);
+    // Preserve system volume and master gain; never override manual presets.
+    float leveling=smart_leveling_;
+    if(listening)
+        leveling=jmax(smart_leveling_,yamnetLive?decision.levelingDb:(movie?0.4f:1.0f));
+    if(std::abs(dfx_dsp_.getVolumeLeveling()-leveling)>0.05f)
+        dfx_dsp_.setVolumeLeveling(leveling);
 }
 String FxController::getSmartSummary() const
 {
-    const auto& model=smart_mode_==1?movie_model_:smart_model_;
     const String mode=smart_mode_==1?"Movie AI":"Music AI";
     if(!smart_enabled_) return mode+" / learning available (processing off)";
     if(smart_stale_ticks_>=4) return mode+" / waiting for audio";
-    const bool any=std::any_of(model.ready.begin(),model.ready.end(),[](bool b){return b;});
-    if(smart_mode_==1 && !any) return "Movie AI / adaptive dialogue-band focus / teach your preferences";
-    if(!any) return "Music AI / label More and Less, then train";
-    if(yamnet_worker_) {
-        float speech=0,music=0,impact=0;
-        if(yamnet_worker_->latest(speech,music,impact))
-            return mode+" / YAMNet live / speech "+String(speech*100,0)+"% / music "+
-                   String(music*100,0)+"% / Bass limited";
-    }
-    return mode+" / learned preferences active / Bass boosts limited";
+    CynAudioScene scene;
+    if(yamnet_worker_ && yamnet_worker_->latest(scene))
+        return mode+" / YAMNet flagship / music "+String(scene.music*100.0f,0)+
+            "% / drums "+String(scene.percussion*100.0f,0)+
+            "% / speech "+String(scene.speech*100.0f,0)+"%";
+    return mode+" / personal model fallback active";
 }
 String FxController::getLearningStatus() const
 {
@@ -3191,7 +3184,7 @@ void FxController::labelAudio(const std::vector<AudioFrame>& frames,int effect,b
         auto existing=std::find_if(examples.begin(),examples.end(),[&](const AudioExample& e){
             return !e.starter && e.id==frame.id && e.effect==effect;
         });
-        AudioExample example {frame.audio,effect,more,frame.id,false};
+        AudioExample example {frame.audio,effect,more,frame.id,false,frame.scene};
         if(existing!=examples.end()) *existing=example;
         else examples.push_back(example);
     }
@@ -3237,6 +3230,7 @@ void FxController::trainSmartModel()
                 c.restoreSmartBaseline();
                 if(trainingMode==1) c.movie_model_=*model;
                 else c.smart_model_=*model;
+                c.rebuildScenePreferences();
                 c.saveSmartModel();
                 c.smart_learning_message_=trainingMode==1 ?
                     "Movie AI trained. Refine dialogue and sound-effect labels." :
