@@ -54,6 +54,9 @@ const uint32 FxTheme::theme_colors_[FxThemeMode::NumModes][FxColor::NumColors] =
   { 0x111315, 0x1b1e21, 0x25292c, 0x454d51, 0xf6f7f8, 0x282c30, 0xf6f7f8, 0x3c4449, 0xf6f7f8, 0x282c30, 0x282c30, 0xaeb6bb, 0xaeb6bb, 0xe5e9ed, 0xe0677c, 0x282c30, 0xe5e9ed, 0xffffff, 0xffffff, 0xe5e9ed, 0xe5e9ed, 0x3c4449, 0xffffff, 0x3c4449, 0x1b1e21, 0x454d51, 0xe5e9ed },
   // ChatGPT Desktop: colors sampled from reference screenshot, neutral charcoal layers.
   { 0x181818, 0x212121, 0x191c1e, 0x363636, 0xe7e7e7, 0x212121, 0xffffff, 0x363636, 0xdcdddd, 0x212121, 0x2b2e30, 0xc8c9c9, 0xa5a5a5, 0x808b94, 0xe0677c, 0x212121, 0x5a5a5a, 0xa9aaab, 0xb8c5cf, 0x74808b, 0x97a3ad, 0xd5dadf, 0x3c3c3c, 0x363636, 0x191c1e, 0x353535, 0x8c969f }
+,
+  // Neural Core: layered deep-indigo surfaces, cyan live activity and violet inference accent.
+  { 0x0a1020, 0x101b31, 0x14213a, 0x315175, 0xeaf8ff, 0x142339, 0xffffff, 0x1d3557, 0xe2f5ff, 0x142339, 0x192a42, 0x95b7d3, 0x95b7d3, 0x67edee, 0xff7899, 0x122238, 0x56d9f4, 0x9c8cff, 0x9c8cff, 0x67edee, 0x67edee, 0x1d3557, 0x96dcff, 0x203b63, 0x101b31, 0x315175, 0x67edee }
 };
 
 const char* FxTheme::theme_images_[2][FxImage::NumImages] =
@@ -802,7 +805,7 @@ bool FxTheme::reduced_motion_ = false;
 bool FxTheme::smooth_animations_ = false;
 const char* FxTheme::getThemeName(int i)
 {
-    static const char* names[] = { "Graphite", "Pearl", "Aurora", "Dusk", "Copper", "Midnight", "Sakura", "Arctic", "Sandstone", "Obsidian", "Emerald", "Deep Sea", "Neon Tokyo", "Synthwave", "Solar Flare", "Crimson", "Mocha", "Monochrome", "ChatGPT Desktop" };
+    static const char* names[] = { "Graphite", "Pearl", "Aurora", "Dusk", "Copper", "Midnight", "Sakura", "Arctic", "Sandstone", "Obsidian", "Emerald", "Deep Sea", "Neon Tokyo", "Synthwave", "Solar Flare", "Crimson", "Mocha", "Monochrome", "ChatGPT Desktop", "Neural Core" };
     return names[jlimit(0,(int)FxThemeMode::NumModes-1,i)];
 }
 bool FxTheme::isLightTheme()

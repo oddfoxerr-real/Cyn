@@ -3198,6 +3198,14 @@ void FxController::labelAudio(const std::vector<AudioFrame>& frames,int effect,b
         "Music feedback stored. Train Music AI to apply.";
     saveSmartModel();
 }
+bool FxController::getLiveYamNetScene(CynAudioScene& out) const
+{
+    if(!yamnet_worker_ || !playback_device_available_ ||
+       !FxModel::getModel().getPowerState() || !audio_process_on_)
+        return false;
+    return yamnet_worker_->latest(out);
+}
+
 bool FxController::getLiveNeuralActivity(NeuralActivitySnapshot& out) const
 {
     // The UI and audio-history maintenance run on the message thread; the trainer

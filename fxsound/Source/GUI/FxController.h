@@ -123,6 +123,7 @@ public:
     String getLearningStatus() const;
     bool isSmartTraining() const { return smart_training_; }
     bool getLiveNeuralActivity(NeuralActivitySnapshot& out) const;
+    bool getLiveYamNetScene(CynAudioScene& out) const;
     float getSmartTrainingProgress() const {
         return juce::jlimit(0.0f,1.0f,
             (float)smart_training_epoch_.load(std::memory_order_relaxed)/240.0f);
