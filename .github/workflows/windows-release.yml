@@ -74,6 +74,8 @@ jobs:
       - name: Compile Cyn native x64
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: .\BUILD_CYN.ps1
 
       - name: Build Windows installer
@@ -94,6 +96,11 @@ jobs:
           $actual = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash
           if ($actual -ine $expected) { throw 'Installer failed SHA-256 verification.' }
           if (!(Test-Path 'dist/Cyn-Windows-x64.zip')) { throw 'Portable build missing.' }
+          if ('${{ steps.version.outputs.version }}' -eq '2.0.18') {
+            foreach($name in @('onnxruntime.dll','yamnet-16k-0p975s.onnx','yamnet-manifest.json')) {
+              if (!(Test-Path (Join-Path 'dist/Cyn' $name))) { throw "YAMNet v2.0.18 is missing $name" }
+            }
+          }
 
       - name: Upload installer artifacts
         if: steps.inspect.outputs.state != 'published'
