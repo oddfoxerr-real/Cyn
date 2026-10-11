@@ -50,18 +50,23 @@ public:
     void paint(juce::Graphics& g) override {
         using namespace juce;
         if (getWidth() < 64 || getHeight() < 90) return;
-        const Colour accent(0xffeeb060), bright(0xffffdd9b);
+        const bool neuralCore=FxTheme::getThemeMode()==FxThemeMode::NeuralCore;
+        const Colour accent(neuralCore?0xff67edee:0xffeeb060),
+                     bright(neuralCore?0xffc2ffff:0xffffdd9b);
         const Colour text(Colour(FXCOLOR(HintText)).withAlpha(1.0f));
         const Colour border(Colour(FXCOLOR(RowOutline)).withAlpha(1.0f));
         const Colour bg(Colour(FXCOLOR(ControlBackground)).withAlpha(1.0f));
         const auto bounds = getLocalBounds().toFloat();
-        g.setColour(bg); g.fillRoundedRectangle(bounds,12.0f);
+        ColourGradient surface(bg.brighter(neuralCore?0.14f:0.06f),0.0f,0.0f,
+                               bg.darker(0.13f),(float)getWidth(),(float)getHeight(),false);
+        g.setGradientFill(surface); g.fillRoundedRectangle(bounds,12.0f);
         g.setColour(border.withAlpha(0.65f));
         g.drawRoundedRectangle(bounds.reduced(0.5f),12.0f,1.0f);
 
         g.setColour(text);
         g.setFont(Font(10.0f,Font::bold));
-        g.drawText("LIVE NEURAL ACTIVITY", 9, 9, getWidth()-18, 16,
+        g.drawText(neuralCore?"PERSONAL NEURAL NETWORK":"LIVE NEURAL ACTIVITY",
+                   5,9,getWidth()-10,16,
                    Justification::centred, false);
 
         const float x1=16.0f,x2=(float)getWidth()-16.0f;

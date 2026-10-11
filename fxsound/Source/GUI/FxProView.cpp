@@ -5,6 +5,8 @@
 #include "FxTheme.h"
 #include "FxSettingsDialog.h"
 #include "CynAiHubDialog.h"
+#include <array>
+#include <cmath>
 
 FxProView::FxProView() : tool_tip_(this)
 {
@@ -159,8 +161,9 @@ void FxProView::selectPage(int page)
     pin_toggle_.setVisible(page == 2);
     refresh_.setVisible(page == 2);
     sensitivity_.setVisible(page == 1);
-    neural_activity_.setVisible(page == 1);
-    neural_activity_.setAnimationEnabled(page == 1);
+    const bool neuralCore=FxTheme::getThemeMode()==FxThemeMode::NeuralCore;
+    neural_activity_.setVisible(page==1 || neuralCore);
+    neural_activity_.setAnimationEnabled(page==1 || neuralCore);
     resized();
     if (page_ == 1)
     {
@@ -203,7 +206,13 @@ void FxProView::timerCallback()
     }
     // A separate 100ms UI telemetry sample keeps audio-responsive glow smooth
     // without forcing the other status controls to refresh at 10Hz.
-    if(page_==1 && now-last_neural_update_>=100) {
+    const bool neuralCore=FxTheme::getThemeMode()==FxThemeMode::NeuralCore;
+    const bool wantGraph=page_==1 || neuralCore;
+    if(neural_activity_.isVisible()!=wantGraph) {
+        neural_activity_.setVisible(wantGraph);
+        neural_activity_.setAnimationEnabled(wantGraph);
+    }
+    if(wantGraph && now-last_neural_update_>=100) {
         last_neural_update_=now;
         auto& brainController=FxController::getInstance();
         NeuralActivitySnapshot snapshot;
@@ -211,6 +220,23 @@ void FxProView::timerCallback()
         neural_activity_.setTrainingActive(brainController.isSmartTraining());
         neural_activity_.setActivity(hasAudio?&snapshot:nullptr,
                                      brainController.getSmartTrainingProgress());
+        if(neuralCore) {
+            CynAudioScene scene;
+            neural_core_live_=brainController.getLiveYamNetScene(scene) && hasAudio;
+            neural_core_personal_live_=hasAudio;
+            neural_core_scene_=neural_core_live_?scene:CynAudioScene {};
+        }
+    }
+    if(neuralCore) {
+        const float target=neural_core_personal_live_ ? 1.0f : 0.0f;
+        neural_core_energy_+= (target-neural_core_energy_) *
+            (FxTheme::isReducedMotion()?1.0f:0.20f);
+        // UI animation is bounded at <=24 fps; backend inference is unchanged.
+        if((FxTheme::isReducedMotion() && now-last_neural_theme_repaint_>=500)
+           || (!FxTheme::isReducedMotion() && now-last_neural_theme_repaint_>=42)) {
+            last_neural_theme_repaint_=now;
+            repaint();
+        }
     }
     if(now-last_status_update_<500) return;
     last_status_update_=now;
@@ -300,10 +326,57 @@ void FxProView::paint(Graphics& g)
     {
         Graphics::ScopedSaveState save(g);
         g.reduceClipRegion(workspace);
-        g.fillAll(color(WindowBackground));
-        g.setColour(color(PanelBackground)); g.fillRect(52, 0, 180, HEIGHT);
+        // All palettes gain dimensional lighting rather than a flat background.
+        const auto surface=color(WindowBackground);
+        const auto rail=color(PanelBackground);
+        ColourGradient deck(surface.brighter(0.065f), 235.0f, 0.0f,
+                            surface.darker(0.12f), 1180.0f, (float)HEIGHT, false);
+        deck.addColour(0.55, surface);
+        g.setGradientFill(deck);
+        g.fillRect(52,0,WIDTH-52,HEIGHT);
+        ColourGradient sidebar(rail.brighter(0.11f),52.0f,0.0f,
+                               rail.darker(0.10f),232.0f,(float)HEIGHT,false);
+        sidebar.addColour(0.48,rail);
+        g.setGradientFill(sidebar);
+        g.fillRect(52,0,180,HEIGHT);
+        if(FxTheme::getThemeMode()==FxThemeMode::NeuralCore) {
+            // The top-right telemetry is ACTUAL pretrained YAMNet event scores
+            // (not YAMNet internal activations or a synthetic music animation).
+            const auto cyan=Colour(0xff67edee), violet=Colour(0xffa18cff);
+            const auto glow=jlimit(0.0f,1.0f,neural_core_energy_);
+            ColourGradient aura(cyan.withAlpha(0.045f+glow*0.075f),
+                                985.0f,115.0f,
+                                Colours::transparentBlack,1140.0f,370.0f,true);
+            g.setGradientFill(aura);
+            g.fillEllipse(785.0f,-65.0f,410.0f,430.0f);
+            // Faint fixed-position lines only illuminate when personal
+            // inference is valid. Actual connection activity is drawn in
+            // the 11->12->5 neural graph on the sidebar.
+            for(int i=0;i<9;++i) {
+                const float x=275.0f+99.0f*i;
+                g.setColour((i%2?violet:cyan).withAlpha(0.018f+0.035f*glow));
+                g.drawLine(x,84.0f,x+55.0f,284.0f,0.7f);
+            }
+            const auto activity=neural_core_live_?neural_core_scene_:CynAudioScene {};
+            const float meters[3]={activity.music,activity.percussion,activity.speech};
+            const char* names[3]={"MUSIC","DRUMS","VOICE"};
+            for(int i=0;i<3;++i) {
+                const float x=968.0f+80.0f*i, y=59.0f;
+                g.setColour(color(HintText).withAlpha(0.84f));
+                g.setFont(Font(8.0f,Font::bold));
+                g.drawText(names[i],(int)x,46,72,11,Justification::centredLeft,false);
+                g.setColour(color(RowOutline).withAlpha(0.9f));
+                g.fillRoundedRectangle(x,y,65.0f,3.5f,1.75f);
+                g.setColour((i==2?violet:cyan).withAlpha(neural_core_live_?0.90f:0.20f));
+                g.fillRoundedRectangle(x,y,65.0f*jlimit(0.0f,1.0f,meters[i]),3.5f,1.75f);
+            }
+            g.setColour(cyan.withAlpha(neural_core_live_?0.85f:0.28f));
+            g.setFont(Font(9.0f,Font::bold));
+            g.drawText(neural_core_live_?"YAMNET / LIVE EVENTS":"YAMNET / WAITING",
+                       987,6,220,14,Justification::centredRight,false);
+        }
         g.setColour(color(RowOutline).withAlpha(0.65f));
-        g.drawVerticalLine(232, 0, HEIGHT - 8.0f);
+        g.drawVerticalLine(232,0,HEIGHT-8.0f);
     }
     g.setColour(color(RowOutline).withAlpha(0.65f));
     g.strokePath(workspace, PathStrokeType(1.0f));
@@ -313,8 +386,16 @@ void FxProView::paint(Graphics& g)
         g.drawText(value, x, y, w, h, Justification::centredLeft, true);
     };
     auto card = [&](int x, int y, int w, int h) {
-        g.setColour(color(ControlBackground)); g.fillRoundedRectangle((float)x, (float)y, (float)w, (float)h, 16);
-        g.setColour(color(RowOutline).withAlpha(0.65f)); g.drawRoundedRectangle(x+0.5f, y+0.5f, w-1.0f, h-1.0f, 16, 1);
+        const auto panel=color(ControlBackground);
+        ColourGradient glass(panel.brighter(0.095f),(float)x,(float)y,
+                             panel.darker(0.055f),(float)(x+w),(float)(y+h),false);
+        glass.addColour(0.42,panel);
+        g.setGradientFill(glass);
+        g.fillRoundedRectangle((float)x,(float)y,(float)w,(float)h,16.0f);
+        g.setColour(color(DefaultText).withAlpha(0.065f));
+        g.drawLine((float)x+17.0f,(float)y+1.0f,(float)(x+w)-17.0f,(float)y+1.0f,0.8f);
+        g.setColour(color(RowOutline).withAlpha(0.72f));
+        g.drawRoundedRectangle(x+0.5f,y+0.5f,w-1.0f,h-1.0f,16.0f,1.0f);
     };
     const float selected=theme.animate(*this,3,(float)page_);
     g.setColour(color(MenuHighlightBackground));
@@ -369,7 +450,8 @@ void FxProView::lookAndFeelChanged()
     transition_image_=Image();
     if(FxTheme::isReducedMotion()) startTimer(500); else startTimerHz(60);
     selectPage(page_);
-    neural_activity_.setAnimationEnabled(page_ == 1);
+    neural_activity_.setAnimationEnabled(page_==1 ||
+        FxTheme::getThemeMode()==FxThemeMode::NeuralCore);
     learning_status_.setColour(Label::textColourId,Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     repaint();
 }
