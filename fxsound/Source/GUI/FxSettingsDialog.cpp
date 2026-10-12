@@ -105,13 +105,20 @@ FxSettingsDialog::SettingsComponent::SettingsComponent()
 	help_button_->setImage(Drawable::createFromImageData(BinaryData::question_svg, BinaryData::question_svgSize).get());
 	help_button_->addListener(this);
 
+    misc_button_ = std::make_unique<SettingsButton>("Misc");
+    misc_button_->setToggleState(false, NotificationType::dontSendNotification);
+    misc_button_->setImage(Drawable::createFromImageData(BinaryData::settings_svg, BinaryData::settings_svgSize).get());
+    misc_button_->addListener(this);
+
 	addAndMakeVisible(audio_button_.get());
 	addAndMakeVisible(general_button_.get());
 	addAndMakeVisible(help_button_.get());
+    addAndMakeVisible(misc_button_.get());
 
 	addAndMakeVisible(audio_settings_pane_);
 	addChildComponent(general_settings_pane_);
 	addChildComponent(help_settings_pane_);
+    addChildComponent(misc_settings_pane_);
 
     setSize(WIDTH, HEIGHT);
 }
@@ -121,45 +128,30 @@ void FxSettingsDialog::SettingsComponent::resized()
 	audio_button_->setBounds(BUTTON_X, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT);
 	general_button_->setBounds(BUTTON_X, audio_button_->getBottom() + 20, BUTTON_WIDTH, BUTTON_HEIGHT);
 	help_button_->setBounds(BUTTON_X, general_button_->getBottom() + 20, BUTTON_WIDTH, BUTTON_HEIGHT);
+    misc_button_->setBounds(BUTTON_X,help_button_->getBottom()+20,BUTTON_WIDTH,BUTTON_HEIGHT);
 
 	juce::Rectangle<int> pane_rect(SEPARATOR_X + 1, 1, getWidth() - SEPARATOR_X + 1, getHeight() - 1);
 	audio_settings_pane_.setBounds(pane_rect);
 	general_settings_pane_.setBounds(pane_rect);
 	help_settings_pane_.setBounds(pane_rect);
+    misc_settings_pane_.setBounds(pane_rect);
 }
 
-void  FxSettingsDialog::SettingsComponent::buttonClicked(Button* button)
+void FxSettingsDialog::SettingsComponent::buttonClicked(Button* button)
 {
-	if (button == audio_button_.get())
-	{
-		button->setToggleState(true, NotificationType::dontSendNotification);
-		general_button_->setToggleState(false, NotificationType::dontSendNotification);
-		help_button_->setToggleState(false, NotificationType::dontSendNotification);
-
-		audio_settings_pane_.setVisible(true);
-		general_settings_pane_.setVisible(false);
-		help_settings_pane_.setVisible(false);
-	}
-	else if (button == general_button_.get())
-	{
-		button->setToggleState(true, NotificationType::dontSendNotification);
-		audio_button_->setToggleState(false, NotificationType::dontSendNotification);
-		help_button_->setToggleState(false, NotificationType::dontSendNotification);
-
-		general_settings_pane_.setVisible(true);
-		audio_settings_pane_.setVisible(false);
-		help_settings_pane_.setVisible(false);
-	}
-	else if (button == help_button_.get())
-	{
-		button->setToggleState(true, NotificationType::dontSendNotification);
-		audio_button_->setToggleState(false, NotificationType::dontSendNotification);
-		general_button_->setToggleState(false, NotificationType::dontSendNotification);
-
-		help_settings_pane_.setVisible(true);
-		audio_settings_pane_.setVisible(false);
-		general_settings_pane_.setVisible(false);
-	}
+    const bool audio = button == audio_button_.get();
+    const bool general = button == general_button_.get();
+    const bool help = button == help_button_.get();
+    const bool misc = button == misc_button_.get();
+    if (!audio && !general && !help && !misc) return;
+    audio_button_->setToggleState(audio,NotificationType::dontSendNotification);
+    general_button_->setToggleState(general,NotificationType::dontSendNotification);
+    help_button_->setToggleState(help,NotificationType::dontSendNotification);
+    misc_button_->setToggleState(misc,NotificationType::dontSendNotification);
+    audio_settings_pane_.setVisible(audio);
+    general_settings_pane_.setVisible(general);
+    help_settings_pane_.setVisible(help);
+    misc_settings_pane_.setVisible(misc);
 }
 
 FxSettingsDialog::SettingsPane::SettingsPane(String name)
@@ -468,6 +460,50 @@ void FxSettingsDialog::GeneralSettingsPane::setText()
 	hide_notifications_toggle_.setButtonText(TRANS("Hide notifications"));
 
     hotkeys_toggle_.setButtonText(TRANS("Disable keyboard shortcuts"));
+}
+
+FxSettingsDialog::MiscSettingsPane::MiscSettingsPane() : SettingsPane("Misc")
+{
+    ai_dj_toggle_.setToggleState(
+        FxController::getInstance().isAiDjEnabled(),NotificationType::dontSendNotification);
+    ai_dj_toggle_.setTooltip("Optional music-only reactive stereo accents. Off by default. Does not replace Music AI.");
+    ai_dj_toggle_.onClick = [this] {
+        FxController::getInstance().setAiDjEnabled(ai_dj_toggle_.getToggleState());
+    };
+    intensity_.setName("AI DJ intensity");
+    intensity_.setRange(0.0,100.0,1.0);
+    intensity_.setTextValueSuffix("%");
+    intensity_.setTextBoxStyle(Slider::TextBoxRight,false,64,26);
+    intensity_.setValue(FxController::getInstance().getAiDjIntensity(),
+                        NotificationType::dontSendNotification);
+    intensity_.setTooltip("Adjust synthesized accents only. Cyn's existing bass enhancement is untouched.");
+    intensity_.onValueChange = [this] {
+        FxController::getInstance().setAiDjIntensity((float)intensity_.getValue());
+    };
+    info_.setText(
+        "Only plays brief, quiet, left/right glides after clearly detected music transients.\n"
+        "No predicted drops. Never fires during uncertain audio or detected speech.\n"
+        "Requires the local YAMNet model. Uses no microphone or cloud recording.",
+        NotificationType::dontSendNotification);
+    info_.setJustificationType(Justification::topLeft);
+    info_.setColour(Label::textColourId,Colour(FXCOLOR(DefaultText)));
+    addAndMakeVisible(ai_dj_toggle_);
+    addAndMakeVisible(intensity_);
+    addAndMakeVisible(info_);
+}
+
+void FxSettingsDialog::MiscSettingsPane::resized()
+{
+    title_.setBounds(X_MARGIN,Y_MARGIN,getWidth()-2*X_MARGIN,TITLE_HEIGHT);
+    ai_dj_toggle_.setBounds(X_MARGIN,65,getWidth()-2*X_MARGIN,32);
+    intensity_.setBounds(X_MARGIN,108,getWidth()-2*X_MARGIN,32);
+    info_.setBounds(X_MARGIN,157,getWidth()-2*X_MARGIN,115);
+}
+
+void FxSettingsDialog::MiscSettingsPane::paint(Graphics& g)
+{
+    g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
+    SettingsPane::paint(g);
 }
 
 FxSettingsDialog::HelpSettingsPane::HelpSettingsPane() : SettingsPane("Help"), auto_updates_toggle_(String("Reduce motion")), smooth_animations_toggle_(String("Smooth animations"))
