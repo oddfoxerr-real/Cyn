@@ -186,12 +186,16 @@ int DfxDspPrivate::processAudio(short int *si_input_samples, short int *si_outpu
 	if (dfxpUniversalModifySamples(dfxp_handle_, si_input_samples, si_output_samples, i_num_sample_sets, i_check_for_duplicate_buffers) != OKAY)
 		return(NOT_OKAY);
 
+    // Optional post-DSP spatial accent. No modification when disabled.
+    ai_dj_.process(reinterpret_cast<const float*>(si_input_samples),
+                   reinterpret_cast<float*>(si_output_samples),i_num_sample_sets);
 	return OKAY;
 }
 
 int DfxDspPrivate::setSignalFormat(int i_bps, int i_nch, int i_srate, int i_valid_bits)
 {
 	source_analyzer_.setFormat(i_bps, i_nch, i_srate);
+    ai_dj_.setFormat(i_bps,i_nch,i_srate);
 	if (dfxpUniversalSetSignalFormat(dfxp_handle_, i_bps, i_nch, i_srate, i_valid_bits) != OKAY)
 		return(NOT_OKAY);
 
