@@ -32,6 +32,7 @@ public:
         activeRemaining_ = 0;
         elapsedFrames_ = 0;
         sinceAccent_ = 0;
+        hasFired_ = false;
         fast_ = slow_ = 0.0f;
         phase_ = 0.0;
     }
@@ -79,11 +80,12 @@ public:
         const bool onset = fast_ > slow_*1.9f && fast_-slow_ > 0.035f &&
                            rms > 0.09f;
         if (!activeRemaining_ && elapsedFrames_ > static_cast<std::uint64_t>(rate_) &&
-            sinceAccent_ > static_cast<std::uint64_t>(rate_)*8 && onset) {
+            (!hasFired_ || sinceAccent_ > static_cast<std::uint64_t>(rate_)*8) && onset) {
             activeRemaining_ = (std::max)(1,rate_/5); // 200-ms gentle glide
             activeLength_ = activeRemaining_;
             phase_ = 0.0;
             sinceAccent_ = 0;
+            hasFired_ = true;
             rightward_ = !rightward_;
         }
         if (!activeRemaining_) return;
@@ -123,5 +125,5 @@ private:
     std::uint64_t elapsedFrames_ = 0, sinceAccent_ = 0;
     float fast_ = 0, slow_ = 0;
     double phase_ = 0;
-    bool rightward_ = false;
+    bool rightward_ = false, hasFired_ = false;
 };
