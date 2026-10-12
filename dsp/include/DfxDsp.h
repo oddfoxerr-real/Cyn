@@ -76,6 +76,8 @@ public:
     void getSpectrumBandValues(float* rp_band_values, int i_array_size);
     InputAudioFeatures getInputAudioFeatures();
     bool copyYamNetWindow(std::array<float,15600>& out,uint64_t& sampleNumber) const;
+    void configureAiDj(bool enabled, float intensity);
+    void updateAiDjScene(float music, float speech, float percussion, float silence);
 
 private:
 	DfxDspPrivate *data_;
