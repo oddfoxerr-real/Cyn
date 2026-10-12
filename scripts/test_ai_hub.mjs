@@ -97,8 +97,8 @@ console.log("PASS: live neural inference and supervised epoch animation");
 // The existing personal-model network must be labeled separately from pretrained
 // YAMNet event classifications; no fabricated YAMNet weight-node activity.
 const themeHeader=readFileSync(path("fxsound/Source/GUI/FxTheme.h"),"utf8");
-assert(themeHeader.includes("ChatGPTDesktop, NeuralCore, NumModes"),"Neural Core must preserve existing saved theme IDs");
-assert(theme.includes('"ChatGPT Desktop", "Neural Core"'),"Neural Core missing from Theme menu names");
+assert(themeHeader.includes("CharcoalDesktop, NeuralCore, NumModes"),"Neural Core must preserve existing saved theme IDs");
+assert(theme.includes('"Charcoal Desktop", "Neural Core"'),"Neural Core missing from Theme menu names");
 assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Neural theme must use real personal model activations");
 assert(view.includes("brainController.getLiveYamNetScene(scene)"),"Neural theme must read real YAMNet classifications");
 assert(controllerHeader.includes("getLiveYamNetScene(CynAudioScene& out)"),"Missing native read-only scene telemetry API");

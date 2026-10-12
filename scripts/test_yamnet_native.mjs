@@ -20,7 +20,13 @@ assert(controller.includes("sceneHead.predict(scene,e,contextual,confidence)"),"
 assert(worker.includes("for(int i=0;i<521;++i)") && worker.includes("for(int i=0;i<1024;++i)"),"All 521 classes and 1024 embedding dimensions must be used");
 assert(engine.includes("class CynScenePreference") && engine.includes("CynFlagshipMixer"),"Missing local neural scene preference head");
 assert(!controller.includes("desired=jmin(desired,0.58f)") && !controller.includes("movie?4.8f:6.5f"),"Arbitrary Music Bass limiter returned");
-assert(controller.includes("decision.lowEqDb*amount*weight"),"YAMNet DJ mixing must control sub-bass EQ");
+assert(controller.includes("decision.eqDelta(freq)*amount"),"Combined model must control frequency-specific signed EQ");
 assert(controller.includes("rebuildScenePreferences()"),"Embedding-learning persistence missing");
 assert(model.includes("onnxruntime"),"Missing tested pretrained model conversion");
 console.log("PASS: native YAMNet audio tap, ONNX inference and embedding-driven flagship and dynamic bass control");
+
+assert(controller.includes('setSmartListening(settings_.getBool("ember_smart_listening", true))'), "New installs must enable the default AI and retain stored choices");
+assert(controller.includes('settings_.getInt("cyn_ai_listening_mode",0)'), "Music AI must remain the default mode");
+const header=readFileSync(path("fxsound/Source/GUI/FxController.h"),"utf8");
+assert(header.includes("bool smart_enabled_ = false;"), "Startup enable must capture the manual baseline");
+console.log("PASS: autonomous AI startup defaults and saved-choice preservation");

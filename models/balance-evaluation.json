@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "model": "Cyn Balance 1",
+  "architecture": "11 -> 24 tanh -> 5 softmax",
+  "training_rows": 6000,
+  "validation_rows": 1500,
+  "test_rows": 1500,
+  "epochs": 300,
+  "selected_epoch": 300,
+  "gradient_updates": 14100,
+  "training_seconds": 7.632031799999822,
+  "test_mse": 0.01956931540791007,
+  "constant_baseline_test_mse": 0.07894229996142858,
+  "test_mae_by_role": {
+    "bass": 0.14072878227070512,
+    "kick": 0.14242251322962,
+    "snare": 0.050035701412917244,
+    "high_percussion": 0.04024292215236178,
+    "other": 0.03928480896548558
+  },
+  "data_sha256": {
+    "train": "f613e936a48aeadc83f9930746ebb48f67b08656b1c9c414333dc0367218cab6",
+    "validation": "c26b7942424cc3d28db8084166be8e53b9a5b6d010018ce104cdc21d926a7fae",
+    "test": "64830e05b4796a6e47b8b181db45d69e57c9fbbccd38510e95c79dab2d9a342e"
+  },
+  "limitation": "Procedural held-out mixtures only. No real-music, listening-quality, source-separation or perfect-mixing claim. Runtime EQ affects overlapping instruments together.",
+  "weights_sha256": "bba1fc7dd0cb579a4ea9ee00d93ae0f02256a849f307044043f302101cf826a2"
+}

@@ -2,6 +2,7 @@
 // No allocation, I/O, or inference on the audio thread. UI-thread controls only.
 #pragma once
 #include "InputAudioFeatures.h"
+#include "CynBalanceModel.h"
 #include <array>
 #include <cmath>
 #include <algorithm>
@@ -17,7 +18,7 @@ struct CynAudioScene {
     bool valid=false;
 };
 
-// Learns More/Less taste from the ACTUAL pretrained 1024-dimensional YAMNet
+// Learns per-effect preferences from the pretrained 1024-dimensional YAMNet
 // representation compressed into 24 deterministic, normalized projections.
 // Separate instances are trained for Music and Movie modes. No cloud upload.
 class CynScenePreference {
@@ -63,20 +64,45 @@ private:
 
 struct CynMixDecision {
     std::array<float,5> preference {{0.5f,0.5f,0.5f,0.5f,0.5f}};
-    float lowEqDb=0;       // Transient, reversible boost on EXISTING low EQ bands
+    float lowEqDb=0;       // Signed temporary correction on existing low bands
+    float mudEqDb=0, presenceEqDb=0, airEqDb=0;
+    float kickShare=0, snareShare=0; // spectral estimates, not separated stems
     float levelingDb=0;    // Conservative normalized loudness assist
     float headroom=0;      // Pre-effects peak estimate, not output true peak
+
+    float eqDelta(float frequency) const noexcept {
+        if(!std::isfinite(frequency) || frequency<=0) return 0;
+        const auto bell=[&](float center,float width) {
+            const float octaves=std::log2(frequency/center)/width;
+            return std::exp(-0.5f*octaves*octaves);
+        };
+        const float lowWeight=std::clamp((300.0f-frequency)/200.0f,0.0f,1.0f);
+        return std::clamp(lowEqDb*lowWeight+mudEqDb*bell(350,0.65f)+
+                          presenceEqDb*bell(2200,0.65f)+airEqDb*bell(6500,0.6f),-2.5f,2.7f);
+    }
 };
 
-// The pretrained YAMNet sound labels and embedding novelty guide a transparent,
-// reversible DSP control policy. They are not direct "ideal EQ" predictions.
-// Original personal labels remain independent and refine each mode.
+// Fuses YAMNet scene features, learned spectral roles and measured input
+// energy into bounded DSP controls. Personal labels refine each listening mode.
 class CynFlagshipMixer {
 public:
-    static CynMixDecision decide(const CynAudioScene& s,
+    static CynMixDecision decide(const CynAudioScene& scene,
                                  const InputAudioFeatures& audio,
                                  bool movie) noexcept {
         CynMixDecision d;
+        // Invalid or silent frames must never request extra gain.
+        if(!std::isfinite(audio.rms) || audio.rms<=.0001f) return d;
+        for(float value:audio.values) if(!std::isfinite(value)) return d;
+        const auto probability=[](float v) { return std::isfinite(v)?std::clamp(v,0.0f,1.0f):0.0f; };
+        CynAudioScene s=scene.valid?scene:CynAudioScene{};
+        s.music=probability(s.music); s.speech=probability(s.speech);
+        s.percussion=probability(s.percussion); s.bassDrum=probability(s.bassDrum);
+        s.electronic=probability(s.electronic); s.vocals=probability(s.vocals);
+        s.impact=probability(s.impact); s.soundtrack=probability(s.soundtrack);
+        s.novelty=probability(s.novelty); s.complexity=probability(s.complexity);
+        s.silence=probability(s.silence);
+        const auto roles=CynBalanceModel::predict(audio);
+        d.kickShare=roles.share[1]; d.snareShare=roles.share[2];
         const auto band=[&](int index) {
             return std::exp(std::clamp(std::isfinite(audio.values[(size_t)index])
                 ? audio.values[(size_t)index] : -8.0f,-10.0f,0.0f));
@@ -106,8 +132,8 @@ public:
             d.lowEqDb=0;
             d.levelingDb=safe*0.7f;
         } else {
-            // Phonk, electronic, hip-hop and other beat-heavy tracks deserve
-            // punch, but clips with already-dominant subs need less extra Bass.
+            // Scale bass and dynamics with rhythmic activity, low-frequency
+            // energy and available input headroom.
             d.preference[0]=0.54f+0.12f*s.vocals+0.05f*motion;
             d.preference[1]=0.50f+0.06f*musical*(1.0f-s.vocals);
             d.preference[2]=0.50f+0.09f*musical;
@@ -119,9 +145,32 @@ public:
                                          0.35f,0.94f);
             // Use musical frequencies, not classification scores, to identify
             // thin vs booming low end. EQ lift limited by measured headroom.
-            d.lowEqDb=std::clamp((0.43f-lowPresence)*6.0f,0.0f,2.7f)
-                       *safe*(0.35f+0.65f*rhythm);
+            const float lowCorrection=std::clamp((0.43f-lowPresence)*6.0f,-2.0f,2.7f);
+            const float lowRole=roles.share[0]+roles.share[1];
+            // Only boost with measured headroom. Excess low energy can be cut
+            // even on loud sources. Learned roles modulate, never dictate, EQ.
+            d.lowEqDb=lowCorrection*(lowCorrection>0?safe:1.0f)*
+                (0.35f+0.4f*rhythm+0.25f*lowRole);
+            const float mud=(band(3)+band(4))/(band(3)+band(4)+band(5)+band(6)+1e-6f);
+            const float brightness=band(7)/(band(5)+band(6)+band(7)+1e-6f);
+            d.mudEqDb=-std::clamp((mud-.62f)*4.0f,0.0f,1.2f)*
+                (0.5f+0.5f*lowRole);
+            // Preserve the snare attack by avoiding extra brightness/dynamic
+            // boost on already peaky or bright percussion.
+            const float attack=std::clamp((crest-3.0f)/4.0f,0.0f,1.0f);
+            d.presenceEqDb=-std::clamp((brightness-.55f)*3.0f,0.0f,1.0f)*roles.share[2];
+            d.airEqDb=-std::clamp((brightness-.50f)*4.0f,0.0f,1.5f)*
+                (roles.share[2]+roles.share[3]);
+            d.preference[3]-=0.10f*attack*(roles.share[1]+roles.share[2]);
+            d.preference[4]-=0.12f*std::clamp((lowPresence-.6f)/.4f,0.0f,1.0f)*lowRole;
             d.levelingDb=std::clamp((0.19f-rms)*9.0f,0.0f,2.2f)*safe;
+            // Suppress autonomous music shaping for speech/silence scenes.
+            const float musicGate=scene.valid?
+                std::clamp(1.0f-s.speech*(1.0f-s.music)-s.silence,0.0f,1.0f):0.5f;
+            d.lowEqDb*=musicGate; d.mudEqDb*=musicGate;
+            d.presenceEqDb*=musicGate; d.airEqDb*=musicGate;
+            for(auto& preference:d.preference) preference=0.5f+(preference-0.5f)*musicGate;
+            d.levelingDb*=musicGate;
         }
         return d;
     }

@@ -1,5 +1,17 @@
 # Cyn — personal audio
 
+## Autonomous audio balance prototype
+
+Music AI now combines the existing YAMNet scene model with a trained native
+Balance model. Music AI and Smart listening are the defaults for new installs;
+existing saved mode and on/off choices are retained. It automatically makes bounded
+bass, low-mid and percussion-brightness adjustments to incoming audio. No
+reference tracks or personal labels are required. It does not generate music
+or separate stems. The model has passed synthetic held-out and native behavior
+tests; real-music listening quality is not yet validated. See
+[the model card](models/BALANCE_MODEL_CARD.md) and
+[training results](models/balance-evaluation.json).
+
 Cyn is a native personal-audio app built on the open-source FxSound DSP, with its own Windows identity, original icons, selectable themes and an offline neural preference model.
 
 Thank you to the [FxSound team and contributors](https://github.com/fxsound2/fxsound-app) for making FxSound open source and providing the audio engine behind Cyn. If you enjoy Cyn, please [visit FxSound](https://www.fxsound.com/) and [support their work](https://www.fxsound.com/contribute) through donations or contributions.
@@ -34,7 +46,7 @@ Exit the running audio app first. Keep the official FxSound installation for the
 
 ## Appearance and motion
 
-Open the top menu or tray menu and choose **Theme**. Cyn has 19 native themes. **ChatGPT Desktop** matches the supplied screenshot's layered charcoal colors: `#181818` content, `#191C1E` panels, `#212121` raised surfaces, `#363636` borders, neutral grey controls and bright legible text. The palette applies to the workspace, effects, EQ, timeline, menus and controls. **Reduce motion** disables transitions and lowers the spectrum refresh rate. Both choices are saved.
+Open the top menu or tray menu and choose **Theme**. Cyn has 19 native themes. **Charcoal Desktop** uses layered charcoal colors: `#181818` content, `#191C1E` panels, `#212121` raised surfaces, `#363636` borders, neutral grey controls and bright legible text. The palette applies to the workspace, effects, EQ, timeline, menus and controls. **Reduce motion** disables transitions and lowers the spectrum refresh rate. Both choices are saved.
 
 Navigation crossfades for 220 ms with a sliding sidebar selection; buttons ease on hover/press, toggles slide and sliders show eased hover halos. The audio values themselves remain immediate while you drag.
 
