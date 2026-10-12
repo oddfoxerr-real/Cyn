@@ -823,6 +823,8 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
         loadSmartModel();
         yamnet_worker_=std::make_unique<CynYamNetWorker>(dfx_dsp_);
         yamnet_worker_->startIfAvailable();
+        setAiDjIntensity(static_cast<float>(settings_.getInt("cyn_ai_dj_intensity",25)));
+        setAiDjEnabled(settings_.getBool("cyn_ai_dj_enabled",false));
         smart_mode_=jlimit(0,1,settings_.getInt("cyn_ai_listening_mode",0));
         // Autonomous YAMNet + Balance is on for new installs; retain a saved opt-out.
         // Keep smart_enabled_ initially false so enabling captures the preset baseline.
@@ -3077,6 +3079,19 @@ void FxController::setSmartSensitivity(float percent)
     if(percent!=smart_sensitivity_) restoreSmartBaseline();
     smart_sensitivity_=percent; settings_.setDouble("ember_smart_sensitivity",percent);
 }
+void FxController::setAiDjEnabled(bool enabled)
+{
+    ai_dj_enabled_=enabled;
+    settings_.setBool("cyn_ai_dj_enabled",enabled);
+    dfx_dsp_.configureAiDj(enabled,ai_dj_intensity_/100.0f);
+}
+void FxController::setAiDjIntensity(float percent)
+{
+    if(!std::isfinite(percent)) return;
+    ai_dj_intensity_=jlimit(0.0f,100.0f,percent);
+    settings_.setInt("cyn_ai_dj_intensity",(int)std::round(ai_dj_intensity_));
+    dfx_dsp_.configureAiDj(ai_dj_enabled_,ai_dj_intensity_/100.0f);
+}
 void FxController::updateSmartListening()
 {
     const auto input=dfx_dsp_.getInputAudioFeatures();
@@ -3087,6 +3102,13 @@ void FxController::updateSmartListening()
     const bool active=audio_process_on_ && playback_device_available_ && FxModel::getModel().getPowerState();
     CynAudioScene scene;
     const bool yamnetLive=yamnet_worker_ && yamnet_worker_->latest(scene);
+    // DJ is independent of Smart Listening: control only from fresh YAMNet
+    // music evidence, never from personal music/movie model preferences.
+    const bool djSceneValid=active && smart_stale_ticks_<4 && yamnetLive;
+    dfx_dsp_.updateAiDjScene(djSceneValid?scene.music:0.0f,
+        djSceneValid?scene.speech:1.0f,
+        djSceneValid?scene.percussion:0.0f,
+        djSceneValid?scene.silence:1.0f);
     if(fresh && active && input.rms>0.0001f) smart_history_.push_back({input,now,scene});
     while(!smart_history_.empty() && (smart_history_.front().id<now-60000 || smart_history_.size()>600)) smart_history_.erase(smart_history_.begin());
     if(!smart_enabled_) return;
