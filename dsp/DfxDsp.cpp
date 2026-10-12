@@ -204,3 +204,9 @@ InputAudioFeatures DfxDsp::getInputAudioFeatures() { return data_->source_analyz
 
 bool DfxDsp::copyYamNetWindow(std::array<float,15600>& out,uint64_t& sampleNumber) const
 { return data_->source_analyzer_.copyYamNetWindow(out,sampleNumber); }
+
+void DfxDsp::configureAiDj(bool enabled, float intensity)
+{ data_->configureAiDj(enabled,intensity); }
+
+void DfxDsp::updateAiDjScene(float music,float speech,float percussion,float silence)
+{ data_->updateAiDjScene(music,speech,percussion,silence); }
