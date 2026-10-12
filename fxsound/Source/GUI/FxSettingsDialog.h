@@ -152,6 +152,18 @@ private:
 		FxLanguage language_switch_;
 	};
 
+	class MiscSettingsPane : public SettingsPane
+	{
+	public:
+		MiscSettingsPane();
+		void resized() override;
+		void paint(Graphics& g) override;
+	private:
+		ToggleButton ai_dj_toggle_ { "AI DJ Experience" };
+		Slider intensity_ { Slider::LinearHorizontal, Slider::TextBoxRight };
+		Label info_;
+	};
+
 	class HelpSettingsPane : public SettingsPane
 	{
 	public:
@@ -208,10 +220,12 @@ private:
 		std::unique_ptr<SettingsButton> audio_button_;
 		std::unique_ptr<SettingsButton> general_button_;
 		std::unique_ptr<SettingsButton> help_button_;
+		std::unique_ptr<SettingsButton> misc_button_;
 
 		AudioSettingsPane audio_settings_pane_;
 		GeneralSettingsPane general_settings_pane_;
 		HelpSettingsPane help_settings_pane_;
+		MiscSettingsPane misc_settings_pane_;
 	};
 
 	SettingsComponent settings_content_;
