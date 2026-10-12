@@ -1,0 +1,59 @@
+name: Cyn Android Release
+on:
+  push:
+    branches: ['codex/android']
+    paths: ['android/**', 'release-artifacts/android/**', '.github/workflows/android-release.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: cyn-android-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TAG: android-v0.1.2-preview
+      APK: Cyn-Android-0.1.2-preview.apk
+      SOURCE: Cyn-Android-0.1.2-Source.zip
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify source and signed package
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code 8b418ff38ba0999019a24d256504d7f5c0af4ad7 HEAD -- android
+          base64 --decode release-artifacts/android/0.1.2-preview.apk.base64 > "$APK"
+          echo 'fb321cfbdfe31581fc69d4de5182c23fa61b065615270ae0565c24c46a027730  Cyn-Android-0.1.2-preview.apk' | sha256sum --check
+          tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          "$tools/apksigner" verify --print-certs "$APK" | tee signing.txt
+          grep -F 'certificate SHA-256 digest: 20698db6b762137a5e5199c0c5a6c728e8b90374d9dc76973c6ea21c005ee13d' signing.txt
+          "$tools/aapt" dump badging "$APK" > package.txt
+          grep -F "name='io.github.oddfoxerr.cyn' versionCode='3' versionName='0.1.2-preview'" package.txt
+          mkdir -p /tmp/cyn-host-tests
+          javac -d /tmp/cyn-host-tests android/app/src/main/java/io/github/oddfoxerr/cyn/{PreferenceModel,AudioFeatures,AndroidRelease}.java android/tests/AudioModelTest.java
+          java -cp /tmp/cyn-host-tests io.github.oddfoxerr.cyn.AudioModelTest
+          git archive --format=zip --output="$SOURCE" HEAD android
+          sha256sum "$APK" > "$APK.sha256"
+      - name: Publish verified preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --json isDraft --jq '.isDraft' > release-state.txt 2>/dev/null; then
+            if grep -qx false release-state.txt; then
+              echo "Release already published; leaving its assets unchanged."
+              exit 0
+            fi
+          else
+            gh release create "$TAG" --target "$GITHUB_SHA" --title "Cyn Android 0.1.2 preview" --notes-file release-artifacts/android/0.1.2-notes.md --draft --prerelease
+          fi
+          gh release upload "$TAG" "$APK" "$APK.sha256" "$SOURCE" --clobber
+          gh release edit "$TAG" --draft=false --prerelease --latest=false

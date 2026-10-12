@@ -1,4 +1,4 @@
-Cyn for Android 0.1.0 preview
+Cyn for Android 0.1.2 preview
 SPDX-License-Identifier: AGPL-3.0-or-later
 
 Based on Cyn desktop v2.0.16, commit bcf2e41ce8842fe009049f1476565142338a3cf1.
@@ -15,7 +15,7 @@ Cyn synthetic starter parameters under AGPL-3.0-or-later. It uses Android's
 platform APIs, fonts and audio effects. No Gilroy fonts, JUCE modules, Microsoft
 runtime, Windows drivers, fxdevcon, or DfxSetupDrv are bundled in this APK.
 
-The accompanying Cyn-Android-0.1.0-source.zip contains the corresponding source
+The accompanying Cyn Android source ZIP contains the corresponding source
 and build instructions. Gradle wrapper is build tooling under Apache-2.0;
 see GRADLE-LICENSE.txt in the source archive. Android SDK and JDK are separate
 build tools, not redistributed inside this APK. No warranty is provided.

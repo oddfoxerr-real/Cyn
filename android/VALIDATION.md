@@ -1,28 +1,49 @@
-# Android preview validation — 2026-10-10
+# Android 0.1.2 preview validation — 2026-10-12
 
-Desktop base: `bcf2e41ce8842fe009049f1476565142338a3cf1` (v2.0.16).
+Built locally with JDK 17, Gradle 8.11.1, AGP 8.9.2 and Android SDK 35.
 
-Completed locally:
-
-- JDK 17 / Gradle 8.11.1 / Android Gradle Plugin 8.9.2 / SDK 35 release build.
-- `:app:assembleRelease :app:lintRelease`: successful; **0 lint errors**.
-  Five warnings concern English-only text formatting/localization. The preview UI is English.
-- Pure-Java host test: **32 assertions passed**. Covers finite silence/invalid inputs,
-  low/high-frequency discrimination, unsigned waveform decoding, bounded model outputs,
-  sensitivity limits, real neural optimization and learned More/Less separation,
-  insufficient-label rejection, completed epochs and training-copy isolation.
-- Android `apksigner verify --verbose --print-certs`: signature verified, APK v2 signing,
-  RSA 3072. Certificate SHA-256:
+- `:app:assembleRelease :app:lintRelease` succeeds. Zero lint errors; five
+  existing English localization warnings.
+- Pure-Java host tests: **285 assertions passed**, covering audio features,
+  learned More/Less separation, inference/telemetry equivalence, connection
+  contributions, candidate-training snapshots and Android-only version selection.
+- Package: `io.github.oddfoxerr.cyn`, versionCode **3**, versionName **0.1.2-preview**,
+  minimum SDK 28, target SDK 35. Original package identity retained.
+- APK signature verified with `apksigner`. Original release certificate SHA-256:
   `20698db6b762137a5e5199c0c5a6c728e8b90374d9dc76973c6ea21c005ee13d`.
-- Android `aapt dump badging`: package `io.github.oddfoxerr.cyn`, versionCode 1,
-  versionName `0.1.0-preview`, minSdk 28, targetSdk 35. Launcher is MainActivity.
-  No Internet permission. Microphone hardware is optional.
 
-Not validated: installation, rendering, actual audio, battery behavior, Bluetooth,
-notifications or external music-app compatibility on a physical Android device.
-`adb devices` returned no connected devices. There was no emulator available.
-No claim of Android or real-song model accuracy, full desktop feature parity,
-universal external-app processing or a finished stable mobile release is made.
+## Interface changes
 
-Build and signing happen locally. This task does not publish an APK to GitHub or a
-store, install software onto a phone, change Windows audio routing or run an installer.
+Music is the default screen. Its primary Enable Cyn action starts monitoring and
+turns effects on together. Disable Cyn bypasses effects and stops monitoring without
+stopping the file player. Connection status separates waiting, EQ control and
+unavailable effects; repeated refreshes do not repeatedly announce unchanged state.
+Opening Cyn from a player's equalizer panel returns to Music.
+
+The local player is in Files, with a dynamic Play/Pause button and seek control.
+Music retains bass, clarity, presets, EQ and personal adjustments. Connection help
+contains setup steps, diagnostics and optional legacy compatibility. Learn contains
+the learning timeline; More contains themes, updates and credits. Navigation uses
+flexible height, short labels and a selected state. The primary action uses a
+contrasting foreground, and buttons expose their role to accessibility services.
+
+The update checker, legacy compatibility, connection diagnostics and measured neural
+activity from the local 0.1.1 preview are retained in this source revision.
+
+## Device checks still required
+
+No Android device was connected and no emulator was installed. Build/lint and host
+tests do not verify rendered layout or device audio. Check a small phone, landscape,
+large fonts, TalkBack, light/dark themes and rotation. Exercise enable/disable before
+and after a music app opens a session, competing equalizers, unsupported sessions,
+permission denial, notification Stop and switching tabs during file playback.
+
+Galaxy A56/Spotify routing, legacy output-mix support, playback/Bluetooth and updating
+an existing install need physical-phone testing. EQ ownership reports Android's API
+state; it does not prove that a specific player's audio passes through that effect.
+
+Install over the existing Cyn app to retain model, labels and settings. The signing
+key and encrypted password are excluded from Git and the source archive. This is an
+Android preview, without a claim of universal system-wide processing or measured
+real-song model accuracy. Internet access is only for explicit GitHub update checks;
+audio, numerical features, model weights and feedback are not uploaded.
