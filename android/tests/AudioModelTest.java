@@ -19,7 +19,25 @@ public final class AudioModelTest {
         check(AudioFeatures.offset(1,1)==3&&AudioFeatures.offset(0,1)==-3,"Signed bounded changes");
         List<PreferenceModel.Example> labels=new ArrayList<>();
         for(int i=0;i<8;i++) { labels.add(new PreferenceModel.Example(feature(true),4,true,i)); labels.add(new PreferenceModel.Example(feature(false),4,false,i+20)); }
-        final int[] epoch={0}; check(m.fit(labels,e->epoch[0]=e),"Balanced data trains"); check(epoch[0]==240,"Real 240 epochs completed");
+        final int[] epoch={0}, sampleEpoch={0}, samples={0};
+        check(m.fit(labels,e->epoch[0]=e,(t,e)->{
+            check(e>sampleEpoch[0],"Training snapshots advance with completed epochs"); sampleEpoch[0]=e; samples[0]++;
+            check(Arrays.equals(t.outputs,m.trace(labels.get(0).x).outputs),"Training telemetry uses the candidate weights");
+        }),"Balanced data trains"); check(epoch[0]==240&&sampleEpoch[0]==240&&samples[0]==21,"Real epochs sampled, including final weights");
+        PreferenceModel.Trace trace=m.trace(feature(true));
+        check(Arrays.equals(trace.outputs,m.predict(feature(true))),"Telemetry matches inference outputs");
+        for(int j=0;j<12;j++) {
+            double sum=m.weights[132+j];
+            for(int i=0;i<11;i++) { check(trace.inputConnections[j*11+i]==trace.inputs[i]*m.weights[j*11+i],"Actual weighted input contribution"); sum+=trace.inputConnections[j*11+i]; }
+            check(Math.abs(Math.tanh(sum)-trace.hidden[j])<1e-12,"Hidden activation includes bias");
+        }
+        for(int o=0;o<5;o++) for(int j=0;j<12;j++) check(trace.outputConnections[o*12+j]==trace.hidden[j]*m.weights[144+o*12+j],"Actual weighted output contribution");
+        check(AndroidRelease.newerVersion("v2.0.17","0.1.0-preview")==null,"Windows releases excluded");
+        check(AndroidRelease.newerVersion("android-v0.1.0-preview","0.1.1-preview")==null,"Older APK rejected");
+        check(AndroidRelease.newerVersion("android-v0.1.1-preview","0.1.1-preview")==null,"Same APK rejected");
+        check("0.1.10-preview".equals(AndroidRelease.newerVersion("android-v0.1.10-preview","0.1.9-preview")),"Numeric update ordering");
+        check(AndroidRelease.newerVersion("android-vinvalid","0.1.0-preview")==null,"Malformed version rejected");
+        check(AndroidRelease.assetUrl("0.1.1-preview").endsWith("/android-v0.1.1-preview/Cyn-Android-0.1.1-preview.apk"),"Android release link matches version");
         check(m.ready[4]&&!m.ready[0],"Only trained head ready");
         check(m.predict(feature(true))[4]>.85,"Learns More bass examples");
         check(m.predict(feature(false))[4]<.15,"Learns Less bass examples");

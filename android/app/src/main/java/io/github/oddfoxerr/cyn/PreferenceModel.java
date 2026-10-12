@@ -22,6 +22,26 @@ public final class PreferenceModel {
         for(int i=0;i<11;i++) x[i]=i<8?(clamp(a[i],-12,0)+6)/6:i==8?clamp(a[i],0,4)/2-1:i==9?clamp(a[i],0,2)-1:(clamp(a[i],-8,0)+4)/4;
         return x;
     }
+    public static final class Trace {
+        public final double[] inputs, hidden=new double[12], outputs=new double[5];
+        public final double[] inputConnections=new double[132], outputConnections=new double[60];
+        public final boolean[] ready;
+        Trace(double[] a,boolean[] ready) { inputs=normalize(a); this.ready=ready.clone(); }
+    }
+    public Trace trace(double[] a) {
+        Trace t=new Trace(a,ready);
+        for(int j=0;j<12;j++) {
+            double z=weights[132+j];
+            for(int i=0;i<11;i++) { double contribution=t.inputs[i]*weights[j*11+i]; t.inputConnections[j*11+i]=contribution; z+=contribution; }
+            t.hidden[j]=Math.tanh(z);
+        }
+        for(int o=0;o<5;o++) {
+            double z=weights[204+o];
+            for(int j=0;j<12;j++) { double contribution=t.hidden[j]*weights[144+o*12+j]; t.outputConnections[o*12+j]=contribution; z+=contribution; }
+            t.outputs[o]=sigmoid(z);
+        }
+        return t;
+    }
     public double[] hidden(double[] a) {
         double[] x=normalize(a), h=new double[12];
         for(int j=0;j<12;j++) { double z=weights[132+j]; for(int i=0;i<11;i++) z+=x[i]*weights[j*11+i]; h[j]=Math.tanh(z); } return h;
@@ -31,7 +51,8 @@ public final class PreferenceModel {
         for(int o=0;o<5;o++) { double z=weights[204+o]; for(int j=0;j<12;j++) z+=h[j]*weights[144+o*12+j]; out[o]=sigmoid(z); } return out;
     }
     private static double sigmoid(double z) { return 1/(1+Math.exp(-clamp(z,-30,30))); }
-    public boolean fit(List<Example> examples, IntConsumer progress) {
+    public boolean fit(List<Example> examples, IntConsumer progress) { return fit(examples,progress,(trace,epoch)->{}); }
+    public boolean fit(List<Example> examples, IntConsumer progress, java.util.function.BiConsumer<Trace,Integer> telemetry) {
         int[][] counts=new int[5][2];
         for(Example e:examples) if(e.effect>=0&&e.effect<5) counts[e.effect][e.more?1:0]++;
         boolean[] train=new boolean[5]; boolean any=false;
@@ -54,6 +75,9 @@ public final class PreferenceModel {
                 if(!Double.isFinite(weights[i])) return false;
             }
             progress.accept(epoch);
+            if(epoch==1||epoch%12==0) for(Example e:examples) if(e.effect>=0&&e.effect<5&&train[e.effect]) {
+                Trace t=trace(e.x); for(int o=0;o<5;o++) t.ready[o]=train[o]; telemetry.accept(t,epoch); break;
+            }
         }
         for(int o=0;o<5;o++) ready[o]|=train[o];
         return true;
