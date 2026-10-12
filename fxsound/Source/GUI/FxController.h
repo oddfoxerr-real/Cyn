@@ -109,6 +109,11 @@ public:
     void setSmartSensitivity(float percent);
     float getSmartSensitivity() const { return smart_sensitivity_; }
     bool isSmartListening() const { return smart_enabled_; }
+    // Misc: separate, opt-in DJ accents. Does not switch or replace Music/Movie AI.
+    void setAiDjEnabled(bool enabled);
+    void setAiDjIntensity(float percent);
+    bool isAiDjEnabled() const { return ai_dj_enabled_; }
+    float getAiDjIntensity() const { return ai_dj_intensity_; }
     // Separate Music AI and Movie / TV AI models, labels and settings.
     int getSmartListeningMode() const { return smart_mode_; }
     void setSmartListeningMode(int mode);
@@ -348,6 +353,8 @@ private:
     String smart_learning_message_;
     bool smart_enabled_ = false;
     float smart_sensitivity_ = 50.0f;
+    bool ai_dj_enabled_ = false;
+    float ai_dj_intensity_ = 25.0f;
     float smart_bass_ = 0, smart_clarity_ = 0, smart_leveling_ = 0;
 	CriticalSection lock_;
 	CriticalSection save_lock_;
