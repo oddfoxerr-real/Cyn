@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param([switch]$WithMcp, [switch]$CheckOnly, [switch]$Incremental)
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
@@ -27,6 +27,7 @@ Copy-Item -LiteralPath $exe -Destination (Join-Path $dist 'Cyn.exe') -Force
 Copy-Item -LiteralPath (Join-Path $root 'CynUpdater.ps1'),(Join-Path $root 'CynUpdaterWorker.ps1'),(Join-Path $root 'CynUpdateWindow.xaml') -Destination $dist -Force
 Copy-Item -LiteralPath (Join-Path $root 'branding') -Destination $dist -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $root 'models\cyn-starter.json'),(Join-Path $root 'models\MODEL_CARD.md') -Destination $dist -Force
+Copy-Item -LiteralPath (Join-Path $root 'models\BALANCE_MODEL_CARD.md'),(Join-Path $root 'models\balance-evaluation.json') -Destination $dist -Force
 # Built-in AI catalogue is native app data, not a website or hosted service.
 $aiProfiles = Join-Path $dist 'CynAiProfiles'
 New-Item -ItemType Directory -Path $aiProfiles -Force | Out-Null

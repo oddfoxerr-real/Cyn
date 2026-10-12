@@ -1,0 +1,44 @@
+name: Cyn autonomous balance validation
+on:
+  pull_request:
+    paths:
+      - 'fxsound/Source/GUI/CynBalance*.h'
+      - 'fxsound/Source/GUI/CynFlagshipMixer.h'
+      - 'fxsound/Source/GUI/FxController.cpp'
+      - 'tests/cyn_balance_test.cpp'
+      - 'tests/data/balance-parity.csv'
+      - 'training/*Balance*'
+      - 'training/train_balance.py'
+      - 'scripts/train_balance.ps1'
+      - '.github/workflows/cyn-balance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Validate committed model and adaptive policy
+        shell: cmd
+        run: |
+          cl /nologo /O2 /EHsc /std:c++17 /I dsp\include /I fxsound\Source\GUI tests\cyn_balance_test.cpp /Fe:balance-test.exe
+          if errorlevel 1 exit /b 1
+          balance-test.exe tests\data\balance-parity.csv
+          if errorlevel 1 exit /b 1
+          cl /nologo /O2 /EHsc /std:c++17 /I dsp\include /I fxsound\Source\GUI tests\cyn_flagship_mixer_test.cpp /Fe:flagship-test.exe
+          if errorlevel 1 exit /b 1
+          flagship-test.exe
+          if errorlevel 1 exit /b 1
+          cl /nologo /O2 /EHsc /std:c++17 /I dsp\include tests\PersonalAudioTests.cpp /Fe:personal-test.exe
+          if errorlevel 1 exit /b 1
+          personal-test.exe
+      - name: Check native wiring
+        run: node scripts/test_yamnet_native.mjs
+      - name: Compile Windows application
+        shell: pwsh
+        run: |
+          msbuild fxsound/Project/FxSound.sln /m:2 /t:Build /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64 /nologo /v:minimal
+          if ($LASTEXITCODE -ne 0) { throw 'Native application build failed' }

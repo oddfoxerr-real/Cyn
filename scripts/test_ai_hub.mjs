@@ -33,13 +33,13 @@ const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
                   "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.20"]){
+                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.21"]){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
 assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
 assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
-console.log("PASS: visible native AI sidebar, profile actions and v2.0.20 version marker");
+console.log("PASS: visible native AI sidebar, profile actions and v2.0.21 version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
 assert(native.includes("componentToCentreAround = owner"),"AI Hub must be positioned over Cyn");
 assert(native.includes("dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f)"),"Dialog background is transparent");
@@ -97,8 +97,8 @@ console.log("PASS: live neural inference and supervised epoch animation");
 // The existing personal-model network must be labeled separately from pretrained
 // YAMNet event classifications; no fabricated YAMNet weight-node activity.
 const themeHeader=readFileSync(path("fxsound/Source/GUI/FxTheme.h"),"utf8");
-assert(themeHeader.includes("ChatGPTDesktop, NeuralCore, NumModes"),"Neural Core must preserve existing saved theme IDs");
-assert(theme.includes('"ChatGPT Desktop", "Neural Core"'),"Neural Core missing from Theme menu names");
+assert(themeHeader.includes("CharcoalDesktop, NeuralCore, NumModes"),"Neural Core must preserve existing saved theme IDs");
+assert(theme.includes('"Charcoal Desktop", "Neural Core"'),"Neural Core missing from Theme menu names");
 assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Neural theme must use real personal model activations");
 assert(view.includes("brainController.getLiveYamNetScene(scene)"),"Neural theme must read real YAMNet classifications");
 assert(controllerHeader.includes("getLiveYamNetScene(CynAudioScene& out)"),"Missing native read-only scene telemetry API");

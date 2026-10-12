@@ -4,7 +4,7 @@
 
 - Repairs release enumeration in `CynUpdater.ps1` so the updater discovers each release separately.
 - Adds a live regression test using the GitHub Releases API on Windows PowerShell 5.1; the Windows release pipeline fails if update detection breaks.
-- Preserves all 19 native Cyn themes, including **ChatGPT Desktop**.
+- Preserves all 19 native Cyn themes, including **Charcoal Desktop**.
 - Keeps SHA-256 checks on downloaded installer assets and user confirmation before installation.
 - Maintains Cyn's settings and user data across in-place upgrades.
 
