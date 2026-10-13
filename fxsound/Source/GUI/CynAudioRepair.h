@@ -225,6 +225,11 @@ private:
                      const juce::String& targetDeviceId = {})
     {
         if (!isEnabled() || isBusy()) return;
+        if (nextStage == Stage::Downloading && getPermission() == Permission::NeverDownload)
+        {
+            status_ = "Download blocked by current permission settings.";
+            return;
+        }
         const auto script = juce::File::getSpecialLocation(juce::File::currentExecutableFile)
                                 .getSiblingFile("CynAudioRepair.ps1");
         if (!script.existsAsFile())
