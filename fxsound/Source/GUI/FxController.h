@@ -257,6 +257,18 @@ private:
 
 	static LRESULT CALLBACK eventCallback(HWND hwnd, const UINT message, const WPARAM w_param, const LPARAM l_param);
 	void timerCallback() override;
+    // Independent of the DSP timer: updates continue checking while playback is off.
+    void checkAutomaticUpdates();
+    class AutoUpdatePoller final : private juce::Timer
+    {
+    public:
+        explicit AutoUpdatePoller(FxController& controller) : owner_(controller) {}
+        void start() { startTimer(30000); }
+        void stop() { stopTimer(); }
+    private:
+        void timerCallback() override { owner_.checkAutomaticUpdates(); }
+        FxController& owner_;
+    };
 	void onSoundDeviceChange(bool processing) override;
 	void onSystemSuspend();
 	void onSystemResume();
@@ -308,7 +320,7 @@ private:
     bool hide_help_tooltips_;
 	bool hide_notifications_;
 	bool auto_updates_;
-    int cyn_update_timer_ticks_ = 0;
+    AutoUpdatePoller auto_update_poller_ {*this};
 
 	unsigned long audio_process_time_;
 	int audio_process_on_counter_;

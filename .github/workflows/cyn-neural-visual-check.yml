@@ -9,13 +9,14 @@ on:
     paths:
       - .github/workflows/cyn-neural-visual-check.yml
       - fxsound/Source/GUI/CynThemeAtmosphere.h
+      - fxsound/Source/GUI/CynThemeStudio.h
       - fxsound/Source/GUI/CynNeuralActivity.h
       - fxsound/Source/GUI/FxProView.h
       - fxsound/Source/GUI/FxProView.cpp
-      - scripts/test_ai_hub.mjs
-      - fxsound/Source/GUI/CynNeuralActivity.h
-      - fxsound/Source/GUI/FxProView.h
-      - fxsound/Source/GUI/FxProView.cpp
+      - fxsound/Source/GUI/FxMainWindow.h
+      - fxsound/Source/GUI/FxMainWindow.cpp
+      - fxsound/Source/GUI/FxController.h
+      - fxsound/Source/GUI/FxController.cpp
       - scripts/test_ai_hub.mjs
   workflow_dispatch:
 permissions:
@@ -40,3 +41,12 @@ jobs:
         run: |
           if (!(Test-Path 'dist/Cyn/Cyn.exe')) { throw 'Native Cyn application missing' }
           if (!(Test-Path 'dist/Cyn-Windows-x64.zip')) { throw 'Portable archive missing' }
+
+      - name: Upload Theme Studio Windows preview
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyn-theme-studio-preview
+          path: dist/Cyn-Windows-x64.zip
+          retention-days: 7
+          if-no-files-found: error

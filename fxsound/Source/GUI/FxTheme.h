@@ -104,6 +104,7 @@ public:
     float animate(Component&, int channel, float target);
 	static void setThemeMode(FxThemeMode theme_mode);
 	static uint32 getColor(FxColor color);
+    static uint32 getColorForMode(FxThemeMode mode, FxColor color);
 	static const char* getImage(FxImage image);
 	static const int getImageSize(FxImage image);
 

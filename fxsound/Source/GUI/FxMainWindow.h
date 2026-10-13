@@ -41,6 +41,8 @@ public:
     void update();
     void startVisualizer();
     void pauseVisualizer();
+    void beginThemeTransition();
+    void finishThemeTransition();
 
 	void setLookAndFeel();
     void setResizeImage();

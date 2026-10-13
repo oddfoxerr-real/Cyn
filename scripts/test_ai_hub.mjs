@@ -33,13 +33,13 @@ const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
                   "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.23"]){
+                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.24"]){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
 assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
 assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
-console.log("PASS: visible native AI sidebar, profile actions and v2.0.23 version marker");
+console.log("PASS: visible native AI sidebar, profile actions and v2.0.24 version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
 assert(native.includes("componentToCentreAround = owner"),"AI Hub must be positioned over Cyn");
 assert(native.includes("dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f)"),"Dialog background is transparent");
@@ -72,8 +72,9 @@ assert(header.includes("CynNeuralActivity neural_activity_"), "Missing visualize
 assert(neural.includes("std::array<Point<float>, 11> inputs") && neural.includes("std::array<Point<float>, 12> hidden") && neural.includes("std::array<Point<float>, 5> outputs"), "Must match real 11-12-5 model architecture");
 assert(view.includes("neural_activity_.setBounds(72, 286, 148, 187)"), "Must fit below Misc navigation without obstructing labeling controls");
 assert(view.includes("neural_activity_.setTrainingActive(controller.isSmartTraining())"), "Brain must reflect actual training state");
-assert(view.includes("neural_activity_.setAnimationEnabled(page==1 || neuralCore)") ||
-       view.includes("neural_activity_.setAnimationEnabled(page_==1 ||"),"Neural activity should animate on Smart page or selected Neural Core theme only");
+assert(view.includes("neural_activity_.setAnimationEnabled(page==1)") &&
+       view.includes("const bool wantGraph=page_==1;"),
+       "Keep the live neural telemetry exclusively on the Smart Listening page, not over every theme");
 assert(neural.includes("FxTheme::isReducedMotion()"), "Respect reduced-motion accessibility setting");
 assert(neural.includes("startTimerHz(24)"), "Use efficient bounded redraw frequency");
 console.log("PASS: neural activity visualization matches model layout and training state");
@@ -124,6 +125,42 @@ assert(atmosphere.includes("FxTheme::isReducedMotion()"),
 assert(!atmosphere.includes("getLiveYamNetScene("),
        "Theme paint must not perform asynchronous inference");
 console.log("PASS: 20 distinct atmospheric themes, measured audio glow and motion fallback");
+
+const studio=readFileSync(path("fxsound/Source/GUI/CynThemeStudio.h"),"utf8");
+const menu=readFileSync(path("fxsound/Source/GUI/FxMainWindow.cpp"),"utf8");
+assert(menu.includes('CynThemeStudioDialog::show(this)'),
+       "Theme selection must open Theme Studio rather than a static submenu");
+assert(studio.includes('previous_.onClick = [this] { selectRelative(-1); };') &&
+       studio.includes('next_.onClick = [this] { selectRelative(1); };'),
+       "Theme Studio must support working left and right arrows");
+assert(studio.includes('const float stride=preview_.getWidth()+19.0f;') &&
+       studio.includes('progress=linear*linear*(3.0f-2.0f*linear)'),
+       "Theme transitions must be smooth horizontal slides");
+assert(studio.includes('FxController::getInstance().setThemeMode(static_cast<FxThemeMode>(selected_))'),
+       "Selecting a preview must persist the theme through the real Cyn controller");
+assert(view.includes('theme_from_image_,-offset') &&
+       view.includes('theme_to_image_,getWidth()-offset'),
+       "Live application theme changes must slide between actual UI snapshots");
+assert(atmosphere.includes('Rectangle<float> bounds,bool preview=false'),
+       "Theme art must be rendered across a real workspace or large preview");
+assert(!view.includes('g,theme_audio_level_);'),
+       "Do not return to tiny decorative sidebar artwork");
+assert(view.includes('neural_activity_.setVisible(page==1)'),
+       "Neural widget must not crowd Sound Studio sidebar");
+console.log("PASS: full-workspace native scenes, arrow carousel, actual UI transition");
+
+assert(controllerHeader.includes('class AutoUpdatePoller final : private juce::Timer') &&
+       controllerSource.includes('auto_update_poller_.start();'),
+       "Automatic update polling must not depend on the DSP processing timer");
+assert(controllerSource.includes('checkAutomaticUpdates()') &&
+       controllerSource.includes('cyn_last_automatic_update_attempt_v3'),
+       "Automatic updater needs saved cadence and retries even if audio is off");
+assert(controllerSource.includes('if (launchCynUpdater(false))'),
+       "Update polling should only record a successful updater launch");
+assert(!controllerSource.includes('++cyn_update_timer_ticks_'),
+       "Legacy playback-dependent updater scheduling still exists");
+console.log("PASS: 30-minute auto-update schedule independent of playback power");
+
 
 
 

@@ -139,6 +139,22 @@ FxProView::FxProView() : tool_tip_(this)
     if(FxTheme::isReducedMotion()) startTimer(500); else startTimerHz(60);
 }
 
+void FxProView::beginThemeTransition()
+{
+    theme_from_image_=Image();
+    theme_to_image_=Image();
+    if (isShowing() && !FxTheme::isReducedMotion())
+        theme_from_image_=createComponentSnapshot(getLocalBounds());
+}
+void FxProView::finishThemeTransition()
+{
+    if (!theme_from_image_.isValid() || FxTheme::isReducedMotion())
+        return;
+    theme_to_image_=createComponentSnapshot(getLocalBounds());
+    theme_transition_start_=Time::getMillisecondCounterHiRes();
+    repaint();
+}
+
 void FxProView::startVisualizer() { visualizer_.start(); }
 void FxProView::pauseVisualizer() { visualizer_.pause(); }
 void FxProView::setLookAndFeel() { audio_controls_.setLookAndFeel(); repaint(); }
@@ -182,8 +198,8 @@ void FxProView::selectPage(int page)
     refresh_.setVisible(page == 2);
     sensitivity_.setVisible(page == 1);
     const bool neuralCore=FxTheme::getThemeMode()==FxThemeMode::NeuralCore;
-    neural_activity_.setVisible(page==1 || neuralCore);
-    neural_activity_.setAnimationEnabled(page==1 || neuralCore);
+    neural_activity_.setVisible(page==1);
+    neural_activity_.setAnimationEnabled(page==1);
     resized();
     if (page_ == 1)
     {
@@ -224,10 +240,20 @@ void FxProView::timerCallback()
         if(FxTheme::isReducedMotion() || now-transition_start_>=220) transition_image_=Image();
         repaint();
     }
+    if (theme_from_image_.isValid())
+    {
+        if (FxTheme::isReducedMotion() ||
+            now-theme_transition_start_>=430.0)
+        {
+            theme_from_image_=Image();
+            theme_to_image_=Image();
+        }
+        repaint();
+    }
     // A separate 100ms UI telemetry sample keeps audio-responsive glow smooth
     // without forcing the other status controls to refresh at 10Hz.
     const bool neuralCore=FxTheme::getThemeMode()==FxThemeMode::NeuralCore;
-    const bool wantGraph=page_==1 || neuralCore;
+    const bool wantGraph=page_==1;
     if(neural_activity_.isVisible()!=wantGraph) {
         neural_activity_.setVisible(wantGraph);
         neural_activity_.setAnimationEnabled(wantGraph);
@@ -374,23 +400,30 @@ void FxProView::paint(Graphics& g)
     {
         Graphics::ScopedSaveState save(g);
         g.reduceClipRegion(workspace);
-        // All palettes gain dimensional lighting rather than a flat background.
-        const auto surface=color(WindowBackground);
-        const auto rail=color(PanelBackground);
-        ColourGradient deck(surface.brighter(0.065f), 235.0f, 0.0f,
-                            surface.darker(0.12f), 1180.0f, (float)HEIGHT, false);
-        deck.addColour(0.55, surface);
-        g.setGradientFill(deck);
-        g.fillRect(52,0,WIDTH-52,HEIGHT);
-        ColourGradient sidebar(rail.brighter(0.11f),52.0f,0.0f,
-                               rail.darker(0.10f),232.0f,(float)HEIGHT,false);
-        sidebar.addColour(0.48,rail);
-        g.setGradientFill(sidebar);
-        g.fillRect(52,0,180,HEIGHT);
+        // Actual immersive artwork is clipped to the entire workspace,
+        // never placed as a decorative widget underneath sidebar controls.
         CynThemeAtmosphere::paint(g,FxTheme::getThemeMode(),
             FxTheme::isReducedMotion()?0.0f:
                 (float)(Time::getMillisecondCounterHiRes()*0.001),
-            theme_audio_level_);
+            theme_audio_level_,juce::Rectangle<float>(52.0f,0.0f,
+                                                WIDTH-52.0f,HEIGHT-8.0f));
+        const auto rail=color(PanelBackground);
+        // Let the full scene continue faintly beneath navigation, with a
+        // legible tinted overlay. No separate sidebar theme card or obstruction.
+        ColourGradient sidebar(rail.brighter(0.045f).withAlpha(0.94f),
+                               52.0f,0.0f,
+                               rail.darker(0.11f).withAlpha(0.82f),
+                               232.0f,(float)HEIGHT,false);
+        g.setGradientFill(sidebar);
+        g.fillRect(52,0,180,HEIGHT);
+        const float drift=FxTheme::isReducedMotion()?0.0f:
+            (float)Time::getMillisecondCounterHiRes()*0.00032f;
+        const float glowY=355.0f+112.0f*std::sin(drift);
+        ColourGradient railGlow(color(SliderTrack).withAlpha(0.075f+0.085f*theme_audio_level_),
+                                218.0f,glowY,
+                                Colours::transparentBlack,55.0f,glowY+185.0f,true);
+        g.setGradientFill(railGlow);
+        g.fillRect(52,0,180,HEIGHT);
         if(FxTheme::getThemeMode()==FxThemeMode::NeuralCore) {
             // The top-right telemetry is ACTUAL pretrained YAMNet event scores
             // (not YAMNet internal activations or a synthetic music animation).
@@ -458,7 +491,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.23", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.24", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
         ? "Choose Music AI or Movie AI. Each learns your preferences separately." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
@@ -499,6 +532,19 @@ void FxProView::modelChanged(FxModel::Event event)
 
 void FxProView::paintOverChildren(Graphics& g)
 {
+    if(theme_from_image_.isValid() && theme_to_image_.isValid() &&
+       !FxTheme::isReducedMotion())
+    {
+        Graphics::ScopedSaveState saved(g);
+        g.reduceClipRegion(getLocalBounds());
+        const float raw=jlimit(0.0f,1.0f,
+            (float)((Time::getMillisecondCounterHiRes()-theme_transition_start_)/420.0));
+        const float progress=raw*raw*(3.0f-2.0f*raw);
+        const int offset=roundToInt(getWidth()*progress);
+        g.drawImageAt(theme_from_image_,-offset,0);
+        g.drawImageAt(theme_to_image_,getWidth()-offset,0);
+        return;
+    }
     if(transition_image_.isValid() && !FxTheme::isReducedMotion()) {
         const float progress=jlimit(0.0f,1.0f,(float)((Time::getMillisecondCounterHiRes()-transition_start_)/220.0));
         g.setOpacity((1-progress)*(1-progress));
@@ -508,10 +554,14 @@ void FxProView::paintOverChildren(Graphics& g)
 void FxProView::lookAndFeelChanged()
 {
     transition_image_=Image();
+    if (FxTheme::isReducedMotion())
+    {
+        theme_from_image_=Image();
+        theme_to_image_=Image();
+    }
     if(FxTheme::isReducedMotion()) startTimer(500); else startTimerHz(60);
     selectPage(page_);
-    neural_activity_.setAnimationEnabled(page_==1 ||
-        FxTheme::getThemeMode()==FxThemeMode::NeuralCore);
+    neural_activity_.setAnimationEnabled(page_==1);
     learning_status_.setColour(Label::textColourId,Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     repaint();
 }
