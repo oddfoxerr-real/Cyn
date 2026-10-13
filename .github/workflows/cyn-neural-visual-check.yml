@@ -41,3 +41,12 @@ jobs:
         run: |
           if (!(Test-Path 'dist/Cyn/Cyn.exe')) { throw 'Native Cyn application missing' }
           if (!(Test-Path 'dist/Cyn-Windows-x64.zip')) { throw 'Portable archive missing' }
+
+      - name: Upload Theme Studio Windows preview
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyn-theme-studio-preview
+          path: dist/Cyn-Windows-x64.zip
+          retention-days: 7
+          if-no-files-found: error
