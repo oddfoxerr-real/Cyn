@@ -52,9 +52,9 @@ FxAudioControls::FxAudioControls() : flip_button_("flipButton", DrawableButton::
 	setSize(WIDTH, HEIGHT);
 }
 
-void FxAudioControls::update()
+void FxAudioControls::update(bool snapValues)
 {
-	effects_.update();
+	effects_.update(snapValues);
 	effects_.showValues(true);
 
 	equalizer_control_.update();
@@ -132,14 +132,14 @@ FxEffects::FxEffects()
 	}
 }
 
-void FxEffects::update()
+void FxEffects::update(bool snapValues)
 {
 	auto& controller = FxController::getInstance();
 
 	for (int i = EffectType::Fidelity; i < EffectType::NumEffects; i++)
 	{
 		auto value = controller.getAppliedEffectValue(static_cast<EffectType>(i));
-		if (value >= 0.0 && value <= 1.0)
+		if (snapValues && value >= 0.0 && value <= 1.0)
 		{
 			effects_[i]->setEffectValue(value*10.0);
 		}
@@ -202,7 +202,9 @@ void FxEffects::paint(Graphics& g)
         labels_[i]->setText(texts[i], NotificationType::dontSendNotification);
         if (!FxController::getInstance().isHelpTooltipsHidden())
         {
-            effects_[i]->setTooltip(tool_tips[i]);
+            effects_[i]->setTooltip(tool_tips[i] +
+                (FxController::getInstance().isSmartListening()
+                    ? "\\nThin marker = saved preset; moving knob = live applied effect." : ""));
         }
         else
         {
@@ -256,6 +258,26 @@ void FxEffects::FxEffectSlider::enablementChanged()
     {
         setMouseCursor(MouseCursor::NormalCursor);
     }
+}
+
+void FxEffects::FxEffectSlider::paintOverChildren(Graphics& g)
+{
+    // A small neutral notch shows where the user's saved preset is, only
+    // if the live Smart Listening DSP is currently applying a different value.
+    // This marker is based on real DSP coefficients, not audio amplitude.
+    auto& controller = FxController::getInstance();
+    if (!controller.isSmartListening() || !isEnabled()) return;
+
+    const float preset = controller.getEffectValue(effect_) * 10.0f;
+    const float applied = controller.getAppliedEffectValue(effect_) * 10.0f;
+    if (!std::isfinite(preset) || !std::isfinite(applied) ||
+        std::abs(applied - preset) < 0.18f) return;
+
+    const float x = static_cast<float>(getPositionOfValue(juce::jlimit(0.0f, 10.0f, preset)));
+    const float y = getHeight() * 0.5f;
+    g.setColour(Colour(FXCOLOR(HintText)).withAlpha(0.9f));
+    g.drawLine(x, y - 6.5f, x, y + 6.5f, 1.5f);
+    g.fillEllipse(x - 2.0f, y - 2.0f, 4.0f, 4.0f);
 }
 
 void FxEffects::FxEffectSlider::resized()
