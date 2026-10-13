@@ -405,7 +405,7 @@ void FxProView::paint(Graphics& g)
         CynThemeAtmosphere::paint(g,FxTheme::getThemeMode(),
             FxTheme::isReducedMotion()?0.0f:
                 (float)(Time::getMillisecondCounterHiRes()*0.001),
-            theme_audio_level_,Rectangle<float>(233.0f,0.0f,
+            theme_audio_level_,juce::Rectangle<float>(233.0f,0.0f,
                                                 WIDTH-233.0f,HEIGHT-8.0f));
         const auto rail=color(PanelBackground);
         ColourGradient sidebar(rail.brighter(0.045f),52.0f,0.0f,
