@@ -4,12 +4,14 @@
 #include <cassert>
 #include <iostream>
 static std::atomic<int> results{0};
+static std::atomic<int> permitted{0};
 DfxDsp::DfxDsp():data_(nullptr) {}
 DfxDsp::~DfxDsp() {}
 void DfxDsp::enableDj(bool) {}
 void DfxDsp::configureDj(float,float,bool) {}
-void DfxDsp::setDjScene(float music,float speech) {assert(std::isfinite(music)&&std::isfinite(speech));++results;}
+void DfxDsp::setDjScene(float music,float speech) {assert(std::isfinite(music)&&std::isfinite(speech));++results;if(music>=0.35f&&speech<0.25f)++permitted;}
 void DfxDsp::invalidateDjScene() {}
+void DfxDsp::setDjVoiceGate(bool) {}
 uint32_t DfxDsp::djEffectsCount() const {return 0;}
 int DfxDsp::djLastEffect() const {return 0;}
 bool DfxDsp::copyDjWindow(std::array<float,128000>& audio,uint64_t& number) const {
@@ -27,9 +29,9 @@ int main(int argc,char** argv) {
     {
         CynDjWorker dj(source,storage);
         assert(dj.installed());assert(!dj.enabled());dj.setEnabled(true);
-        for(int i=0;i<180&&results==0;++i)juce::Thread::sleep(500);
+        for(int i=0;i<180&&dj.analyses()==0;++i){dj.liveScene(true,0.9f,0.01f,0);juce::Thread::sleep(500);}
         std::cout<<dj.status()<<std::endl;
-        assert(results>0);dj.setEnabled(false);
+        assert(dj.analyses()>0&&permitted>0);dj.setEnabled(false);
         dj.remove();for(int i=0;i<180&&dj.busy();++i)juce::Thread::sleep(500);
         assert(!dj.busy()&&!dj.installed()&&!model.existsAsFile());
         dj.download();juce::Thread::sleep(200);dj.cancelDownload();

@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "PersonalAudioModel.h"
 #include "CynYamNetWorker.h"
 #include "CynDjWorker.h"
+#include "CynSpotify.h"
 #include "FxTheme.h"
 #include "FxAudioControls.h"
 #include "../Source/Utils/Settings/Settings.h"
@@ -107,6 +108,7 @@ public:
     bool importPresets(const Array<File>& preset_files, StringArray& imported_presets, StringArray& skipped_presets);
 
     CynDjWorker* dj() const {return dj_worker_.get();}
+    CynSpotify::Worker* spotify() const {return spotify_worker_.get();}
     void setSmartListening(bool enabled);
     void setSmartSensitivity(float percent);
     float getSmartSensitivity() const { return smart_sensitivity_; }
@@ -335,6 +337,7 @@ private:
     void rebuildScenePreferences();
     std::unique_ptr<CynYamNetWorker> yamnet_worker_;
     std::unique_ptr<CynDjWorker> dj_worker_;
+    std::unique_ptr<CynSpotify::Worker> spotify_worker_;
     PersonalAudioModel smart_model_;
     std::vector<AudioExample> smart_examples_;
     PersonalAudioModel movie_model_;

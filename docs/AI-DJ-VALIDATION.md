@@ -33,7 +33,7 @@ Interactive visual inspection was interrupted while the installed older Cyn was
 ## Performance and limits
 
 The Python fixture run while compilation was active measured 8.6â€“20.7 seconds per
-inference; these are not unloaded-system benchmarks. Production code discards
+inference; these are not unloaded-system benchmarks. The 2.0.22 release discarded
 decisions taking over six seconds, reports that analysis is behind playback,
 and leaves accents paused. Inference has two CPU threads and never executes in
 the playback callback. The independently running existing YAMNet classifier
@@ -53,3 +53,18 @@ the pinned model and config in `.build-tools/dj`, then run that script.
 `scripts/test_dj_lifecycle.ps1` additionally requires the pinned native runtime
 from `PREPARE_CYN_YAMNET.ps1` and internet access. Its storage stays under
 `.build-tools/dj/lifecycle-storage`. No test dependencies ship with the app.
+
+## 2.0.23 regression fix
+
+Live inspection of 2.0.22 confirmed an installed/enabled model with zero accents
+and “Analysis is behind playback - effects paused” during actual Spotify playback.
+Windows endpoint diagnostics confirmed audio through FxSound and Cyn to the JBL
+headphones. Paused playback separately explained the gathering-audio messages.
+
+2.0.23 allows 8–21-second analysis (the measured range above) as background context,
+with a 30-second maximum and 40-second playback lease. Fresh YAMNet must positively
+detect current music as well as pass voice/silence checks. Native regressions cover
+these duration boundaries, missing/nonmusic/speech veto, actual accents after the
+old 12-second lease, and expiry at the new boundary while live music remains fresh.
+The model/frontend/download bytes are unchanged. No live listening success is
+claimed until the updated application is exercised during playback.

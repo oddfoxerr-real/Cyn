@@ -25,3 +25,8 @@ __pycache__/
 /dsp/x64/
 /fxdiag/x64/
 /training/generated/
+# Private Spotify sessions supplied by the user, never release assets.
+spotify.json
+ember-spotify.json
+spotify_tokens.json
+spotify-file.txt

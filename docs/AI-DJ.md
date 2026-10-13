@@ -32,9 +32,12 @@ background CPU thread, then waits 2.5 seconds before its next analysis. Its 527
 AudioSet logits are interpreted with sigmoid probabilities. Music is class 137;
 speech, conversation and narration are classes 0, 4 and 5 in the pinned config.
 
-The classifier permits accents only when music confidence is at least 0.35 and
-the maximum speech/conversation/narration confidence is below 0.25. A fast local
-onset detector schedules short synthesised sweeps, echo accents and shimmers.
+Fresh YAMNet recognition permits accents when music confidence is at least 0.65,
+speech is below 0.25 and silence below 0.6. Timely positive AST context lowers the
+music threshold to 0.35. Slow AST inference no longer prevents the live DJ from
+working. A fast local onset detector schedules short synthesised sweeps, echo
+accents and shimmers. Sustained music can also receive an accent after 1.5 times
+the chosen minimum spacing, preventing compressed tracks from waiting forever.
 The classifier is pretrained audio recognition, **not** a pretrained DJ decision
 model or a generative-music model. Effects are synthesised locally, not generated
 by a language model. No Mixxx code or executable is included.
@@ -42,13 +45,13 @@ by a language model. No Mixxx code or executable is included.
 The realtime path has fixed buffers and atomic parameters. Model loading,
 downloads, spectrograms and inference never execute on the playback callback.
 Effect energy is bounded to available output headroom; the dry audio is not
-normalised or repanned. Scene permission expires after 12 seconds of processed
+normalised or repanned. Scene permission expires after 40 seconds of processed
 audio without a fresh result. Repeated accents respect the chosen spacing.
 The existing, faster YAMNet analysis also vetoes speech and silence; if its
 results stop arriving, that permission expires within three seconds of audio.
-AST inference taking more than six seconds is discarded, with an on-screen
-"analysis is behind playback" status. On slower or heavily loaded computers,
-AI DJ may pause accents rather than act on delayed decisions.
+AST inference taking more than 30 seconds cannot lower the live music threshold.
+The fast classifier still schedules accents independently; missing, stale or
+non-musical live analysis continues to pause effects.
 
 ## Storage, provenance and privacy
 
@@ -82,3 +85,23 @@ Native tests check bypass, output bounds, spacing, speech gating, stale results,
 formats and capture. `scripts/verify_ast.py` compares native features against
 the reference Hugging Face frontend and executes the actual quantised model.
 Numeric fixture checks are not a listening-quality benchmark.
+
+## Checking activity (2.0.23)
+
+The larger AST model provides optional slower background context. Fresh YAMNet
+results must report music >= 0.65 (0.35 with positive context), speech < 0.25
+and silence < 0.6. Without fresh results, no accents are allowed.
+The status shows which gate is waiting; background context is no longer a
+prerequisite. Generated sweeps use bounded current stereo energy, including
+opposite-phase stereo material.
+
+Watch **accents this session** to confirm automatic effects have triggered.
+Spacing is a minimum rather than a guaranteed interval; audible music and fresh
+recognition are required. Try 4-second spacing for testing, then restore your preferred
+setting. Pausing playback stops capture; the gathering-audio message is expected
+until more audio arrives. You do not need to download the model again after an
+app update. Re-enable AI DJ after restarting Cyn.
+
+`Cyn.exe --status` includes `ai_dj` with enabled state, status, actual accent
+count, last effect and completed background analysis count. Opening Misc or
+enabling the switch does not increment the counters.

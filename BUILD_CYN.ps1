@@ -37,9 +37,13 @@ Get-ChildItem -LiteralPath (Join-Path $root 'fxsound\Fonts') -File | Copy-Item -
 Copy-Item -LiteralPath (Join-Path $root 'LICENSE'),(Join-Path $root 'README_CYN.md'),(Join-Path $root 'VALIDATION.md'),(Join-Path $root 'RELEASE_CHECKS.md'),(Join-Path $root 'CYN_CONTROL.ps1'),(Join-Path $root 'LAUNCH_CYN.ps1'),(Join-Path $root 'INSTALL_CYN.ps1') -Destination $dist -Force
 Copy-Item -LiteralPath (Join-Path $root 'third_party\JUCE\LICENSE.md') -Destination (Join-Path $dist 'JUCE-LICENSE.md') -Force
 Copy-Item -LiteralPath (Join-Path $root 'docs\AI-DJ.md') -Destination (Join-Path $dist 'AI-DJ.md') -Force
+Copy-Item -LiteralPath (Join-Path $root 'docs\SPOTIFY.md') -Destination (Join-Path $dist 'SPOTIFY.md') -Force
 Copy-Item -LiteralPath (Join-Path $root 'third_party\ast\LICENSE.txt') -Destination (Join-Path $dist 'AST-LICENSE.txt') -Force
 # Optional AI DJ weights are user-downloaded only, never installer payload.
 if (Get-ChildItem $dist -Recurse -File -Filter '*ast*onnx') {throw 'AI DJ model must not be bundled.'}
+foreach ($json in Get-ChildItem $dist -Recurse -File -Filter '*.json') {
+    if ((Get-Content $json.FullName -Raw) -match '"(access_token|refresh_token|client_secret)"\s*:') {throw 'Private Spotify credentials must not be bundled.'}
+}
 if ($WithMcp) {
     if (!(Get-Command go -ErrorAction SilentlyContinue)) { throw 'MCP build requires Go 1.26.5 or newer: winget install --id GoLang.Go --exact' }
     & $msbuild (Join-Path $root 'fxdiag\fxdiag.vcxproj') /m:2 /t:Rebuild /p:Configuration=Release /p:Platform=x64 /nologo

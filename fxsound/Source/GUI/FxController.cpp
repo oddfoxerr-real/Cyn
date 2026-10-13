@@ -40,7 +40,7 @@ void launchCynUpdater(bool interactive)
         if (interactive) AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "CynUpdater.ps1 is missing. Reinstall Cyn.");
         return;
     }
-    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.22" + (interactive ? " -Interactive" : "");
+    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.23" + (interactive ? " -Interactive" : "");
     auto result = ShellExecuteW(nullptr, L"open", L"powershell.exe", args.toWideCharPointer(), nullptr, SW_HIDE);
     if (reinterpret_cast<INT_PTR>(result) <= 32 && interactive)
         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");
@@ -229,6 +229,7 @@ FxController::~FxController()
 {
     // Stop asynchronous inference before the audio DSP is destroyed.
     dj_worker_.reset();
+    spotify_worker_.reset();
     yamnet_worker_.reset();
 	if (powerNotify_ != nullptr && unregister_suspend_resume_notification_ != nullptr)
 	{
@@ -682,6 +683,12 @@ void FxController::printStatus()
     smart->setProperty("effective_clarity", dfx_dsp_.getEffectValue(DfxDsp::Effect::Fidelity) * 10.0f);
     smart->setProperty("effective_leveling", dfx_dsp_.getVolumeLeveling());
     settings->setProperty("smart_listening", var(smart));
+    if(dj_worker_) {
+        auto* dj=new DynamicObject();dj->setProperty("enabled",dj_worker_->enabled());
+        dj->setProperty("status",dj_worker_->status());dj->setProperty("accents",int(dj_worker_->effects()));
+        dj->setProperty("background_analyses",int(dj_worker_->analyses()));dj->setProperty("last_effect",dj_worker_->lastEffect());
+        settings->setProperty("ai_dj",var(dj));
+    }
     settings->setProperty("output_pinned", isOutputPinned());
 
 	Array<var> built_in_presets, user_presets;
@@ -825,6 +832,7 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
         yamnet_worker_=std::make_unique<CynYamNetWorker>(dfx_dsp_);
         yamnet_worker_->startIfAvailable();
         dj_worker_=std::make_unique<CynDjWorker>(dfx_dsp_);
+        spotify_worker_=std::make_unique<CynSpotify::Worker>();
         smart_mode_=jlimit(0,1,settings_.getInt("cyn_ai_listening_mode",0));
         // Autonomous YAMNet + Balance is on for new installs; retain a saved opt-out.
         // Keep smart_enabled_ initially false so enabling captures the preset baseline.
@@ -2227,7 +2235,7 @@ void FxController::timerCallback()
     if(dj_worker_ && dj_worker_->enabled()) {
         CynAudioScene voice;
         const bool fresh=yamnet_worker_ && yamnet_worker_->latest(voice);
-        dfx_dsp_.setDjVoiceGate(fresh && voice.speech<0.25f && voice.silence<0.6f);
+        dj_worker_->liveScene(fresh&&audio_process_on_&&power,voice.music,voice.speech,voice.silence);
     }
     updateSmartListening();
 

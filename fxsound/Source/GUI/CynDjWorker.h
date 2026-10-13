@@ -4,6 +4,7 @@
 #include <JuceHeader.h>
 #include "DfxDsp.h"
 #include "CynAstFeatures.h"
+#include "CynDjPolicy.h"
 #include "../../../third_party/onnxruntime/onnxruntime_c_api.h"
 #include <atomic>
 #include <stdexcept>
@@ -39,8 +40,29 @@ public:
     float intensity() const { return amount_; }
     float spacing() const { return spacing_; }
     bool stereo() const { return stereo_; }
-    juce::String status() const { const juce::ScopedLock lock(statusLock_); return status_; }
+    juce::String status() const {
+        const juce::ScopedLock lock(statusLock_);
+        if(enabled_) {
+            switch(fastState_.load()) {
+                case 0:return "Waiting for fresh live audio analysis";
+                case 1:return "Voice detected now - effects paused";
+                case 2:return "Waiting for music in the current audio";
+                default:break;
+            }
+            if(!contextReady_) return "Live DJ active - background context is warming up";
+        }
+        return status_;
+    }
+    void liveScene(bool fresh,float music,float speech,float silence) {
+        const auto stamp=contextStamp_.load();
+        const bool context=contextReady_ && stamp!=0 && uint32_t(juce::Time::getMillisecondCounter()-stamp)<40000;
+        const bool safe=enabled_ && verified_ && CynDjPolicy::permitLive(fresh,music,speech,silence,context);
+        source_.setDjVoiceGate(safe);
+        source_.setDjScene(safe?1.0f:0.0f,speech);
+        fastState_=!fresh?0:speech>=0.25f?1:!safe?2:3;
+    }
     uint32_t effects() const { return source_.djEffectsCount(); }
+    uint32_t analyses() const {return analyses_.load();}
     juce::String lastEffect() const {
         switch(source_.djLastEffect()) {case 1:return "Stereo sweep";case 2:return "Echo accent";case 3:return "Shimmer";default:return "No effects yet";}
     }
@@ -48,7 +70,8 @@ public:
     void cancelDownload() { cancel_=true; }
     void remove() { if(busy()) return; setEnabled(false); busy_=true; command_=2; notify(); }
     void setEnabled(bool value) {
-        value=value&&installed()&&!busy(); enabled_=value;
+        value=value&&installed()&&!busy(); if(value==enabled_)return;
+        enabled_=value; contextReady_=false; verified_=false;generation_.fetch_add(1);
         source_.enableDj(value); if(!value) source_.invalidateDjScene(); notify();
     }
     void configure(float amount,float spacing,bool stereo) {
@@ -91,10 +114,12 @@ private:
         busy_=false;
     }
     void infer() {
+        const auto generation=generation_.load();
         source_.invalidateDjScene();setStatus("Loading AI DJ model...");
         juce::DynamicLibrary library;
         const auto dll=juce::File::getSpecialLocation(juce::File::currentExecutableFile).getSiblingFile("onnxruntime.dll");
         if(!verify()) { installed_=false;enabled_=false;source_.enableDj(false);setStatus("Model missing or damaged. Download AI DJ again.");return; }
+        verified_=true;
         using GetApi=const OrtApiBase*(ORT_API_CALL*)();
         if(!library.open(dll.getFullPathName())) { fail("Audio runtime is missing. Reinstall the latest Cyn version.");return; }
         auto get=reinterpret_cast<GetApi>(library.getFunction("OrtGetApiBase"));
@@ -111,7 +136,7 @@ private:
             auto frontend=std::make_unique<CynAstFeatures>();
             auto waveform=std::make_unique<std::array<float,CynAstFeatures::samples>>();
             std::vector<float> features; uint64_t window=0;
-            while(enabled_&&!threadShouldExit()&&command_==0) {
+            while(enabled_&&!threadShouldExit()&&command_==0&&generation_.load()==generation) {
                 if(!source_.copyDjWindow(*waveform,window)) { setStatus("Listening - gathering 8 seconds of audio");wait(300);continue; }
                 frontend->compute(waveform->data(),waveform->size(),features);
                 OrtValue* input=nullptr;OrtValue* output=nullptr;OrtTensorTypeAndShapeInfo* info=nullptr;
@@ -126,10 +151,12 @@ private:
                     void* raw=nullptr;check(api->GetTensorMutableData(output,&raw));auto* logits=static_cast<float*>(raw);
                     const auto score=[&](int i) { if(!std::isfinite(logits[i])) throw std::runtime_error("Invalid model output");return 1.0f/(1.0f+std::exp(-std::clamp(logits[i],-50.0f,50.0f))); };
                     const float music=score(137),speech=(std::max)(score(0),(std::max)(score(4),score(5)));
-                    const bool delayed=juce::Time::getMillisecondCounterHiRes()-start>6000;
-                    if(enabled_&&!threadShouldExit()) source_.setDjScene(delayed?0.0f:music,speech);
-                    setStatus(delayed?"Analysis is behind playback - effects paused":speech>=0.25f?"Voice detected - effects paused":music<0.35f?"Listening - waiting for clear music":
-                        "Music detected - watching for an accent ("+juce::String(int(juce::Time::getMillisecondCounterHiRes()-start))+" ms analysis)");
+                    const double duration=juce::Time::getMillisecondCounterHiRes()-start;
+                    const bool delayed=!CynDjPolicy::contextTimely(duration);
+                    contextReady_=!delayed && music>=0.35f && speech<0.25f;
+                    contextStamp_=juce::Time::getMillisecondCounter();
+                    analyses_.fetch_add(1);
+                    setStatus("Live DJ active / background analysis "+juce::String(duration/1000.0,1)+" s");
                 } catch(...) { if(info) api->ReleaseTensorTypeAndShapeInfo(info);if(output) api->ReleaseValue(output);if(input) api->ReleaseValue(input);throw; }
                 if(info) api->ReleaseTensorTypeAndShapeInfo(info);if(output) api->ReleaseValue(output);if(input) api->ReleaseValue(input);
                 wait(2500);
@@ -159,6 +186,8 @@ private:
     mutable juce::CriticalSection statusLock_;
     juce::String status_;
     std::atomic<bool> installed_{false},busy_{false},enabled_{false},cancel_{false};
+    std::atomic<bool> contextReady_{false},verified_{false};std::atomic<uint32_t> contextStamp_{0};std::atomic<int> fastState_{0};
+    std::atomic<uint32_t> analyses_{0},generation_{0};
     std::atomic<int> command_{0};std::atomic<double> progress_{0};
     float amount_=0.25f,spacing_=18.0f;bool stereo_=true,failed_=false;
 };
