@@ -20,3 +20,11 @@ Cyn Smart Listening uses its own baseline preset plus transient AI changes to th
 - Hardware A/B: play music/video; enable Smart Listening; verify sliders/EQ visibly track changes without saving the AI corrections into a preset, then turn AI off and verify the controls return to preset values. Try manually dragging an effect and EQ band and confirm the audio edits work without a jumping cursor. Verify reduced motion and no-audio conditions.
 
 The UI follower is visual only: it does **not** add gain or apply any new DSP coefficient to the audio.
+
+## Follow-up: saved-preset reference markers and uninterrupted transitions
+
+- A **thin neutral marker** beside each enhancement slider shows its saved-preset value when the AI has changed the actually applied effect by at least 0.18 control units. The moving slider thumb continues to show the real DSP output.
+- **Hollow EQ reference dots** appear at the saved-preset gain and a faint connector indicates the real AI correction, but only where the applied gain differs by at least 0.20 dB.
+- Preset and model UI refreshes no longer forcibly snap the live AI controls back to the latest coefficients while Smart Listening is active. Existing interpolation follows the *actual live* value across these events.
+- On first render, when AI is off, when processing is powered off, and in reduced-motion mode, the UI still snaps to the correct DSP state to avoid delayed or misleading display.
+- The references are read-only and are not shown when the AI is off, there is no meaningful change, or the controls are disabled. They do not alter DSP values, save presets, or produce decorative motion.
