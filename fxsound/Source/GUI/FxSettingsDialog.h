@@ -204,6 +204,7 @@ private:
 		Label permission_hint_;
 		ComboBox download_permission_;
 		TextButton diagnose_button_;
+		TextButton recover_button_;
 		TextButton scan_updates_button_;
 		TextButton windows_updates_button_;
 		TextButton reset_permissions_button_;
