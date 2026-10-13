@@ -116,7 +116,7 @@ public:
     int getSmartListeningMode() const { return smart_mode_; }
     void setSmartListeningMode(int mode);
     String getSmartSummary() const;
-    String getAppliedMixSummary() const;
+    String getAppliedMixSummary();
     const std::vector<AudioFrame>& getRecentAudio() const { return smart_history_; }
     void labelAudio(const std::vector<AudioFrame>& frames, int effect, bool more);
     void trainSmartModel();
