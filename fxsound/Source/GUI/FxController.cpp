@@ -53,7 +53,7 @@ bool launchCynUpdater(bool interactive)
     if(!powershell.existsAsFile()) return false;
     const auto command=String("\"")+powershell.getFullPathName()+
         "\" -NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \""+
-        script.getFullPathName()+"\" -CurrentVersion 2.0.24"+
+        script.getFullPathName()+"\" -CurrentVersion 2.0.25"+
         (interactive?" -Interactive":"");
     const std::wstring wideCommand(command.toWideCharPointer());
     std::vector<wchar_t> writable(wideCommand.begin(),wideCommand.end());
@@ -258,6 +258,7 @@ FxController::FxController() : message_window_(L"CynHotkeys", (WNDPROC)eventCall
 FxController::~FxController()
 {
     auto_update_poller_.stop();
+    audioRepair_.reset();
     // Stop asynchronous inference before the audio DSP is destroyed.
     dj_worker_.reset();
     yamnet_worker_.reset();
@@ -900,6 +901,17 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
         // Check GitHub on the UI timer whether sound processing is on or off.
         // Saved cadence prevents repeated checks on repeated app restarts.
         auto_update_poller_.start();
+        // Separate opt-in monitoring continues when the DSP is switched off.
+        audioRepair_ = std::make_unique<CynAudioRepairService>(
+            settings_, [this]() {
+                checkDeviceChanges();
+                refreshOutputList();
+            }, [this]() -> juce::String {
+                const auto savedOutput = getOutputName();
+                return savedOutput.isNotEmpty() && !isOutputDeviceConnected(savedOutput)
+                    ? savedOutput : juce::String();
+            });
+        audioRepair_->startIfEnabled();
 
 		HMODULE user32_module = GetModuleHandleW(L"user32.dll");
 		if (user32_module != nullptr)
@@ -1114,6 +1126,7 @@ void FxController::autoSaveModifiedPreset()
 
 bool FxController::exit()
 {
+    audioRepair_.reset();
 	autoSaveModifiedPreset();
 
 	JUCEApplication::getInstance()->systemRequestedQuit();

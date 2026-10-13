@@ -185,6 +185,32 @@ private:
 		ToggleButton debug_log_toggle_;
 	};
 
+	class RepairSettingsPane : public SettingsPane, private juce::Timer
+	{
+	public:
+		RepairSettingsPane();
+		~RepairSettingsPane() override { stopTimer(); }
+		void resized() override;
+		void paint(Graphics& g) override;
+		void visibilityChanged() override;
+
+	private:
+		void timerCallback() override;
+		void updateControls();
+		ToggleButton enabled_toggle_;
+		ToggleButton safe_recovery_toggle_;
+		Label description_;
+		Label permissions_label_;
+		Label permission_hint_;
+		ComboBox download_permission_;
+		TextButton diagnose_button_;
+		TextButton recover_button_;
+		TextButton scan_updates_button_;
+		TextButton windows_updates_button_;
+		TextButton reset_permissions_button_;
+		Label status_label_;
+	};
+
 	class SettingsComponent : public Component, public Button::Listener
 	{
 	public:
@@ -207,10 +233,12 @@ private:
 
 		std::unique_ptr<SettingsButton> audio_button_;
 		std::unique_ptr<SettingsButton> general_button_;
+		std::unique_ptr<SettingsButton> repair_button_;
 		std::unique_ptr<SettingsButton> help_button_;
 
 		AudioSettingsPane audio_settings_pane_;
 		GeneralSettingsPane general_settings_pane_;
+		RepairSettingsPane repair_settings_pane_;
 		HelpSettingsPane help_settings_pane_;
 	};
 

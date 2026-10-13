@@ -100,6 +100,11 @@ FxSettingsDialog::SettingsComponent::SettingsComponent()
 	general_button_->setImage(Drawable::createFromImageData(BinaryData::settings_svg, BinaryData::settings_svgSize).get());
 	general_button_->addListener(this);
 	
+	repair_button_ = std::make_unique<SettingsButton>("Misc");
+	repair_button_->setToggleState(false, NotificationType::dontSendNotification);
+	repair_button_->setImage(Drawable::createFromImageData(BinaryData::settings_svg, BinaryData::settings_svgSize).get());
+	repair_button_->addListener(this);
+
 	help_button_ = std::make_unique<SettingsButton>("Help");
 	help_button_->setToggleState(false, NotificationType::dontSendNotification);
 	help_button_->setImage(Drawable::createFromImageData(BinaryData::question_svg, BinaryData::question_svgSize).get());
@@ -107,10 +112,12 @@ FxSettingsDialog::SettingsComponent::SettingsComponent()
 
 	addAndMakeVisible(audio_button_.get());
 	addAndMakeVisible(general_button_.get());
+	addAndMakeVisible(repair_button_.get());
 	addAndMakeVisible(help_button_.get());
 
 	addAndMakeVisible(audio_settings_pane_);
 	addChildComponent(general_settings_pane_);
+	addChildComponent(repair_settings_pane_);
 	addChildComponent(help_settings_pane_);
 
     setSize(WIDTH, HEIGHT);
@@ -120,46 +127,30 @@ void FxSettingsDialog::SettingsComponent::resized()
 {
 	audio_button_->setBounds(BUTTON_X, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT);
 	general_button_->setBounds(BUTTON_X, audio_button_->getBottom() + 20, BUTTON_WIDTH, BUTTON_HEIGHT);
-	help_button_->setBounds(BUTTON_X, general_button_->getBottom() + 20, BUTTON_WIDTH, BUTTON_HEIGHT);
+	repair_button_->setBounds(BUTTON_X, general_button_->getBottom() + 20, BUTTON_WIDTH, BUTTON_HEIGHT);
+	help_button_->setBounds(BUTTON_X, repair_button_->getBottom() + 20, BUTTON_WIDTH, BUTTON_HEIGHT);
 
 	juce::Rectangle<int> pane_rect(SEPARATOR_X + 1, 1, getWidth() - SEPARATOR_X + 1, getHeight() - 1);
 	audio_settings_pane_.setBounds(pane_rect);
 	general_settings_pane_.setBounds(pane_rect);
+	repair_settings_pane_.setBounds(pane_rect);
 	help_settings_pane_.setBounds(pane_rect);
 }
 
-void  FxSettingsDialog::SettingsComponent::buttonClicked(Button* button)
+void FxSettingsDialog::SettingsComponent::buttonClicked(Button* button)
 {
-	if (button == audio_button_.get())
-	{
-		button->setToggleState(true, NotificationType::dontSendNotification);
-		general_button_->setToggleState(false, NotificationType::dontSendNotification);
-		help_button_->setToggleState(false, NotificationType::dontSendNotification);
+    if (button != audio_button_.get() && button != general_button_.get() &&
+        button != repair_button_.get() && button != help_button_.get())
+        return;
+    audio_button_->setToggleState(button == audio_button_.get(), NotificationType::dontSendNotification);
+    general_button_->setToggleState(button == general_button_.get(), NotificationType::dontSendNotification);
+    repair_button_->setToggleState(button == repair_button_.get(), NotificationType::dontSendNotification);
+    help_button_->setToggleState(button == help_button_.get(), NotificationType::dontSendNotification);
 
-		audio_settings_pane_.setVisible(true);
-		general_settings_pane_.setVisible(false);
-		help_settings_pane_.setVisible(false);
-	}
-	else if (button == general_button_.get())
-	{
-		button->setToggleState(true, NotificationType::dontSendNotification);
-		audio_button_->setToggleState(false, NotificationType::dontSendNotification);
-		help_button_->setToggleState(false, NotificationType::dontSendNotification);
-
-		general_settings_pane_.setVisible(true);
-		audio_settings_pane_.setVisible(false);
-		help_settings_pane_.setVisible(false);
-	}
-	else if (button == help_button_.get())
-	{
-		button->setToggleState(true, NotificationType::dontSendNotification);
-		audio_button_->setToggleState(false, NotificationType::dontSendNotification);
-		general_button_->setToggleState(false, NotificationType::dontSendNotification);
-
-		help_settings_pane_.setVisible(true);
-		audio_settings_pane_.setVisible(false);
-		general_settings_pane_.setVisible(false);
-	}
+    audio_settings_pane_.setVisible(button == audio_button_.get());
+    general_settings_pane_.setVisible(button == general_button_.get());
+    repair_settings_pane_.setVisible(button == repair_button_.get());
+    help_settings_pane_.setVisible(button == help_button_.get());
 }
 
 FxSettingsDialog::SettingsPane::SettingsPane(String name)
@@ -468,6 +459,183 @@ void FxSettingsDialog::GeneralSettingsPane::setText()
 	hide_notifications_toggle_.setButtonText(TRANS("Hide notifications"));
 
     hotkeys_toggle_.setButtonText(TRANS("Disable keyboard shortcuts"));
+}
+
+
+FxSettingsDialog::RepairSettingsPane::RepairSettingsPane()
+    : SettingsPane("Misc - Audio Repair"),
+      enabled_toggle_("Enable Auto Repair (off by default)"),
+      safe_recovery_toggle_("Restore missing output (may switch devices)"),
+      diagnose_button_("Diagnose now"),
+      recover_button_("Try reconnecting"),
+      scan_updates_button_("Check Windows Update"),
+      windows_updates_button_("Open Windows Optional Updates"),
+      reset_permissions_button_("Reset permissions to Ask")
+{
+    auto textColour = getLookAndFeel().findColour(TextButton::textColourOnId);
+    for (auto* button : { &enabled_toggle_, &safe_recovery_toggle_ })
+    {
+        button->setColour(ToggleButton::textColourId, textColour);
+        button->setColour(ToggleButton::tickColourId, textColour);
+        button->setMouseCursor(MouseCursor::PointingHandCursor);
+    }
+    for (auto* label : { &description_, &permissions_label_, &permission_hint_, &status_label_ })
+    {
+        label->setColour(Label::textColourId, textColour);
+        label->setJustificationType(Justification::centredLeft);
+    }
+    description_.setText("Monitor Windows audio-device errors. Cyn will never install, remove or restart a driver automatically.",
+                         NotificationType::dontSendNotification);
+    permissions_label_.setText("Driver download permission", NotificationType::dontSendNotification);
+    permission_hint_.setText("Always Allow approves verified Windows Update downloads only. Installation still needs your approval.",
+                             NotificationType::dontSendNotification);
+    download_permission_.addItem("Ask every time (recommended)", 1);
+    download_permission_.addItem("Always allow verified downloads", 2);
+    download_permission_.addItem("Never download drivers", 3);
+
+    auto* service = FxController::getInstance().getAudioRepair();
+    if (service != nullptr)
+    {
+        enabled_toggle_.setToggleState(service->isEnabled(), NotificationType::dontSendNotification);
+        safe_recovery_toggle_.setToggleState(service->allowMinorRecovery(), NotificationType::dontSendNotification);
+        download_permission_.setSelectedId(static_cast<int>(service->getPermission()) + 1,
+                                            NotificationType::dontSendNotification);
+    }
+    enabled_toggle_.onClick = [this]() {
+        if (auto* agent = FxController::getInstance().getAudioRepair())
+            agent->setEnabled(enabled_toggle_.getToggleState());
+        updateControls();
+    };
+    safe_recovery_toggle_.onClick = [this]() {
+        if (auto* agent = FxController::getInstance().getAudioRepair())
+            agent->setMinorRecovery(safe_recovery_toggle_.getToggleState());
+    };
+    download_permission_.onChange = [this]() {
+        if (auto* agent = FxController::getInstance().getAudioRepair())
+        {
+            const auto requested = static_cast<CynAudioRepairService::Permission>(
+                juce::jlimit(0, 2, download_permission_.getSelectedId() - 1));
+            if (requested == CynAudioRepairService::Permission::AlwaysAllow &&
+                agent->getPermission() != CynAudioRepairService::Permission::AlwaysAllow)
+            {
+                const bool approved = AlertWindow::showOkCancelBox(
+                    AlertWindow::WarningIcon, "Cyn - Always Allow downloads?",
+                    "Always Allow will download matching audio driver packages from Windows Update "
+                    "without asking again. It NEVER authorizes installation or a restart.\n\n"
+                    "You can revoke this permission at any time.",
+                    "Always Allow", "Cancel");
+                if (!approved)
+                {
+                    download_permission_.setSelectedId(static_cast<int>(agent->getPermission()) + 1,
+                                                        NotificationType::dontSendNotification);
+                    return;
+                }
+            }
+            agent->setPermission(requested);
+        }
+        updateControls();
+    };
+    diagnose_button_.onClick = [this]() {
+        if (auto* agent = FxController::getInstance().getAudioRepair())
+            agent->diagnoseNow();
+        timerCallback();
+    };
+    recover_button_.onClick = [this]() {
+        auto* agent = FxController::getInstance().getAudioRepair();
+        if (agent == nullptr || !agent->isEnabled()) return;
+        if (!AlertWindow::showOkCancelBox(
+                AlertWindow::QuestionIcon, "Cyn - try reconnecting?",
+                "Cyn will recheck audio endpoints and may change the active Windows playback device. "
+                "It will not touch driver installations. Proceed?",
+                "Try repair", "Cancel"))
+            return;
+        agent->tryManualRecovery();
+        timerCallback();
+    };
+    scan_updates_button_.onClick = [this]() {
+        if (auto* agent = FxController::getInstance().getAudioRepair())
+            agent->scanForDriverUpdates();
+        timerCallback();
+    };
+    windows_updates_button_.onClick = []() {
+        CynAudioRepairService::openWindowsOptionalUpdates();
+    };
+    reset_permissions_button_.onClick = [this]() {
+        if (auto* agent = FxController::getInstance().getAudioRepair())
+        {
+            agent->resetPermissions();
+            download_permission_.setSelectedId(1, NotificationType::dontSendNotification);
+        }
+        updateControls();
+    };
+    addAndMakeVisible(enabled_toggle_);
+    addAndMakeVisible(safe_recovery_toggle_);
+    addAndMakeVisible(description_);
+    addAndMakeVisible(permissions_label_);
+    addAndMakeVisible(permission_hint_);
+    addAndMakeVisible(status_label_);
+    addAndMakeVisible(download_permission_);
+    addAndMakeVisible(diagnose_button_);
+    addAndMakeVisible(recover_button_);
+    addAndMakeVisible(scan_updates_button_);
+    addAndMakeVisible(windows_updates_button_);
+    addAndMakeVisible(reset_permissions_button_);
+    updateControls();
+}
+
+void FxSettingsDialog::RepairSettingsPane::resized()
+{
+    const int x = X_MARGIN, w = getWidth() - X_MARGIN - 18;
+    title_.setBounds(x, Y_MARGIN, w, TITLE_HEIGHT);
+    description_.setBounds(x, 44, w, 50);
+    enabled_toggle_.setBounds(x, 105, w, 30);
+    safe_recovery_toggle_.setBounds(x, 145, w, 36);
+    permissions_label_.setBounds(x, 190, w, 25);
+    download_permission_.setBounds(x, 221, w - 4, 32);
+    permission_hint_.setBounds(x, 260, w, 52);
+    diagnose_button_.setBounds(x, 323, 182, 30);
+    recover_button_.setBounds(x + 195, 323, 188, 30);
+    scan_updates_button_.setBounds(x, 364, 182, 30);
+    windows_updates_button_.setBounds(x + 195, 364, 188, 30);
+    reset_permissions_button_.setBounds(x, 405, w, 30);
+    status_label_.setBounds(x, 444, w, 60);
+}
+
+void FxSettingsDialog::RepairSettingsPane::paint(Graphics& g)
+{
+    g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
+    SettingsPane::paint(g);
+}
+
+void FxSettingsDialog::RepairSettingsPane::visibilityChanged()
+{
+    if (isVisible()) { updateControls(); startTimer(1200); }
+    else stopTimer();
+}
+
+void FxSettingsDialog::RepairSettingsPane::updateControls()
+{
+    auto* agent = FxController::getInstance().getAudioRepair();
+    const bool enabled = agent != nullptr && agent->isEnabled();
+    safe_recovery_toggle_.setEnabled(enabled);
+    download_permission_.setEnabled(enabled);
+    diagnose_button_.setEnabled(enabled);
+    recover_button_.setEnabled(enabled && !agent->isBusy());
+    scan_updates_button_.setEnabled(enabled && !agent->isBusy());
+    reset_permissions_button_.setEnabled(agent != nullptr);
+    timerCallback();
+}
+
+void FxSettingsDialog::RepairSettingsPane::timerCallback()
+{
+    if (auto* agent = FxController::getInstance().getAudioRepair())
+    {
+        status_label_.setText(agent->getStatus(), NotificationType::dontSendNotification);
+        scan_updates_button_.setEnabled(agent->isEnabled() && !agent->isBusy());
+        recover_button_.setEnabled(agent->isEnabled() && !agent->isBusy());
+    }
+    else
+        status_label_.setText("Audio repair is not initialized.", NotificationType::dontSendNotification);
 }
 
 FxSettingsDialog::HelpSettingsPane::HelpSettingsPane() : SettingsPane("Help"), auto_updates_toggle_(String("Reduce motion")), smooth_animations_toggle_(String("Smooth animations"))

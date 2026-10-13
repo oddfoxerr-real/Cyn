@@ -33,7 +33,7 @@ foreach ($file in $manifest) {
 }
 & $CompilerPath ('/DPayloadDir=' + $payload) ('/DOutputDir=' + (Join-Path $PSScriptRoot 'dist')) (Join-Path $PSScriptRoot 'Installer\Cyn\Cyn.iss')
 if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed: $LASTEXITCODE" }
-$installer = Join-Path $PSScriptRoot 'dist\Cyn-Setup-2.0.24-x64.exe'
+$installer = Join-Path $PSScriptRoot 'dist\Cyn-Setup-2.0.25-x64.exe'
 $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
 [IO.File]::WriteAllText("$installer.sha256", $hash + [Environment]::NewLine, (New-Object Text.UTF8Encoding($false)))
 Write-Host "SHA-256: $hash"

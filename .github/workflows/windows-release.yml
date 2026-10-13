@@ -79,6 +79,18 @@ jobs:
         shell: pwsh
         run: ./scripts/test_dj.ps1
 
+      - name: Validate Auto Repair permissions and Windows Update worker
+        if: steps.inspect.outputs.state != 'published'
+        shell: pwsh
+        run: |
+          node scripts/test_audio_repair.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Audio repair consent checks failed.' }
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'CynAudioRepair.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -ne 0) { throw 'Audio repair worker syntax errors.' }
+
       - name: Compile Cyn native x64
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh

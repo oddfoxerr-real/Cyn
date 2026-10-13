@@ -18,6 +18,12 @@ on:
       - fxsound/Source/GUI/FxController.h
       - fxsound/Source/GUI/FxController.cpp
       - scripts/test_ai_hub.mjs
+      - fxsound/Source/GUI/CynAudioRepair.h
+      - fxsound/Source/GUI/FxSettingsDialog.h
+      - fxsound/Source/GUI/FxSettingsDialog.cpp
+      - CynAudioRepair.ps1
+      - BUILD_CYN.ps1
+      - scripts/test_audio_repair.mjs
   workflow_dispatch:
 permissions:
   contents: read
@@ -31,6 +37,19 @@ jobs:
       - name: Validate neural animation and AI Hub regression checks
         shell: pwsh
         run: node scripts/test_ai_hub.mjs
+      - name: Validate opt-in audio repair and PowerShell worker
+        shell: pwsh
+        run: |
+          node scripts/test_audio_repair.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Audio Repair consent contract failed." }
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'CynAudioRepair.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -ne 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            throw "Cyn Audio Repair PowerShell syntax errors."
+          }
       - name: Compile native Cyn x64 with neural animation
         shell: pwsh
         env:
