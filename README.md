@@ -12,7 +12,7 @@ Cyn possible. If you enjoy Cyn, please [visit FxSound](https://www.fxsound.com/)
 ## Download
 
 Open [Releases](https://github.com/oddfoxerr-real/Cyn/releases) and download the
-latest **Cyn-Setup-2.0.22-x64.exe**. Exit any running Cyn or FxSound using its menu
+latest **Cyn-Setup-2.0.23-x64.exe**. Exit any running Cyn or FxSound using its menu
 before installing. Windows 10/11 on Intel/AMD x64 and administrator access are required.
 
 Setup includes presets, fonts, the starter model and the original signed FxSound
