@@ -3244,7 +3244,7 @@ void FxController::updateSmartListening()
     if(std::abs(dfx_dsp_.getVolumeLeveling()-leveling)>0.05f)
         dfx_dsp_.setVolumeLeveling(leveling);
 }
-String FxController::getAppliedMixSummary() const
+String FxController::getAppliedMixSummary()
 {
     const String mode = smart_mode_ == 1 ? "Movie AI" : "Music AI";
     if (!smart_enabled_) return mode + " / off";
