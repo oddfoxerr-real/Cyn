@@ -22,6 +22,8 @@ assert(agent.includes("SetupDiGetClassDevsW") && agent.includes("CM_Get_DevNode_
 assert(agent.includes("missingPreferredOutput_") && agent.includes('const auto routeKey = "route:" + missing'), "Monitor preferred headphones separately from driver corruption");
 assert(agent.includes("if (issue.physicalDriver && getPermission() != Permission::NeverDownload)"), "Background driver search must only target a physical faulty device");
 assert(agent.includes("permissionDialogOpen_"), "Prevent reentrant background checks during permission dialog");
+assert(agent.includes("void tryManualRecovery()"), "Manual audio route recovery should be implemented");
+assert(settings.includes('recover_button_("Try reconnecting")'), "Manual audio recovery should be exposed in Misc");
 assert(settings.includes('"Cyn - Always Allow downloads?"'), "Always Allow must get a separate confirmation");
 assert(agent.includes("CREATE_NO_WINDOW"), "No console flashing in background checks");
 assert(agent.includes("stopMonitoring();") && agent.includes("TerminateProcess(workerProcess_, 1)"), "Opting out stops the local checker");
