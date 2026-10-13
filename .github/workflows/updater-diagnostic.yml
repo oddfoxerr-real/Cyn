@@ -4,6 +4,15 @@ on:
     paths:
       - '.github/workflows/updater-diagnostic.yml'
       - 'CynUpdater.ps1'
+      - 'CynUpdaterWorker.ps1'
+      - 'scripts/diagnose_cyn_updater.ps1'
+  pull_request:
+    paths:
+      - '.github/workflows/updater-diagnostic.yml'
+      - 'CynUpdater.ps1'
+      - 'CynUpdaterWorker.ps1'
+      - 'fxsound/Source/GUI/FxController.cpp'
+      - 'fxsound/Source/GUI/FxController.h'
       - 'scripts/diagnose_cyn_updater.ps1'
   workflow_dispatch:
 permissions:
@@ -13,6 +22,16 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+      - name: Validate PowerShell update scripts
+        shell: powershell
+        run: |
+          foreach ($path in @('CynUpdater.ps1', 'CynUpdaterWorker.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              (Join-Path $PWD $path), [ref]$tokens, [ref]$errors)
+            if ($errors.Count) { throw "PowerShell parse error in $path : $($errors[0].Message)" }
+          }
       - name: Probe updater matching logic
         shell: powershell
         run: .\scripts\diagnose_cyn_updater.ps1

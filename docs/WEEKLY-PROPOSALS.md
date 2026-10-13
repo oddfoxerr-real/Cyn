@@ -20,4 +20,4 @@ work when execution is available. Pause it when current work is complete.
 Current requested work: fix automatic effects and reuse EMBER's Spotify session.
 These are requested fixes, not a speculative weekly proposal. The supplied panel
 stores Spotify tokens under ember2_spotify_tokens; an export-enabled copy is in
-outputs/cyn-2.0.23. No user session JSON has been supplied. Never ship one.
+outputs/cyn-2.0.28. No user session JSON has been supplied. Never ship one.

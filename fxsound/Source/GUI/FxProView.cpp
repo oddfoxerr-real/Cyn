@@ -3,6 +3,7 @@
 #include "FxProView.h"
 #include "FxController.h"
 #include "FxTheme.h"
+#include "CynThemeAtmosphere.h"
 #include "FxSettingsDialog.h"
 #include "CynAiHubDialog.h"
 #include "CynSpotifyDialog.h"
@@ -141,6 +142,22 @@ FxProView::FxProView() : tool_tip_(this)
     if(FxTheme::isReducedMotion()) startTimer(500); else startTimerHz(60);
 }
 
+void FxProView::beginThemeTransition()
+{
+    theme_from_image_=Image();
+    theme_to_image_=Image();
+    if (isShowing() && !FxTheme::isReducedMotion())
+        theme_from_image_=createComponentSnapshot(getLocalBounds());
+}
+void FxProView::finishThemeTransition()
+{
+    if (!theme_from_image_.isValid() || FxTheme::isReducedMotion())
+        return;
+    theme_to_image_=createComponentSnapshot(getLocalBounds());
+    theme_transition_start_=Time::getMillisecondCounterHiRes();
+    repaint();
+}
+
 void FxProView::startVisualizer() { visualizer_.start(); }
 void FxProView::pauseVisualizer() { visualizer_.pause(); }
 void FxProView::setLookAndFeel() { audio_controls_.setLookAndFeel(); repaint(); }
@@ -185,8 +202,8 @@ void FxProView::selectPage(int page)
     refresh_.setVisible(page == 2);
     sensitivity_.setVisible(page == 1);
     const bool neuralCore=FxTheme::getThemeMode()==FxThemeMode::NeuralCore;
-    neural_activity_.setVisible(page==1 || neuralCore);
-    neural_activity_.setAnimationEnabled(page==1 || neuralCore);
+    neural_activity_.setVisible(page==1);
+    neural_activity_.setAnimationEnabled(page==1);
     resized();
     if (page_ == 1)
     {
@@ -200,11 +217,18 @@ void FxProView::selectPage(int page)
 }
 void FxProView::update()
 {
-    audio_controls_.update();
-    equalizer_.update();
+    auto& controller = FxController::getInstance();
+    // A model/preset refresh must not interrupt an in-flight, real AI/DSP
+    // visual transition. Initial render, manual/AI-off mode, disabled power,
+    // and reduced-motion settings still snap to the actual applied values.
+    const bool snapValues = !controller.isSmartListening()
+        || last_ai_controls_update_ <= 0.0
+        || FxTheme::isReducedMotion()
+        || !FxModel::getModel().getPowerState();
+    audio_controls_.update(snapValues);
+    equalizer_.update(snapValues);
     equalizer_.showValues(true);
     audio_controls_.showValues(true);
-    auto& controller = FxController::getInstance();
     smart_toggle_.setToggleState(controller.isSmartListening(), dontSendNotification);
     listening_mode_.setSelectedId(controller.getSmartListeningMode()+1,dontSendNotification);
     train_.setButtonText(controller.getSmartListeningMode()==1?"Train Movie AI":"Train Music AI");
@@ -227,39 +251,66 @@ void FxProView::timerCallback()
         if(FxTheme::isReducedMotion() || now-transition_start_>=220) transition_image_=Image();
         repaint();
     }
+    if (theme_from_image_.isValid())
+    {
+        if (FxTheme::isReducedMotion() ||
+            now-theme_transition_start_>=430.0)
+        {
+            theme_from_image_=Image();
+            theme_to_image_=Image();
+        }
+        repaint();
+    }
     // A separate 100ms UI telemetry sample keeps audio-responsive glow smooth
     // without forcing the other status controls to refresh at 10Hz.
     const bool neuralCore=FxTheme::getThemeMode()==FxThemeMode::NeuralCore;
-    const bool wantGraph=page_==1 || neuralCore;
+    const bool wantGraph=page_==1;
     if(neural_activity_.isVisible()!=wantGraph) {
         neural_activity_.setVisible(wantGraph);
         neural_activity_.setAnimationEnabled(wantGraph);
     }
-    if(wantGraph && now-last_neural_update_>=100) {
+    // All themes sample the existing personal audio telemetry, never a new
+    // recorder or a DSP-thread callback. YAMNet is requested only by Neural Core.
+    if(now-last_neural_update_>=100) {
         last_neural_update_=now;
         auto& brainController=FxController::getInstance();
         NeuralActivitySnapshot snapshot;
         const bool hasAudio=brainController.getLiveNeuralActivity(snapshot);
-        neural_activity_.setTrainingActive(brainController.isSmartTraining());
-        neural_activity_.setActivity(hasAudio?&snapshot:nullptr,
-                                     brainController.getSmartTrainingProgress());
+        const float level=hasAudio
+            ? jlimit(0.0f,1.0f,std::sqrt(jmax(0.0f,snapshot.rms))*2.2f)
+            : 0.0f;
+        theme_audio_level_+=(level-theme_audio_level_)*
+            (FxTheme::isReducedMotion()?1.0f:0.33f);
+        if(wantGraph) {
+            neural_activity_.setTrainingActive(brainController.isSmartTraining());
+            neural_activity_.setActivity(hasAudio?&snapshot:nullptr,
+                                         brainController.getSmartTrainingProgress());
+        }
         if(neuralCore) {
             CynAudioScene scene;
             neural_core_live_=brainController.getLiveYamNetScene(scene) && hasAudio;
-            neural_core_personal_live_=hasAudio;
             neural_core_scene_=neural_core_live_?scene:CynAudioScene {};
         }
     }
-    if(neuralCore) {
-        const float target=neural_core_personal_live_ ? 1.0f : 0.0f;
-        neural_core_energy_+= (target-neural_core_energy_) *
-            (FxTheme::isReducedMotion()?1.0f:0.20f);
-        // UI animation is bounded at <=24 fps; backend inference is unchanged.
-        if((FxTheme::isReducedMotion() && now-last_neural_theme_repaint_>=500)
-           || (!FxTheme::isReducedMotion() && now-last_neural_theme_repaint_>=42)) {
-            last_neural_theme_repaint_=now;
-            repaint();
-        }
+    // One bounded, UI-thread repaint budget shared by every animated palette.
+    // Reduce motion leaves still artwork and drops the UI refresh to 2Hz.
+    const double interval=FxTheme::isReducedMotion()?500.0:42.0;
+    if(now-last_theme_repaint_>=interval) {
+        last_theme_repaint_=now;
+        repaint();
+    }
+    // Display the *actual applied* effect/EQ coefficients, not Smart
+    // Listening's preset baseline. No synthetic wobble, pulse, or DSP writes.
+    if (page_ == 0 && now - last_ai_controls_update_ >=
+            (FxTheme::isReducedMotion() ? 500.0 : 33.0))
+    {
+        const float elapsedMs = last_ai_controls_update_ > 0.0
+            ? static_cast<float>(now - last_ai_controls_update_) : 33.0f;
+        last_ai_controls_update_ = now;
+        const bool animate = FxController::getInstance().isSmartListening()
+            && !FxTheme::isReducedMotion();
+        audio_controls_.syncAppliedDsp(elapsedMs, animate);
+        equalizer_.syncAppliedDsp(elapsedMs, animate);
     }
     if(now-last_status_update_<500) return;
     last_status_update_=now;
@@ -291,7 +342,8 @@ void FxProView::timerCallback()
     export_ai_.setEnabled(!controller.isSmartTraining()); import_ai_.setEnabled(!controller.isSmartTraining());
     smart_toggle_.setToggleState(controller.isSmartListening(), dontSendNotification);
     pin_toggle_.setToggleState(controller.isOutputPinned(), dontSendNotification);
-    smart_status_.setText(controller.getSmartSummary(), dontSendNotification);
+    smart_status_.setText(page_ == 0 ? controller.getAppliedMixSummary() : controller.getSmartSummary(),
+                          dontSendNotification);
     if (!sensitivity_.isMouseButtonDown())
         sensitivity_.setValue(controller.getSmartSensitivity(), dontSendNotification);
     auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
@@ -374,24 +426,35 @@ void FxProView::paint(Graphics& g)
     {
         Graphics::ScopedSaveState save(g);
         g.reduceClipRegion(workspace);
-        // All palettes gain dimensional lighting rather than a flat background.
-        const auto surface=color(WindowBackground);
+        // Actual immersive artwork is clipped to the entire workspace,
+        // never placed as a decorative widget underneath sidebar controls.
+        CynThemeAtmosphere::paint(g,FxTheme::getThemeMode(),
+            FxTheme::isReducedMotion()?0.0f:
+                (float)(Time::getMillisecondCounterHiRes()*0.001),
+            theme_audio_level_,juce::Rectangle<float>(52.0f,0.0f,
+                                                WIDTH-52.0f,HEIGHT-8.0f));
         const auto rail=color(PanelBackground);
-        ColourGradient deck(surface.brighter(0.065f), 235.0f, 0.0f,
-                            surface.darker(0.12f), 1180.0f, (float)HEIGHT, false);
-        deck.addColour(0.55, surface);
-        g.setGradientFill(deck);
-        g.fillRect(52,0,WIDTH-52,HEIGHT);
-        ColourGradient sidebar(rail.brighter(0.11f),52.0f,0.0f,
-                               rail.darker(0.10f),232.0f,(float)HEIGHT,false);
-        sidebar.addColour(0.48,rail);
+        // Let the full scene continue faintly beneath navigation, with a
+        // legible tinted overlay. No separate sidebar theme card or obstruction.
+        ColourGradient sidebar(rail.brighter(0.045f).withAlpha(0.94f),
+                               52.0f,0.0f,
+                               rail.darker(0.11f).withAlpha(0.82f),
+                               232.0f,(float)HEIGHT,false);
         g.setGradientFill(sidebar);
+        g.fillRect(52,0,180,HEIGHT);
+        const float drift=FxTheme::isReducedMotion()?0.0f:
+            (float)Time::getMillisecondCounterHiRes()*0.00032f;
+        const float glowY=355.0f+112.0f*std::sin(drift);
+        ColourGradient railGlow(color(SliderTrack).withAlpha(0.075f+0.085f*theme_audio_level_),
+                                218.0f,glowY,
+                                Colours::transparentBlack,55.0f,glowY+185.0f,true);
+        g.setGradientFill(railGlow);
         g.fillRect(52,0,180,HEIGHT);
         if(FxTheme::getThemeMode()==FxThemeMode::NeuralCore) {
             // The top-right telemetry is ACTUAL pretrained YAMNet event scores
             // (not YAMNet internal activations or a synthetic music animation).
             const auto cyan=Colour(0xff67edee), violet=Colour(0xffa18cff);
-            const auto glow=jlimit(0.0f,1.0f,neural_core_energy_);
+            const auto glow=jlimit(0.0f,1.0f,theme_audio_level_);
             ColourGradient aura(cyan.withAlpha(0.045f+glow*0.075f),
                                 985.0f,115.0f,
                                 Colours::transparentBlack,1140.0f,370.0f,true);
@@ -454,7 +517,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.23", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.28", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
         ? "Choose Music AI or Movie AI. Each learns your preferences separately." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
@@ -495,6 +558,19 @@ void FxProView::modelChanged(FxModel::Event event)
 
 void FxProView::paintOverChildren(Graphics& g)
 {
+    if(theme_from_image_.isValid() && theme_to_image_.isValid() &&
+       !FxTheme::isReducedMotion())
+    {
+        Graphics::ScopedSaveState saved(g);
+        g.reduceClipRegion(getLocalBounds());
+        const float raw=jlimit(0.0f,1.0f,
+            (float)((Time::getMillisecondCounterHiRes()-theme_transition_start_)/420.0));
+        const float progress=raw*raw*(3.0f-2.0f*raw);
+        const int offset=roundToInt(getWidth()*progress);
+        g.drawImageAt(theme_from_image_,-offset,0);
+        g.drawImageAt(theme_to_image_,getWidth()-offset,0);
+        return;
+    }
     if(transition_image_.isValid() && !FxTheme::isReducedMotion()) {
         const float progress=jlimit(0.0f,1.0f,(float)((Time::getMillisecondCounterHiRes()-transition_start_)/220.0));
         g.setOpacity((1-progress)*(1-progress));
@@ -504,10 +580,14 @@ void FxProView::paintOverChildren(Graphics& g)
 void FxProView::lookAndFeelChanged()
 {
     transition_image_=Image();
+    if (FxTheme::isReducedMotion())
+    {
+        theme_from_image_=Image();
+        theme_to_image_=Image();
+    }
     if(FxTheme::isReducedMotion()) startTimer(500); else startTimerHz(60);
     selectPage(page_);
-    neural_activity_.setAnimationEnabled(page_==1 ||
-        FxTheme::getThemeMode()==FxThemeMode::NeuralCore);
+    neural_activity_.setAnimationEnabled(page_==1);
     learning_status_.setColour(Label::textColourId,Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     repaint();
 }

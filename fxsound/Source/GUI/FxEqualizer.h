@@ -46,7 +46,8 @@ public:
 
     void timerCallback() override;
 
-	void update();
+	void update(bool snapValues = true);
+    void syncAppliedDsp(float elapsedMs, bool animate);
 	void showValues(bool show);
 
 private:
@@ -106,6 +107,7 @@ private:
 
 	void resized() override;
 	void paint(Graphics& g) override;
+    void paintOverChildren(Graphics& g) override;
 
 	std::vector<std::unique_ptr<Label>> labels_;
     std::vector<std::unique_ptr<FxEqSlider>> band_boosts_;

@@ -34,7 +34,8 @@ public:
 	FxEffects();
 	~FxEffects() = default;
 
-	void update();
+	void update(bool snapValues = true);
+    void syncAppliedDsp(float elapsedMs, bool animate);
 	void showValues(bool show);
 
 private:
@@ -53,6 +54,7 @@ private:
 		static constexpr int LABEL_HEIGHT = 12;
 
 		void resized() override;
+        void paintOverChildren(Graphics& g) override;
 		void valueChanged() override;
 		bool keyPressed(const KeyPress& key) override;
 
@@ -138,7 +140,8 @@ public:
 	FxAudioControls();
 	~FxAudioControls() = default;
 
-	void update();
+	void update(bool snapValues = true);
+    void syncAppliedDsp(float elapsedMs, bool animate);
 	void showValues(bool show);
 
 	void setLookAndFeel();

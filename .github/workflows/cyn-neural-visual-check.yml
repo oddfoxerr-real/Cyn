@@ -4,10 +4,33 @@ on:
     branches: [main]
     paths:
       - .github/workflows/cyn-neural-visual-check.yml
+      - fxsound/Source/GUI/CynThemeAtmosphere.h
+  pull_request:
+    paths:
+      - .github/workflows/cyn-neural-visual-check.yml
+      - fxsound/Source/GUI/CynThemeAtmosphere.h
+      - fxsound/Source/GUI/CynThemeStudio.h
       - fxsound/Source/GUI/CynNeuralActivity.h
       - fxsound/Source/GUI/FxProView.h
       - fxsound/Source/GUI/FxProView.cpp
+      - fxsound/Source/GUI/FxMainWindow.h
+      - fxsound/Source/GUI/FxMainWindow.cpp
+      - fxsound/Source/GUI/FxController.h
+      - fxsound/Source/GUI/FxController.cpp
       - scripts/test_ai_hub.mjs
+      - fxsound/Source/GUI/CynAudioRepair.h
+      - fxsound/Source/GUI/FxSettingsDialog.h
+      - fxsound/Source/GUI/FxSettingsDialog.cpp
+      - CynAudioRepair.ps1
+      - BUILD_CYN.ps1
+      - scripts/test_audio_repair.mjs
+      - fxsound/Source/GUI/CynDspUiFollow.h
+      - fxsound/Source/GUI/FxAudioControls.h
+      - fxsound/Source/GUI/FxAudioControls.cpp
+      - fxsound/Source/GUI/FxEqualizer.h
+      - fxsound/Source/GUI/FxEqualizer.cpp
+      - scripts/test_ai_applied_ui.mjs
+      - tests/cyn_dsp_ui_follow_test.cpp
   workflow_dispatch:
 permissions:
   contents: read
@@ -21,6 +44,29 @@ jobs:
       - name: Validate neural animation and AI Hub regression checks
         shell: pwsh
         run: node scripts/test_ai_hub.mjs
+      - name: Validate opt-in audio repair and PowerShell worker
+        shell: pwsh
+        run: |
+          node scripts/test_audio_repair.mjs
+          if ($LASTEXITCODE -ne 0) { throw "Audio Repair consent contract failed." }
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'CynAudioRepair.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -ne 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            throw "Cyn Audio Repair PowerShell syntax errors."
+          }
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Verify real applied DSP controls and monotonic visual motion
+        shell: pwsh
+        run: |
+          node scripts/test_ai_applied_ui.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'DSP visual telemetry source check failed.' }
+          cl /nologo /std:c++17 /EHsc tests/cyn_dsp_ui_follow_test.cpp /Fe:cyn-dsp-ui-test.exe
+          if ($LASTEXITCODE -ne 0) { throw 'DSP visual follower C++ test compilation failed.' }
+          ./cyn-dsp-ui-test.exe
+          if ($LASTEXITCODE -ne 0) { throw 'DSP visual follower behaved incorrectly.' }
       - name: Compile native Cyn x64 with neural animation
         shell: pwsh
         env:
@@ -31,3 +77,12 @@ jobs:
         run: |
           if (!(Test-Path 'dist/Cyn/Cyn.exe')) { throw 'Native Cyn application missing' }
           if (!(Test-Path 'dist/Cyn-Windows-x64.zip')) { throw 'Portable archive missing' }
+
+      - name: Upload Cyn AI controls Windows preview
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyn-ai-applied-controls-preview
+          path: dist/Cyn-Windows-x64.zip
+          retention-days: 7
+          if-no-files-found: error

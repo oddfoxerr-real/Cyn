@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "CynYamNetWorker.h"
 #include "CynDjWorker.h"
 #include "CynSpotify.h"
+#include "CynAudioRepair.h"
 #include "FxTheme.h"
 #include "FxAudioControls.h"
 #include "../Source/Utils/Settings/Settings.h"
@@ -117,6 +118,7 @@ public:
     int getSmartListeningMode() const { return smart_mode_; }
     void setSmartListeningMode(int mode);
     String getSmartSummary() const;
+    String getAppliedMixSummary();
     const std::vector<AudioFrame>& getRecentAudio() const { return smart_history_; }
     void labelAudio(const std::vector<AudioFrame>& frames, int effect, bool more);
     void trainSmartModel();
@@ -135,6 +137,9 @@ public:
     bool isOutputPinned() { return settings_.getBool("ember_pin_output", true); }
     void setOutputPinned(bool pinned) { settings_.setBool("ember_pin_output", pinned); }
 	float getEffectValue(FxEffects::EffectType effect);
+    // Read the actual DSP-applied values, not the saved Smart Listening baseline.
+    // Used only for read-only Sound Studio telemetry on the JUCE UI thread.
+    float getAppliedEffectValue(FxEffects::EffectType effect);
 	void setEffectValue(FxEffects::EffectType effect, float value);
 
 	int getNumEqBands();
@@ -153,6 +158,7 @@ public:
     void setEqBandFrequency(int band_num, float freq);
     void getEqBandFrequencyRange(int band_num, float* min_freq, float* max_freq);
 	float getEqBandBoostCut(int band_num);
+    float getAppliedEqBandBoostCut(int band_num);
 	void setEqBandBoostCut(int band_num, float boost);
     void getSpectrumBandValues(Array<float>& band_values);
 
@@ -208,6 +214,7 @@ public:
 	}
 
 	FxSound::Settings& getSettings() { return settings_; }
+    CynAudioRepairService* getAudioRepair() { return audioRepair_.get(); }
 
 private:
 	class MessageWindow
@@ -259,6 +266,18 @@ private:
 
 	static LRESULT CALLBACK eventCallback(HWND hwnd, const UINT message, const WPARAM w_param, const LPARAM l_param);
 	void timerCallback() override;
+    // Independent of the DSP timer: updates continue checking while playback is off.
+    void checkAutomaticUpdates();
+    class AutoUpdatePoller final : private juce::Timer
+    {
+    public:
+        explicit AutoUpdatePoller(FxController& controller) : owner_(controller) {}
+        void start() { startTimer(30000); }
+        void stop() { stopTimer(); }
+    private:
+        void timerCallback() override { owner_.checkAutomaticUpdates(); }
+        FxController& owner_;
+    };
 	void onSoundDeviceChange(bool processing) override;
 	void onSystemSuspend();
 	void onSystemResume();
@@ -310,7 +329,8 @@ private:
     bool hide_help_tooltips_;
 	bool hide_notifications_;
 	bool auto_updates_;
-    int cyn_update_timer_ticks_ = 0;
+    AutoUpdatePoller auto_update_poller_ {*this};
+    std::unique_ptr<CynAudioRepairService> audioRepair_;
 
 	unsigned long audio_process_time_;
 	int audio_process_on_counter_;

@@ -33,17 +33,47 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 namespace {
-void launchCynUpdater(bool interactive)
+bool launchCynUpdater(bool interactive)
 {
-    const auto script = File::getSpecialLocation(File::currentExecutableFile).getSiblingFile("CynUpdater.ps1");
-    if (!script.existsAsFile()) {
-        if (interactive) AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "CynUpdater.ps1 is missing. Reinstall Cyn.");
-        return;
+    const auto script=File::getSpecialLocation(File::currentExecutableFile)
+        .getSiblingFile("CynUpdater.ps1");
+    if(!script.existsAsFile()) {
+        if(interactive)
+            AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,"Cyn",
+                "CynUpdater.ps1 is missing. Reinstall Cyn.");
+        return false;
     }
-    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.23" + (interactive ? " -Interactive" : "");
-    auto result = ShellExecuteW(nullptr, L"open", L"powershell.exe", args.toWideCharPointer(), nullptr, SW_HIDE);
-    if (reinterpret_cast<INT_PTR>(result) <= 32 && interactive)
-        AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");
+    // Hiding the entire ShellExecute process can also hide the WPF update
+    // prompt. CREATE_NO_WINDOW hides only the PowerShell console.
+    wchar_t systemDirectory[MAX_PATH] {};
+    const auto length=GetSystemDirectoryW(systemDirectory,MAX_PATH);
+    if(length==0 || length>=MAX_PATH) return false;
+    const auto powershell=File(String(systemDirectory))
+        .getChildFile("WindowsPowerShell/v1.0/powershell.exe");
+    if(!powershell.existsAsFile()) return false;
+    const auto command=String("\"")+powershell.getFullPathName()+
+        "\" -NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \""+
+        script.getFullPathName()+"\" -CurrentVersion 2.0.28"+
+        (interactive?" -Interactive":"");
+    const std::wstring wideCommand(command.toWideCharPointer());
+    std::vector<wchar_t> writable(wideCommand.begin(),wideCommand.end());
+    writable.push_back(0);
+    STARTUPINFOW startup {};
+    startup.cb=sizeof(startup);
+    PROCESS_INFORMATION process {};
+    const BOOL launched=CreateProcessW(
+        powershell.getFullPathName().toWideCharPointer(),
+        writable.data(),nullptr,nullptr,FALSE,CREATE_NO_WINDOW,
+        nullptr,nullptr,&startup,&process);
+    if(!launched) {
+        if(interactive)
+            AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,"Cyn",
+                "Unable to launch the update checker.");
+        return false;
+    }
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+    return true;
 }
 }
 
@@ -227,6 +257,8 @@ FxController::FxController() : message_window_(L"CynHotkeys", (WNDPROC)eventCall
 
 FxController::~FxController()
 {
+    auto_update_poller_.stop();
+    audioRepair_.reset();
     // Stop asynchronous inference before the audio DSP is destroyed.
     dj_worker_.reset();
     spotify_worker_.reset();
@@ -874,6 +906,21 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 		main_window_->setIcon(power, false);
 		system_tray_view_->setStatus(power, false);
 
+        // Check GitHub on the UI timer whether sound processing is on or off.
+        // Saved cadence prevents repeated checks on repeated app restarts.
+        auto_update_poller_.start();
+        // Separate opt-in monitoring continues when the DSP is switched off.
+        audioRepair_ = std::make_unique<CynAudioRepairService>(
+            settings_, [this]() {
+                checkDeviceChanges();
+                refreshOutputList();
+            }, [this]() -> juce::String {
+                const auto savedOutput = getOutputName();
+                return savedOutput.isNotEmpty() && !isOutputDeviceConnected(savedOutput)
+                    ? savedOutput : juce::String();
+            });
+        audioRepair_->startIfEnabled();
+
 		HMODULE user32_module = GetModuleHandleW(L"user32.dll");
 		if (user32_module != nullptr)
 		{
@@ -1087,6 +1134,7 @@ void FxController::autoSaveModifiedPreset()
 
 bool FxController::exit()
 {
+    audioRepair_.reset();
 	autoSaveModifiedPreset();
 
 	JUCEApplication::getInstance()->systemRequestedQuit();
@@ -1864,6 +1912,11 @@ void FxController::powerOn(bool on)
 	}
 }
 
+float FxController::getAppliedEffectValue(FxEffects::EffectType effect)
+{
+    return dfx_dsp_.getEffectValue(static_cast<DfxDsp::Effect>(effect));
+}
+
 float FxController::getEffectValue(FxEffects::EffectType effect)
 {
     if (smart_enabled_ && (int)effect >= 0 && (int)effect < 5) return smart_effects_[(int)effect] / 10.0f;
@@ -2009,6 +2062,12 @@ void FxController::getEqBandFrequencyRange(int band_num, float* min_freq, float*
 		*min_freq = 0;
 		*max_freq = 0;
 	}
+}
+
+float FxController::getAppliedEqBandBoostCut(int band_num)
+{
+    if (band_num < 0 || band_num >= getNumEqBands()) return 0.0f;
+    return dfx_dsp_.getEqBandBoostCut(band_num);
 }
 
 float FxController::getEqBandBoostCut(int band_num)
@@ -2250,17 +2309,6 @@ void FxController::timerCallback()
 		auto_save_counter_ = 0;
 	}
 
-    if (auto_updates_ && ++cyn_update_timer_ticks_ >= 100)
-    {
-        cyn_update_timer_ticks_ = 0;
-        auto now = static_cast<int>(std::time(nullptr));
-        auto last = settings_.getInt("cyn_last_update_check", 0);
-        if (last <= 0 || now < last || now - last >= 86400)
-        {
-            settings_.setInt("cyn_last_update_check", now);
-            launchCynUpdater(false);
-        }
-    }
 }
 
 void FxController::onSoundDeviceChange(bool processing)
@@ -2754,6 +2802,33 @@ void FxController::setAutoUpdates(bool enable)
 {
 	auto_updates_ = enable;
 	settings_.setBool("cyn_automatic_updates", enable);
+    if (enable)
+    {
+        // A user who re-enables the feature should get a fresh check.
+        settings_.setInt("cyn_last_automatic_update_attempt_v3", 0);
+        checkAutomaticUpdates();
+    }
+}
+
+void FxController::checkAutomaticUpdates()
+{
+    if (!auto_updates_)
+        return;
+    const auto now=static_cast<int>(std::time(nullptr));
+    const auto last=settings_.getInt("cyn_last_automatic_update_attempt_v3",0);
+    constexpr int checkIntervalSeconds=1800;
+    if (last > 0 && now >= last && now-last < checkIntervalSeconds)
+        return;
+    // A failed process start must not suppress subsequent attempts.
+    if (launchCynUpdater(false))
+    {
+        settings_.setInt("cyn_last_automatic_update_attempt_v3",now);
+        logMessage("Cyn updater: automatic release check started.");
+    }
+    else
+    {
+        logMessage("Cyn updater: could not launch automatic check; will retry.");
+    }
 }
 
 void FxController::checkUpdates()
@@ -2898,6 +2973,8 @@ void FxController::setThemeMode(FxThemeMode mode)
 	{
 		return;
 	}
+    if (main_window_)
+        main_window_->beginThemeTransition();
 
 	FxTheme::setThemeMode(mode);
 	settings_.setInt("theme_mode", static_cast<int>(mode));
@@ -2908,6 +2985,7 @@ void FxController::setThemeMode(FxThemeMode mode)
 	auto power = FxModel::getModel().getPowerState();
 	main_window_->setIcon(power, audio_process_on_);
 	system_tray_view_->setStatus(power, audio_process_on_);
+    main_window_->finishThemeTransition();
 }
 
 bool FxController::isAlwaysOnTop()
@@ -3174,6 +3252,46 @@ void FxController::updateSmartListening()
     if(std::abs(dfx_dsp_.getVolumeLeveling()-leveling)>0.05f)
         dfx_dsp_.setVolumeLeveling(leveling);
 }
+String FxController::getAppliedMixSummary()
+{
+    const String mode = smart_mode_ == 1 ? "Movie AI" : "Music AI";
+    if (!smart_enabled_) return mode + " / off";
+    if (!FxModel::getModel().getPowerState() || !audio_process_on_ ||
+        !playback_device_available_ || smart_stale_ticks_ >= 4)
+        return mode + " / waiting for audio";
+
+    // These are deltas of the actual applied DSP state against the saved preset,
+    // not the model's desired values or artificial animation data.
+    const char* const names[5] = { "Clarity", "Ambience", "Surround", "Dynamics", "Bass" };
+    String status = mode;
+    int effectsShown = 0;
+    for (int e = 0; e < 5; ++e)
+    {
+        const float applied = dfx_dsp_.getEffectValue(static_cast<DfxDsp::Effect>(e)) * 10.0f;
+        const float difference = applied - smart_effects_[(size_t)e];
+        if (std::isfinite(difference) && std::abs(difference) >= 0.15f && effectsShown < 2)
+        {
+            status += " / " + String(names[e]) + (difference >= 0 ? " +" : " ")
+                    + String(difference, 1);
+            ++effectsShown;
+        }
+    }
+    int shapedBands = 0;
+    const int bands = jmin(getNumEqBands(), static_cast<int>(smart_eq_.size()));
+    for (int b = 0; b < bands; ++b)
+        if (std::abs(dfx_dsp_.getEqBandBoostCut(b) - smart_eq_[(size_t)b]) >= 0.10f)
+            ++shapedBands;
+    if (shapedBands > 0)
+        status += " / EQ " + String(shapedBands) + (shapedBands == 1 ? " band" : " bands");
+
+    const float leveling = dfx_dsp_.getVolumeLeveling() - smart_leveling_;
+    if (effectsShown == 0 && shapedBands == 0 && std::isfinite(leveling) && std::abs(leveling) >= 0.15f)
+        status += " / Leveling +" + String(leveling, 1) + " dB";
+    else if (effectsShown == 0 && shapedBands == 0)
+        status += " / holding preset";
+    return status;
+}
+
 String FxController::getSmartSummary() const
 {
     const String mode=smart_mode_==1?"Movie AI":"Music AI";

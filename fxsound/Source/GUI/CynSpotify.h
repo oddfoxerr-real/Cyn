@@ -116,7 +116,8 @@ private:
             }
             if(auto* obj=token.getDynamicObject()) {
                 obj->setProperty("access_token",config_.access);obj->setProperty("refresh_token",config_.refresh);
-                obj->setProperty("expires_at",config_.expires);
+                const double oldExpiry=double(token["expires_at"]);
+                obj->setProperty("expires_at",oldExpiry>0&&oldExpiry<1.0e12?config_.expires/1000.0:config_.expires);
                 if(stringKey.isNotEmpty())section.getDynamicObject()->setProperty(stringKey,juce::JSON::toString(token));
                 const auto updated=juce::JSON::toString(root);
                 juce::TemporaryFile temporary(file_);
@@ -137,7 +138,10 @@ private:
                 for(const auto& folder:{selection_.getParentDirectory(),juce::File::getSpecialLocation(juce::File::currentExecutableFile).getParentDirectory()})
                     for(const auto* name:{"spotify.json","ember-spotify.json","spotify_tokens.json"})if(folder.getChildFile(name).existsAsFile()){file_=folder.getChildFile(name);break;}
             }
-            if(!file_.existsAsFile()){wait(2000);continue;}
+            if(!file_.existsAsFile()){
+                Playback p;if(file_!=juce::File())p.status="Spotify JSON was moved or removed. Choose it again.";
+                publish(p);wait(2000);continue;
+            }
             if(!load()){Playback p;p.status="This JSON has no Spotify session. Export it from EMBER after connecting Spotify.";publish(p);wait(3000);continue;}
             if(juce::Time::currentTimeMillis()<retryAt_){wait(500);continue;}
             if(config_.access.isEmpty()||(config_.expires>0&&config_.expires<juce::Time::currentTimeMillis()+30000)) {

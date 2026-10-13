@@ -68,3 +68,26 @@ these duration boundaries, missing/nonmusic/speech veto, actual accents after th
 old 12-second lease, and expiry at the new boundary while live music remains fresh.
 The model/frontend/download bytes are unchanged. No live listening success is
 claimed until the updated application is exercised during playback.
+
+## 2.0.28 validation
+
+- Native DSP tests passed: exact bypass, nonzero added audio, headroom, spacing,
+  speech and stale-analysis suppression, power and formats, sustained music,
+  opposite-phase stereo, and silence after continuous music.
+- Production model lifecycle passed using the actual pinned AST ONNX and native
+  runtime: current music permits effects while context warms; inference completes;
+  disable/unload/remove, HTTPS cancel/retry/download, hash and corruption rejection
+  pass. The initial sandbox network failure was repeated successfully with access.
+- Spotify native tests passed with injected transport and synthetic credentials:
+  EMBER and Spotipy JSON shapes, refresh/rotation, preserved fields, controls,
+  track/podcast display, missing playback, 429 handling and persisted disconnect.
+- Regression checks for current theme atmospheres, applied AI controls, audio
+  repair, AI Hub and YAMNet passed after merging the latest 2.0.27 source.
+- Live Spotify account, physical-device listening and native visual QA have not
+  been performed in this session. The user has supplied EMBER source references
+  but not the private Spotify session JSON.
+
+The current live music threshold is 0.65 without timely positive AST context,
+0.35 with it. Slow AST no longer blocks accents. Continuous music may receive
+an accent after 1.5 times minimum spacing. Previous 2.0.23 notes above describe
+an unreleased intermediate fix, not the published theme release of that number.

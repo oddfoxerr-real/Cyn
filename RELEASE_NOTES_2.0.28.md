@@ -1,4 +1,4 @@
-# Cyn 2.0.23 — AI DJ effects and EMBER Spotify connection
+# Cyn 2.0.28 — AI DJ effects and EMBER Spotify connection
 
 Fixes the zero-effects problem when the large AST model runs slowly. Fresh
 YAMNet music recognition now drives the live DJ while AST gathers background

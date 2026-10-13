@@ -1,5 +1,6 @@
 #pragma once
 #include "CynSpotify.h"
+#include "FxTheme.h"
 
 class CynSpotifyDialog final : public juce::Component, private juce::Timer, public juce::FileDragAndDropTarget {
 public:
@@ -13,11 +14,11 @@ public:
         previous_.onClick=[this]{worker_.control(3);};next_.onClick=[this]{worker_.control(4);};
         play_.onClick=[this]{worker_.control(worker_.state().playing?2:1);};
         open_.onClick=[this]{const auto url=worker_.state().url;juce::URL(url.isEmpty()?"https://open.spotify.com/":url).launchInDefaultBrowser();};
-        setSize(680,380);startTimer(500);timerCallback();
+        setOpaque(true);setSize(680,380);startTimer(500);timerCallback();
     }
     bool isInterestedInFileDrag(const juce::StringArray& files) override {return files.size()==1&&files[0].endsWithIgnoreCase(".json");}
     void filesDropped(const juce::StringArray& files,int,int) override {if(isInterestedInFileDrag(files))worker_.choose(juce::File(files[0]));}
-    void paint(juce::Graphics& g) override {g.fillAll(findColour(juce::ResizableWindow::backgroundColourId));}
+    void paint(juce::Graphics& g) override {g.fillAll(juce::Colour(FXCOLOR(WindowBackground)).withAlpha(1.0f));}
     void resized() override {
         heading_.setBounds(24,16,630,35);status_.setBounds(24,58,630,40);
         title_.setBounds(24,110,630,32);artist_.setBounds(24,147,630,27);device_.setBounds(24,180,630,28);
@@ -26,7 +27,7 @@ public:
     }
     static void show(CynSpotify::Worker& worker,juce::Component* parent) {
         juce::DialogWindow::LaunchOptions options;options.content.setOwned(new CynSpotifyDialog(worker));
-        options.dialogTitle="Spotify";options.dialogBackgroundColour=parent->findColour(juce::ResizableWindow::backgroundColourId);
+        options.dialogTitle="Spotify";options.dialogBackgroundColour=juce::Colour(FXCOLOR(WindowBackground)).withAlpha(1.0f);
         options.componentToCentreAround=parent;options.useNativeTitleBar=false;options.resizable=false;options.runModal();
     }
 private:

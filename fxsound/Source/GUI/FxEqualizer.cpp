@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "FxEqualizer.h"
 #include "FxController.h"
+#include "CynDspUiFollow.h"
 #include "FxTheme.h"
 
 FxEqualizer::FxEqualizer()
@@ -45,7 +46,7 @@ FxEqualizer::FxEqualizer()
         addAndMakeVisible(labels_[i].get());
 
         band_boosts_[i]->setSliderStyle(Slider::LinearVertical);
-        band_boosts_[i]->setRange(-MAX_GAIN, MAX_GAIN, 1.0);
+        band_boosts_[i]->setRange(-MAX_GAIN, MAX_GAIN, 0.01);
         band_boosts_[i]->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
         band_boosts_[i]->addListener(this);
         addAndMakeVisible(band_boosts_[i].get());
@@ -95,7 +96,7 @@ void FxEqualizer::reinit(int num_bands)
         addAndMakeVisible(labels_[i].get());
 
         band_boosts_[i]->setSliderStyle(Slider::LinearVertical);
-        band_boosts_[i]->setRange(-MAX_GAIN, MAX_GAIN, 1.0);
+        band_boosts_[i]->setRange(-MAX_GAIN, MAX_GAIN, 0.01);
         band_boosts_[i]->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
         band_boosts_[i]->addListener(this);
         addAndMakeVisible(band_boosts_[i].get());
@@ -181,19 +182,14 @@ void FxEqualizer::timerCallback()
             if (!band_boosts_[i]->isEnabled())
             {
                 auto gain = controller.getEqBandBoostCut(i);
-                if (gain != -(MAX_GAIN-2))
+                const float target = -(MAX_GAIN - 2.0f);
+                if (std::abs(gain - target) >= 0.01f)
                 {
                     done = true;
-                    if (gain < -(MAX_GAIN-2))
-                    {
-                        controller.setEqBandBoostCut(i, gain+1.0f);
-                        band_boosts_[i]->setValue(gain+1.0f, NotificationType::dontSendNotification);
-                    }
-                    else
-                    {
-                        controller.setEqBandBoostCut(i, gain-1.0f);
-                        band_boosts_[i]->setValue(gain-1.0f, NotificationType::dontSendNotification);
-                    }
+                    // Fractional EQ values must not make Alt-drag oscillate forever.
+                    const float next = gain + juce::jlimit(-1.0f, 1.0f, target - gain);
+                    controller.setEqBandBoostCut(i, next);
+                    band_boosts_[i]->setGainValue(next);
                 }
             }
         }
@@ -209,14 +205,40 @@ void FxEqualizer::timerCallback()
     }
 }
 
-void FxEqualizer::update()
+void FxEqualizer::syncAppliedDsp(float elapsedMs, bool animate)
+{
+    if (highlight_mode_) return; // Keep the existing Alt-drag multi-band workflow.
+    auto& controller = FxController::getInstance();
+    bool visualChanged = false;
+    for (size_t i = 0; i < band_boosts_.size() &&
+             static_cast<int>(i) < controller.getNumEqBands(); ++i)
+    {
+        auto* slider = band_boosts_[i].get();
+        // Never override the thumb while the user is changing the preset.
+        if (slider == nullptr || slider->isMouseButtonDown() || !slider->isEnabled()) continue;
+        const float applied = controller.getAppliedEqBandBoostCut(static_cast<int>(i));
+        if (!std::isfinite(applied)) continue;
+        const float shown = static_cast<float>(slider->getValue());
+        const float next = CynDspUiFollow::towardApplied(shown,
+            juce::jlimit(-MAX_GAIN, MAX_GAIN, applied), elapsedMs, animate);
+        if (std::abs(next - shown) >= 0.008f)
+        {
+            slider->setGainValue(next); // dontSendNotification: display only.
+            visualChanged = true;
+        }
+    }
+    // The parent draws the curve and gradient from the slider positions.
+    if (visualChanged) repaint();
+}
+
+void FxEqualizer::update(bool snapValues)
 {
     auto& controller = FxController::getInstance();
 
     for (auto i = 0; i<band_boosts_.size() && i<controller.getNumEqBands(); i++)
     {
-        auto value = controller.getEqBandBoostCut(i);
-        if (value >= -MAX_GAIN && value <= MAX_GAIN)
+        auto value = controller.getAppliedEqBandBoostCut(i);
+        if (snapValues && value >= -MAX_GAIN && value <= MAX_GAIN)
         {
             band_boosts_[i]->setGainValue(value);
         }
@@ -339,7 +361,9 @@ void FxEqualizer::paint(Graphics& g)
         {
             if (!controller.isHelpTooltipsHidden())
             {
-                if (num_bands == 10) band_boosts_[i]->setTooltip(tool_tips[i]);
+                if (num_bands == 10) band_boosts_[i]->setTooltip(tool_tips[i] +
+                    (controller.isSmartListening()
+                        ? "\nHollow marker = saved preset; orange point = live applied gain." : ""));
                 center_frequencies_[i]->setTooltip(center_freq_tip);
             }
             else
@@ -401,6 +425,43 @@ void FxEqualizer::paint(Graphics& g)
     g.fillPath(path);
 }
 
+void FxEqualizer::paintOverChildren(Graphics& g)
+{
+    auto& controller = FxController::getInstance();
+    if (!controller.isSmartListening() || !isEnabled()) return;
+    bool showingReference = false;
+
+    // Hollow marks indicate the original preset. Lines represent real
+    // differences between applied DSP gains and the saved preset.
+    for (size_t i = 0; i < band_boosts_.size() &&
+                       static_cast<int>(i) < controller.getNumEqBands(); ++i)
+    {
+        auto* slider = band_boosts_[i].get();
+        if (slider == nullptr) continue;
+        const float preset = controller.getEqBandBoostCut(static_cast<int>(i));
+        const float applied = controller.getAppliedEqBandBoostCut(static_cast<int>(i));
+        if (!std::isfinite(preset) || !std::isfinite(applied) ||
+            std::abs(applied - preset) < 0.20f) continue;
+
+        showingReference = true;
+        const float x = slider->getX() + slider->getWidth() * 0.5f;
+        const float presetY = slider->getY() + static_cast<float>(slider->getPositionOfValue(preset));
+        const float appliedY = slider->getY() + static_cast<float>(slider->getPositionOfValue(applied));
+        g.setColour(Colour(FXCOLOR(HintText)).withAlpha(0.42f));
+        g.drawLine(x, presetY, x, appliedY, 1.0f);
+        g.setColour(Colour(FXCOLOR(HintText)).withAlpha(0.95f));
+        g.drawEllipse(x - 3.0f, presetY - 3.0f, 6.0f, 6.0f, 1.25f);
+    }
+    if (showingReference)
+    {
+        auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
+        g.setFont(theme.getSmallFont().withHeight(9.0f));
+        g.setColour(Colour(FXCOLOR(HintText)).withAlpha(0.9f));
+        g.drawText("HOLLOW DOTS = PRESET", getWidth() - 175, 7, 160, 14,
+                   Justification::centredRight, false);
+    }
+}
+
 FxEqualizer::FxEqSlider::FxEqSlider(int band, float max_gain)
 {
     band_ = band;
@@ -421,7 +482,10 @@ void FxEqualizer::FxEqSlider::setGainValue(float value)
 {
     setValue(value, NotificationType::dontSendNotification);
 
-    auto text = String::formatted(value == 0.0 ? "%.0f" : "%+.0f", value);
+    const float shown = static_cast<float>(getValue());
+    const auto text = std::abs(shown - std::round(shown)) < 0.045f
+        ? String::formatted(shown == 0.0f ? "%.0f" : "%+.0f", shown)
+        : String::formatted("%+.1f", shown);
     gain_label_.setText(text, NotificationType::dontSendNotification);
 
     auto y = getPositionOfValue(value) - (FxTheme::SLIDER_THUMB_RADIUS *3);
@@ -458,7 +522,9 @@ void FxEqualizer::FxEqSlider::valueChanged()
     {
         FxController::getInstance().setEqBandBoostCut(band_, value);
 
-        auto text = String::formatted(value == 0.0 ? "%.0f" : "%+.0f", value);
+        const auto text = std::abs(value - std::round(value)) < 0.045
+            ? String::formatted(value == 0.0 ? "%.0f" : "%+.0f", value)
+            : String::formatted("%+.1f", value);
         gain_label_.setText(text, NotificationType::dontSendNotification);
 
         auto y = getPositionOfValue(value) - (FxTheme::SLIDER_THUMB_RADIUS*3);
@@ -472,12 +538,12 @@ bool FxEqualizer::FxEqSlider::keyPressed(const KeyPress& key)
     {
         if (key.isKeyCode(KeyPress::upKey))
         {
-            setValue(getValue() + getInterval());
+            setValue(getValue() + 1.0);
             return true;
         }
         else if (key.isKeyCode(KeyPress::downKey))
         {
-            setValue(getValue() - getInterval());
+            setValue(getValue() - 1.0);
             return true;
         }
     }

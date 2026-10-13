@@ -24,6 +24,19 @@ if ($Probe) {
 if (!$Interactive) {
     $found = & "$PSHOME\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $workerPath -CurrentVersion $CurrentVersion -Probe 2>$null
     if (!$found -or $LASTEXITCODE -ne 0) { exit 0 }
+    # Respect Later for six hours, but notify immediately about a different release.
+    $offeredVersion=([string]($found | Select-Object -First 1)).Trim()
+    $deferredFile=Join-Path $env:LOCALAPPDATA 'Cyn\Updates\deferred-update.json'
+    if (Test-Path -LiteralPath $deferredFile) {
+        try {
+            $deferred=Get-Content -LiteralPath $deferredFile -Raw | ConvertFrom-Json
+            $nowUnix=[DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+            if ([string]$deferred.version -eq $offeredVersion -and
+                [long]$deferred.untilUnix -gt $nowUnix) { exit 0 }
+        } catch {
+            # Malformed snooze metadata must never prevent an update check.
+        }
+    }
 }
 Add-Type -AssemblyName PresentationFramework,PresentationCore,WindowsBase
 if (!(Test-Path -LiteralPath $xamlPath)) {
@@ -83,6 +96,21 @@ function Show-Ready([string]$version,[string]$path) {
     $percentText.Text='100%'
     $progressText.Text='SHA-256 verified'
 }
+function Defer-CurrentUpdate {
+    if ([string]::IsNullOrWhiteSpace($script:newVersion)) { return }
+    try {
+        $folder=Join-Path $env:LOCALAPPDATA 'Cyn\Updates'
+        New-Item -ItemType Directory -Path $folder -Force | Out-Null
+        $data=@{
+            version=$script:newVersion
+            untilUnix=[DateTimeOffset]::UtcNow.AddHours(6).ToUnixTimeSeconds()
+        } | ConvertTo-Json -Compress
+        [IO.File]::WriteAllText((Join-Path $folder 'deferred-update.json'),
+            $data,(New-Object Text.UTF8Encoding($false)))
+    } catch {
+        # A read-only profile must not block closing the update window.
+    }
+}
 function Spark-Reveal {
     $samples=@(
         @('ParticleA','X',-146),@('ParticleB','Y',128),
@@ -124,6 +152,7 @@ $actionButton.Add_Click({
     $window.Close()
 })
 $laterButton.Add_Click({
+    Defer-CurrentUpdate
     $script:allowedToClose=$true
     $window.Close()
 })
@@ -131,6 +160,7 @@ $window.Add_Closing({
     if ($script:phase -eq 'installing' -or $script:phase -eq 'closing') {
         $_.Cancel=$true
     } else {
+        if ($script:phase -eq 'ready') { Defer-CurrentUpdate }
         if ($worker -and !$worker.HasExited) { try { $worker.Kill() } catch {} }
     }
 })
