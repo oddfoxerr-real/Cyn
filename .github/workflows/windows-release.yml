@@ -143,7 +143,7 @@ jobs:
           $assets = @("dist/$env:CYN_INSTALLER", "dist/$env:CYN_INSTALLER.sha256", 'dist/Cyn-Windows-x64.zip')
           gh release upload $env:RELEASE_TAG @assets --clobber
           if ($LASTEXITCODE -ne 0) { throw 'GitHub release asset upload failed.' }
-          gh release edit $env:RELEASE_TAG --draft=false --prerelease=false
+          gh release edit $env:RELEASE_TAG --draft=false --prerelease=false --latest
           if ($LASTEXITCODE -ne 0) { throw 'Could not publish release.' }
 
       - name: Make already-published updates visible to Cyn auto-updater
@@ -153,5 +153,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
-          gh release edit $env:RELEASE_TAG --draft=false --prerelease=false
+          gh release edit $env:RELEASE_TAG --draft=false --prerelease=false --latest
           if ($LASTEXITCODE -ne 0) { throw 'Could not mark published release as stable' }
