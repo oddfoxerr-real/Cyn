@@ -33,17 +33,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 namespace {
-void launchCynUpdater(bool interactive)
+bool launchCynUpdater(bool interactive)
 {
     const auto script = File::getSpecialLocation(File::currentExecutableFile).getSiblingFile("CynUpdater.ps1");
     if (!script.existsAsFile()) {
         if (interactive) AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "CynUpdater.ps1 is missing. Reinstall Cyn.");
-        return;
+        return false;
     }
     const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.23" + (interactive ? " -Interactive" : "");
     auto result = ShellExecuteW(nullptr, L"open", L"powershell.exe", args.toWideCharPointer(), nullptr, SW_HIDE);
-    if (reinterpret_cast<INT_PTR>(result) <= 32 && interactive)
-        AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");
+    if (reinterpret_cast<INT_PTR>(result) <= 32) {
+        if (interactive)
+            AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");
+        return false;
+    }
+    return true;
 }
 }
 
@@ -227,6 +231,7 @@ FxController::FxController() : message_window_(L"CynHotkeys", (WNDPROC)eventCall
 
 FxController::~FxController()
 {
+    auto_update_poller_.stop();
     // Stop asynchronous inference before the audio DSP is destroyed.
     dj_worker_.reset();
     yamnet_worker_.reset();
@@ -865,6 +870,10 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 		auto power = FxModel::getModel().getPowerState();
 		main_window_->setIcon(power, false);
 		system_tray_view_->setStatus(power, false);
+
+        // Check GitHub on the UI timer whether sound processing is on or off.
+        // Saved cadence prevents repeated checks on repeated app restarts.
+        auto_update_poller_.start();
 
 		HMODULE user32_module = GetModuleHandleW(L"user32.dll");
 		if (user32_module != nullptr)
@@ -2242,17 +2251,6 @@ void FxController::timerCallback()
 		auto_save_counter_ = 0;
 	}
 
-    if (auto_updates_ && ++cyn_update_timer_ticks_ >= 100)
-    {
-        cyn_update_timer_ticks_ = 0;
-        auto now = static_cast<int>(std::time(nullptr));
-        auto last = settings_.getInt("cyn_last_update_check", 0);
-        if (last <= 0 || now < last || now - last >= 86400)
-        {
-            settings_.setInt("cyn_last_update_check", now);
-            launchCynUpdater(false);
-        }
-    }
 }
 
 void FxController::onSoundDeviceChange(bool processing)
@@ -2746,6 +2744,33 @@ void FxController::setAutoUpdates(bool enable)
 {
 	auto_updates_ = enable;
 	settings_.setBool("cyn_automatic_updates", enable);
+    if (enable)
+    {
+        // A user who re-enables the feature should get a fresh check.
+        settings_.setInt("cyn_last_automatic_update_attempt_v3", 0);
+        checkAutomaticUpdates();
+    }
+}
+
+void FxController::checkAutomaticUpdates()
+{
+    if (!auto_updates_)
+        return;
+    const auto now=static_cast<int>(std::time(nullptr));
+    const auto last=settings_.getInt("cyn_last_automatic_update_attempt_v3",0);
+    constexpr int checkIntervalSeconds=1800;
+    if (last > 0 && now >= last && now-last < checkIntervalSeconds)
+        return;
+    // A failed process start must not suppress subsequent attempts.
+    if (launchCynUpdater(false))
+    {
+        settings_.setInt("cyn_last_automatic_update_attempt_v3",now);
+        logMessage("Cyn updater: automatic release check started.");
+    }
+    else
+    {
+        logMessage("Cyn updater: could not launch automatic check; will retry.");
+    }
 }
 
 void FxController::checkUpdates()
