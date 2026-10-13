@@ -63,6 +63,8 @@ public:
     ~FxProView() override = default;
     void startVisualizer();
     void pauseVisualizer();
+    void beginThemeTransition();
+    void finishThemeTransition();
     void update();
     void setLookAndFeel();
 private:
@@ -83,6 +85,8 @@ private:
     double dj_progress_value_=0;
     ProgressBar dj_progress_{dj_progress_value_};
     Image transition_image_;
+    Image theme_from_image_, theme_to_image_;
+    double theme_transition_start_=0.0;
     double transition_start_=0, last_status_update_=0, last_neural_update_=0;
     FxAudioControls audio_controls_;
     FxEqualizer equalizer_;
