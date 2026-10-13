@@ -3,6 +3,7 @@
 #include "FxProView.h"
 #include "FxController.h"
 #include "FxTheme.h"
+#include "CynThemeAtmosphere.h"
 #include "FxSettingsDialog.h"
 #include "CynAiHubDialog.h"
 #include <array>
@@ -231,31 +232,35 @@ void FxProView::timerCallback()
         neural_activity_.setVisible(wantGraph);
         neural_activity_.setAnimationEnabled(wantGraph);
     }
-    if(wantGraph && now-last_neural_update_>=100) {
+    // All themes sample the existing personal audio telemetry, never a new
+    // recorder or a DSP-thread callback. YAMNet is requested only by Neural Core.
+    if(now-last_neural_update_>=100) {
         last_neural_update_=now;
         auto& brainController=FxController::getInstance();
         NeuralActivitySnapshot snapshot;
         const bool hasAudio=brainController.getLiveNeuralActivity(snapshot);
-        neural_activity_.setTrainingActive(brainController.isSmartTraining());
-        neural_activity_.setActivity(hasAudio?&snapshot:nullptr,
-                                     brainController.getSmartTrainingProgress());
+        const float level=hasAudio
+            ? jlimit(0.0f,1.0f,std::sqrt(jmax(0.0f,snapshot.rms))*2.2f)
+            : 0.0f;
+        theme_audio_level_+=(level-theme_audio_level_)*
+            (FxTheme::isReducedMotion()?1.0f:0.33f);
+        if(wantGraph) {
+            neural_activity_.setTrainingActive(brainController.isSmartTraining());
+            neural_activity_.setActivity(hasAudio?&snapshot:nullptr,
+                                         brainController.getSmartTrainingProgress());
+        }
         if(neuralCore) {
             CynAudioScene scene;
             neural_core_live_=brainController.getLiveYamNetScene(scene) && hasAudio;
-            neural_core_personal_live_=hasAudio;
             neural_core_scene_=neural_core_live_?scene:CynAudioScene {};
         }
     }
-    if(neuralCore) {
-        const float target=neural_core_personal_live_ ? 1.0f : 0.0f;
-        neural_core_energy_+= (target-neural_core_energy_) *
-            (FxTheme::isReducedMotion()?1.0f:0.20f);
-        // UI animation is bounded at <=24 fps; backend inference is unchanged.
-        if((FxTheme::isReducedMotion() && now-last_neural_theme_repaint_>=500)
-           || (!FxTheme::isReducedMotion() && now-last_neural_theme_repaint_>=42)) {
-            last_neural_theme_repaint_=now;
-            repaint();
-        }
+    // One bounded, UI-thread repaint budget shared by every animated palette.
+    // Reduce motion leaves still artwork and drops the UI refresh to 2Hz.
+    const double interval=FxTheme::isReducedMotion()?500.0:42.0;
+    if(now-last_theme_repaint_>=interval) {
+        last_theme_repaint_=now;
+        repaint();
     }
     if(now-last_status_update_<500) return;
     last_status_update_=now;
@@ -382,11 +387,15 @@ void FxProView::paint(Graphics& g)
         sidebar.addColour(0.48,rail);
         g.setGradientFill(sidebar);
         g.fillRect(52,0,180,HEIGHT);
+        CynThemeAtmosphere::paint(g,FxTheme::getThemeMode(),
+            FxTheme::isReducedMotion()?0.0f:
+                (float)(Time::getMillisecondCounterHiRes()*0.001),
+            theme_audio_level_);
         if(FxTheme::getThemeMode()==FxThemeMode::NeuralCore) {
             // The top-right telemetry is ACTUAL pretrained YAMNet event scores
             // (not YAMNet internal activations or a synthetic music animation).
             const auto cyan=Colour(0xff67edee), violet=Colour(0xffa18cff);
-            const auto glow=jlimit(0.0f,1.0f,neural_core_energy_);
+            const auto glow=jlimit(0.0f,1.0f,theme_audio_level_);
             ColourGradient aura(cyan.withAlpha(0.045f+glow*0.075f),
                                 985.0f,115.0f,
                                 Colours::transparentBlack,1140.0f,370.0f,true);
@@ -449,7 +458,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.22", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.23", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
         ? "Choose Music AI or Movie AI. Each learns your preferences separately." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
