@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "FxPresetExportDialog.h"
 #include "FxPresetImportDialog.h"
 #include "FxPresetNameEditor.h"
+#include "CynThemeStudio.h"
 
 class FxPresetMenuItem : public PopupMenu::CustomComponent, private TextEditor::Listener
 {
@@ -540,14 +541,9 @@ void FxMainWindow::showMenu()
 	PopupMenu popup_menu;
 	PopupMenu save_menu;
 	PopupMenu rename_menu;
-	PopupMenu theme_menu;
 
 	save_menu.addCustomItem(1, std::make_unique<FxPresetMenuItem>(FxPresetMenuItem::Action::Save), nullptr);
 	rename_menu.addCustomItem(2, std::make_unique<FxPresetMenuItem>(FxPresetMenuItem::Action::Rename), nullptr);
-    for(int i=0;i<(int)FxThemeMode::NumModes;++i) {
-        const auto mode=static_cast<FxThemeMode>(i);
-        theme_menu.addItem(FxTheme::getThemeName(i),true,FxTheme::getThemeMode()==mode,[mode]{ FxController::getInstance().setThemeMode(mode); });
-    }
 
 
 	popup_menu.addItem(TRANS("Settings"), settingsClicked);
@@ -587,7 +583,7 @@ void FxMainWindow::showMenu()
 Built on the open-source FxSound DSP and official audio driver.
 AGPL-3.0-or-later; see the bundled LICENSE and source.)"); });
 	popup_menu.addSeparator();
-	popup_menu.addSubMenu(TRANS("Theme"), theme_menu);
+	popup_menu.addItem("Theme Studio...", [this] { CynThemeStudioDialog::show(this); });
     popup_menu.addItem("Smooth animations", true, FxTheme::isSmoothAnimations(), [] { FxController::getInstance().setSmoothAnimations(!FxTheme::isSmoothAnimations()); });
     popup_menu.addItem("Reduce motion",true,FxTheme::isReducedMotion(),[]{ FxController::getInstance().setReducedMotion(!FxTheme::isReducedMotion()); });
 	popup_menu.addItem(TRANS("Always On Top"), true, isAlwaysOnTop(), alwaysOnTopClicked);
