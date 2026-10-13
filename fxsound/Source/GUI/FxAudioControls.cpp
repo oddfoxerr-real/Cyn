@@ -204,7 +204,7 @@ void FxEffects::paint(Graphics& g)
         {
             effects_[i]->setTooltip(tool_tips[i] +
                 (FxController::getInstance().isSmartListening()
-                    ? "\\nThin marker = saved preset; moving knob = live applied effect." : ""));
+                    ? "\nThin marker = saved preset; moving knob = live applied effect." : ""));
         }
         else
         {
