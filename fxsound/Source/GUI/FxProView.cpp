@@ -139,6 +139,22 @@ FxProView::FxProView() : tool_tip_(this)
     if(FxTheme::isReducedMotion()) startTimer(500); else startTimerHz(60);
 }
 
+void FxProView::beginThemeTransition()
+{
+    theme_from_image_=Image();
+    theme_to_image_=Image();
+    if (isShowing() && !FxTheme::isReducedMotion())
+        theme_from_image_=createComponentSnapshot(getLocalBounds());
+}
+void FxProView::finishThemeTransition()
+{
+    if (!theme_from_image_.isValid() || FxTheme::isReducedMotion())
+        return;
+    theme_to_image_=createComponentSnapshot(getLocalBounds());
+    theme_transition_start_=Time::getMillisecondCounterHiRes();
+    repaint();
+}
+
 void FxProView::startVisualizer() { visualizer_.start(); }
 void FxProView::pauseVisualizer() { visualizer_.pause(); }
 void FxProView::setLookAndFeel() { audio_controls_.setLookAndFeel(); repaint(); }
@@ -222,6 +238,16 @@ void FxProView::timerCallback()
     const auto now=Time::getMillisecondCounterHiRes();
     if(transition_image_.isValid()) {
         if(FxTheme::isReducedMotion() || now-transition_start_>=220) transition_image_=Image();
+        repaint();
+    }
+    if (theme_from_image_.isValid())
+    {
+        if (FxTheme::isReducedMotion() ||
+            now-theme_transition_start_>=430.0)
+        {
+            theme_from_image_=Image();
+            theme_to_image_=Image();
+        }
         repaint();
     }
     // A separate 100ms UI telemetry sample keeps audio-responsive glow smooth
@@ -494,6 +520,19 @@ void FxProView::modelChanged(FxModel::Event event)
 
 void FxProView::paintOverChildren(Graphics& g)
 {
+    if(theme_from_image_.isValid() && theme_to_image_.isValid() &&
+       !FxTheme::isReducedMotion())
+    {
+        Graphics::ScopedSaveState saved(g);
+        g.reduceClipRegion(getLocalBounds());
+        const float raw=jlimit(0.0f,1.0f,
+            (float)((Time::getMillisecondCounterHiRes()-theme_transition_start_)/420.0));
+        const float progress=raw*raw*(3.0f-2.0f*raw);
+        const int offset=roundToInt(getWidth()*progress);
+        g.drawImageAt(theme_from_image_,-offset,0);
+        g.drawImageAt(theme_to_image_,getWidth()-offset,0);
+        return;
+    }
     if(transition_image_.isValid() && !FxTheme::isReducedMotion()) {
         const float progress=jlimit(0.0f,1.0f,(float)((Time::getMillisecondCounterHiRes()-transition_start_)/220.0));
         g.setOpacity((1-progress)*(1-progress));
@@ -503,6 +542,11 @@ void FxProView::paintOverChildren(Graphics& g)
 void FxProView::lookAndFeelChanged()
 {
     transition_image_=Image();
+    if (FxTheme::isReducedMotion())
+    {
+        theme_from_image_=Image();
+        theme_to_image_=Image();
+    }
     if(FxTheme::isReducedMotion()) startTimer(500); else startTimerHz(60);
     selectPage(page_);
     neural_activity_.setAnimationEnabled(page_==1);
