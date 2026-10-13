@@ -35,6 +35,14 @@ for (const source of [effectSync, eqSync]) {
 assert(effectSync.includes("getAppliedEffectValue"));
 assert(eqSync.includes("getAppliedEqBandBoostCut"));
 assert(eqSync.includes("if (visualChanged) repaint()"));
+const eqKeys = body(equalizer, "bool FxEqualizer::FxEqSlider::keyPressed(", "void FxEqualizer::FxEqSlider::mouseDown(");
+const effectKeys = body(controls, "bool FxEffects::FxEffectSlider::keyPressed(", "FxEqualizerControl::FxEqualizerControl(");
+assert(eqKeys.includes("getValue() + 1.0") && eqKeys.includes("getValue() - 1.0"),
+       "Manual EQ arrow keys must keep their original 1 dB step");
+assert(effectKeys.includes("getValue() + 1.0") && effectKeys.includes("getValue() - 1.0"),
+       "Manual effect arrow keys must keep their original integer step");
+assert(equalizer.includes("target - gain") && equalizer.includes("std::abs(gain - target)"),
+       "Alt-drag must converge correctly from fractional AI values");
 assert(controls.includes("->setRange(0, 10, 0.01)"));
 assert((equalizer.match(/->setRange\(-MAX_GAIN, MAX_GAIN, 0.01\)/g) || []).length === 2);
 assert(follower.includes("std::exp") && !follower.includes("std::sin"));
