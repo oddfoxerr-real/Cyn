@@ -91,6 +91,13 @@ jobs:
             (Resolve-Path 'CynAudioRepair.ps1'), [ref]$tokens, [ref]$errors) | Out-Null
           if ($errors.Count -ne 0) { throw 'Audio repair worker syntax errors.' }
 
+      - name: Verify AI-driven Sound Studio reads real applied DSP
+        if: steps.inspect.outputs.state != 'published'
+        shell: pwsh
+        run: |
+          node scripts/test_ai_applied_ui.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Applied DSP visual safety contract failed.' }
+
       - name: Compile Cyn native x64
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh

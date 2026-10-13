@@ -53,7 +53,7 @@ bool launchCynUpdater(bool interactive)
     if(!powershell.existsAsFile()) return false;
     const auto command=String("\"")+powershell.getFullPathName()+
         "\" -NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \""+
-        script.getFullPathName()+"\" -CurrentVersion 2.0.25"+
+        script.getFullPathName()+"\" -CurrentVersion 2.0.26"+
         (interactive?" -Interactive":"");
     const std::wstring wideCommand(command.toWideCharPointer());
     std::vector<wchar_t> writable(wideCommand.begin(),wideCommand.end());
