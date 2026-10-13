@@ -92,6 +92,17 @@ public:
         if (!isEnabled() || isBusy()) return;
         beginWorker(Stage::Scanning, {});
     }
+    // Explicit one-time manual repair attempt for connected-but-silent headsets.
+    // This can reselect the Windows output through Cyn's existing routing API.
+    void tryManualRecovery()
+    {
+        if (!isEnabled() || isBusy() || !refreshDeviceList_) return;
+        refreshDeviceList_();
+        status_ = "Cyn rechecked audio endpoints and routing. Confirm the preferred headphones "
+                  "are selected and play a test sound.";
+        remember(status_);
+    }
+
 
     // Windows owns the driver store and installation. Do not bypass that consent.
     static void openWindowsOptionalUpdates()
