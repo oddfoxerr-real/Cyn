@@ -465,7 +465,7 @@ void FxSettingsDialog::GeneralSettingsPane::setText()
 FxSettingsDialog::RepairSettingsPane::RepairSettingsPane()
     : SettingsPane("Misc - Audio Repair"),
       enabled_toggle_("Enable Auto Repair (off by default)"),
-      safe_recovery_toggle_("Allow Cyn to refresh its audio output list"),
+      safe_recovery_toggle_("Restore missing output (may switch devices)"),
       diagnose_button_("Diagnose now"),
       scan_updates_button_("Check Windows Update"),
       windows_updates_button_("Open Windows Optional Updates"),
