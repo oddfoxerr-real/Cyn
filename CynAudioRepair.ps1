@@ -6,7 +6,8 @@ param(
     [Parameter(Mandatory=$true)][string]$ResultPath,
     [string]$UpdateId = '',
     [int]$Revision = -1,
-    [string]$DeviceId = ''
+    [string]$DeviceId = '',
+    [string]$TargetDeviceId = ''
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -31,6 +32,7 @@ try {
     $devices = @(Get-PnpDevice -Class 'MEDIA' -PresentOnly -ErrorAction Stop)
     $hardware = @{}
     foreach ($device in $devices) {
+        if ($Action -eq 'Scan' -and $TargetDeviceId -ne '' -and $device.InstanceId -ne $TargetDeviceId) { continue }
         try {
             $props = Get-PnpDeviceProperty -InstanceId $device.InstanceId -KeyName 'DEVPKEY_Device_HardwareIds' -ErrorAction Stop
             foreach ($id in @($props.Data)) {
