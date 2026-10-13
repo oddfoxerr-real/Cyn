@@ -213,11 +213,18 @@ void FxProView::selectPage(int page)
 }
 void FxProView::update()
 {
-    audio_controls_.update();
-    equalizer_.update();
+    auto& controller = FxController::getInstance();
+    // A model/preset refresh must not interrupt an in-flight, real AI/DSP
+    // visual transition. Initial render, manual/AI-off mode, disabled power,
+    // and reduced-motion settings still snap to the actual applied values.
+    const bool snapValues = !controller.isSmartListening()
+        || last_ai_controls_update_ <= 0.0
+        || FxTheme::isReducedMotion()
+        || !FxModel::getModel().getPowerState();
+    audio_controls_.update(snapValues);
+    equalizer_.update(snapValues);
     equalizer_.showValues(true);
     audio_controls_.showValues(true);
-    auto& controller = FxController::getInstance();
     smart_toggle_.setToggleState(controller.isSmartListening(), dontSendNotification);
     listening_mode_.setSelectedId(controller.getSmartListeningMode()+1,dontSendNotification);
     train_.setButtonText(controller.getSmartListeningMode()==1?"Train Movie AI":"Train Music AI");
