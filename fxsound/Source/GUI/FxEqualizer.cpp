@@ -231,14 +231,14 @@ void FxEqualizer::syncAppliedDsp(float elapsedMs, bool animate)
     if (visualChanged) repaint();
 }
 
-void FxEqualizer::update()
+void FxEqualizer::update(bool snapValues)
 {
     auto& controller = FxController::getInstance();
 
     for (auto i = 0; i<band_boosts_.size() && i<controller.getNumEqBands(); i++)
     {
         auto value = controller.getAppliedEqBandBoostCut(i);
-        if (value >= -MAX_GAIN && value <= MAX_GAIN)
+        if (snapValues && value >= -MAX_GAIN && value <= MAX_GAIN)
         {
             band_boosts_[i]->setGainValue(value);
         }
@@ -361,7 +361,9 @@ void FxEqualizer::paint(Graphics& g)
         {
             if (!controller.isHelpTooltipsHidden())
             {
-                if (num_bands == 10) band_boosts_[i]->setTooltip(tool_tips[i]);
+                if (num_bands == 10) band_boosts_[i]->setTooltip(tool_tips[i] +
+                    (controller.isSmartListening()
+                        ? "\\nHollow marker = saved preset; orange point = live applied gain." : ""));
                 center_frequencies_[i]->setTooltip(center_freq_tip);
             }
             else
@@ -421,6 +423,43 @@ void FxEqualizer::paint(Graphics& g)
     auto gradient = ColourGradient(gradient_colour_1, 0, band_boosts_[1]->getY(), gradient_colour_2, 0, band_boosts_[1]->getBottom(), false);
     g.setFillType(FillType(gradient));
     g.fillPath(path);
+}
+
+void FxEqualizer::paintOverChildren(Graphics& g)
+{
+    auto& controller = FxController::getInstance();
+    if (!controller.isSmartListening() || !isEnabled()) return;
+    bool showingReference = false;
+
+    // Hollow marks indicate the original preset. Lines represent real
+    // differences between applied DSP gains and the saved preset.
+    for (size_t i = 0; i < band_boosts_.size() &&
+                       static_cast<int>(i) < controller.getNumEqBands(); ++i)
+    {
+        auto* slider = band_boosts_[i].get();
+        if (slider == nullptr) continue;
+        const float preset = controller.getEqBandBoostCut(static_cast<int>(i));
+        const float applied = controller.getAppliedEqBandBoostCut(static_cast<int>(i));
+        if (!std::isfinite(preset) || !std::isfinite(applied) ||
+            std::abs(applied - preset) < 0.20f) continue;
+
+        showingReference = true;
+        const float x = slider->getX() + slider->getWidth() * 0.5f;
+        const float presetY = slider->getY() + static_cast<float>(slider->getPositionOfValue(preset));
+        const float appliedY = slider->getY() + static_cast<float>(slider->getPositionOfValue(applied));
+        g.setColour(Colour(FXCOLOR(HintText)).withAlpha(0.42f));
+        g.drawLine(x, presetY, x, appliedY, 1.0f);
+        g.setColour(Colour(FXCOLOR(HintText)).withAlpha(0.95f));
+        g.drawEllipse(x - 3.0f, presetY - 3.0f, 6.0f, 6.0f, 1.25f);
+    }
+    if (showingReference)
+    {
+        auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
+        g.setFont(theme.getSmallFont().withHeight(9.0f));
+        g.setColour(Colour(FXCOLOR(HintText)).withAlpha(0.9f));
+        g.drawText("HOLLOW DOTS = PRESET", getWidth() - 175, 7, 160, 14,
+                   Justification::centredRight, false);
+    }
 }
 
 FxEqualizer::FxEqSlider::FxEqSlider(int band, float max_gain)
