@@ -100,6 +100,11 @@ FxSettingsDialog::SettingsComponent::SettingsComponent()
 	general_button_->setImage(Drawable::createFromImageData(BinaryData::settings_svg, BinaryData::settings_svgSize).get());
 	general_button_->addListener(this);
 	
+	repair_button_ = std::make_unique<SettingsButton>("Misc");
+	repair_button_->setToggleState(false, NotificationType::dontSendNotification);
+	repair_button_->setImage(Drawable::createFromImageData(BinaryData::settings_svg, BinaryData::settings_svgSize).get());
+	repair_button_->addListener(this);
+
 	help_button_ = std::make_unique<SettingsButton>("Help");
 	help_button_->setToggleState(false, NotificationType::dontSendNotification);
 	help_button_->setImage(Drawable::createFromImageData(BinaryData::question_svg, BinaryData::question_svgSize).get());
@@ -107,10 +112,12 @@ FxSettingsDialog::SettingsComponent::SettingsComponent()
 
 	addAndMakeVisible(audio_button_.get());
 	addAndMakeVisible(general_button_.get());
+	addAndMakeVisible(repair_button_.get());
 	addAndMakeVisible(help_button_.get());
 
 	addAndMakeVisible(audio_settings_pane_);
 	addChildComponent(general_settings_pane_);
+	addChildComponent(repair_settings_pane_);
 	addChildComponent(help_settings_pane_);
 
     setSize(WIDTH, HEIGHT);
@@ -120,46 +127,30 @@ void FxSettingsDialog::SettingsComponent::resized()
 {
 	audio_button_->setBounds(BUTTON_X, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT);
 	general_button_->setBounds(BUTTON_X, audio_button_->getBottom() + 20, BUTTON_WIDTH, BUTTON_HEIGHT);
-	help_button_->setBounds(BUTTON_X, general_button_->getBottom() + 20, BUTTON_WIDTH, BUTTON_HEIGHT);
+	repair_button_->setBounds(BUTTON_X, general_button_->getBottom() + 20, BUTTON_WIDTH, BUTTON_HEIGHT);
+	help_button_->setBounds(BUTTON_X, repair_button_->getBottom() + 20, BUTTON_WIDTH, BUTTON_HEIGHT);
 
 	juce::Rectangle<int> pane_rect(SEPARATOR_X + 1, 1, getWidth() - SEPARATOR_X + 1, getHeight() - 1);
 	audio_settings_pane_.setBounds(pane_rect);
 	general_settings_pane_.setBounds(pane_rect);
+	repair_settings_pane_.setBounds(pane_rect);
 	help_settings_pane_.setBounds(pane_rect);
 }
 
-void  FxSettingsDialog::SettingsComponent::buttonClicked(Button* button)
+void FxSettingsDialog::SettingsComponent::buttonClicked(Button* button)
 {
-	if (button == audio_button_.get())
-	{
-		button->setToggleState(true, NotificationType::dontSendNotification);
-		general_button_->setToggleState(false, NotificationType::dontSendNotification);
-		help_button_->setToggleState(false, NotificationType::dontSendNotification);
+    if (button != audio_button_.get() && button != general_button_.get() &&
+        button != repair_button_.get() && button != help_button_.get())
+        return;
+    audio_button_->setToggleState(button == audio_button_.get(), NotificationType::dontSendNotification);
+    general_button_->setToggleState(button == general_button_.get(), NotificationType::dontSendNotification);
+    repair_button_->setToggleState(button == repair_button_.get(), NotificationType::dontSendNotification);
+    help_button_->setToggleState(button == help_button_.get(), NotificationType::dontSendNotification);
 
-		audio_settings_pane_.setVisible(true);
-		general_settings_pane_.setVisible(false);
-		help_settings_pane_.setVisible(false);
-	}
-	else if (button == general_button_.get())
-	{
-		button->setToggleState(true, NotificationType::dontSendNotification);
-		audio_button_->setToggleState(false, NotificationType::dontSendNotification);
-		help_button_->setToggleState(false, NotificationType::dontSendNotification);
-
-		general_settings_pane_.setVisible(true);
-		audio_settings_pane_.setVisible(false);
-		help_settings_pane_.setVisible(false);
-	}
-	else if (button == help_button_.get())
-	{
-		button->setToggleState(true, NotificationType::dontSendNotification);
-		audio_button_->setToggleState(false, NotificationType::dontSendNotification);
-		general_button_->setToggleState(false, NotificationType::dontSendNotification);
-
-		help_settings_pane_.setVisible(true);
-		audio_settings_pane_.setVisible(false);
-		general_settings_pane_.setVisible(false);
-	}
+    audio_settings_pane_.setVisible(button == audio_button_.get());
+    general_settings_pane_.setVisible(button == general_button_.get());
+    repair_settings_pane_.setVisible(button == repair_button_.get());
+    help_settings_pane_.setVisible(button == help_button_.get());
 }
 
 FxSettingsDialog::SettingsPane::SettingsPane(String name)
