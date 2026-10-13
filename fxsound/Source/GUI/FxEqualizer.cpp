@@ -363,7 +363,7 @@ void FxEqualizer::paint(Graphics& g)
             {
                 if (num_bands == 10) band_boosts_[i]->setTooltip(tool_tips[i] +
                     (controller.isSmartListening()
-                        ? "\\nHollow marker = saved preset; orange point = live applied gain." : ""));
+                        ? "\nHollow marker = saved preset; orange point = live applied gain." : ""));
                 center_frequencies_[i]->setTooltip(center_freq_tip);
             }
             else
