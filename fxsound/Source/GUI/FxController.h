@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "PersonalAudioModel.h"
 #include "CynYamNetWorker.h"
 #include "CynDjWorker.h"
+#include "CynAudioRepair.h"
 #include "FxTheme.h"
 #include "FxAudioControls.h"
 #include "../Source/Utils/Settings/Settings.h"
@@ -206,6 +207,7 @@ public:
 	}
 
 	FxSound::Settings& getSettings() { return settings_; }
+    CynAudioRepairService* getAudioRepair() { return audioRepair_.get(); }
 
 private:
 	class MessageWindow
@@ -321,6 +323,7 @@ private:
 	bool hide_notifications_;
 	bool auto_updates_;
     AutoUpdatePoller auto_update_poller_ {*this};
+    std::unique_ptr<CynAudioRepairService> audioRepair_;
 
 	unsigned long audio_process_time_;
 	int audio_process_on_counter_;
