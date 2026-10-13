@@ -9,6 +9,7 @@ This feature is in Settings -> Misc -> Auto Repair. It is intentionally separate
 - Ask every time (default): before each Windows Update driver package download, a Cyn prompt identifies the update and source, and offers Allow or Decline.
 - Always allow verified downloads: explicitly selecting this setting permits future matching Windows Update driver downloads without showing the per-download prompt. It does not permit driver installation or restart.
 - Never download drivers: no automatic downloads occur. Users can diagnose or open Windows Optional Updates manually.
+- The Try reconnecting button explicitly asks before rechecking and potentially switching Windows playback routing, even if automatic minor recovery is switched off.
 - Disabling Auto Repair stops the monitor and local worker. Changing permission to Never during a download stops Cyn's local worker; Windows Update may retain previously downloaded content in its own cache. It does not roll back anything.
 - Permissions can be reset to Ask at any time. The choice is stored locally using Cyn's existing application settings, not sent to a server.
 
