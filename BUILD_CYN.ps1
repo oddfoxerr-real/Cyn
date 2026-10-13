@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([switch]$WithMcp, [switch]$CheckOnly, [switch]$Incremental)
+param([switch]$WithMcp, [switch]$CheckOnly, [switch]$Incremental, [ValidateRange(1,8)][int]$BuildWorkers=2)
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
@@ -17,7 +17,7 @@ $logs = Join-Path $root 'build-logs'
 New-Item -ItemType Directory -Force -Path $logs | Out-Null
 $solution = Join-Path $root 'fxsound\Project\FxSound.sln'
 $target = if ($Incremental) { '/t:Build' } else { '/t:Rebuild' }
-& $msbuild $solution /m:2 $target /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64 /nologo "/bl:$logs\cyn-release.binlog"
+& $msbuild $solution "/m:$BuildWorkers" /nr:false $target /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64 /nologo "/bl:$logs\cyn-release.binlog"
 if ($LASTEXITCODE -ne 0) { throw "Release build failed ($LASTEXITCODE). See build-logs\cyn-release.binlog." }
 $exe = Join-Path $root 'fxsound\Project\x64\Release\App\FxSound.exe'
 if (!(Test-Path -LiteralPath $exe)) { throw 'MSBuild did not produce FxSound.exe.' }
@@ -36,6 +36,10 @@ Copy-Item -LiteralPath (Join-Path $root 'bin\x64\Factsoft') -Destination $dist -
 Get-ChildItem -LiteralPath (Join-Path $root 'fxsound\Fonts') -File | Copy-Item -Destination $dist -Force
 Copy-Item -LiteralPath (Join-Path $root 'LICENSE'),(Join-Path $root 'README_CYN.md'),(Join-Path $root 'VALIDATION.md'),(Join-Path $root 'RELEASE_CHECKS.md'),(Join-Path $root 'CYN_CONTROL.ps1'),(Join-Path $root 'LAUNCH_CYN.ps1'),(Join-Path $root 'INSTALL_CYN.ps1') -Destination $dist -Force
 Copy-Item -LiteralPath (Join-Path $root 'third_party\JUCE\LICENSE.md') -Destination (Join-Path $dist 'JUCE-LICENSE.md') -Force
+Copy-Item -LiteralPath (Join-Path $root 'docs\AI-DJ.md') -Destination (Join-Path $dist 'AI-DJ.md') -Force
+Copy-Item -LiteralPath (Join-Path $root 'third_party\ast\LICENSE.txt') -Destination (Join-Path $dist 'AST-LICENSE.txt') -Force
+# Optional AI DJ weights are user-downloaded only, never installer payload.
+if (Get-ChildItem $dist -Recurse -File -Filter '*ast*onnx') {throw 'AI DJ model must not be bundled.'}
 if ($WithMcp) {
     if (!(Get-Command go -ErrorAction SilentlyContinue)) { throw 'MCP build requires Go 1.26.5 or newer: winget install --id GoLang.Go --exact' }
     & $msbuild (Join-Path $root 'fxdiag\fxdiag.vcxproj') /m:2 /t:Rebuild /p:Configuration=Release /p:Platform=x64 /nologo

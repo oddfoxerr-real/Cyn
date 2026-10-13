@@ -40,7 +40,7 @@ void launchCynUpdater(bool interactive)
         if (interactive) AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "CynUpdater.ps1 is missing. Reinstall Cyn.");
         return;
     }
-    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.21" + (interactive ? " -Interactive" : "");
+    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.22" + (interactive ? " -Interactive" : "");
     auto result = ShellExecuteW(nullptr, L"open", L"powershell.exe", args.toWideCharPointer(), nullptr, SW_HIDE);
     if (reinterpret_cast<INT_PTR>(result) <= 32 && interactive)
         AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");
@@ -228,6 +228,7 @@ FxController::FxController() : message_window_(L"CynHotkeys", (WNDPROC)eventCall
 FxController::~FxController()
 {
     // Stop asynchronous inference before the audio DSP is destroyed.
+    dj_worker_.reset();
     yamnet_worker_.reset();
 	if (powerNotify_ != nullptr && unregister_suspend_resume_notification_ != nullptr)
 	{
@@ -823,6 +824,7 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
         loadSmartModel();
         yamnet_worker_=std::make_unique<CynYamNetWorker>(dfx_dsp_);
         yamnet_worker_->startIfAvailable();
+        dj_worker_=std::make_unique<CynDjWorker>(dfx_dsp_);
         smart_mode_=jlimit(0,1,settings_.getInt("cyn_ai_listening_mode",0));
         // Autonomous YAMNet + Balance is on for new installs; retain a saved opt-out.
         // Keep smart_enabled_ initially false so enabling captures the preset baseline.
@@ -2220,6 +2222,13 @@ void FxController::timerCallback()
 		}
 	}
 
+    // The existing faster YAMNet model vetoes speech while AST provides the
+    // broader musical context. Missing/stale voice analysis fails closed.
+    if(dj_worker_ && dj_worker_->enabled()) {
+        CynAudioScene voice;
+        const bool fresh=yamnet_worker_ && yamnet_worker_->latest(voice);
+        dfx_dsp_.setDjVoiceGate(fresh && voice.speech<0.25f && voice.silence<0.6f);
+    }
     updateSmartListening();
 
 	// Auto-save modified preset once per minute if there are unsaved changes

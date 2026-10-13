@@ -1,0 +1,98 @@
+{
+  "model_sha256": "807d244b58a30eaa89f0a721fb841619c696857aabe4eac93769bd0b61497f61",
+  "model_bytes": 90807386,
+  "runtime": "1.19.2",
+  "input_shape": [
+    1,
+    1024,
+    128
+  ],
+  "output_classes": 527,
+  "synthetic_checks": [
+    {
+      "fixture": "silence",
+      "max_feature_error": 0.0,
+      "max_logit_error": 0.0,
+      "max_probability_error": 0.0,
+      "inference_seconds": 20.720792800002528,
+      "top_classes": [
+        {
+          "label": "Silence",
+          "score": 0.726508378982544
+        },
+        {
+          "label": "Music",
+          "score": 0.2184852808713913
+        },
+        {
+          "label": "Speech",
+          "score": 0.019805338233709335
+        }
+      ]
+    },
+    {
+      "fixture": "tone",
+      "max_feature_error": 1.1920928955078125e-07,
+      "max_logit_error": 0.0,
+      "max_probability_error": 0.0,
+      "inference_seconds": 15.693081400000665,
+      "top_classes": [
+        {
+          "label": "Sine wave",
+          "score": 0.9213076829910278
+        },
+        {
+          "label": "Dial tone",
+          "score": 0.006933629512786865
+        },
+        {
+          "label": "Chirp tone",
+          "score": 0.006328565068542957
+        }
+      ]
+    },
+    {
+      "fixture": "noise",
+      "max_feature_error": 1.1920928955078125e-07,
+      "max_logit_error": 0.1375265121459961,
+      "max_probability_error": 0.005741715431213379,
+      "inference_seconds": 16.47605690000273,
+      "top_classes": [
+        {
+          "label": "White noise",
+          "score": 0.361928254365921
+        },
+        {
+          "label": "Static",
+          "score": 0.3576629161834717
+        },
+        {
+          "label": "Pink noise",
+          "score": 0.1286495178937912
+        }
+      ]
+    },
+    {
+      "fixture": "synthetic_rhythm",
+      "max_feature_error": 1.1920928955078125e-07,
+      "max_logit_error": 0.0,
+      "max_probability_error": 0.0,
+      "inference_seconds": 8.566428399997676,
+      "top_classes": [
+        {
+          "label": "Music",
+          "score": 0.442149817943573
+        },
+        {
+          "label": "Drum machine",
+          "score": 0.2970038056373596
+        },
+        {
+          "label": "Synthesizer",
+          "score": 0.16897282004356384
+        }
+      ]
+    }
+  ],
+  "limitations": "Synthetic numeric and inference checks, not a real-music quality or game-dialogue benchmark."
+}

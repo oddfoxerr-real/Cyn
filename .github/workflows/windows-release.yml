@@ -74,6 +74,11 @@ jobs:
         run: |
           node scripts/test_ai_hub.mjs
 
+      - name: Validate optional AI DJ audio path
+        if: steps.inspect.outputs.state != 'published'
+        shell: pwsh
+        run: ./scripts/test_dj.ps1
+
       - name: Compile Cyn native x64
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh

@@ -76,6 +76,12 @@ private:
     void selectPage(int page);
     void openSettings();
     int page_ = 0;
+    TextButton misc_nav_{"Misc"},dj_download_{"Download AI DJ"},dj_remove_{"Remove download"},dj_cancel_{"Cancel download"};
+    ToggleButton dj_toggle_{"Enable AI DJ"},dj_stereo_{"Move effects between ears"};
+    Slider dj_intensity_{Slider::LinearHorizontal,Slider::TextBoxRight},dj_spacing_{Slider::LinearHorizontal,Slider::TextBoxRight};
+    Label dj_status_,dj_recent_;
+    double dj_progress_value_=0;
+    ProgressBar dj_progress_{dj_progress_value_};
     Image transition_image_;
     double transition_start_=0, last_status_update_=0, last_neural_update_=0;
     FxAudioControls audio_controls_;

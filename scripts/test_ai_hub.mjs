@@ -33,13 +33,13 @@ const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
                   "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.21"]){
+                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.22"]){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
 assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
 assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
-console.log("PASS: visible native AI sidebar, profile actions and v2.0.21 version marker");
+console.log("PASS: visible native AI sidebar, profile actions and v2.0.22 version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
 assert(native.includes("componentToCentreAround = owner"),"AI Hub must be positioned over Cyn");
 assert(native.includes("dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f)"),"Dialog background is transparent");
@@ -70,7 +70,7 @@ const neural = readFileSync(path("fxsound/Source/GUI/CynNeuralActivity.h"), "utf
 assert(header.includes('#include "CynNeuralActivity.h"'), "Neural visualizer header missing");
 assert(header.includes("CynNeuralActivity neural_activity_"), "Missing visualizer instance");
 assert(neural.includes("std::array<Point<float>, 11> inputs") && neural.includes("std::array<Point<float>, 12> hidden") && neural.includes("std::array<Point<float>, 5> outputs"), "Must match real 11-12-5 model architecture");
-assert(view.includes("neural_activity_.setBounds(72, 247, 148, 226)"), "Must fit empty sidebar without obstructing labeling controls");
+assert(view.includes("neural_activity_.setBounds(72, 286, 148, 187)"), "Must fit below Misc navigation without obstructing labeling controls");
 assert(view.includes("neural_activity_.setTrainingActive(controller.isSmartTraining())"), "Brain must reflect actual training state");
 assert(view.includes("neural_activity_.setAnimationEnabled(page==1 || neuralCore)") ||
        view.includes("neural_activity_.setAnimationEnabled(page_==1 ||"),"Neural activity should animate on Smart page or selected Neural Core theme only");

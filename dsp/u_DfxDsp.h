@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "pt_defs.h"
 #include "slout.h"
 #include "SourceAudioAnalyzer.h"
+#include "CynDjEffects.h"
 
 struct dfxg_section_type {
 	realtype value;
@@ -114,6 +115,7 @@ public:
 	void resetTotalAudioProcessedTime();
     void getSpectrumBandValues(float* rp_band_values, int i_array_size);
     SourceAudioAnalyzer source_analyzer_;
+    CynDjEffects dj_;
 
 	bool being_destroyed_ = false;
 private:
