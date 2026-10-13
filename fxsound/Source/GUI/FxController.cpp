@@ -258,6 +258,7 @@ FxController::FxController() : message_window_(L"CynHotkeys", (WNDPROC)eventCall
 FxController::~FxController()
 {
     auto_update_poller_.stop();
+    audioRepair_.reset();
     // Stop asynchronous inference before the audio DSP is destroyed.
     dj_worker_.reset();
     yamnet_worker_.reset();
@@ -900,6 +901,12 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
         // Check GitHub on the UI timer whether sound processing is on or off.
         // Saved cadence prevents repeated checks on repeated app restarts.
         auto_update_poller_.start();
+        // Separate opt-in monitoring continues when the DSP is switched off.
+        audioRepair_ = std::make_unique<CynAudioRepairService>(settings_, [this]() {
+            checkDeviceChanges();
+            refreshOutputList();
+        });
+        audioRepair_->startIfEnabled();
 
 		HMODULE user32_module = GetModuleHandleW(L"user32.dll");
 		if (user32_module != nullptr)
@@ -1114,6 +1121,7 @@ void FxController::autoSaveModifiedPreset()
 
 bool FxController::exit()
 {
+    audioRepair_.reset();
 	autoSaveModifiedPreset();
 
 	JUCEApplication::getInstance()->systemRequestedQuit();
