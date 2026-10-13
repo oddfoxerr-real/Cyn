@@ -165,6 +165,7 @@ private:
     void timerCallback() override
     {
         if (!isEnabled()) { stopMonitoring(); return; }
+        if (permissionDialogOpen_) return;
         pollWorker();
         const auto now = juce::Time::currentTimeMillis();
         if (isBusy() || now - lastCheckMs_ < 45000) return;
@@ -345,12 +346,14 @@ private:
             }
             if (getPermission() == Permission::AskEveryTime)
             {
+                permissionDialogOpen_ = true;
                 const bool approved = juce::AlertWindow::showOkCancelBox(
                     juce::AlertWindow::QuestionIcon, "Cyn - permission to download",
                     "Windows Update found an audio driver for your hardware:\n\n"
                     + candidate.title + "\n\nSource: Windows Update\n"
                     "Download this driver package? Cyn will NOT install, remove or restart drivers.",
                     "Allow download", "Decline");
+                permissionDialogOpen_ = false;
                 if (!approved)
                 {
                     status_ = "Driver download declined. No system changes made.";
@@ -390,5 +393,6 @@ private:
     juce::File resultFile_;
     HANDLE workerProcess_ = nullptr;
     Stage stage_ = Stage::Idle;
+    bool permissionDialogOpen_ = false;
     juce::int64 lastCheckMs_ = 0, lastProblemAtMs_ = 0, startedMs_ = 0;
 };
