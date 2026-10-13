@@ -35,18 +35,44 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 namespace {
 bool launchCynUpdater(bool interactive)
 {
-    const auto script = File::getSpecialLocation(File::currentExecutableFile).getSiblingFile("CynUpdater.ps1");
-    if (!script.existsAsFile()) {
-        if (interactive) AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "CynUpdater.ps1 is missing. Reinstall Cyn.");
+    const auto script=File::getSpecialLocation(File::currentExecutableFile)
+        .getSiblingFile("CynUpdater.ps1");
+    if(!script.existsAsFile()) {
+        if(interactive)
+            AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,"Cyn",
+                "CynUpdater.ps1 is missing. Reinstall Cyn.");
         return false;
     }
-    const auto args = String("-NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \"") + script.getFullPathName() + "\" -CurrentVersion 2.0.23" + (interactive ? " -Interactive" : "");
-    auto result = ShellExecuteW(nullptr, L"open", L"powershell.exe", args.toWideCharPointer(), nullptr, SW_HIDE);
-    if (reinterpret_cast<INT_PTR>(result) <= 32) {
-        if (interactive)
-            AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon, "Cyn", "Unable to launch the update checker.");
+    // Hiding the entire ShellExecute process can also hide the WPF update
+    // prompt. CREATE_NO_WINDOW hides only the PowerShell console.
+    wchar_t systemDirectory[MAX_PATH] {};
+    const auto length=GetSystemDirectoryW(systemDirectory,MAX_PATH);
+    if(length==0 || length>=MAX_PATH) return false;
+    const auto powershell=File(String(systemDirectory))
+        .getChildFile("WindowsPowerShell/v1.0/powershell.exe");
+    if(!powershell.existsAsFile()) return false;
+    const auto command=String("\"")+powershell.getFullPathName()+
+        "\" -NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \""+
+        script.getFullPathName()+"\" -CurrentVersion 2.0.23"+
+        (interactive?" -Interactive":"");
+    const std::wstring wideCommand(command.toWideCharPointer());
+    std::vector<wchar_t> writable(wideCommand.begin(),wideCommand.end());
+    writable.push_back(0);
+    STARTUPINFOW startup {};
+    startup.cb=sizeof(startup);
+    PROCESS_INFORMATION process {};
+    const BOOL launched=CreateProcessW(
+        powershell.getFullPathName().toWideCharPointer(),
+        writable.data(),nullptr,nullptr,FALSE,CREATE_NO_WINDOW,
+        nullptr,nullptr,&startup,&process);
+    if(!launched) {
+        if(interactive)
+            AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,"Cyn",
+                "Unable to launch the update checker.");
         return false;
     }
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
     return true;
 }
 }
