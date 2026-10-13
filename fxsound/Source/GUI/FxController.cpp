@@ -902,10 +902,15 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
         // Saved cadence prevents repeated checks on repeated app restarts.
         auto_update_poller_.start();
         // Separate opt-in monitoring continues when the DSP is switched off.
-        audioRepair_ = std::make_unique<CynAudioRepairService>(settings_, [this]() {
-            checkDeviceChanges();
-            refreshOutputList();
-        });
+        audioRepair_ = std::make_unique<CynAudioRepairService>(
+            settings_, [this]() {
+                checkDeviceChanges();
+                refreshOutputList();
+            }, [this]() -> juce::String {
+                const auto savedOutput = getOutputName();
+                return savedOutput.isNotEmpty() && !isOutputDeviceConnected(savedOutput)
+                    ? savedOutput : juce::String();
+            });
         audioRepair_->startIfEnabled();
 
 		HMODULE user32_module = GetModuleHandleW(L"user32.dll");
