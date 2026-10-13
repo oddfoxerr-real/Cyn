@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "FxEqualizer.h"
 #include "FxController.h"
+#include "CynDspUiFollow.h"
 #include "FxTheme.h"
 
 FxEqualizer::FxEqualizer()
@@ -45,7 +46,7 @@ FxEqualizer::FxEqualizer()
         addAndMakeVisible(labels_[i].get());
 
         band_boosts_[i]->setSliderStyle(Slider::LinearVertical);
-        band_boosts_[i]->setRange(-MAX_GAIN, MAX_GAIN, 1.0);
+        band_boosts_[i]->setRange(-MAX_GAIN, MAX_GAIN, 0.01);
         band_boosts_[i]->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
         band_boosts_[i]->addListener(this);
         addAndMakeVisible(band_boosts_[i].get());
@@ -95,7 +96,7 @@ void FxEqualizer::reinit(int num_bands)
         addAndMakeVisible(labels_[i].get());
 
         band_boosts_[i]->setSliderStyle(Slider::LinearVertical);
-        band_boosts_[i]->setRange(-MAX_GAIN, MAX_GAIN, 1.0);
+        band_boosts_[i]->setRange(-MAX_GAIN, MAX_GAIN, 0.01);
         band_boosts_[i]->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
         band_boosts_[i]->addListener(this);
         addAndMakeVisible(band_boosts_[i].get());
@@ -209,13 +210,39 @@ void FxEqualizer::timerCallback()
     }
 }
 
+void FxEqualizer::syncAppliedDsp(float elapsedMs, bool animate)
+{
+    if (highlight_mode_) return; // Keep the existing Alt-drag multi-band workflow.
+    auto& controller = FxController::getInstance();
+    bool visualChanged = false;
+    for (size_t i = 0; i < band_boosts_.size() &&
+             static_cast<int>(i) < controller.getNumEqBands(); ++i)
+    {
+        auto* slider = band_boosts_[i].get();
+        // Never override the thumb while the user is changing the preset.
+        if (slider == nullptr || slider->isMouseButtonDown() || !slider->isEnabled()) continue;
+        const float applied = controller.getAppliedEqBandBoostCut(static_cast<int>(i));
+        if (!std::isfinite(applied)) continue;
+        const float shown = static_cast<float>(slider->getValue());
+        const float next = CynDspUiFollow::towardApplied(shown,
+            juce::jlimit(-MAX_GAIN, MAX_GAIN, applied), elapsedMs, animate);
+        if (std::abs(next - shown) >= 0.008f)
+        {
+            slider->setGainValue(next); // dontSendNotification: display only.
+            visualChanged = true;
+        }
+    }
+    // The parent draws the curve and gradient from the slider positions.
+    if (visualChanged) repaint();
+}
+
 void FxEqualizer::update()
 {
     auto& controller = FxController::getInstance();
 
     for (auto i = 0; i<band_boosts_.size() && i<controller.getNumEqBands(); i++)
     {
-        auto value = controller.getEqBandBoostCut(i);
+        auto value = controller.getAppliedEqBandBoostCut(i);
         if (value >= -MAX_GAIN && value <= MAX_GAIN)
         {
             band_boosts_[i]->setGainValue(value);
@@ -421,7 +448,10 @@ void FxEqualizer::FxEqSlider::setGainValue(float value)
 {
     setValue(value, NotificationType::dontSendNotification);
 
-    auto text = String::formatted(value == 0.0 ? "%.0f" : "%+.0f", value);
+    const float shown = static_cast<float>(getValue());
+    const auto text = std::abs(shown - std::round(shown)) < 0.045f
+        ? String::formatted(shown == 0.0f ? "%.0f" : "%+.0f", shown)
+        : String::formatted("%+.1f", shown);
     gain_label_.setText(text, NotificationType::dontSendNotification);
 
     auto y = getPositionOfValue(value) - (FxTheme::SLIDER_THUMB_RADIUS *3);
@@ -458,7 +488,9 @@ void FxEqualizer::FxEqSlider::valueChanged()
     {
         FxController::getInstance().setEqBandBoostCut(band_, value);
 
-        auto text = String::formatted(value == 0.0 ? "%.0f" : "%+.0f", value);
+        const auto text = std::abs(value - std::round(value)) < 0.045
+            ? String::formatted(value == 0.0 ? "%.0f" : "%+.0f", value)
+            : String::formatted("%+.1f", value);
         gain_label_.setText(text, NotificationType::dontSendNotification);
 
         auto y = getPositionOfValue(value) - (FxTheme::SLIDER_THUMB_RADIUS*3);
