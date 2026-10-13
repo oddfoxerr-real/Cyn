@@ -5,7 +5,7 @@ This feature is in Settings -> Misc -> Auto Repair. It is intentionally separate
 ## Consent
 
 - Auto Repair is OFF by default. When off, no monitoring, repair check, or driver download is started.
-- Allow minor recovery is a separate, off-by-default switch. It only asks Cyn to refresh its known audio output devices and re-evaluate their routing when Windows reports a hardware fault; it does not disable/enable, uninstall or install a driver.
+- Allow minor recovery is a separate, off-by-default switch. It allows Cyn to recheck devices and reselect a playback output when a saved headset goes missing or Windows reports an audio fault. This can change which output Windows uses, but does not uninstall or install drivers.
 - Ask every time (default): before each Windows Update driver package download, a Cyn prompt identifies the update and source, and offers Allow or Decline.
 - Always allow verified downloads: explicitly selecting this setting permits future matching Windows Update driver downloads without showing the per-download prompt. It does not permit driver installation or restart.
 - Never download drivers: no automatic downloads occur. Users can diagnose or open Windows Optional Updates manually.
@@ -15,7 +15,7 @@ This feature is in Settings -> Misc -> Auto Repair. It is intentionally separate
 ## Detection and download workflow
 
 1. Windows Plug and Play (SetupAPI/Configuration Manager) is queried for reported errors among media and audio endpoint devices. No PnP error is not proof that a paired headset works correctly; users can run manual diagnostics.
-2. With minor recovery enabled, Cyn refreshes only its own audio device list. Core OS drivers and services are left alone.
+2. With minor recovery enabled, Cyn calls its existing device-detection and routing logic. This may change the active Windows playback output. It does not change driver packages, Bluetooth pairing state or OS services.
 3. For an identified faulty physical MEDIA driver, Cyn may query Windows Update for an audio-hardware-ID-matching driver. Logical AudioEndpoint errors are not automatically associated with a different driver.
 4. Windows Update Agent performs the scan. Driver candidates must match a currently present MEDIA PnP hardware identifier, not just a display name. Manual scanning can consider all present MEDIA devices.
 5. After download permission, Cyn launches a separate Windows PowerShell worker. The worker rechecks the hardware ID, Windows Update identity and revision before downloading via the Windows Update Agent COM API. No arbitrary download URL or external installer is used.
