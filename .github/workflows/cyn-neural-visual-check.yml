@@ -4,6 +4,15 @@ on:
     branches: [main]
     paths:
       - .github/workflows/cyn-neural-visual-check.yml
+      - fxsound/Source/GUI/CynThemeAtmosphere.h
+  pull_request:
+    paths:
+      - .github/workflows/cyn-neural-visual-check.yml
+      - fxsound/Source/GUI/CynThemeAtmosphere.h
+      - fxsound/Source/GUI/CynNeuralActivity.h
+      - fxsound/Source/GUI/FxProView.h
+      - fxsound/Source/GUI/FxProView.cpp
+      - scripts/test_ai_hub.mjs
       - fxsound/Source/GUI/CynNeuralActivity.h
       - fxsound/Source/GUI/FxProView.h
       - fxsound/Source/GUI/FxProView.cpp
