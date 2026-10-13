@@ -344,6 +344,16 @@ void FxMainWindow::update()
 	pro_view_.update();
 }
 
+void FxMainWindow::beginThemeTransition()
+{
+    if (pro_view_.isShowing())
+        pro_view_.beginThemeTransition();
+}
+void FxMainWindow::finishThemeTransition()
+{
+    if (pro_view_.isShowing())
+        pro_view_.finishThemeTransition();
+}
 void FxMainWindow::startVisualizer()
 {
     pro_view_.startVisualizer();
