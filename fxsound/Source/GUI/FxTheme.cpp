@@ -604,6 +604,10 @@ uint32 FxTheme::getColor(FxColor color)
 {
 	return theme_colors_[theme_mode_][color];
 }
+uint32 FxTheme::getColorForMode(FxThemeMode mode, FxColor color)
+{
+    return theme_colors_[jlimit(0, (int)FxThemeMode::NumModes-1, (int)mode)][color];
+}
 
 const char* FxTheme::getImage(FxImage image)
 {
