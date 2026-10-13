@@ -53,6 +53,39 @@ assert(proSync.includes("equalizer_.syncAppliedDsp"));
 assert(proSync.includes("FxTheme::isReducedMotion()"));
 assert(proSync.includes("getAppliedMixSummary()"));
 assert(controller.includes("dfx_dsp_.getVolumeLeveling() - smart_leveling_"));
+// Full Sound Studio refreshes must preserve a live AI display transition.
+// Only first render, user-controlled AI-off, power-off and reduced motion snap.
+const refresh = body(view, "void FxProView::update()", "void FxProView::timerCallback()");
+assert(refresh.includes("!controller.isSmartListening()"));
+assert(refresh.includes("FxTheme::isReducedMotion()"));
+assert(refresh.includes("audio_controls_.update(snapValues)"));
+assert(refresh.includes("equalizer_.update(snapValues)"));
+assert(controls.includes("void FxEffects::update(bool snapValues)") &&
+       controls.includes("if (snapValues && value >= 0.0"));
+assert(equalizer.includes("void FxEqualizer::update(bool snapValues)") &&
+       equalizer.includes("if (snapValues && value >= -MAX_GAIN"));
+
+// When the DSP deviates from the saved preset, show a real baseline marker.
+// No visual overlay may write to the DSP, alter the user's preset, or
+// fabricate values from unrelated audio energy/sine waves.
+const effectMark = body(controls,
+    "void FxEffects::FxEffectSlider::paintOverChildren(Graphics& g)",
+    "void FxEffects::FxEffectSlider::resized()");
+const eqMark = body(equalizer, "void FxEqualizer::paintOverChildren(Graphics& g)",
+    "FxEqualizer::FxEqSlider::FxEqSlider(");
+for (const marker of [effectMark, eqMark]) {
+    assert(marker.includes("isSmartListening()"));
+    assert(marker.includes("getApplied"));
+    assert(marker.includes("getEffectValue") || marker.includes("getEqBandBoostCut"));
+    assert(marker.includes("std::abs(applied - preset)"));
+    assert(!marker.includes("setEffectValue(") && !marker.includes("setEqBandBoostCut("));
+    assert(!marker.includes("std::sin(") && !marker.includes("audioEnergy"));
+}
+assert(eqMark.includes("g.drawEllipse"));
+assert(effectMark.includes("g.drawLine"));
+console.log("PASS: AI mode/preset refresh preserves real display transitions");
+console.log("PASS: baseline markers only appear for real applied-vs-preset differences");
+
 console.log("PASS: applied DSP telemetry drives real-value EQ and effects");
 console.log("PASS: manual drag protection and read-only visual animation");
 console.log("PASS: UI only glides toward actual changes; no fabricated pulse or wobble");
