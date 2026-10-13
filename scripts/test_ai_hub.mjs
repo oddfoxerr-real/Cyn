@@ -33,13 +33,13 @@ const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
                   "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.22"]){
+                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.23"]){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
 assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
 assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
-console.log("PASS: visible native AI sidebar, profile actions and v2.0.22 version marker");
+console.log("PASS: visible native AI sidebar, profile actions and v2.0.23 version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
 assert(native.includes("componentToCentreAround = owner"),"AI Hub must be positioned over Cyn");
 assert(native.includes("dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f)"),"Dialog background is transparent");
@@ -104,11 +104,28 @@ assert(view.includes("brainController.getLiveYamNetScene(scene)"),"Neural theme 
 assert(controllerHeader.includes("getLiveYamNetScene(CynAudioScene& out)"),"Missing native read-only scene telemetry API");
 assert(controllerSource.includes("return yamnet_worker_->latest(out)"),"Neural theme must use actual async ONNX scene data");
 assert(view.includes("neural_core_live_?neural_core_scene_"),"No fade-to-idle for stale YAMNet output");
-assert(view.includes("now-last_neural_theme_repaint_>=42"),"UI repaint must remain <=24Hz");
+assert(view.includes("const double interval=FxTheme::isReducedMotion()?500.0:42.0;") &&
+       view.includes("now-last_theme_repaint_>=interval"),"UI repaint must remain <=24Hz");
 assert(neural.includes("neuralCore?0xff67edee"),"Neural Core must have its own network lighting");
 assert(neural.includes("PERSONAL NEURAL NETWORK"),"Do not confuse small preference model with YAMNet internals");
 assert(view.includes("FxTheme::isReducedMotion()"),"Neural theme must respect reduced-motion");
 console.log("PASS: Neural Core live inference visualization, distinct AI identities and bounded redraw");
+const atmosphere=readFileSync(path("fxsound/Source/GUI/CynThemeAtmosphere.h"),"utf8");
+const themeModes=[...themeHeader.matchAll(/enum FxThemeMode : int \{([^}]+)\}/g)][0][1]
+  .split(",").map(item=>item.trim().replace(/=.*/,"")).filter(item=>item!=="NumModes");
+assert.equal(themeModes.length,20,"Expected to preserve all twenty user theme IDs");
+for(const mode of themeModes)
+  assert(atmosphere.includes("case FxThemeMode::"+mode+":"),"No dynamic artwork for "+mode);
+assert(view.includes("CynThemeAtmosphere::paint(g,FxTheme::getThemeMode()"),
+       "Theme atmosphere must render in the workspace");
+assert(view.includes("snapshot.rms"),"Themes must respond to measured audio, not fake FFT values");
+assert(atmosphere.includes("FxTheme::isReducedMotion()"),
+       "Atmosphere must respect reduce-motion mode");
+assert(!atmosphere.includes("getLiveYamNetScene("),
+       "Theme paint must not perform asynchronous inference");
+console.log("PASS: 20 distinct atmospheric themes, measured audio glow and motion fallback");
+
+
 
 // Music/Movie AI regression: distinct weights, saved labels and sound limits.
 const movieCtrl=readFileSync(path("fxsound/Source/GUI/FxController.cpp"),"utf8");
