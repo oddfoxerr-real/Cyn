@@ -467,6 +467,7 @@ FxSettingsDialog::RepairSettingsPane::RepairSettingsPane()
       enabled_toggle_("Enable Auto Repair (off by default)"),
       safe_recovery_toggle_("Restore missing output (may switch devices)"),
       diagnose_button_("Diagnose now"),
+      recover_button_("Try reconnecting"),
       scan_updates_button_("Check Windows Update"),
       windows_updates_button_("Open Windows Optional Updates"),
       reset_permissions_button_("Reset permissions to Ask")
@@ -539,6 +540,18 @@ FxSettingsDialog::RepairSettingsPane::RepairSettingsPane()
             agent->diagnoseNow();
         timerCallback();
     };
+    recover_button_.onClick = [this]() {
+        auto* agent = FxController::getInstance().getAudioRepair();
+        if (agent == nullptr || !agent->isEnabled()) return;
+        if (!AlertWindow::showOkCancelBox(
+                AlertWindow::QuestionIcon, "Cyn - try reconnecting?",
+                "Cyn will recheck audio endpoints and may change the active Windows playback device. "
+                "It will not touch driver installations. Proceed?",
+                "Try repair", "Cancel"))
+            return;
+        agent->tryManualRecovery();
+        timerCallback();
+    };
     scan_updates_button_.onClick = [this]() {
         if (auto* agent = FxController::getInstance().getAudioRepair())
             agent->scanForDriverUpdates();
@@ -563,6 +576,7 @@ FxSettingsDialog::RepairSettingsPane::RepairSettingsPane()
     addAndMakeVisible(status_label_);
     addAndMakeVisible(download_permission_);
     addAndMakeVisible(diagnose_button_);
+    addAndMakeVisible(recover_button_);
     addAndMakeVisible(scan_updates_button_);
     addAndMakeVisible(windows_updates_button_);
     addAndMakeVisible(reset_permissions_button_);
@@ -580,8 +594,9 @@ void FxSettingsDialog::RepairSettingsPane::resized()
     download_permission_.setBounds(x, 221, w - 4, 32);
     permission_hint_.setBounds(x, 260, w, 52);
     diagnose_button_.setBounds(x, 323, 182, 30);
-    scan_updates_button_.setBounds(x + 195, 323, 188, 30);
-    windows_updates_button_.setBounds(x, 364, w, 30);
+    recover_button_.setBounds(x + 195, 323, 188, 30);
+    scan_updates_button_.setBounds(x, 364, 182, 30);
+    windows_updates_button_.setBounds(x + 195, 364, 188, 30);
     reset_permissions_button_.setBounds(x, 405, w, 30);
     status_label_.setBounds(x, 444, w, 60);
 }
@@ -605,6 +620,7 @@ void FxSettingsDialog::RepairSettingsPane::updateControls()
     safe_recovery_toggle_.setEnabled(enabled);
     download_permission_.setEnabled(enabled);
     diagnose_button_.setEnabled(enabled);
+    recover_button_.setEnabled(enabled && !agent->isBusy());
     scan_updates_button_.setEnabled(enabled && !agent->isBusy());
     reset_permissions_button_.setEnabled(agent != nullptr);
     timerCallback();
@@ -616,6 +632,7 @@ void FxSettingsDialog::RepairSettingsPane::timerCallback()
     {
         status_label_.setText(agent->getStatus(), NotificationType::dontSendNotification);
         scan_updates_button_.setEnabled(agent->isEnabled() && !agent->isBusy());
+        recover_button_.setEnabled(agent->isEnabled() && !agent->isBusy());
     }
     else
         status_label_.setText("Audio repair is not initialized.", NotificationType::dontSendNotification);
