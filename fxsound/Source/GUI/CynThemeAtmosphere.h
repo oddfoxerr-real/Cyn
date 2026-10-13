@@ -1,376 +1,312 @@
-// Cyn animated theme atmospheres - UI thread only.
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// Cyn procedural theme backdrops. SPDX-License-Identifier: AGPL-3.0-or-later
 #pragma once
-
 #include "FxTheme.h"
 #include <cmath>
 
 namespace CynThemeAtmosphere
 {
-    // All geometry is drawn behind the native JUCE controls. No image files,
-    // DSP callbacks, capture devices or additional rendering threads required.
-    inline void paint(juce::Graphics& g, FxThemeMode mode, float timeSeconds,
-                      float audioLevel)
+using namespace juce;
+
+inline Colour palette(FxThemeMode mode, FxColor role)
+{
+    return Colour(FxTheme::getColorForMode(mode, role)).withAlpha(1.0f);
+}
+
+class Scene final
+{
+public:
+    Scene(Graphics& graphics,FxThemeMode theme,float time,float level,bool preview)
+        :g(graphics),mode(theme),t(time),energy(jlimit(0.0f,1.0f,level)),
+         strength(preview?1.0f:0.47f),
+         accent(palette(theme,SliderTrack)),soft(palette(theme,SliderHighlight)),
+         isLight(theme==FxThemeMode::Light || theme==FxThemeMode::Sakura
+              || theme==FxThemeMode::Arctic || theme==FxThemeMode::Sandstone) {}
+
+    void stroke(float x,float y,float x2,float y2,float alpha,float width=1.0f)
     {
-        using namespace juce;
-        const float motion = FxTheme::isReducedMotion() ? 0.0f : timeSeconds;
-        const float energy = FxTheme::isReducedMotion() ? 0.0f
-            : jlimit(0.0f, 1.0f, audioLevel);
-        const Colour accent(FXCOLOR(SliderTrack));
-        const Colour highlight(FXCOLOR(SliderHighlight));
-        const Colour ink(FXCOLOR(DefaultText));
-        const bool light = FxTheme::isLightTheme();
-        const float a = light ? 0.43f : 0.56f;
+        g.setColour(accent.withAlpha(jlimit(0.0f,1.0f,alpha*strength)));
+        g.drawLine(x,y,x2,y2,width);
+    }
+    void ring(float x,float y,float r,float alpha,float width=1.0f)
+    {
+        g.setColour(soft.withAlpha(jlimit(0.0f,1.0f,alpha*strength)));
+        g.drawEllipse(x-r,y-r,r*2,r*2,width);
+    }
+    void halo(float x,float y,float r,float alpha)
+    {
+        ColourGradient gradient(accent.withAlpha(alpha*strength),x,y,
+                                accent.withAlpha(0.0f),x+r,y+r,true);
+        g.setGradientFill(gradient);
+        g.fillEllipse(x-r,y-r,r*2,r*2);
+    }
+    void ribbon(float y,float a,float wavelength,float offset,float alpha,float thick=2)
+    {
+        Path path;
+        for(int i=0;i<=80;++i)
+        {
+            const float x=i*12.5f;
+            const float h=y+a*std::sin(x/wavelength+offset);
+            if(i==0) path.startNewSubPath(x,h);
+            else path.lineTo(x,h);
+        }
+        g.setColour((int(y)%2?accent:soft).withAlpha(alpha*strength));
+        g.strokePath(path,PathStrokeType(thick,PathStrokeType::curved,PathStrokeType::rounded));
+    }
 
-        const auto line = [&](float x1, float y1, float x2, float y2,
-                              Colour colour, float opacity = 0.3f, float thickness = 1.0f)
+    void render()
+    {
+        const float beat=1.0f+energy*.25f;
+        const float breathe=std::sin(t*.41f);
+        // Artwork belongs to the entire landscape, never a floating mini-widget.
+        halo(795+60*breathe,246,390,.16f+energy*.14f);
+        switch(mode)
         {
-            g.setColour(colour.withAlpha(jlimit(0.0f, 1.0f, opacity)));
-            g.drawLine(x1, y1, x2, y2, thickness);
-        };
-        const auto orb = [&](float x, float y, float r, Colour colour, float opacity)
-        {
-            ColourGradient halo(colour.withAlpha(opacity), x, y,
-                                colour.withAlpha(0.0f), x + r, y + r, true);
-            g.setGradientFill(halo);
-            g.fillEllipse(x - r, y - r, r * 2.0f, r * 2.0f);
-        };
-        const auto ring = [&](float x, float y, float rx, float ry,
-                              Colour colour, float opacity, float thickness = 1.0f)
-        {
-            g.setColour(colour.withAlpha(opacity));
-            g.drawEllipse(x - rx, y - ry, rx * 2.0f, ry * 2.0f, thickness);
-        };
-        const auto wave = [&](float y, float amplitude, float period, float offset,
-                              Colour colour, float opacity, float thickness = 1.0f)
-        {
-            Path path;
-            for (int i = 0; i <= 28; ++i)
-            {
-                const float x = 79.0f + 4.8f * (float)i;
-                const float yy = y + std::sin(x / period + offset) * amplitude;
-                if (i == 0) path.startNewSubPath(x, yy);
-                else path.lineTo(x, yy);
-            }
-            g.setColour(colour.withAlpha(opacity));
-            g.strokePath(path, PathStrokeType(thickness, PathStrokeType::curved,
-                                              PathStrokeType::rounded));
-        };
-
-        // Low-opacity atmospheric light fills the workspace. Each preset also
-        // gets its own recognizable illustration in the otherwise unused rail.
-        orb(1020.0f + 42.0f * std::sin(motion * 0.19f),
-            130.0f + 22.0f * std::cos(motion * 0.17f),
-            280.0f + energy * 44.0f, accent, light ? 0.035f : 0.055f);
-        orb(475.0f, 555.0f, 210.0f, highlight, light ? 0.025f : 0.042f);
-
-        const float cx = 145.0f;
-        const float cy = 356.0f;
-        const float pulse = 1.0f + energy * 0.32f;
-        const float sway = std::sin(motion * 0.65f);
-        // A faint framed viewport gives each theme a material, rather than
-        // a flat swatch, without competing with the sidebar navigation.
-        ColourGradient panel(accent.withAlpha(light ? 0.045f : 0.105f),
-                             83.0f, 248.0f,
-                             highlight.withAlpha(light ? 0.012f : 0.025f),
-                             212.0f, 468.0f, false);
-        g.setGradientFill(panel);
-        g.fillRoundedRectangle(78.0f, 248.0f, 138.0f, 220.0f, 20.0f);
-        g.setColour(accent.withAlpha(light ? 0.09f : 0.15f));
-        g.drawRoundedRectangle(78.5f, 248.5f, 137.0f, 219.0f, 20.0f, 1.0f);
-
-        switch (mode)
-        {
-            case FxThemeMode::Dark: // graphite: milled, intersecting metal arcs
-            {
-                for (int i = 0; i < 5; ++i)
-                    ring(cx, cy, (24.0f + i * 19.0f) * pulse,
-                         20.0f + i * 16.0f, accent, (0.48f - i * 0.07f) * a);
-                for (int i = 0; i < 7; ++i)
-                    line(80.0f, 275.0f + i * 26.0f,
-                         216.0f, 335.0f + i * 26.0f, ink, 0.035f);
+            case FxThemeMode::Dark:
+                for(int n=0;n<14;++n)stroke(n*98-200,560,n*98+140,0,.13f,1.4f);
+                for(int n=0;n<5;++n)ring(830,265,68+n*49,.44f-n*.07f,2.2f);
                 break;
-            }
-            case FxThemeMode::Light: // pearl: softly refracted overlapping drops
-            {
-                for (int i = 0; i < 4; ++i)
+            case FxThemeMode::Light:
+                for(int n=0;n<8;++n)
                 {
-                    const float x = 118.0f + 30.0f * std::sin(motion * 0.18f + i * 1.7f);
-                    const float y = 309.0f + i * 34.0f;
-                    orb(x, y, 30.0f + i * 5.0f, accent, 0.12f);
-                    ring(x, y, 19.0f, 28.0f, accent, 0.14f, 1.5f);
+                    const float x=140+n*115.0f+11*breathe;
+                    const float y=215+95*std::sin(n*1.44f);
+                    halo(x,y,105,.14f);
+                    ring(x,y,35+n%3*22,.18f,2);
                 }
                 break;
-            }
-            case FxThemeMode::Aurora: // drifting magnetic curtains
-            {
-                for (int i = 0; i < 6; ++i)
-                    wave(300.0f + i * 22.0f + 8.0f * sway, 18.0f * pulse,
-                         18.0f + i * 2.5f, motion * (0.3f + 0.035f * i),
-                         i % 2 ? highlight : accent, 0.14f + i * 0.037f, 2.4f);
-                orb(139.0f, 352.0f, 68.0f, accent, 0.19f + energy * 0.10f);
+            case FxThemeMode::Aurora:
+                halo(745,235,480,.29f+energy*.12f);
+                for(int n=0;n<15;++n)
+                    ribbon(65+n*34,30+n*.9f+energy*16,119+n*10,t*.35f+n*.35f,.27f-n*.008f,4.2f);
                 break;
-            }
-            case FxThemeMode::Dusk: // violet eclipse
-            {
-                orb(cx, cy - 6.0f, 76.0f, accent, 0.13f);
-                ring(cx, cy, 47.0f * pulse, 47.0f * pulse, accent, 0.40f, 1.4f);
-                ring(cx + 13.0f, cy - 10.0f, 42.0f, 42.0f, highlight, 0.22f);
-                for (int i = 0; i < 9; ++i)
+            case FxThemeMode::Dusk:
+                halo(785,245,345,.25f);
+                for(int n=0;n<6;++n)ring(785,245,(108+n*47)*beat,.51f-n*.064f,2.1f);
+                for(int n=0;n<34;++n)
                 {
-                    const float t = (float)i * 0.79f + motion * 0.08f;
-                    g.setColour(highlight.withAlpha(0.22f + 0.08f * energy));
-                    g.fillEllipse(cx + 59.0f * std::cos(t), cy + 83.0f * std::sin(t), 2.5f, 2.5f);
+                    const float a=n*.75f+t*.08f;
+                    const float x=785+280*std::cos(a),y=245+195*std::sin(a);
+                    g.setColour(soft.withAlpha(.26f*strength));
+                    g.fillEllipse(x,y,3,3);
                 }
                 break;
-            }
-            case FxThemeMode::Copper: // engraved brass chronograph
-            {
-                ring(cx, cy, 54.0f * pulse, 54.0f * pulse, highlight, 0.55f, 2.0f);
-                ring(cx, cy, 38.0f, 38.0f, accent, 0.32f, 1.0f);
-                for (int i = 0; i < 24; ++i)
+            case FxThemeMode::Copper:
+                for(int n=0;n<5;++n)ring(780,290,87+n*54,.52f-n*.074f,2.5f);
+                for(int n=0;n<48;++n)
                 {
-                    const float t = (float)i * MathConstants<float>::twoPi / 24.0f;
-                    const float r = (i % 3 == 0 ? 44.0f : 49.0f);
-                    line(cx + r * std::cos(t), cy + r * std::sin(t),
-                         cx + 55.0f * std::cos(t), cy + 55.0f * std::sin(t), accent, 0.49f);
+                    const float a=n*MathConstants<float>::twoPi/48.0f;
+                    const float r=n%4==0?183.0f:196.0f;
+                    stroke(780+r*std::cos(a),290+r*std::sin(a),
+                           780+218*std::cos(a),290+218*std::sin(a),.54f,1.5f);
                 }
-                line(cx, cy, cx + 34.0f * std::sin(motion * 0.36f),
-                     cy - 34.0f * std::cos(motion * 0.36f), highlight, 0.72f, 2.3f);
+                stroke(780,290,780+153*std::sin(t*.35f),290-153*std::cos(t*.35f),.72f,3);
                 break;
-            }
-            case FxThemeMode::Midnight: // animated star chart
-            {
-                for (int i = 0; i < 30; ++i)
+            case FxThemeMode::Midnight:
+                for(int n=0;n<100;++n)
                 {
-                    const float x = 85.0f + (float)((i * 43 + 19) % 122);
-                    const float y = 258.0f + (float)((i * 79 + 11) % 194);
-                    const float twinkle = 0.45f + 0.55f * std::sin(motion * 0.8f + (float)i);
-                    g.setColour(highlight.withAlpha(0.10f + 0.46f * twinkle));
-                    g.fillEllipse(x, y, 1.5f + (float)(i % 3), 1.5f + (float)(i % 3));
-                    if (i < 8)
-                        line(x, y, 90.0f + (float)((i * 67) % 112),
-                             280.0f + (float)((i * 31) % 160), accent, 0.12f);
+                    const float x=25+(n*137)%960,y=10+(n*269)%575;
+                    const float twinkle=.5f+.5f*std::sin(t*.72f+n);
+                    g.setColour(soft.withAlpha((.11f+.38f*twinkle)*strength));
+                    g.fillEllipse(x,y,1+n%3,1+n%3);
+                    if(n<17)stroke(x,y,25+(n*137+117)%960,10+(n*269+79)%575,.15f,.8f);
                 }
                 break;
-            }
-            case FxThemeMode::Sakura: // drifting blossoms
-            {
-                for (int i = 0; i < 17; ++i)
+            case FxThemeMode::Sakura:
+                for(int n=0;n<9;++n)
                 {
-                    const float t = motion * (9.0f + i % 4) + i * 29.0f;
-                    const float x = 84.0f + std::fmod(39.0f * i + 11.0f * sway + 1320.0f, 125.0f);
-                    const float y = 263.0f + std::fmod(t + (float)((i * 59) % 196), 196.0f);
-                    const float r = 2.2f + (float)(i % 4);
-                    g.setColour((i % 3 ? accent : highlight).withAlpha(0.24f + a * 0.28f));
-                    g.fillEllipse(x - r, y - r * 0.55f, r * 2.0f, r * 1.10f);
-                    line(x, y, x + r, y + r * 1.3f, ink, 0.15f, 0.65f);
+                    stroke(1000,45+n*12,520+n*64,180+n*31,.24f,2.1f);
+                    stroke(520+n*64,180+n*31,490+n*65,240+n*24,.17f,1.2f);
+                }
+                for(int n=0;n<72;++n)
+                {
+                    const float x=std::fmod((float)n*89+t*14+1200,1000.0f);
+                    const float y=std::fmod((float)n*47+t*19+800,600.0f);
+                    const float r=2.5f+n%5;
+                    g.setColour((n%3?accent:soft).withAlpha(.31f*strength));
+                    g.fillEllipse(x,y,r*1.6f,r*.90f);
                 }
                 break;
-            }
-            case FxThemeMode::Arctic: // translucent ice shards
-            {
-                for (int i = 0; i < 6; ++i)
+            case FxThemeMode::Arctic:
+                for(int n=0;n<15;++n)
                 {
-                    const float x = 87.0f + i * 23.0f;
-                    const float h = (float)((i * 37) % 75) + 64.0f + energy * 14.0f;
+                    const float x=n*79.0f-120;
+                    const float peak=90+(n*73)%190;
                     Path shard;
-                    shard.startNewSubPath(x, 420.0f);
-                    shard.lineTo(x + 11.0f + 5.0f * sway, 420.0f - h);
-                    shard.lineTo(x + 20.0f, 420.0f);
+                    shard.startNewSubPath(x-89,605);
+                    shard.lineTo(x+40+12*breathe,peak);
+                    shard.lineTo(x+149,605);
                     shard.closeSubPath();
-                    g.setColour((i % 2 ? highlight : accent).withAlpha(0.08f + i * 0.02f));
+                    g.setColour(accent.withAlpha((.06f+n*.004f)*strength));
                     g.fillPath(shard);
-                    g.setColour(accent.withAlpha(0.26f));
-                    g.strokePath(shard, PathStrokeType(0.9f));
+                    g.setColour(soft.withAlpha(.30f*strength));
+                    g.strokePath(shard,PathStrokeType(1.3f));
                 }
                 break;
-            }
-            case FxThemeMode::Sandstone: // layered drifting dunes
-            {
-                for (int i = 0; i < 7; ++i)
-                    wave(311.0f + i * 23.0f, (10.0f + i * 2.0f) * pulse,
-                         22.0f + i * 3.0f, motion * 0.13f + i * 0.5f,
-                         i % 2 ? highlight : accent, 0.13f + i * 0.034f, 2.0f);
+            case FxThemeMode::Sandstone:
+                for(int n=0;n<15;++n)
+                    ribbon(194+n*30,38+n*.9f,142+n*12,t*.09f+n*.15f,.36f-n*.011f,2.2f);
                 break;
-            }
-            case FxThemeMode::Obsidian: // volcanic facets
-            {
-                for (int i = 0; i < 6; ++i)
+            case FxThemeMode::Obsidian:
+                for(int n=0;n<16;++n)
                 {
-                    const float x = 76.0f + i * 26.0f;
-                    const float top = 303.0f + 30.0f * std::sin(i * 2.1f + motion * 0.12f)
-                        - energy * 12.0f;
+                    const float x=n*80.0f-130,h=130+(n*91)%250+energy*30;
                     Path facet;
-                    facet.startNewSubPath(x, 445.0f);
-                    facet.lineTo(x + 14.0f, top);
-                    facet.lineTo(x + 29.0f, 445.0f);
+                    facet.startNewSubPath(x-76,625);
+                    facet.lineTo(x+35+15*breathe,625-h);
+                    facet.lineTo(x+135,625);
                     facet.closeSubPath();
-                    g.setColour((i % 2 ? highlight : accent).withAlpha(0.09f + 0.025f * i));
+                    g.setColour(accent.withAlpha((.07f+n*.004f)*strength));
                     g.fillPath(facet);
-                    g.setColour(highlight.withAlpha(0.30f));
-                    g.strokePath(facet, PathStrokeType(0.95f));
+                    g.setColour(soft.withAlpha(.29f*strength));
+                    g.strokePath(facet,PathStrokeType(1.4f));
                 }
-                orb(cx, 405.0f, 37.0f, accent, 0.24f + energy * 0.2f);
                 break;
-            }
-            case FxThemeMode::Emerald: // branching botanical leaf veins
-            {
-                for (int i = 0; i < 5; ++i)
+            case FxThemeMode::Emerald:
+                for(int n=0;n<13;++n)
                 {
-                    const float x = 100.0f + i * 25.0f;
-                    const float shift = 5.0f * std::sin(motion * 0.45f + i);
-                    line(x, 431.0f, x + shift, 302.0f, accent, 0.42f, 1.9f);
-                    for (int j = 0; j < 5; ++j)
+                    const float x=n*91.0f-90,bend=12*std::sin(t*.4f+n*.8f);
+                    stroke(x,610,x+45+bend,130,.35f,2);
+                    for(int j=0;j<8;++j)
                     {
-                        const float y = 322.0f + j * 22.0f;
-                        line(x + shift * (431.0f - y) / 129.0f, y,
-                             x + (j % 2 ? 18.0f : -18.0f) + shift * 0.6f,
-                             y - 15.0f, highlight, 0.24f + energy * 0.12f, 1.6f);
+                        const float y=155+j*53.0f,side=j%2?1.0f:-1.0f;
+                        stroke(x+45+bend*(610-y)/480,y,
+                               x+45+bend*(610-y)/480+65*side,y-28,.29f,1.4f);
                     }
                 }
                 break;
-            }
-            case FxThemeMode::DeepSea: // tidal caustics and rising bubbles
-            {
-                for (int i = 0; i < 6; ++i)
-                    wave(326.0f + i * 22.0f, (8.0f + i * 1.8f) * pulse,
-                         15.0f + i * 5.0f, motion * 0.42f + i * 0.7f,
-                         i % 2 ? highlight : accent, 0.19f + i * 0.03f, 1.8f);
-                for (int i = 0; i < 10; ++i)
+            case FxThemeMode::DeepSea:
+                for(int n=0;n<17;++n)
+                    ribbon(94+n*30,21+n*.6f+energy*18,80+n*8,t*.45f+n*.19f,.39f-n*.010f,2.5f);
+                for(int n=0;n<42;++n)
                 {
-                    const float x = 91.0f + (float)((i * 41) % 110);
-                    const float y = 448.0f - std::fmod(motion * (8.0f + i % 4) + (float)(i * 27), 160.0f);
-                    ring(x, y, 2.0f + i % 4, 2.0f + i % 4, highlight, 0.27f);
+                    const float x=(n*97)%1000.0f;
+                    const float y=600-std::fmod((float)n*53+t*(9+n%8),600.0f);
+                    ring(x,y,3+n%6,.32f,1.3f);
                 }
                 break;
-            }
-            case FxThemeMode::NeonTokyo: // illuminated skyline
-            {
-                for (int i = 0; i < 9; ++i)
+            case FxThemeMode::NeonTokyo:
+                for(int n=0;n<31;++n)
                 {
-                    const float x = 84.0f + i * 15.0f;
-                    const float h = 42.0f + (float)((i * 37) % 97);
-                    g.setColour(accent.withAlpha(0.12f));
-                    g.fillRect(x, 429.0f - h, 12.0f, h);
-                    line(x, 429.0f - h, x + 11.0f, 429.0f - h, highlight, 0.52f, 1.5f);
-                    for (int j = 0; j < 5; ++j)
+                    const float x=n*36.0f-34,h=88+(n*67)%256.0f;
+                    g.setColour(accent.withAlpha(.09f*strength));
+                    g.fillRect(x,604-h,31.0f,h);
+                    stroke(x,604-h,x+31,604-h,.54f,2);
+                    for(int k=0;k<8;++k)
                     {
-                        const float y = 438.0f - h + j * 13.0f;
-                        if (y < 426.0f)
-                            line(x + 3.0f, y, x + 8.0f, y, highlight,
-                                 0.17f + 0.22f * (0.5f + 0.5f * std::sin(motion + i + j)));
+                        const float y=615-h+k*29.0f;
+                        if(y<600)
+                            stroke(x+7,y,x+22,y,.14f+.25f*(.5f+.5f*std::sin(t+n+k)),1.5f);
                     }
                 }
                 break;
-            }
-            case FxThemeMode::Synthwave: // retro horizon and perspective grid
-            {
-                orb(cx, 337.0f, 50.0f * pulse, highlight, 0.30f);
-                ring(cx, 337.0f, 39.0f * pulse, 39.0f * pulse, accent, 0.62f, 2.0f);
-                line(82.0f, 387.0f, 211.0f, 387.0f, highlight, 0.58f, 1.5f);
-                for (int i = -4; i <= 4; ++i)
-                    line(cx, 387.0f, cx + i * 23.0f, 461.0f, accent, 0.36f);
-                for (int i = 1; i < 6; ++i)
+            case FxThemeMode::Synthwave:
+                halo(770,265,315,.26f);
+                ring(770,266,135*beat,.69f,4.0f);
+                stroke(0,375,1000,375,.61f,2.2f);
+                for(int n=-8;n<=8;++n)stroke(520,375,520+n*140,605,.39f,1.4f);
+                for(int n=1;n<=10;++n)stroke(0,375+n*n*2.25f,1000,375+n*n*2.25f,.39f,1.5f);
+                break;
+            case FxThemeMode::SolarFlare:
+                halo(775,290,355*beat,.35f+energy*.15f);
+                ring(775,290,120*beat,.84f,4);
+                for(int n=0;n<64;++n)
                 {
-                    const float d = i * i * 2.2f;
-                    line(80.0f, 387.0f + d, 213.0f, 387.0f + d, accent, 0.3f);
+                    const float a=n*MathConstants<float>::twoPi/64+t*.1f;
+                    const float r=165+39*std::sin(n*2.5f+t)+energy*55;
+                    stroke(775+127*std::cos(a),290+127*std::sin(a),
+                           775+r*std::cos(a),290+r*std::sin(a),.42f,2.0f);
                 }
                 break;
-            }
-            case FxThemeMode::SolarFlare: // corona with audio-responsive rays
+            case FxThemeMode::Crimson:
             {
-                orb(cx, cy, 65.0f * pulse, accent, 0.26f + energy * 0.12f);
-                ring(cx, cy, 30.0f * pulse, 30.0f * pulse, highlight, 0.73f, 2.0f);
-                for (int i = 0; i < 28; ++i)
+                for(int n=0;n<13;++n)stroke(0,29+n*48,1000,29+n*48,.085f,.8f);
+                Path beatPath;
+                beatPath.startNewSubPath(0,325);beatPath.lineTo(270,325);
+                beatPath.lineTo(407,286);beatPath.lineTo(451,391+energy*45);
+                beatPath.lineTo(518,165-energy*70);beatPath.lineTo(588,352);
+                beatPath.lineTo(679,325);beatPath.lineTo(1000,325);
+                g.setColour(accent.withAlpha(.72f*strength));
+                g.strokePath(beatPath,PathStrokeType(4.0f));
+                break;
+            }
+            case FxThemeMode::Mocha:
+                for(int n=0;n<8;++n)
                 {
-                    const float t = (float)i * MathConstants<float>::twoPi / 28.0f + motion * 0.08f;
-                    const float radius = 44.0f + 9.0f * std::sin((float)i * 2.7f + motion);
-                    line(cx + 37.0f * std::cos(t), cy + 37.0f * std::sin(t),
-                         cx + radius * pulse * std::cos(t), cy + radius * pulse * std::sin(t),
-                         i % 2 ? accent : highlight, 0.50f, 1.6f);
+                    g.setColour(soft.withAlpha((.49f-n*.046f)*strength));
+                    g.drawEllipse(765-(85+n*44)*beat,394-(29+n*30)*beat,
+                                  2*(85+n*44)*beat,2*(29+n*30)*beat,2.1f);
                 }
+                for(int n=0;n<7;++n)ribbon(93+n*34,18,72+n*18,t*.19f,.24f,2.2f);
                 break;
-            }
-            case FxThemeMode::Crimson: // pulsing ECG signal
-            {
-                for (int i = 0; i < 4; ++i)
-                    line(85.0f, 315.0f + 33.0f * i, 207.0f, 315.0f + 33.0f * i,
-                         highlight, 0.10f);
-                Path heartbeat;
-                const float height = 16.0f + energy * 28.0f;
-                const float travel = 7.0f * std::sin(motion * 1.25f);
-                heartbeat.startNewSubPath(84.0f, cy);
-                heartbeat.lineTo(115.0f, cy);
-                heartbeat.lineTo(126.0f + travel, cy - height);
-                heartbeat.lineTo(139.0f + travel, cy + height * 1.1f);
-                heartbeat.lineTo(152.0f + travel, cy - height * 0.5f);
-                heartbeat.lineTo(164.0f, cy);
-                heartbeat.lineTo(210.0f, cy);
-                g.setColour(accent.withAlpha(0.72f));
-                g.strokePath(heartbeat, PathStrokeType(2.2f));
-                orb(cx, cy, 56.0f, accent, 0.10f + energy * 0.19f);
-                break;
-            }
-            case FxThemeMode::Mocha: // warm concentric ceramic rings
-            {
-                for (int i = 0; i < 5; ++i)
-                    ring(cx, cy + 25.0f, 18.0f + i * 11.0f * pulse,
-                         18.0f + i * 7.0f * pulse, accent, 0.53f - i * 0.065f, 1.4f);
-                for (int i = 0; i < 3; ++i)
-                    wave(299.0f - i * 12.0f, 6.0f, 11.0f, motion * 0.5f + i,
-                         highlight, 0.17f + i * 0.07f);
-                break;
-            }
-            case FxThemeMode::Monochrome: // kinetic dot matrix
-            {
-                for (int y = 0; y < 12; ++y)
-                    for (int x = 0; x < 8; ++x)
+            case FxThemeMode::Monochrome:
+                for(int y=0;y<17;++y)
+                    for(int x=0;x<29;++x)
                     {
-                        const float activity = 0.5f + 0.5f *
-                            std::sin((float)x * 0.8f + (float)y * 0.65f + motion * 0.8f);
-                        const float r = 1.0f + activity * (1.4f + energy * 1.5f);
-                        g.setColour(accent.withAlpha(0.13f + activity * 0.40f));
-                        g.fillEllipse(89.0f + x * 16.0f - r,
-                                      268.0f + y * 16.0f - r, r * 2.0f, r * 2.0f);
+                        const float v=.5f+.5f*std::sin(x*.59f+y*.43f+t*.57f);
+                        const float r=1.1f+3*v+energy*1.7f;
+                        g.setColour(accent.withAlpha((.12f+.35f*v)*strength));
+                        g.fillEllipse(x*36.0f-r,y*35.0f-r,2*r,2*r);
                     }
                 break;
-            }
-            case FxThemeMode::CharcoalDesktop: // architectural contours
-            {
-                for (int i = 0; i < 6; ++i)
+            case FxThemeMode::CharcoalDesktop:
+                for(int n=0;n<9;++n)
                 {
-                    const float x = 88.0f + i * 19.0f + 2.0f * sway;
-                    g.setColour(accent.withAlpha(0.095f + i * 0.018f));
-                    g.fillRoundedRectangle(x, 273.0f + i * 12.0f,
-                                           40.0f, 130.0f - i * 13.0f, 7.0f);
-                    g.setColour(highlight.withAlpha(0.20f));
-                    g.drawRoundedRectangle(x, 273.0f + i * 12.0f,
-                                           40.0f, 130.0f - i * 13.0f, 7.0f, 0.85f);
+                    const float x=110+n*88.0f+16*breathe;
+                    const float y=90+n*37.0f;
+                    g.setColour(accent.withAlpha((.055f+n*.01f)*strength));
+                    g.fillRoundedRectangle(x,y,430.0f,218.0f,22.0f);
+                    g.setColour(soft.withAlpha(.31f*strength));
+                    g.drawRoundedRectangle(x,y,430.0f,218.0f,22.0f,1.2f);
                 }
                 break;
-            }
-            case FxThemeMode::NeuralCore: // network motif, distinct from the live 11/12/5 graph
-            {
-                for (int i = 0; i < 9; ++i)
+            case FxThemeMode::NeuralCore:
+                for(int n=0;n<26;++n)
                 {
-                    const float t = (float)i * MathConstants<float>::twoPi / 9.0f + motion * 0.11f;
-                    const float x = cx + std::cos(t) * (49.0f + energy * 9.0f);
-                    const float y = cy + std::sin(t) * 66.0f;
-                    line(cx, cy, x, y, accent, 0.24f + energy * 0.12f);
-                    ring(x, y, 3.0f + energy * 2.0f, 3.0f + energy * 2.0f,
-                         i % 2 ? highlight : accent, 0.54f);
+                    const float x=n*40.0f;
+                    const float y=315+115*std::sin(n*.51f+t*.34f);
+                    halo(x,y,24+energy*15,.28f+energy*.13f);
+                    ring(x,y,4+energy*2,.80f,1.8f);
+                    if(n>0)
+                    {
+                        const float prev=315+115*std::sin((n-1)*.51f+t*.34f);
+                        stroke(x-40,prev,x,y,.42f+energy*.18f,2.2f);
+                    }
                 }
-                orb(cx, cy, 40.0f * pulse, highlight, 0.19f);
                 break;
-            }
             default: break;
         }
-
-        // A delicate theme-tinted separator ties the left illustration to
-        // the header. It pulses from the measured RMS, never fake FFT data.
-        const float meterWidth = 24.0f + energy * 82.0f;
-        g.setColour(accent.withAlpha(0.14f + energy * 0.26f));
-        g.fillRoundedRectangle(94.0f, 459.0f, meterWidth, 2.0f, 1.0f);
     }
+private:
+    Graphics& g;
+    FxThemeMode mode;
+    float t,energy,strength;
+    Colour accent,soft;
+    bool isLight;
+};
+
+inline void paint(Graphics& g,FxThemeMode theme,float timeSeconds,float audioLevel,
+                  Rectangle<float> bounds,bool preview=false)
+{
+    if(bounds.isEmpty()) return;
+    Graphics::ScopedSaveState saved(g);
+    g.reduceClipRegion(bounds.getSmallestIntegerContainer());
+    const auto background=palette(theme,WindowBackground);
+    const auto accent=palette(theme,SliderTrack);
+    const auto detail=palette(theme,SliderHighlight);
+    const bool light=theme==FxThemeMode::Light || theme==FxThemeMode::Sakura
+                || theme==FxThemeMode::Arctic || theme==FxThemeMode::Sandstone;
+    const float mix=preview?(light?.08f:.21f):(light?.027f:.073f);
+    ColourGradient surface(background.interpolatedWith(accent,mix),bounds.getX(),bounds.getY(),
+                           background.interpolatedWith(detail,mix*.7f),bounds.getRight(),bounds.getBottom(),false);
+    surface.addColour(.52,background.interpolatedWith(accent,mix*.46f));
+    g.setGradientFill(surface);
+    g.fillRect(bounds);
+    {
+        Graphics::ScopedSaveState sceneState(g);
+        g.addTransform(AffineTransform::scale(bounds.getWidth()/1000.0f,bounds.getHeight()/600.0f)
+                           .translated(bounds.getX(),bounds.getY()));
+        Scene scene(g,theme,timeSeconds,audioLevel,preview);
+        scene.render();
+    }
+}
 }
