@@ -9,13 +9,14 @@ on:
     paths:
       - .github/workflows/cyn-neural-visual-check.yml
       - fxsound/Source/GUI/CynThemeAtmosphere.h
+      - fxsound/Source/GUI/CynThemeStudio.h
       - fxsound/Source/GUI/CynNeuralActivity.h
       - fxsound/Source/GUI/FxProView.h
       - fxsound/Source/GUI/FxProView.cpp
-      - scripts/test_ai_hub.mjs
-      - fxsound/Source/GUI/CynNeuralActivity.h
-      - fxsound/Source/GUI/FxProView.h
-      - fxsound/Source/GUI/FxProView.cpp
+      - fxsound/Source/GUI/FxMainWindow.h
+      - fxsound/Source/GUI/FxMainWindow.cpp
+      - fxsound/Source/GUI/FxController.h
+      - fxsound/Source/GUI/FxController.cpp
       - scripts/test_ai_hub.mjs
   workflow_dispatch:
 permissions:
