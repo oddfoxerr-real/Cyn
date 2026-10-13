@@ -6,36 +6,29 @@ $ErrorActionPreference = 'Stop'
 if (!$Destination) { $Destination=Join-Path $PSScriptRoot '.build-tools\yamnet-package' }
 New-Item -ItemType Directory -Path $Destination -Force | Out-Null
 $onnx=Join-Path $Destination 'yamnet-16k-0p975s.onnx'
-$report=Join-Path $Destination 'conversion-evaluation.json'
-if (!(Test-Path $onnx) -or !(Test-Path $report)) {
-    $gh=Get-Command gh -ErrorAction SilentlyContinue
-    if (!$gh) { throw 'GitHub CLI is required to fetch the tested YAMNet artifact. Install gh, authenticate, or pre-stage model and report.' }
-    & gh run download 38138969013 --repo oddfoxerr-real/Cyn --name yamnet-verified-onnx-cpu --dir $Destination
-    if ($LASTEXITCODE -ne 0) { throw 'Could not download validated YAMNet ONNX artifact.' }
-}
-if (!(Test-Path $onnx) -or !(Test-Path $report)) { throw 'Verified YAMNet artifact incomplete.' }
-$tested=Get-Content -LiteralPath $report -Raw | ConvertFrom-Json
-if ($tested.scores -ne 521 -or $tested.embedding_dimensions -ne 1024 -or
-    $tested.waveform_samples -ne 15600 -or
-    $tested.model -ne 'https://tfhub.dev/google/yamnet/1') {
-    throw 'YAMNet model test report did not match the application input contract.'
-}
-if ((Get-Item $onnx).Length -lt 1000000) { throw 'YAMNet ONNX model is unexpectedly small.' }
 $dll=Join-Path $Destination 'onnxruntime.dll'
-if (!(Test-Path $dll)) {
-    $package=Join-Path $Destination 'Microsoft.ML.OnnxRuntime.1.19.2.nupkg'
-    $packageZip=Join-Path $Destination 'Microsoft.ML.OnnxRuntime.1.19.2.zip'
-    $unpack=Join-Path $Destination 'nuget-runtime'
-    if (!(Test-Path $packageZip)) {
-        Invoke-WebRequest -Uri 'https://api.nuget.org/v3-flatcontainer/microsoft.ml.onnxruntime/1.19.2/microsoft.ml.onnxruntime.1.19.2.nupkg' -OutFile $package
-        Copy-Item -LiteralPath $package -Destination $packageZip -Force
+$expectedModel='d3c173d26202dd94bf5532795a0f6e3090610a70adb2a773faa0ee635ec6acbe'
+$expectedRuntime='14119125df2dcf9ff3e083afdba5fcc4b09b4186d8762404eb7b1fbccde3fcf2'
+if (!(Test-Path $onnx) -or !(Test-Path $dll)) {
+    # The original verified Actions artifact expires. Preserve the exact same
+    # bytes using the permanent, checksum-pinned 2.0.21 release instead.
+    $archive=Join-Path $Destination 'Cyn-runtime-2.0.21.zip'
+    if (!(Test-Path $archive)) {
+        Invoke-WebRequest -Uri 'https://github.com/oddfoxerr-real/Cyn/releases/download/v2.0.21/Cyn-Windows-x64.zip' -OutFile $archive
     }
-    Expand-Archive -LiteralPath $packageZip -DestinationPath $unpack -Force
-    $candidate=Join-Path $unpack 'runtimes/win-x64/native/onnxruntime.dll'
-    if (!(Test-Path $candidate)) { throw 'Official NuGet package lacks the expected Windows x64 ONNX DLL.' }
-    Copy-Item -LiteralPath $candidate -Destination $dll -Force
+    if ((Get-FileHash $archive -Algorithm SHA256).Hash -ine '4307d0a5568748d04955bae0ead47a5e0e6c937332c6a7927dbec3d01968f0f2') { throw 'Pinned runtime archive checksum mismatch.' }
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zip=[IO.Compression.ZipFile]::OpenRead($archive)
+    try {
+        foreach($name in @('onnxruntime.dll','yamnet-16k-0p975s.onnx')) {
+            $entries=@($zip.Entries | Where-Object { $_.Name -ceq $name })
+            if($entries.Count -ne 1){throw "Missing or ambiguous runtime file: $name"}
+            [IO.Compression.ZipFileExtensions]::ExtractToFile($entries[0],(Join-Path $Destination $name),$true)
+        }
+    } finally {$zip.Dispose()}
 }
-if ((Get-Item $dll).Length -lt 100000) { throw 'ONNX Runtime x64 DLL is unexpectedly small.' }
+if ((Get-FileHash $onnx -Algorithm SHA256).Hash -ine $expectedModel) {throw 'YAMNet model checksum mismatch.'}
+if ((Get-FileHash $dll -Algorithm SHA256).Hash -ine $expectedRuntime) {throw 'ONNX Runtime checksum mismatch.'}
 $manifest=@{
     yamnet_sha256=(Get-FileHash $onnx -Algorithm SHA256).Hash.ToLowerInvariant()
     onnxruntime_sha256=(Get-FileHash $dll -Algorithm SHA256).Hash.ToLowerInvariant()

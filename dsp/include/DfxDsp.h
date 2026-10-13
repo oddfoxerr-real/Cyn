@@ -75,6 +75,14 @@ public:
 	void resetTotalAudioProcessedTime();
     void getSpectrumBandValues(float* rp_band_values, int i_array_size);
     InputAudioFeatures getInputAudioFeatures();
+    bool copyDjWindow(std::array<float,128000>& out,uint64_t& sampleNumber) const;
+    void enableDj(bool enabled);
+    void configureDj(float amount,float spacing,bool stereo);
+    void setDjScene(float music,float speech);
+    void invalidateDjScene();
+    void setDjVoiceGate(bool safe);
+    uint32_t djEffectsCount() const;
+    int djLastEffect() const;
     bool copyYamNetWindow(std::array<float,15600>& out,uint64_t& sampleNumber) const;
 
 private:

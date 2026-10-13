@@ -12,7 +12,7 @@ Cyn possible. If you enjoy Cyn, please [visit FxSound](https://www.fxsound.com/)
 ## Download
 
 Open [Releases](https://github.com/oddfoxerr-real/Cyn/releases) and download the
-latest **Cyn-Setup-2.0.1-x64.exe**. Exit any running Cyn or FxSound using its menu
+latest **Cyn-Setup-2.0.23-x64.exe**. Exit any running Cyn or FxSound using its menu
 before installing. Windows 10/11 on Intel/AMD x64 and administrator access are required.
 
 Setup includes presets, fonts, the starter model and the original signed FxSound
@@ -21,6 +21,11 @@ and optional Desktop shortcuts and can be removed through Windows Settings.
 Uninstall keeps personal settings/training data and the shared audio driver.
 
 ## Features
+
+- **Misc → AI DJ:** optional 91 MB pretrained audio model, downloaded inside Cyn.
+  Adds restrained stereo sweeps, echo accents and shimmers to music. Includes
+  intensity, spacing, stereo movement, cancellation and removal. See
+  [AI DJ](docs/AI-DJ.md) for setup and experimental timing limitations.
 
 - Custom Cyn interface and icons, selectable themes, animations and reduced-motion option.
 - Presets, output selection, effects and equalizer using the FxSound DSP.

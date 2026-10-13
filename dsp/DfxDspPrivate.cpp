@@ -186,12 +186,14 @@ int DfxDspPrivate::processAudio(short int *si_input_samples, short int *si_outpu
 	if (dfxpUniversalModifySamples(dfxp_handle_, si_input_samples, si_output_samples, i_num_sample_sets, i_check_for_duplicate_buffers) != OKAY)
 		return(NOT_OKAY);
 
+	dj_.process(reinterpret_cast<float*>(si_output_samples), i_num_sample_sets);
 	return OKAY;
 }
 
 int DfxDspPrivate::setSignalFormat(int i_bps, int i_nch, int i_srate, int i_valid_bits)
 {
 	source_analyzer_.setFormat(i_bps, i_nch, i_srate);
+	dj_.setFormat(i_bps, i_nch, i_srate);
 	if (dfxpUniversalSetSignalFormat(dfxp_handle_, i_bps, i_nch, i_srate, i_valid_bits) != OKAY)
 		return(NOT_OKAY);
 
@@ -201,6 +203,7 @@ int DfxDspPrivate::setSignalFormat(int i_bps, int i_nch, int i_srate, int i_vali
 
 void DfxDspPrivate::powerOn(bool on)
 {
+    dj_.power(on);
 	if (on)
 	{
 		if (dfxpSetButtonValue(dfxp_handle_, DFX_UI_BUTTON_BYPASS, 0) != OKAY)

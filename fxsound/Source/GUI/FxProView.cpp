@@ -3,6 +3,7 @@
 #include "FxProView.h"
 #include "FxController.h"
 #include "FxTheme.h"
+#include "CynThemeAtmosphere.h"
 #include "FxSettingsDialog.h"
 #include "CynAiHubDialog.h"
 #include <array>
@@ -17,6 +18,22 @@ FxProView::FxProView() : tool_tip_(this)
         &devices_nav_, &ai_hub_nav_, &home_, &smart_rail_, &devices_rail_, &settings_,
         &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &learning_timeline_, &neural_activity_, &learning_effect_, &listening_mode_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
         addAndMakeVisible(component);
+    for(auto* c:std::initializer_list<Component*> {&misc_nav_,&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) addAndMakeVisible(c);
+    misc_nav_.onClick=[this]{selectPage(3);};
+    dj_download_.onClick=[]{if(auto* dj=FxController::getInstance().dj()) dj->download();};
+    dj_cancel_.onClick=[]{if(auto* dj=FxController::getInstance().dj()) dj->cancelDownload();};
+    dj_remove_.onClick=[]{if(auto* dj=FxController::getInstance().dj()) dj->remove();};
+    dj_toggle_.onClick=[this]{if(auto* dj=FxController::getInstance().dj()) dj->setEnabled(dj_toggle_.getToggleState());};
+    dj_intensity_.setName("AI DJ intensity");dj_intensity_.setRange(0,100,1);dj_intensity_.setTextValueSuffix("%");
+    dj_spacing_.setName("Minimum time between effects");dj_spacing_.setRange(4,45,1);dj_spacing_.setTextValueSuffix(" s");
+    if(auto* dj=FxController::getInstance().dj()) {
+        dj_intensity_.setValue(dj->intensity()*100,dontSendNotification);
+        dj_spacing_.setValue(dj->spacing(),dontSendNotification);
+        dj_stereo_.setToggleState(dj->stereo(),dontSendNotification);
+    }
+    auto configure=[this]{if(auto* dj=FxController::getInstance().dj()) dj->configure(float(dj_intensity_.getValue()/100),float(dj_spacing_.getValue()),dj_stereo_.getToggleState());};
+    dj_intensity_.onValueChange=configure;dj_spacing_.onValueChange=configure;dj_stereo_.onClick=configure;
+    dj_status_.setFont(14);dj_recent_.setFont(13);dj_status_.setMinimumHorizontalScale(0.8f);
     sound_nav_.onClick = home_.onClick = [this] { selectPage(0); };
     smart_nav_.onClick = smart_rail_.onClick = [this] { selectPage(1); };
     devices_nav_.onClick = devices_rail_.onClick = [this] { selectPage(2); };
@@ -138,13 +155,16 @@ void FxProView::selectPage(int page)
         transition_image_=createComponentSnapshot(getLocalBounds()); transition_start_=Time::getMillisecondCounterHiRes();
     }
     page_ = page;
+    misc_nav_.setToggleState(page==3,dontSendNotification);
+    for(auto* c:std::initializer_list<Component*> {&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) c->setVisible(page==3);
+    smart_toggle_.setVisible(page!=3);smart_status_.setVisible(page!=3);
     sound_nav_.setToggleState(page == 0, dontSendNotification);
     smart_nav_.setToggleState(page == 1, dontSendNotification);
     devices_nav_.setToggleState(page == 2, dontSendNotification);
     home_.setToggleState(page == 0, dontSendNotification);
     smart_rail_.setToggleState(page == 1, dontSendNotification);
     devices_rail_.setToggleState(page == 2, dontSendNotification);
-    for (auto* button : std::initializer_list<TextButton*> { &sound_nav_, &smart_nav_, &devices_nav_, &ai_hub_nav_, &home_, &smart_rail_, &devices_rail_ })
+    for (auto* button : std::initializer_list<TextButton*> { &sound_nav_, &smart_nav_, &devices_nav_, &ai_hub_nav_, &misc_nav_, &home_, &smart_rail_, &devices_rail_ })
     {
         button->setColour(TextButton::buttonColourId, Colours::transparentBlack);
         button->setColour(TextButton::buttonOnColourId, Colours::transparentBlack);
@@ -212,34 +232,55 @@ void FxProView::timerCallback()
         neural_activity_.setVisible(wantGraph);
         neural_activity_.setAnimationEnabled(wantGraph);
     }
-    if(wantGraph && now-last_neural_update_>=100) {
+    // All themes sample the existing personal audio telemetry, never a new
+    // recorder or a DSP-thread callback. YAMNet is requested only by Neural Core.
+    if(now-last_neural_update_>=100) {
         last_neural_update_=now;
         auto& brainController=FxController::getInstance();
         NeuralActivitySnapshot snapshot;
         const bool hasAudio=brainController.getLiveNeuralActivity(snapshot);
-        neural_activity_.setTrainingActive(brainController.isSmartTraining());
-        neural_activity_.setActivity(hasAudio?&snapshot:nullptr,
-                                     brainController.getSmartTrainingProgress());
+        const float level=hasAudio
+            ? jlimit(0.0f,1.0f,std::sqrt(jmax(0.0f,snapshot.rms))*2.2f)
+            : 0.0f;
+        theme_audio_level_+=(level-theme_audio_level_)*
+            (FxTheme::isReducedMotion()?1.0f:0.33f);
+        if(wantGraph) {
+            neural_activity_.setTrainingActive(brainController.isSmartTraining());
+            neural_activity_.setActivity(hasAudio?&snapshot:nullptr,
+                                         brainController.getSmartTrainingProgress());
+        }
         if(neuralCore) {
             CynAudioScene scene;
             neural_core_live_=brainController.getLiveYamNetScene(scene) && hasAudio;
-            neural_core_personal_live_=hasAudio;
             neural_core_scene_=neural_core_live_?scene:CynAudioScene {};
         }
     }
-    if(neuralCore) {
-        const float target=neural_core_personal_live_ ? 1.0f : 0.0f;
-        neural_core_energy_+= (target-neural_core_energy_) *
-            (FxTheme::isReducedMotion()?1.0f:0.20f);
-        // UI animation is bounded at <=24 fps; backend inference is unchanged.
-        if((FxTheme::isReducedMotion() && now-last_neural_theme_repaint_>=500)
-           || (!FxTheme::isReducedMotion() && now-last_neural_theme_repaint_>=42)) {
-            last_neural_theme_repaint_=now;
-            repaint();
-        }
+    // One bounded, UI-thread repaint budget shared by every animated palette.
+    // Reduce motion leaves still artwork and drops the UI refresh to 2Hz.
+    const double interval=FxTheme::isReducedMotion()?500.0:42.0;
+    if(now-last_theme_repaint_>=interval) {
+        last_theme_repaint_=now;
+        repaint();
     }
     if(now-last_status_update_<500) return;
     last_status_update_=now;
+    if(auto* dj=FxController::getInstance().dj()) {
+        dj_status_.setText(dj->status(),dontSendNotification);
+        dj_toggle_.setToggleState(dj->enabled(),dontSendNotification);
+        if(!dj_intensity_.isMouseButtonDown()) dj_intensity_.setValue(dj->intensity()*100,dontSendNotification);
+        if(!dj_spacing_.isMouseButtonDown()) dj_spacing_.setValue(dj->spacing(),dontSendNotification);
+        dj_stereo_.setToggleState(dj->stereo(),dontSendNotification);
+        dj_status_.setColour(Label::textColourId,Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
+        dj_recent_.setColour(Label::textColourId,Colour(FXCOLOR(HintText)).withAlpha(1.0f));
+        dj_toggle_.setColour(ToggleButton::textColourId,Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
+        dj_stereo_.setColour(ToggleButton::textColourId,Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
+        dj_toggle_.setEnabled(dj->installed()&&!dj->busy());
+        dj_download_.setVisible(page_==3&&!dj->installed()&&!dj->busy());
+        dj_remove_.setVisible(page_==3&&dj->installed()&&!dj->busy());
+        dj_cancel_.setVisible(page_==3&&dj->busy());
+        dj_progress_.setVisible(page_==3&&dj->busy());dj_progress_value_=dj->progress();
+        dj_recent_.setText(dj->lastEffect()+"  /  "+String((int)dj->effects())+" accents this session",dontSendNotification);
+    }
     auto& controller = FxController::getInstance();
     neural_activity_.setTrainingActive(controller.isSmartTraining());
     learning_timeline_.updateFrames(controller.getRecentAudio());
@@ -265,12 +306,19 @@ void FxProView::timerCallback()
 }
 void FxProView::resized()
 {
+    misc_nav_.setBounds(68,240,152,36);
+    dj_toggle_.setBounds(280,270,230,32);
+    dj_download_.setBounds(280,215,200,38);dj_remove_.setBounds(280,215,200,38);dj_cancel_.setBounds(280,215,200,38);
+    dj_progress_.setBounds(505,224,665,22);
+    dj_status_.setBounds(280,310,900,35);
+    dj_intensity_.setBounds(530,376,645,30);dj_spacing_.setBounds(530,422,645,30);
+    dj_stereo_.setBounds(280,473,470,30);dj_recent_.setBounds(280,525,895,26);
     home_.setBounds(10, 18, 32, 34);
     smart_rail_.setBounds(10, 64, 32, 34);
     devices_rail_.setBounds(10, 110, 32, 34);
     settings_rail_.setBounds(10, 565, 32, 34);
     // Reserve the empty sidebar area for the native neural-activity animation.
-    neural_activity_.setBounds(72, 247, 148, 226);
+    neural_activity_.setBounds(72, 286, 148, 187);
     learning_timeline_.setBounds(256,164,952,156);
     learning_effect_.setBounds(280,433,194,36);
     listening_mode_.setBounds(280,386,235,33);
@@ -339,11 +387,15 @@ void FxProView::paint(Graphics& g)
         sidebar.addColour(0.48,rail);
         g.setGradientFill(sidebar);
         g.fillRect(52,0,180,HEIGHT);
+        CynThemeAtmosphere::paint(g,FxTheme::getThemeMode(),
+            FxTheme::isReducedMotion()?0.0f:
+                (float)(Time::getMillisecondCounterHiRes()*0.001),
+            theme_audio_level_);
         if(FxTheme::getThemeMode()==FxThemeMode::NeuralCore) {
             // The top-right telemetry is ACTUAL pretrained YAMNet event scores
             // (not YAMNet internal activations or a synthetic music animation).
             const auto cyan=Colour(0xff67edee), violet=Colour(0xffa18cff);
-            const auto glow=jlimit(0.0f,1.0f,neural_core_energy_);
+            const auto glow=jlimit(0.0f,1.0f,theme_audio_level_);
             ColourGradient aura(cyan.withAlpha(0.045f+glow*0.075f),
                                 985.0f,115.0f,
                                 Colours::transparentBlack,1140.0f,370.0f,true);
@@ -397,7 +449,7 @@ void FxProView::paint(Graphics& g)
         g.setColour(color(RowOutline).withAlpha(0.72f));
         g.drawRoundedRectangle(x+0.5f,y+0.5f,w-1.0f,h-1.0f,16.0f,1.0f);
     };
-    const float selected=theme.animate(*this,3,(float)page_);
+    const float selected=theme.animate(*this,3,page_==3?4.0f:(float)page_);
     g.setColour(color(MenuHighlightBackground));
     g.fillRoundedRectangle(68.0f,72.0f+42.0f*selected,152.0f,36.0f,12.0f);
     g.setColour(color(SliderTrack));
@@ -406,10 +458,10 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.21", 80, 529, 140, 16, 10, true);
-    text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : "Output devices", 256, 16, 640, 32, 25);
+    text("Version 2.0.23", 80, 529, 140, 16, 10, true);
+    text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
-        ? "Choose Music AI or Movie AI. Each learns your preferences separately." : "Your output, with fewer interruptions.", 256, 49, 640, 22, 13, true);
+        ? "Choose Music AI or Movie AI. Each learns your preferences separately." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
     text("PRESET", 260, 78, 300, 16, 10, true);
     text("OUTPUT DEVICE", 741, 78, 300, 16, 10, true);
     if (page_ == 0) card(256, 556, 952, 48);
@@ -420,6 +472,14 @@ void FxProView::paint(Graphics& g)
         text("AI PROFILES", 688, 521, 310, 18, 10, true);
         text("Sensitivity",280,491,150,28,14);
 
+    }
+    else if(page_==3)
+    {
+        card(256,164,952,188);card(256,365,952,207);
+        text("AI DJ Experience",280,172,850,30,21);
+        text("Intensity",280,376,220,30,15);
+        text("Minimum spacing",280,422,230,30,15);
+        text("91 MB optional model. Local analysis. Best with music; timing is experimental.",280,578,900,22,12,true);
     }
     else
     {

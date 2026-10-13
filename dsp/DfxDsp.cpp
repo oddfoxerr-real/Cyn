@@ -204,3 +204,12 @@ InputAudioFeatures DfxDsp::getInputAudioFeatures() { return data_->source_analyz
 
 bool DfxDsp::copyYamNetWindow(std::array<float,15600>& out,uint64_t& sampleNumber) const
 { return data_->source_analyzer_.copyYamNetWindow(out,sampleNumber); }
+
+bool DfxDsp::copyDjWindow(std::array<float,128000>& out,uint64_t& number) const {return data_->source_analyzer_.copyDjWindow(out,number);}
+void DfxDsp::enableDj(bool value) {data_->dj_.enable(value);}
+void DfxDsp::configureDj(float amount,float spacing,bool stereo) {data_->dj_.configure(amount,spacing,stereo);}
+void DfxDsp::setDjScene(float music,float speech) {data_->dj_.scene(music,speech);}
+void DfxDsp::invalidateDjScene() {data_->dj_.invalidate();}
+void DfxDsp::setDjVoiceGate(bool safe) {data_->dj_.voiceGate(safe);}
+uint32_t DfxDsp::djEffectsCount() const {return data_->dj_.events();}
+int DfxDsp::djLastEffect() const {return data_->dj_.lastEffect();}

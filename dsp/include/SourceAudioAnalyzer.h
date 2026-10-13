@@ -83,6 +83,14 @@ public:
         sampleNumber=end;
         return true;
     }
+    bool copyDjWindow(std::array<float,128000>& out,uint64_t& sampleNumber) const {
+        const auto end=yamnet_write_.load(std::memory_order_acquire);
+        if(end<out.size() || end==sampleNumber) return false;
+        for(size_t i=0;i<out.size();++i)
+            out[i]=yamnet_ring_[(end-out.size()+i)%yamnetRingCapacity].load(std::memory_order_relaxed);
+        if(yamnet_write_.load(std::memory_order_acquire)-end>=yamnetRingCapacity-out.size()) return false;
+        sampleNumber=end; return true;
+    }
     InputAudioFeatures snapshot() const
     {
         for (int retry=0;retry<3;++retry)
@@ -98,7 +106,7 @@ public:
         return {};
     }
 private:
-    static constexpr size_t yamnetRingCapacity=65536;
+    static constexpr size_t yamnetRingCapacity=262144;
     std::array<std::atomic<float>,yamnetRingCapacity> yamnet_ring_ {};
     std::atomic<uint64_t> yamnet_write_ {0};
     int yamnet_phase_=0,yamnet_count_=0;

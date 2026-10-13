@@ -76,6 +76,12 @@ private:
     void selectPage(int page);
     void openSettings();
     int page_ = 0;
+    TextButton misc_nav_{"Misc"},dj_download_{"Download AI DJ"},dj_remove_{"Remove download"},dj_cancel_{"Cancel download"};
+    ToggleButton dj_toggle_{"Enable AI DJ"},dj_stereo_{"Move effects between ears"};
+    Slider dj_intensity_{Slider::LinearHorizontal,Slider::TextBoxRight},dj_spacing_{Slider::LinearHorizontal,Slider::TextBoxRight};
+    Label dj_status_,dj_recent_;
+    double dj_progress_value_=0;
+    ProgressBar dj_progress_{dj_progress_value_};
     Image transition_image_;
     double transition_start_=0, last_status_update_=0, last_neural_update_=0;
     FxAudioControls audio_controls_;
@@ -94,9 +100,9 @@ private:
     CynNeuralActivity neural_activity_;
     // Message-thread copies only: never fetch inference inside paint or DSP.
     CynAudioScene neural_core_scene_ {};
-    bool neural_core_live_=false,neural_core_personal_live_=false;
-    float neural_core_energy_=0.0f;
-    double last_neural_theme_repaint_=0;
+    bool neural_core_live_=false;
+    float theme_audio_level_=0.0f;
+    double last_theme_repaint_=0;
     FxComboBox learning_effect_;
     FxComboBox listening_mode_;
     TextButton more_ {"More here"}, less_ {"Less here"}, train_ {"Train my model"}, starter_ {"Reset to starter"}, resume_ {"Resume timeline"};
