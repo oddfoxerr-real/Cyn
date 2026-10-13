@@ -5,13 +5,14 @@
 #include <limits>
 #include <fstream>
 #include <iostream>
+#include <memory>
 
 InputAudioFeatures tone(float frequency,int rate=48000,bool antiphase=false) {
-    SourceAudioAnalyzer analyzer; analyzer.setFormat(32,2,rate);
+    auto analyzer=std::make_unique<SourceAudioAnalyzer>(); analyzer->setFormat(32,2,rate);
     std::vector<float> audio(rate*2);
     for(int i=0;i<rate;++i) { audio[2*i]=0.15f*std::sin(6.28318530718*frequency*i/rate); audio[2*i+1]=audio[2*i]*(antiphase?-1:1); }
-    auto original=audio; analyzer.process(audio.data(),rate); assert(audio==original);
-    return analyzer.snapshot();
+    auto original=audio; analyzer->process(audio.data(),rate); assert(audio==original);
+    return analyzer->snapshot();
 }
 int main(int argc,char** argv) {
     auto bass=tone(60), treble=tone(2000), anti=tone(60,48000,true), highRate=tone(60,96000);
@@ -19,10 +20,10 @@ int main(int argc,char** argv) {
     assert(bass.values[0]>treble.values[0]+4);
     assert(std::abs(bass.rms-anti.rms)<0.001 && anti.values[9]>1.9f);
     assert(std::abs(bass.values[0]-highRate.values[0])<0.05);
-    SourceAudioAnalyzer a; a.setFormat(32,2,48000);
+    auto a=std::make_unique<SourceAudioAnalyzer>(); a->setFormat(32,2,48000);
     std::vector<float> bad(4800,std::numeric_limits<float>::quiet_NaN());
-    a.process(bad.data(),2400); assert(std::isfinite(a.snapshot().rms) && a.snapshot().rms==0);
-    a.setFormat(16,2,48000); auto seq=a.snapshot().sequence; a.process(bad.data(),2400); assert(a.snapshot().sequence==seq);
+    a->process(bad.data(),2400); assert(std::isfinite(a->snapshot().rms) && a->snapshot().rms==0);
+    a->setFormat(16,2,48000); auto seq=a->snapshot().sequence; a->process(bad.data(),2400); assert(a->snapshot().sequence==seq);
     PersonalAudioModel learned; std::vector<AudioExample> labels;
     for(int i=0;i<16;++i) {
         auto b=bass,t=treble; b.values[0]+=(i%3)*0.02f; t.values[0]+=(i%3)*0.02f;
