@@ -511,8 +511,27 @@ FxSettingsDialog::RepairSettingsPane::RepairSettingsPane()
     };
     download_permission_.onChange = [this]() {
         if (auto* agent = FxController::getInstance().getAudioRepair())
-            agent->setPermission(static_cast<CynAudioRepairService::Permission>(
-                juce::jlimit(0, 2, download_permission_.getSelectedId() - 1)));
+        {
+            const auto requested = static_cast<CynAudioRepairService::Permission>(
+                juce::jlimit(0, 2, download_permission_.getSelectedId() - 1));
+            if (requested == CynAudioRepairService::Permission::AlwaysAllow &&
+                agent->getPermission() != CynAudioRepairService::Permission::AlwaysAllow)
+            {
+                const bool approved = AlertWindow::showOkCancelBox(
+                    AlertWindow::WarningIcon, "Cyn - Always Allow downloads?",
+                    "Always Allow will download matching audio driver packages from Windows Update "
+                    "without asking again. It NEVER authorizes installation or a restart.\n\n"
+                    "You can revoke this permission at any time.",
+                    "Always Allow", "Cancel");
+                if (!approved)
+                {
+                    download_permission_.setSelectedId(static_cast<int>(agent->getPermission()) + 1,
+                                                        NotificationType::dontSendNotification);
+                    return;
+                }
+            }
+            agent->setPermission(requested);
+        }
         updateControls();
     };
     diagnose_button_.onClick = [this]() {
