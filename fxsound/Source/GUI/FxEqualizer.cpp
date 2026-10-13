@@ -182,19 +182,14 @@ void FxEqualizer::timerCallback()
             if (!band_boosts_[i]->isEnabled())
             {
                 auto gain = controller.getEqBandBoostCut(i);
-                if (gain != -(MAX_GAIN-2))
+                const float target = -(MAX_GAIN - 2.0f);
+                if (std::abs(gain - target) >= 0.01f)
                 {
                     done = true;
-                    if (gain < -(MAX_GAIN-2))
-                    {
-                        controller.setEqBandBoostCut(i, gain+1.0f);
-                        band_boosts_[i]->setValue(gain+1.0f, NotificationType::dontSendNotification);
-                    }
-                    else
-                    {
-                        controller.setEqBandBoostCut(i, gain-1.0f);
-                        band_boosts_[i]->setValue(gain-1.0f, NotificationType::dontSendNotification);
-                    }
+                    // Fractional EQ values must not make Alt-drag oscillate forever.
+                    const float next = gain + juce::jlimit(-1.0f, 1.0f, target - gain);
+                    controller.setEqBandBoostCut(i, next);
+                    band_boosts_[i]->setGainValue(next);
                 }
             }
         }
@@ -504,12 +499,12 @@ bool FxEqualizer::FxEqSlider::keyPressed(const KeyPress& key)
     {
         if (key.isKeyCode(KeyPress::upKey))
         {
-            setValue(getValue() + getInterval());
+            setValue(getValue() + 1.0);
             return true;
         }
         else if (key.isKeyCode(KeyPress::downKey))
         {
-            setValue(getValue() - getInterval());
+            setValue(getValue() - 1.0);
             return true;
         }
     }
