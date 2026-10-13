@@ -305,7 +305,8 @@ inline void paint(Graphics& g,FxThemeMode theme,float timeSeconds,float audioLev
         Graphics::ScopedSaveState sceneState(g);
         g.addTransform(AffineTransform::scale(bounds.getWidth()/1000.0f,bounds.getHeight()/600.0f)
                            .translated(bounds.getX(),bounds.getY()));
-        Scene scene(g,theme,timeSeconds,audioLevel,preview);
+        Scene scene(g,theme,FxTheme::isReducedMotion()?0.0f:timeSeconds,
+                    FxTheme::isReducedMotion()?0.0f:audioLevel,preview);
         scene.render();
     }
 }
