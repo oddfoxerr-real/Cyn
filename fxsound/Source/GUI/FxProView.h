@@ -100,9 +100,9 @@ private:
     CynNeuralActivity neural_activity_;
     // Message-thread copies only: never fetch inference inside paint or DSP.
     CynAudioScene neural_core_scene_ {};
-    bool neural_core_live_=false,neural_core_personal_live_=false;
-    float neural_core_energy_=0.0f;
-    double last_neural_theme_repaint_=0;
+    bool neural_core_live_=false;
+    float theme_audio_level_=0.0f;
+    double last_theme_repaint_=0;
     FxComboBox learning_effect_;
     FxComboBox listening_mode_;
     TextButton more_ {"More here"}, less_ {"Less here"}, train_ {"Train my model"}, starter_ {"Reset to starter"}, resume_ {"Resume timeline"};
