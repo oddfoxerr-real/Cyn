@@ -182,8 +182,8 @@ void FxProView::selectPage(int page)
     refresh_.setVisible(page == 2);
     sensitivity_.setVisible(page == 1);
     const bool neuralCore=FxTheme::getThemeMode()==FxThemeMode::NeuralCore;
-    neural_activity_.setVisible(page==1 || neuralCore);
-    neural_activity_.setAnimationEnabled(page==1 || neuralCore);
+    neural_activity_.setVisible(page==1);
+    neural_activity_.setAnimationEnabled(page==1);
     resized();
     if (page_ == 1)
     {
@@ -227,7 +227,7 @@ void FxProView::timerCallback()
     // A separate 100ms UI telemetry sample keeps audio-responsive glow smooth
     // without forcing the other status controls to refresh at 10Hz.
     const bool neuralCore=FxTheme::getThemeMode()==FxThemeMode::NeuralCore;
-    const bool wantGraph=page_==1 || neuralCore;
+    const bool wantGraph=page_==1;
     if(neural_activity_.isVisible()!=wantGraph) {
         neural_activity_.setVisible(wantGraph);
         neural_activity_.setAnimationEnabled(wantGraph);
@@ -374,23 +374,18 @@ void FxProView::paint(Graphics& g)
     {
         Graphics::ScopedSaveState save(g);
         g.reduceClipRegion(workspace);
-        // All palettes gain dimensional lighting rather than a flat background.
-        const auto surface=color(WindowBackground);
-        const auto rail=color(PanelBackground);
-        ColourGradient deck(surface.brighter(0.065f), 235.0f, 0.0f,
-                            surface.darker(0.12f), 1180.0f, (float)HEIGHT, false);
-        deck.addColour(0.55, surface);
-        g.setGradientFill(deck);
-        g.fillRect(52,0,WIDTH-52,HEIGHT);
-        ColourGradient sidebar(rail.brighter(0.11f),52.0f,0.0f,
-                               rail.darker(0.10f),232.0f,(float)HEIGHT,false);
-        sidebar.addColour(0.48,rail);
-        g.setGradientFill(sidebar);
-        g.fillRect(52,0,180,HEIGHT);
+        // Actual immersive artwork is clipped to the entire workspace,
+        // never placed as a decorative widget underneath sidebar controls.
         CynThemeAtmosphere::paint(g,FxTheme::getThemeMode(),
             FxTheme::isReducedMotion()?0.0f:
                 (float)(Time::getMillisecondCounterHiRes()*0.001),
-            theme_audio_level_);
+            theme_audio_level_,Rectangle<float>(233.0f,0.0f,
+                                                WIDTH-233.0f,HEIGHT-8.0f));
+        const auto rail=color(PanelBackground);
+        ColourGradient sidebar(rail.brighter(0.045f),52.0f,0.0f,
+                               rail.darker(0.11f),232.0f,(float)HEIGHT,false);
+        g.setGradientFill(sidebar);
+        g.fillRect(52,0,180,HEIGHT);
         if(FxTheme::getThemeMode()==FxThemeMode::NeuralCore) {
             // The top-right telemetry is ACTUAL pretrained YAMNet event scores
             // (not YAMNet internal activations or a synthetic music animation).
@@ -510,8 +505,7 @@ void FxProView::lookAndFeelChanged()
     transition_image_=Image();
     if(FxTheme::isReducedMotion()) startTimer(500); else startTimerHz(60);
     selectPage(page_);
-    neural_activity_.setAnimationEnabled(page_==1 ||
-        FxTheme::getThemeMode()==FxThemeMode::NeuralCore);
+    neural_activity_.setAnimationEnabled(page_==1);
     learning_status_.setColour(Label::textColourId,Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     repaint();
 }
