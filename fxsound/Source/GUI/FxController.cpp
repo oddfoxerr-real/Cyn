@@ -2915,6 +2915,8 @@ void FxController::setThemeMode(FxThemeMode mode)
 	{
 		return;
 	}
+    if (main_window_)
+        main_window_->beginThemeTransition();
 
 	FxTheme::setThemeMode(mode);
 	settings_.setInt("theme_mode", static_cast<int>(mode));
@@ -2925,6 +2927,7 @@ void FxController::setThemeMode(FxThemeMode mode)
 	auto power = FxModel::getModel().getPowerState();
 	main_window_->setIcon(power, audio_process_on_);
 	system_tray_view_->setStatus(power, audio_process_on_);
+    main_window_->finishThemeTransition();
 }
 
 bool FxController::isAlwaysOnTop()
