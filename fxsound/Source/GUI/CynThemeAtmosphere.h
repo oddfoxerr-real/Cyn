@@ -179,7 +179,7 @@ public:
                     ribbon(94+n*30,21+n*.6f+energy*18,80+n*8,t*.45f+n*.19f,.39f-n*.010f,2.5f);
                 for(int n=0;n<42;++n)
                 {
-                    const float x=(n*97)%1000.0f;
+                    const float x=(float)((n*97)%1000);
                     const float y=600-std::fmod((float)n*53+t*(9+n%8),600.0f);
                     ring(x,y,3+n%6,.32f,1.3f);
                 }
@@ -187,7 +187,7 @@ public:
             case FxThemeMode::NeonTokyo:
                 for(int n=0;n<31;++n)
                 {
-                    const float x=n*36.0f-34,h=88+(n*67)%256.0f;
+                    const float x=n*36.0f-34,h=88.0f+(float)((n*67)%256);
                     g.setColour(accent.withAlpha(.09f*strength));
                     g.fillRect(x,604-h,31.0f,h);
                     stroke(x,604-h,x+31,604-h,.54f,2);
@@ -285,7 +285,7 @@ private:
 };
 
 inline void paint(Graphics& g,FxThemeMode theme,float timeSeconds,float audioLevel,
-                  Rectangle<float> bounds,bool preview=false)
+                  juce::Rectangle<float> bounds,bool preview=false)
 {
     if(bounds.isEmpty()) return;
     Graphics::ScopedSaveState saved(g);
