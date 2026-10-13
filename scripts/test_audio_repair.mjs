@@ -19,6 +19,10 @@ assert(agent.includes("if (getPermission() == Permission::NeverDownload)"), "Nev
 assert(agent.includes("juce::AlertWindow::showOkCancelBox"), "Ask mode must request explicit approval");
 assert(agent.includes("beginWorker(Stage::Downloading, candidate)"), "Only user-approved or always-allowed scans may download");
 assert(agent.includes("SetupDiGetClassDevsW") && agent.includes("CM_Get_DevNode_Status"), "Diagnose PnP status rather than guessing from playback volume");
+assert(agent.includes("missingPreferredOutput_") && agent.includes('const auto routeKey = "route:" + missing'), "Monitor preferred headphones separately from driver corruption");
+assert(agent.includes("if (issue.physicalDriver && getPermission() != Permission::NeverDownload)"), "Background driver search must only target a physical faulty device");
+assert(agent.includes("permissionDialogOpen_"), "Prevent reentrant background checks during permission dialog");
+assert(settings.includes('"Cyn - Always Allow downloads?"'), "Always Allow must get a separate confirmation");
 assert(agent.includes("CREATE_NO_WINDOW"), "No console flashing in background checks");
 assert(agent.includes("stopMonitoring();") && agent.includes("TerminateProcess(workerProcess_, 1)"), "Opting out stops the local checker");
 assert(controller.includes("audioRepair_->startIfEnabled()"), "Independent monitor must start at application startup");
