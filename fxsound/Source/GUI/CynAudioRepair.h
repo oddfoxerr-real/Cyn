@@ -21,8 +21,10 @@ class CynAudioRepairService final : private juce::Timer
 public:
     enum class Permission { AskEveryTime = 0, AlwaysAllow = 1, NeverDownload = 2 };
 
-    CynAudioRepairService(FxSound::Settings& settings, std::function<void()> refreshDeviceList)
-        : settings_(settings), refreshDeviceList_(std::move(refreshDeviceList))
+    CynAudioRepairService(FxSound::Settings& settings, std::function<void()> refreshDeviceList,
+                          std::function<juce::String()> missingPreferredOutput)
+        : settings_(settings), refreshDeviceList_(std::move(refreshDeviceList)),
+          missingPreferredOutput_(std::move(missingPreferredOutput))
     {
         status_ = "Auto Repair is off. No monitoring or driver downloads.";
     }
@@ -73,8 +75,13 @@ public:
         }
         else
         {
-            status_ = "No Windows Plug and Play driver error detected. "
-                "A connected-but-silent headset may still need an output or Bluetooth check.";
+            const auto missing = missingPreferredOutput_ ? missingPreferredOutput_() : juce::String();
+            if (missing.isNotEmpty())
+                status_ = "Your previously selected output is not active: " + missing
+                    + ". Check the headset connection or run a Cyn device-list refresh.";
+            else
+                status_ = "No Windows Plug and Play error or missing selected output detected. "
+                          "A connected-but-silent headset may still need manual troubleshooting.";
         }
         remember(status_);
         return status_;
@@ -165,7 +172,29 @@ private:
         const auto issue = inspectAudioDevices();
         if (!issue.hasProblem)
         {
-            lastProblemId_.clear();
+            const auto missing = missingPreferredOutput_ ? missingPreferredOutput_() : juce::String();
+            if (missing.isEmpty())
+            {
+                lastProblemId_.clear();
+                return;
+            }
+            // A missing route is not proof of a bad driver: NEVER download one for it.
+            const auto routeKey = "route:" + missing;
+            if (routeKey == lastProblemId_ && now - lastProblemAtMs_ < 21600000)
+                return;
+            lastProblemId_ = routeKey;
+            lastProblemAtMs_ = now;
+            status_ = "Previously selected audio output is unavailable: " + missing;
+            remember(status_);
+            if (allowMinorRecovery() && refreshDeviceList_)
+            {
+                refreshDeviceList_();
+                if (missingPreferredOutput_ && missingPreferredOutput_().isEmpty())
+                    status_ = "Cyn refreshed its output list and restored the selected device.";
+                else
+                    status_ = "Cyn refreshed its output list. Check Windows Bluetooth/output settings to reconnect.";
+                remember(status_);
+            }
             return;
         }
         if (issue.deviceId == lastProblemId_ && now - lastProblemAtMs_ < 21600000)
@@ -356,6 +385,7 @@ private:
 
     FxSound::Settings& settings_;
     std::function<void()> refreshDeviceList_;
+    std::function<juce::String()> missingPreferredOutput_;
     juce::String status_, lastProblemId_;
     juce::File resultFile_;
     HANDLE workerProcess_ = nullptr;
