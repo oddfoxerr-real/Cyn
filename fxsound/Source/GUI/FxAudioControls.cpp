@@ -289,12 +289,12 @@ bool FxEffects::FxEffectSlider::keyPressed(const KeyPress& key)
 	{
 		if (key.isKeyCode(KeyPress::upKey))
 		{
-			setValue(getValue() + getInterval());
+			setValue(getValue() + 1.0);
 			return true;
 		}
 		else if (key.isKeyCode(KeyPress::downKey))
 		{
-			setValue(getValue() - getInterval());
+			setValue(getValue() - 1.0);
 			return true;
 		}
 	}
