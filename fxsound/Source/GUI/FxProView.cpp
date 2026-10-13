@@ -288,6 +288,19 @@ void FxProView::timerCallback()
         last_theme_repaint_=now;
         repaint();
     }
+    // Display the *actual applied* effect/EQ coefficients, not Smart
+    // Listening's preset baseline. No synthetic wobble, pulse, or DSP writes.
+    if (page_ == 0 && now - last_ai_controls_update_ >=
+            (FxTheme::isReducedMotion() ? 500.0 : 33.0))
+    {
+        const float elapsedMs = last_ai_controls_update_ > 0.0
+            ? static_cast<float>(now - last_ai_controls_update_) : 33.0f;
+        last_ai_controls_update_ = now;
+        const bool animate = FxController::getInstance().isSmartListening()
+            && !FxTheme::isReducedMotion();
+        audio_controls_.syncAppliedDsp(elapsedMs, animate);
+        equalizer_.syncAppliedDsp(elapsedMs, animate);
+    }
     if(now-last_status_update_<500) return;
     last_status_update_=now;
     if(auto* dj=FxController::getInstance().dj()) {
@@ -318,7 +331,8 @@ void FxProView::timerCallback()
     export_ai_.setEnabled(!controller.isSmartTraining()); import_ai_.setEnabled(!controller.isSmartTraining());
     smart_toggle_.setToggleState(controller.isSmartListening(), dontSendNotification);
     pin_toggle_.setToggleState(controller.isOutputPinned(), dontSendNotification);
-    smart_status_.setText(controller.getSmartSummary(), dontSendNotification);
+    smart_status_.setText(page_ == 0 ? controller.getAppliedMixSummary() : controller.getSmartSummary(),
+                          dontSendNotification);
     if (!sensitivity_.isMouseButtonDown())
         sensitivity_.setValue(controller.getSmartSensitivity(), dontSendNotification);
     auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());

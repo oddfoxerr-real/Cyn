@@ -53,7 +53,7 @@ bool launchCynUpdater(bool interactive)
     if(!powershell.existsAsFile()) return false;
     const auto command=String("\"")+powershell.getFullPathName()+
         "\" -NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \""+
-        script.getFullPathName()+"\" -CurrentVersion 2.0.25"+
+        script.getFullPathName()+"\" -CurrentVersion 2.0.26"+
         (interactive?" -Interactive":"");
     const std::wstring wideCommand(command.toWideCharPointer());
     std::vector<wchar_t> writable(wideCommand.begin(),wideCommand.end());
@@ -1904,6 +1904,11 @@ void FxController::powerOn(bool on)
 	}
 }
 
+float FxController::getAppliedEffectValue(FxEffects::EffectType effect)
+{
+    return dfx_dsp_.getEffectValue(static_cast<DfxDsp::Effect>(effect));
+}
+
 float FxController::getEffectValue(FxEffects::EffectType effect)
 {
     if (smart_enabled_ && (int)effect >= 0 && (int)effect < 5) return smart_effects_[(int)effect] / 10.0f;
@@ -2049,6 +2054,12 @@ void FxController::getEqBandFrequencyRange(int band_num, float* min_freq, float*
 		*min_freq = 0;
 		*max_freq = 0;
 	}
+}
+
+float FxController::getAppliedEqBandBoostCut(int band_num)
+{
+    if (band_num < 0 || band_num >= getNumEqBands()) return 0.0f;
+    return dfx_dsp_.getEqBandBoostCut(band_num);
 }
 
 float FxController::getEqBandBoostCut(int band_num)
@@ -3233,6 +3244,46 @@ void FxController::updateSmartListening()
     if(std::abs(dfx_dsp_.getVolumeLeveling()-leveling)>0.05f)
         dfx_dsp_.setVolumeLeveling(leveling);
 }
+String FxController::getAppliedMixSummary()
+{
+    const String mode = smart_mode_ == 1 ? "Movie AI" : "Music AI";
+    if (!smart_enabled_) return mode + " / off";
+    if (!FxModel::getModel().getPowerState() || !audio_process_on_ ||
+        !playback_device_available_ || smart_stale_ticks_ >= 4)
+        return mode + " / waiting for audio";
+
+    // These are deltas of the actual applied DSP state against the saved preset,
+    // not the model's desired values or artificial animation data.
+    const char* const names[5] = { "Clarity", "Ambience", "Surround", "Dynamics", "Bass" };
+    String status = mode;
+    int effectsShown = 0;
+    for (int e = 0; e < 5; ++e)
+    {
+        const float applied = dfx_dsp_.getEffectValue(static_cast<DfxDsp::Effect>(e)) * 10.0f;
+        const float difference = applied - smart_effects_[(size_t)e];
+        if (std::isfinite(difference) && std::abs(difference) >= 0.15f && effectsShown < 2)
+        {
+            status += " / " + String(names[e]) + (difference >= 0 ? " +" : " ")
+                    + String(difference, 1);
+            ++effectsShown;
+        }
+    }
+    int shapedBands = 0;
+    const int bands = jmin(getNumEqBands(), static_cast<int>(smart_eq_.size()));
+    for (int b = 0; b < bands; ++b)
+        if (std::abs(dfx_dsp_.getEqBandBoostCut(b) - smart_eq_[(size_t)b]) >= 0.10f)
+            ++shapedBands;
+    if (shapedBands > 0)
+        status += " / EQ " + String(shapedBands) + (shapedBands == 1 ? " band" : " bands");
+
+    const float leveling = dfx_dsp_.getVolumeLeveling() - smart_leveling_;
+    if (effectsShown == 0 && shapedBands == 0 && std::isfinite(leveling) && std::abs(leveling) >= 0.15f)
+        status += " / Leveling +" + String(leveling, 1) + " dB";
+    else if (effectsShown == 0 && shapedBands == 0)
+        status += " / holding preset";
+    return status;
+}
+
 String FxController::getSmartSummary() const
 {
     const String mode=smart_mode_==1?"Movie AI":"Music AI";

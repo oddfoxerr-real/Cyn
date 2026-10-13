@@ -47,6 +47,7 @@ public:
     void timerCallback() override;
 
 	void update();
+    void syncAppliedDsp(float elapsedMs, bool animate);
 	void showValues(bool show);
 
 private:

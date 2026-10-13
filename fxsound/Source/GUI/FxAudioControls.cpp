@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <JuceHeader.h>
 #include "FxAudioControls.h"
 #include "FxController.h"
+#include "CynDspUiFollow.h"
 
 FxAudioControls::FxAudioControls() : flip_button_("flipButton", DrawableButton::ButtonStyle::ImageFitted)
 {
@@ -43,6 +44,7 @@ FxAudioControls::FxAudioControls() : flip_button_("flipButton", DrawableButton::
 
 		effects_.setVisible(effects_shown_);
 		equalizer_control_.setVisible(!effects_shown_);
+        if (effects_shown_) effects_.update();
 		};
 
 	addAndMakeVisible(flip_button_);
@@ -56,6 +58,12 @@ void FxAudioControls::update()
 	effects_.showValues(true);
 
 	equalizer_control_.update();
+}
+
+void FxAudioControls::syncAppliedDsp(float elapsedMs, bool animate)
+{
+    if (effects_shown_)
+        effects_.syncAppliedDsp(elapsedMs, animate);
 }
 
 void FxAudioControls::showValues(bool show)
@@ -118,7 +126,7 @@ FxEffects::FxEffects()
 
 		effects_[i].reset(new FxEffectSlider(static_cast<EffectType>(i)));
 		effects_[i]->setSliderStyle(Slider::LinearHorizontal);
-		effects_[i]->setRange(0, 10, 1.0);
+		effects_[i]->setRange(0, 10, 0.01);
 		effects_[i]->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
 		addAndMakeVisible(effects_[i].get());
 	}
@@ -130,12 +138,30 @@ void FxEffects::update()
 
 	for (int i = EffectType::Fidelity; i < EffectType::NumEffects; i++)
 	{
-		auto value = controller.getEffectValue(static_cast<EffectType>(i));
+		auto value = controller.getAppliedEffectValue(static_cast<EffectType>(i));
 		if (value >= 0.0 && value <= 1.0)
 		{
 			effects_[i]->setEffectValue(value*10.0);
 		}
 	}
+}
+
+void FxEffects::syncAppliedDsp(float elapsedMs, bool animate)
+{
+    auto& controller = FxController::getInstance();
+    for (int i = EffectType::Fidelity; i < EffectType::NumEffects; ++i)
+    {
+        auto* slider = effects_[(size_t)i].get();
+        // A display follow must never fight a user's current slider drag.
+        if (slider == nullptr || slider->isMouseButtonDown()) continue;
+        const float applied = controller.getAppliedEffectValue(static_cast<EffectType>(i)) * 10.0f;
+        if (!std::isfinite(applied)) continue;
+        const float shown = static_cast<float>(slider->getValue());
+        const float next = CynDspUiFollow::towardApplied(shown,
+            juce::jlimit(0.0f, 10.0f, applied), elapsedMs, animate);
+        if (std::abs(next - shown) >= 0.008f)
+            slider->setEffectValue(next); // UI only; no DSP or preset write.
+    }
 }
 
 void FxEffects::showValues(bool show)
@@ -205,7 +231,9 @@ void FxEffects::FxEffectSlider::setEffectValue(float value)
 {
 	setValue(value, NotificationType::dontSendNotification);
 
-	auto text = String::formatted("%.0f", value);
+    const float shown = static_cast<float>(getValue());
+    const auto text = std::abs(shown - std::round(shown)) < 0.045f
+        ? String::formatted("%.0f", shown) : String::formatted("%.1f", shown);
 	value_label_.setText(text, NotificationType::dontSendNotification);
 
 	auto pos = getPositionOfValue(value);
@@ -245,7 +273,8 @@ void FxEffects::FxEffectSlider::valueChanged()
 	{
 		FxController::getInstance().setEffectValue(effect_, value);
 		
-		auto text = String::formatted("%.0f", value);
+        const auto text = std::abs(value - std::round(value)) < 0.045
+            ? String::formatted("%.0f", value) : String::formatted("%.1f", value);
 		value_label_.setText(text, NotificationType::dontSendNotification);
 
 		auto pos = getPositionOfValue(value);
@@ -260,12 +289,12 @@ bool FxEffects::FxEffectSlider::keyPressed(const KeyPress& key)
 	{
 		if (key.isKeyCode(KeyPress::upKey))
 		{
-			setValue(getValue() + getInterval());
+			setValue(getValue() + 1.0);
 			return true;
 		}
 		else if (key.isKeyCode(KeyPress::downKey))
 		{
-			setValue(getValue() - getInterval());
+			setValue(getValue() - 1.0);
 			return true;
 		}
 	}

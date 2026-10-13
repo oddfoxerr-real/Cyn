@@ -35,6 +35,7 @@ public:
 	~FxEffects() = default;
 
 	void update();
+    void syncAppliedDsp(float elapsedMs, bool animate);
 	void showValues(bool show);
 
 private:
@@ -139,6 +140,7 @@ public:
 	~FxAudioControls() = default;
 
 	void update();
+    void syncAppliedDsp(float elapsedMs, bool animate);
 	void showValues(bool show);
 
 	void setLookAndFeel();

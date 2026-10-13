@@ -107,6 +107,7 @@ private:
     bool neural_core_live_=false;
     float theme_audio_level_=0.0f;
     double last_theme_repaint_=0;
+    double last_ai_controls_update_=0;
     FxComboBox learning_effect_;
     FxComboBox listening_mode_;
     TextButton more_ {"More here"}, less_ {"Less here"}, train_ {"Train my model"}, starter_ {"Reset to starter"}, resume_ {"Resume timeline"};

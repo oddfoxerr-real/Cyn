@@ -116,6 +116,7 @@ public:
     int getSmartListeningMode() const { return smart_mode_; }
     void setSmartListeningMode(int mode);
     String getSmartSummary() const;
+    String getAppliedMixSummary();
     const std::vector<AudioFrame>& getRecentAudio() const { return smart_history_; }
     void labelAudio(const std::vector<AudioFrame>& frames, int effect, bool more);
     void trainSmartModel();
@@ -134,6 +135,9 @@ public:
     bool isOutputPinned() { return settings_.getBool("ember_pin_output", true); }
     void setOutputPinned(bool pinned) { settings_.setBool("ember_pin_output", pinned); }
 	float getEffectValue(FxEffects::EffectType effect);
+    // Read the actual DSP-applied values, not the saved Smart Listening baseline.
+    // Used only for read-only Sound Studio telemetry on the JUCE UI thread.
+    float getAppliedEffectValue(FxEffects::EffectType effect);
 	void setEffectValue(FxEffects::EffectType effect, float value);
 
 	int getNumEqBands();
@@ -152,6 +156,7 @@ public:
     void setEqBandFrequency(int band_num, float freq);
     void getEqBandFrequencyRange(int band_num, float* min_freq, float* max_freq);
 	float getEqBandBoostCut(int band_num);
+    float getAppliedEqBandBoostCut(int band_num);
 	void setEqBandBoostCut(int band_num, float boost);
     void getSpectrumBandValues(Array<float>& band_values);
 
