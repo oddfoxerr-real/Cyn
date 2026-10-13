@@ -191,9 +191,9 @@ private:
             {
                 refreshDeviceList_();
                 if (missingPreferredOutput_ && missingPreferredOutput_().isEmpty())
-                    status_ = "Cyn refreshed its output list and restored the selected device.";
+                    status_ = "Cyn updated its audio routing; verify that the selected output is your headphones.";
                 else
-                    status_ = "Cyn refreshed its output list. Check Windows Bluetooth/output settings to reconnect.";
+                    status_ = "Cyn attempted to restore the audio route. Reconnect the headset in Windows if needed.";
                 remember(status_);
             }
             return;
@@ -207,7 +207,7 @@ private:
         remember(status_);
         if (allowMinorRecovery() && refreshDeviceList_)
         {
-            refreshDeviceList_(); // Cyn output list only; no PnP driver changes.
+            refreshDeviceList_(); // May reselect Windows playback route; never alters installed drivers.
             remember("Refreshed Cyn's audio output list.");
             if (!inspectAudioDevices().hasProblem)
             {
