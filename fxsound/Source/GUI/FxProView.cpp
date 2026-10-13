@@ -405,12 +405,24 @@ void FxProView::paint(Graphics& g)
         CynThemeAtmosphere::paint(g,FxTheme::getThemeMode(),
             FxTheme::isReducedMotion()?0.0f:
                 (float)(Time::getMillisecondCounterHiRes()*0.001),
-            theme_audio_level_,juce::Rectangle<float>(233.0f,0.0f,
-                                                WIDTH-233.0f,HEIGHT-8.0f));
+            theme_audio_level_,juce::Rectangle<float>(52.0f,0.0f,
+                                                WIDTH-52.0f,HEIGHT-8.0f));
         const auto rail=color(PanelBackground);
-        ColourGradient sidebar(rail.brighter(0.045f),52.0f,0.0f,
-                               rail.darker(0.11f),232.0f,(float)HEIGHT,false);
+        // Let the full scene continue faintly beneath navigation, with a
+        // legible tinted overlay. No separate sidebar theme card or obstruction.
+        ColourGradient sidebar(rail.brighter(0.045f).withAlpha(0.94f),
+                               52.0f,0.0f,
+                               rail.darker(0.11f).withAlpha(0.82f),
+                               232.0f,(float)HEIGHT,false);
         g.setGradientFill(sidebar);
+        g.fillRect(52,0,180,HEIGHT);
+        const float drift=FxTheme::isReducedMotion()?0.0f:
+            (float)Time::getMillisecondCounterHiRes()*0.00032f;
+        const float glowY=355.0f+112.0f*std::sin(drift);
+        ColourGradient railGlow(color(SliderTrack).withAlpha(0.075f+0.085f*theme_audio_level_),
+                                218.0f,glowY,
+                                Colours::transparentBlack,55.0f,glowY+185.0f,true);
+        g.setGradientFill(railGlow);
         g.fillRect(52,0,180,HEIGHT);
         if(FxTheme::getThemeMode()==FxThemeMode::NeuralCore) {
             // The top-right telemetry is ACTUAL pretrained YAMNet event scores
