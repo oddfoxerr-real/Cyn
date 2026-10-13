@@ -43,7 +43,8 @@ public:
         };
         cancel_.onClick = [this] { close(); };
 
-        startTimerHz(30);
+        if (FxTheme::isReducedMotion()) startTimer(500);
+        else startTimerHz(30);
     }
 
     ~CynThemeStudioContent() override { stopTimer(); }
