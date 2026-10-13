@@ -10,6 +10,8 @@ No driver installation, removal, service restart or system reboot is performed.
 #include <cfgmgr32.h>
 #include <functional>
 #include <vector>
+#include <string>
+#include <cwchar>
 
 #pragma comment(lib, "Setupapi.lib")
 #pragma comment(lib, "Cfgmgr32.lib")
@@ -97,6 +99,7 @@ private:
         bool hasProblem = false;
         int code = 0;
         juce::String deviceId, name;
+        bool physicalDriver = false;
     };
     struct Candidate
     {
@@ -136,6 +139,7 @@ private:
                     nullptr, reinterpret_cast<PBYTE>(name), sizeof(name), nullptr);
             }
             result.hasProblem = true;
+            result.physicalDriver = _wcsicmp(category, L"MEDIA") == 0;
             result.code = static_cast<int>(problemCode);
             result.deviceId = identifier;
             result.name = juce::String(name).isNotEmpty() ? juce::String(name) : "Unnamed audio device";
@@ -181,11 +185,14 @@ private:
                 return;
             }
         }
-        if (getPermission() != Permission::NeverDownload)
-            beginWorker(Stage::Scanning, {});
+        if (issue.physicalDriver && getPermission() != Permission::NeverDownload)
+            beginWorker(Stage::Scanning, {}, issue.deviceId);
+        else if (!issue.physicalDriver)
+            status_ += " Logical audio endpoint: no automatic driver download attempted.";
     }
 
-    void beginWorker(Stage nextStage, const Candidate& candidate)
+    void beginWorker(Stage nextStage, const Candidate& candidate,
+                     const juce::String& targetDeviceId = {})
     {
         if (!isEnabled() || isBusy()) return;
         const auto script = juce::File::getSpecialLocation(juce::File::currentExecutableFile)
@@ -221,6 +228,15 @@ private:
             " -ExecutionPolicy Bypass -File \"" + script.getFullPathName() + "\" -Action "
             + (nextStage == Stage::Scanning ? "Scan" : "Download")
             + " -ResultPath \"" + resultFile_.getFullPathName() + "\"";
+        if (nextStage == Stage::Scanning && targetDeviceId.isNotEmpty())
+        {
+            if (targetDeviceId.containsAnyOf("\"'\r\n"))
+            {
+                status_ = "Rejected an invalid audio device identifier.";
+                return;
+            }
+            command += " -TargetDeviceId \"" + targetDeviceId + "\"";
+        }
         if (nextStage == Stage::Downloading)
         {
             if (candidate.updateId.containsAnyOf("\"'\r\n") ||
