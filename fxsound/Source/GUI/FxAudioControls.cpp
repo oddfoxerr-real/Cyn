@@ -93,16 +93,26 @@ void FxAudioControls::resized()
 
 void FxAudioControls::paint(Graphics& g)
 {
-    auto bounds = getLocalBounds().toFloat();
-    g.setColour(Colour(FXCOLOR(ControlBackground)).withAlpha(0.94f));
-    g.fillRoundedRectangle(bounds, 18.0f);
-    g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(0.82f));
-    g.drawRoundedRectangle(bounds.reduced(0.5f), 18.0f, 1.0f);
-
-    auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
-    g.setFont(theme.getSmallFont().withHeight(9.0f));
-    g.setColour(Colour(FXCOLOR(HintText)).withAlpha(0.82f));
-    g.drawText(effects_shown_ ? "ENHANCEMENTS" : "OUTPUT TUNING", 12, 7, 128, 14, Justification::centredLeft, false);
+    auto& theme=dynamic_cast<FxTheme&>(getLookAndFeel());
+    const bool studio=getWidth()>=450;
+    if(!studio) {
+        auto bounds=getLocalBounds().toFloat();
+        g.setColour(Colour(FXCOLOR(ControlBackground)).withAlpha(0.94f));
+        g.fillRoundedRectangle(bounds,18.0f);
+        g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(0.82f));
+        g.drawRoundedRectangle(bounds.reduced(0.5f),18.0f,1.0f);
+    }
+    g.setColour(Colour(FXCOLOR(SliderTrack)).withAlpha(0.94f));
+    g.setFont(theme.getSmallFont().withHeight(10.0f));
+    g.drawText(studio?"CORE ENHANCEMENTS / 05":
+         (effects_shown_?"ENHANCEMENTS":"OUTPUT TUNING"),
+         15,8,juce::jmin(345,getWidth()-35),15,Justification::centredLeft,false);
+    if(studio) {
+        g.setFont(theme.getNormalFont().withHeight(15.0f));
+        g.setColour(Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
+        g.drawText(effects_shown_?"Fine-tune the feeling":"Fine-tune your output",
+                   15,23,juce::jmin(395,getWidth()-42),23,Justification::centredLeft,false);
+    }
 }
 
 FxEffects::FxEffects()
@@ -276,13 +286,15 @@ void FxEffects::FxEffectSlider::paint(Graphics& g)
     Path track,arc;
     track.addCentredArc(cx,cy,radius,radius,0,-2.35f,2.35f,true);
     arc.addCentredArc(cx,cy,radius,radius,0,-2.35f,-2.35f+4.7f*value,true);
-    const Colour colours[5]={Colour(0xff6ed2ec),Colour(0xffa68df1),
-        Colour(0xff9e8cfb),Colour(0xffe58cc4),Colour(0xffc799ff)};
-    g.setColour(Colour(0xff38324f));
+    const auto accent=Colour(FXCOLOR(SliderTrack));
+    const auto soft=Colour(FXCOLOR(SliderHighlight));
+    g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(.90f));
     g.strokePath(track,PathStrokeType(7.0f,PathStrokeType::curved,PathStrokeType::rounded));
-    g.setColour(isEnabled()?colours[(int)effect_]:colours[(int)effect_].withMultipliedAlpha(0.32f));
+    const float mix=0.17f*(float)effect_;
+    const auto tint=accent.interpolatedWith(soft,mix);
+    g.setColour(isEnabled()?tint:tint.withMultipliedAlpha(0.32f));
     g.strokePath(arc,PathStrokeType(7.0f,PathStrokeType::curved,PathStrokeType::rounded));
-    g.setColour(Colour(0xfff5ecff));
+    g.setColour(Colour(FXCOLOR(DefaultText)));
     g.setFont(Font(17.0f,Font::bold));
     g.drawText(String(roundToInt(value*100.0f))+"%",0,roundToInt(cy-13),getWidth(),26,Justification::centred,false);
 }

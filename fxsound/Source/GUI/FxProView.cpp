@@ -443,7 +443,7 @@ void FxProView::resized()
         audio_controls_.setBounds(256,288,168,257);
         equalizer_.setBounds(440,288,768,257);
     }
-    smart_toggle_.setBounds(page_==0?975:272,page_==1?350:page_==0?572:565,220,28);
+    smart_toggle_.setBounds(page_==0?973:272,page_==1?350:page_==0?571:565,220,28);
     smart_status_.setBounds(508,page_==1?351:566,678,26);
     smart_status_.setVisible(page_==1 || page_==2);
     if (page_ == 2)

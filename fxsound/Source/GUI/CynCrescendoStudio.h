@@ -3,6 +3,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "CynFlagshipMixer.h"
+#include "FxTheme.h"
 #include <array>
 #include <algorithm>
 #include <cmath>
@@ -11,13 +12,19 @@
 namespace CynCrescendoStudio {
 using namespace juce;
 
+inline Colour paintRole(FxColor role) {
+    return Colour(FxTheme::getColor(role)).withAlpha(1.0f);
+}
 inline void card(Graphics& g,float x,float y,float w,float h) {
-    ColourGradient fill(Colour(0xff1b1930),x,y,
-                        Colour(0xff101525),x+w,y+h,false);
-    fill.addColour(0.49f,Colour(0xff17192d));
+    const auto panel=paintRole(ControlBackground);
+    const auto outline=paintRole(RowOutline);
+    ColourGradient fill(panel.brighter(FxTheme::isLightTheme()?0.025f:0.075f),
+                        x,y,panel.darker(FxTheme::isLightTheme()?0.025f:0.085f),
+                        x+w,y+h,false);
+    fill.addColour(.49f,panel);
     g.setGradientFill(fill);
     g.fillRoundedRectangle(x,y,w,h,15.0f);
-    g.setColour(Colour(0xff35324b));
+    g.setColour(outline.withAlpha(0.86f));
     g.drawRoundedRectangle(x+0.5f,y+0.5f,w-1,h-1,15.0f,1.0f);
 }
 inline void words(Graphics& g,const String& s,int x,int y,int w,int h,
@@ -28,10 +35,11 @@ inline void words(Graphics& g,const String& s,int x,int y,int w,int h,
 }
 inline void draw(Graphics& g,const std::array<float,96>& samples,
                  size_t count,size_t cursor,const CynAudioScene& scene,
-                 bool sceneReady,float drop,bool processing,bool enabled) {
-    const auto white=Colour(0xfff3edff),muted=Colour(0xffaaa7c8),
-               purple=Colour(0xffc69bff),rose=Colour(0xffe49aca),
-               green=Colour(0xff78e4c4);
+                 bool sceneReady,float drop,bool processing,bool enabled,
+                 const std::array<float,31>& eq,int eqCount) {
+    const auto white=paintRole(DefaultText),muted=paintRole(HintText),
+               purple=paintRole(SliderTrack),rose=paintRole(SliderHighlight),
+               green=paintRole(ValidTextBorder);
     card(g,256,154,612,214); card(g,879,154,329,214);
     card(g,256,382,612,170); card(g,879,382,329,170);
     card(g,256,560,952,45);
@@ -40,7 +48,7 @@ inline void draw(Graphics& g,const std::array<float,96>& samples,
     words(g,processing?"REAL INPUT LEVEL / LIVE":"WAITING FOR PLAYBACK",275,210,400,14,10,muted);
     words(g,enabled?"CRESCENDO AWARE":"MANUAL MODE",731,168,130,18,9,enabled?green:muted,true);
     const float x0=275,y0=274,step=576.0f/76.0f;
-    g.setColour(Colour(0xff37324c));
+    g.setColour(paintRole(RowOutline).withAlpha(.75f));
     g.drawLine(x0,y0,x0+576,y0,1.0f);
     for(size_t i=0;i<76;++i) {
         float value=0;
@@ -62,7 +70,7 @@ inline void draw(Graphics& g,const std::array<float,96>& samples,
     words(g,"INTELLIGENT DYNAMICS",897,166,290,14,10,purple,true);
     words(g,"Music energy response",897,185,290,23,15,white,true);
     const float cx=942,cy=268,r=35;
-    g.setColour(Colour(0xff38334f));g.drawEllipse(cx-r,cy-r,r*2,r*2,8.0f);
+    g.setColour(paintRole(RowOutline).withAlpha(.92f));g.drawEllipse(cx-r,cy-r,r*2,r*2,8.0f);
     const float amount=std::clamp(drop,0.0f,1.0f);
     Path arc;
     arc.addCentredArc(cx,cy,r,r,0,-2.35f,-2.35f+amount*4.65f,true);
@@ -74,14 +82,30 @@ inline void draw(Graphics& g,const std::array<float,96>& samples,
     words(g,sceneReady?"Music "+String(roundToInt(std::clamp(scene.music,0.0f,1.0f)*100))+"%":"No live classification",999,245,195,18,11,muted);
     words(g,sceneReady?"Percussion "+String(roundToInt(std::clamp(scene.percussion,0.0f,1.0f)*100))+"%":"No rhythm estimate",999,266,195,18,11,muted);
     words(g,enabled?"Adaptive processing":"Manual presets",999,287,190,18,10,muted);
-    g.setColour(Colour(0xff35364a));g.fillRoundedRectangle(898,347,289,4,2);
+    g.setColour(paintRole(RowOutline).withAlpha(.92f));g.fillRoundedRectangle(898,347,289,4,2);
     g.setColour(purple);g.fillRoundedRectangle(898,347,289*amount,4,2);
-    words(g,"CORE ENHANCEMENTS / 05",274,389,370,14,10,purple,true);
-    words(g,"Fine-tune the feeling",274,406,360,24,15,white,true);
+    // Read-only compact preview of applied EQ gains, not a compressed 31-band editor.
     words(g,"ADAPTIVE FREQUENCY RESPONSE",897,389,287,14,10,purple,true);
-    words(g,"Editable equalizer",897,406,287,24,15,white,true);
+    words(g,"LIVE EQ / ACTUAL DSP",897,407,282,18,13,white,true);
+    const float x0Eq=902.0f,y0Eq=477.0f,wEq=277.0f;
+    g.setColour(paintRole(RowOutline).withAlpha(.6f));
+    for(int i=0;i<3;++i) {
+        const float y=451.0f+24.0f*i;
+        g.drawLine(x0Eq,y,x0Eq+wEq,y,0.8f);
+    }
+    if(eqCount>0) {
+        Path curve;
+        for(int i=0;i<eqCount && i<(int)eq.size();++i) {
+            const float x=x0Eq+wEq*(float)i/(float)juce::jmax(1,eqCount-1);
+            const float y=y0Eq-juce::jlimit(-12.0f,12.0f,eq[(size_t)i])*2.0f;
+            if(i==0)curve.startNewSubPath(x,y);
+            else curve.lineTo(x,y);
+        }
+        g.setColour(purple.withAlpha(0.90f));
+        g.strokePath(curve,PathStrokeType(2.2f,PathStrokeType::curved,PathStrokeType::rounded));
+    }
+    words(g,String(eqCount)+" bands",901,521,125,18,11,muted);
     words(g,"LET THE MUSIC BREATHE",274,564,390,17,11,white,true);
     words(g,"Your preset + real-time response; no volume override.",274,584,650,14,10,muted);
-    words(g,enabled?"SMART LISTENING ON":"MANUAL MODE",1040,575,154,17,9,enabled?green:muted,true);
 }
 }
