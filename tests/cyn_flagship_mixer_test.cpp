@@ -27,7 +27,23 @@ int main() {
     assert(beat.preference[4]>gentle.preference[4]+0.10f);
     assert(beat.preference[3]>gentle.preference[3]+0.04f);
     assert(beat.lowEqDb>=0.0f && beat.lowEqDb<=2.7f);
-    InputAudioFeatures hot=a; hot.rms=0.60f;
+    CynAudioScene singing=phonk; singing.vocals=0.96f;
+    singing.speech=0.18f;
+    const auto voice=CynFlagshipMixer::decide(singing,a,false);
+    assert(voice.preference[0]>beat.preference[0]);
+    assert(voice.presenceEqDb>=beat.presenceEqDb);
+    // Hot, sibilant vocals should never be sharpened further with air EQ.
+    InputAudioFeatures hissy=a; hissy.values[7]=-0.20f;
+    hissy.values[6]=-3.2f;
+    const auto harsh=CynFlagshipMixer::decide(singing,hissy,false);
+    assert(harsh.airEqDb<voice.airEqDb);
+    assert(harsh.presenceEqDb<=voice.presenceEqDb);
+    CynAudioScene extraKick=phonk; extraKick.bassDrum=1.0f;
+    CynAudioScene noKick=phonk; noKick.bassDrum=0.0f;
+    const auto rhythmic=CynFlagshipMixer::decide(extraKick,a,false);
+    const auto withoutKick=CynFlagshipMixer::decide(noKick,a,false);
+    assert(rhythmic.preference[4]>withoutKick.preference[4]);
+        InputAudioFeatures hot=a; hot.rms=0.60f;
     const auto overloaded=CynFlagshipMixer::decide(phonk,hot,false);
     assert(overloaded.headroom<beat.headroom);
     assert(overloaded.lowEqDb<beat.lowEqDb);
