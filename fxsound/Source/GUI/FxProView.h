@@ -93,6 +93,7 @@ private:
     FxVisualizer visualizer_;
     TooltipWindow tool_tip_;
     TextButton sound_nav_ { "Sound studio" }, smart_nav_ { "Smart listening" }, devices_nav_ { "Output devices" }, ai_hub_nav_ { "AI Hub" };
+    TextButton themes_nav_ { "Themes" }, eq_open_ { "Edit full EQ" }, eq_back_ { "Back to studio" };
     CynRailButton home_ { "Sound studio", 0 }, smart_rail_ { "Smart listening", 1 }, devices_rail_ { "Output devices", 2 };
     CynRailButton settings_rail_ { "Settings", 3 };
     TextButton settings_ { "Settings" };
@@ -107,6 +108,8 @@ private:
     bool neural_core_live_=false;
     float theme_audio_level_=0.0f;
     std::array<float,96> crescendo_samples_ {};
+    std::array<float,31> live_eq_ {};
+    int live_eq_bands_=0;
     size_t crescendo_count_=0,crescendo_cursor_=0;
     CynAudioScene crescendo_scene_ {};
     bool crescendo_scene_ready_=false;

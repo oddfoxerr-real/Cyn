@@ -259,6 +259,15 @@ public:
                     g.drawRoundedRectangle(x,y,430.0f,218.0f,22.0f,1.2f);
                 }
                 break;
+            case FxThemeMode::Crescendo:
+                // Light audio-driven ribbon atmosphere matching concept #5.
+                // Ambient motion here is theme artwork, not a fake audio graph.
+                halo(700,220,360,.23f+energy*.09f);
+                halo(900,350,270,.16f+energy*.08f);
+                for(int n=0;n<8;++n)
+                    ribbon(145+n*38,18+energy*24,82+n*8,t*.26f+n*.36f,
+                           .20f-n*.014f,2.2f);
+                break;
             case FxThemeMode::NeuralCore:
                 for(int n=0;n<26;++n)
                 {
