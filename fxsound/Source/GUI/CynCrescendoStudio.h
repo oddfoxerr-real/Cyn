@@ -68,7 +68,7 @@ inline void draw(Graphics& g,const std::array<float,96>& samples,
     words(g,processing?"LIVE INPUT / MEASURED":"NO AUDIO SIGNAL",271,215,220,16,10,processing?positive:soft,true);
 
     // A radial sound stage. Bars and core intensity correspond to actual
-    // RMS history, not generated beats, random amplitude or fake classifications.
+    // RMS history, not generated beats, inferred amplitude or fake classifications.
     const float cx=592.0f,cy=292.0f,radius=83.0f;
     ColourGradient aura(accent.withAlpha(.20f+.16f*level),cx,cy,
                         Colours::transparentBlack,cx+152.0f,cy+123.0f,true);
