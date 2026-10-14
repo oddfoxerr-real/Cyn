@@ -49,6 +49,7 @@ private:
 		void showValue(bool show);
 
         void enablementChanged() override;
+        void paint(Graphics& g) override;
 
 	private:
 		static constexpr int LABEL_HEIGHT = 12;
