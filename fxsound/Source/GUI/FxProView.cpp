@@ -6,6 +6,7 @@
 #include "CynThemeAtmosphere.h"
 #include "FxSettingsDialog.h"
 #include "CynAiHubDialog.h"
+#include "CynSpotifyDialog.h"
 #include <array>
 #include <cmath>
 
@@ -20,6 +21,8 @@ FxProView::FxProView() : tool_tip_(this)
         addAndMakeVisible(component);
     for(auto* c:std::initializer_list<Component*> {&misc_nav_,&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) addAndMakeVisible(c);
     misc_nav_.onClick=[this]{selectPage(3);};
+    addAndMakeVisible(spotify_);
+    spotify_.onClick=[this]{if(auto* worker=FxController::getInstance().spotify())CynSpotifyDialog::show(*worker,this);};
     dj_download_.onClick=[]{if(auto* dj=FxController::getInstance().dj()) dj->download();};
     dj_cancel_.onClick=[]{if(auto* dj=FxController::getInstance().dj()) dj->cancelDownload();};
     dj_remove_.onClick=[]{if(auto* dj=FxController::getInstance().dj()) dj->remove();};
@@ -171,6 +174,7 @@ void FxProView::selectPage(int page)
         transition_image_=createComponentSnapshot(getLocalBounds()); transition_start_=Time::getMillisecondCounterHiRes();
     }
     page_ = page;
+    spotify_.setVisible(page==3);
     misc_nav_.setToggleState(page==3,dontSendNotification);
     for(auto* c:std::initializer_list<Component*> {&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) c->setVisible(page==3);
     smart_toggle_.setVisible(page!=3);smart_status_.setVisible(page!=3);
@@ -355,6 +359,7 @@ void FxProView::resized()
 {
     misc_nav_.setBounds(68,240,152,36);
     dj_toggle_.setBounds(280,270,230,32);
+    spotify_.setBounds(960,215,215,38);
     dj_download_.setBounds(280,215,200,38);dj_remove_.setBounds(280,215,200,38);dj_cancel_.setBounds(280,215,200,38);
     dj_progress_.setBounds(505,224,665,22);
     dj_status_.setBounds(280,310,900,35);
@@ -512,7 +517,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.24", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.28", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
         ? "Choose Music AI or Movie AI. Each learns your preferences separately." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);

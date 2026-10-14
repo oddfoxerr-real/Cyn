@@ -1,5 +1,6 @@
 // Cyn optional AI DJ. SPDX-License-Identifier: AGPL-3.0-or-later
 #pragma once
+#include "CynDjPolicy.h"
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -39,7 +40,7 @@ public:
         if(on!=wasOn_) { reset(); wasOn_=on; }
         if(!on) return;
         const auto version=sceneVersion_.load();
-        if(version!=seenScene_) { seenScene_=version; lease_=int64_t(rate_)*12; }
+        if(version!=seenScene_) { seenScene_=version; lease_=int64_t(rate_)*CynDjPolicy::contextLeaseSeconds; }
         const auto voiceVersion=voiceVersion_.load();
         if(voiceVersion!=seenVoice_) {seenVoice_=voiceVersion;voiceLease_=int64_t(rate_)*3;}
         const float amount=intensity_.load();
@@ -53,16 +54,20 @@ public:
             auto* sample=audio+i*2;
             const float l=sample[0],r=sample[1];
             const float mono=std::isfinite(l)&&std::isfinite(r)?(l+r)*0.5f:0.0f;
-            const float level=std::abs(mono);
+            // Opposite-phase stereo still has energy even if its mono sum cancels.
+            const float level=std::isfinite(l)&&std::isfinite(r)?(std::abs(l)+std::abs(r))*0.5f:0.0f;
             fast_+=fastCoef*(level-fast_);
             slow_+=slowCoef*(level-slow_);
             const bool onset=fast_>slow_*1.65f+0.003f && fast_>0.012f;
             if(lease_>0) --lease_;
             if(voiceLease_>0) --voiceLease_;
             ++elapsed_;
-            if(authorised && lease_>0 && voiceLease_>0 && amount>0 && onset && !previousOnset_ && elapsed_>cooldown && remaining_==0) {
+            // Compressed/sustained music may never cross the transient threshold.
+            // Allow a spaced accent after 1.5 intervals, only over audible music.
+            const bool moment=(onset&&!previousOnset_) || (elapsed_>cooldown*1.5 && slow_>0.012f);
+            if(authorised && lease_>0 && voiceLease_>0 && amount>0 && moment && elapsed_>cooldown && remaining_==0) {
                 kind_=(kind_+1)%3; remaining_=int(rate_*0.7); total_=remaining_;
-                elapsed_=0; anchor_=bounded(slow_*0.35f,0.001f,0.045f);
+                elapsed_=0; anchor_=bounded((std::max)(fast_,slow_)*0.8f,0.006f,0.08f);
                 events_.fetch_add(1); lastEffect_.store(kind_+1);
             }
             previousOnset_=onset;

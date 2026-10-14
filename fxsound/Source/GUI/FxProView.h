@@ -82,6 +82,7 @@ private:
     ToggleButton dj_toggle_{"Enable AI DJ"},dj_stereo_{"Move effects between ears"};
     Slider dj_intensity_{Slider::LinearHorizontal,Slider::TextBoxRight},dj_spacing_{Slider::LinearHorizontal,Slider::TextBoxRight};
     Label dj_status_,dj_recent_;
+    TextButton spotify_{"Spotify / EMBER"};
     double dj_progress_value_=0;
     ProgressBar dj_progress_{dj_progress_value_};
     Image transition_image_;

@@ -9,6 +9,17 @@
 #include <limits>
 #include <cstring>
 int main(int argc,char** argv) {
+    assert(CynDjPolicy::contextTimely(8000));
+    assert(CynDjPolicy::contextTimely(21000));
+    assert(!CynDjPolicy::contextTimely(30001));
+    assert(CynDjPolicy::currentMusic(true,0.8f,0.05f,0));
+    assert(!CynDjPolicy::currentMusic(false,0.8f,0,0));
+    assert(!CynDjPolicy::currentMusic(true,0.1f,0,0));
+    assert(!CynDjPolicy::currentMusic(true,0.8f,0.5f,0));
+    assert(CynDjPolicy::permitLive(true,0.8f,0.05f,0,false)); // slow AST cannot starve DJ
+    assert(!CynDjPolicy::permitLive(true,0.5f,0.05f,0,false));
+    assert(CynDjPolicy::permitLive(true,0.5f,0.05f,0,true));
+    assert(!CynDjPolicy::permitLive(false,0.9f,0,0,true));
     auto dj=std::make_unique<CynDjEffects>();
     dj->setFormat(32,2,48000);
     std::array<float,960> block{};
@@ -19,7 +30,8 @@ int main(int argc,char** argv) {
     dj->configure(0.8f,4,true);
     double delta=0;uint32_t lastEvent=0;int lastBlock=-1000;
     for(int b=0;b<3000;++b) {
-        if(b%100==0){dj->scene(1,0);dj->voiceGate(true);}
+        if(b==0) dj->scene(1,0);
+        if(b%100==0) dj->voiceGate(true);
         for(int i=0;i<480;++i) {
             const float gain=b%50<7?0.4f:0.003f;
             block[2*i]=block[2*i+1]=gain*float(std::sin((b*480+i)*6.28318530718*160/48000));
@@ -29,6 +41,21 @@ int main(int argc,char** argv) {
         if(dj->events()!=lastEvent) {assert(b-lastBlock>=399);lastBlock=b;lastEvent=dj->events();}
     }
     assert(dj->events()>=3);assert(delta>0.1);
+    // Mastered music with continuous energy, including anti-phase stereo, must
+    // produce audible added audio rather than waiting forever for a large onset.
+    auto sustained=std::make_unique<CynDjEffects>();
+    sustained->setFormat(32,2,48000);sustained->enable(true);sustained->configure(1,4,true);
+    double wetEnergy=0;
+    for(int b=0;b<2000;++b) {
+        if(b%100==0){sustained->scene(1,0);sustained->voiceGate(true);}
+        for(int i=0;i<480;++i) {block[2*i]=0.2f*float(std::sin((b*480+i)*6.28318530718*220/48000));block[2*i+1]=-block[2*i];}
+        const auto input=block;sustained->process(block.data(),480);
+        for(size_t i=0;i<block.size();++i)wetEnergy+=(block[i]-input[i])*(block[i]-input[i]);
+    }
+    assert(sustained->events()>=3);assert(wetEnergy>1.0);
+    auto sustainedCount=sustained->events();
+    for(int b=0;b<1000;++b){sustained->scene(1,0);sustained->voiceGate(true);block.fill(0);sustained->process(block.data(),480);}
+    assert(sustained->events()==sustainedCount); // cadence cannot add effects to silence
     dj->voiceGate(false);auto gated=dj->events();
     for(int b=0;b<700;++b){if(b%100==0)dj->scene(1,0);block.fill(b%50<5?0.25f:0);dj->process(block.data(),480);}
     assert(dj->events()==gated);
@@ -37,9 +64,9 @@ int main(int argc,char** argv) {
     for(int b=0;b<1400;++b) {block.fill(b%50<5?0.25f:0);dj->process(block.data(),480);}
     assert(dj->events()==n);
     dj->scene(1,0);
-    for(int b=0;b<2000;++b){block.fill(0);dj->process(block.data(),480);}
+    for(int b=0;b<4100;++b){dj->voiceGate(true);block.fill(0);dj->process(block.data(),480);}
     n=dj->events();
-    for(int b=0;b<1000;++b){block.fill(b%50<5?0.25f:0);dj->process(block.data(),480);}
+    for(int b=0;b<1000;++b){dj->voiceGate(true);block.fill(b%50<5?0.25f:0);dj->process(block.data(),480);}
     assert(dj->events()==n); // stale model expires
     dj->power(false);block=dry;dj->process(block.data(),480);assert(block==dry);
     dj->power(true);dj->enable(false);block=dry;dj->process(block.data(),480);assert(block==dry);

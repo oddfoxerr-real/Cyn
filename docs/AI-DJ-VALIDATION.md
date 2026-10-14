@@ -33,7 +33,7 @@ Interactive visual inspection was interrupted while the installed older Cyn was
 ## Performance and limits
 
 The Python fixture run while compilation was active measured 8.6â€“20.7 seconds per
-inference; these are not unloaded-system benchmarks. Production code discards
+inference; these are not unloaded-system benchmarks. The 2.0.22 release discarded
 decisions taking over six seconds, reports that analysis is behind playback,
 and leaves accents paused. Inference has two CPU threads and never executes in
 the playback callback. The independently running existing YAMNet classifier
@@ -53,3 +53,41 @@ the pinned model and config in `.build-tools/dj`, then run that script.
 `scripts/test_dj_lifecycle.ps1` additionally requires the pinned native runtime
 from `PREPARE_CYN_YAMNET.ps1` and internet access. Its storage stays under
 `.build-tools/dj/lifecycle-storage`. No test dependencies ship with the app.
+
+## 2.0.23 regression fix
+
+Live inspection of 2.0.22 confirmed an installed/enabled model with zero accents
+and “Analysis is behind playback - effects paused” during actual Spotify playback.
+Windows endpoint diagnostics confirmed audio through FxSound and Cyn to the JBL
+headphones. Paused playback separately explained the gathering-audio messages.
+
+2.0.23 allows 8–21-second analysis (the measured range above) as background context,
+with a 30-second maximum and 40-second playback lease. Fresh YAMNet must positively
+detect current music as well as pass voice/silence checks. Native regressions cover
+these duration boundaries, missing/nonmusic/speech veto, actual accents after the
+old 12-second lease, and expiry at the new boundary while live music remains fresh.
+The model/frontend/download bytes are unchanged. No live listening success is
+claimed until the updated application is exercised during playback.
+
+## 2.0.28 validation
+
+- Native DSP tests passed: exact bypass, nonzero added audio, headroom, spacing,
+  speech and stale-analysis suppression, power and formats, sustained music,
+  opposite-phase stereo, and silence after continuous music.
+- Production model lifecycle passed using the actual pinned AST ONNX and native
+  runtime: current music permits effects while context warms; inference completes;
+  disable/unload/remove, HTTPS cancel/retry/download, hash and corruption rejection
+  pass. The initial sandbox network failure was repeated successfully with access.
+- Spotify native tests passed with injected transport and synthetic credentials:
+  EMBER and Spotipy JSON shapes, refresh/rotation, preserved fields, controls,
+  track/podcast display, missing playback, 429 handling and persisted disconnect.
+- Regression checks for current theme atmospheres, applied AI controls, audio
+  repair, AI Hub and YAMNet passed after merging the latest 2.0.27 source.
+- Live Spotify account, physical-device listening and native visual QA have not
+  been performed in this session. The user has supplied EMBER source references
+  but not the private Spotify session JSON.
+
+The current live music threshold is 0.65 without timely positive AST context,
+0.35 with it. Slow AST no longer blocks accents. Continuous music may receive
+an accent after 1.5 times minimum spacing. Previous 2.0.23 notes above describe
+an unreleased intermediate fix, not the published theme release of that number.

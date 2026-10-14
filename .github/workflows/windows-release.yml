@@ -79,6 +79,11 @@ jobs:
         shell: pwsh
         run: ./scripts/test_dj.ps1
 
+      - name: Validate EMBER Spotify session integration
+        if: steps.inspect.outputs.state != 'published'
+        shell: pwsh
+        run: ./scripts/test_spotify.ps1
+
       - name: Validate Auto Repair permissions and Windows Update worker
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh
