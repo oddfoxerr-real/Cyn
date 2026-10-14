@@ -4,6 +4,7 @@
 #include "FxController.h"
 #include "FxTheme.h"
 #include "CynThemeAtmosphere.h"
+#include "CynCrescendoStudio.h"
 #include "FxSettingsDialog.h"
 #include "CynAiHubDialog.h"
 #include <array>
@@ -277,6 +278,17 @@ void FxProView::timerCallback()
             : 0.0f;
         theme_audio_level_+=(level-theme_audio_level_)*
             (FxTheme::isReducedMotion()?1.0f:0.33f);
+        if(page_==0) {
+            // Real pre-effect level from the native analyzer, sampled on the UI thread.
+            crescendo_samples_[crescendo_cursor_]=hasAudio
+                ? jlimit(0.0f,1.0f,snapshot.rms*3.0f):0.0f;
+            crescendo_cursor_=(crescendo_cursor_+1)%crescendo_samples_.size();
+            crescendo_count_=jmin(crescendo_samples_.size(),crescendo_count_+1);
+            CynAudioScene scene;
+            crescendo_scene_ready_=hasAudio && brainController.getLiveYamNetScene(scene);
+            crescendo_scene_=crescendo_scene_ready_?scene:CynAudioScene{};
+            crescendo_drop_=crescendo_scene_ready_?brainController.getCrescendoStrength():0.0f;
+        }
         if(wantGraph) {
             neural_activity_.setTrainingActive(brainController.isSmartTraining());
             neural_activity_.setActivity(hasAudio?&snapshot:nullptr,
@@ -398,11 +410,18 @@ void FxProView::resized()
     live_status_.setBounds(1000, 23, 208, 24);
     preset_list_.setBounds(256, 97, 465, 40);
     endpoint_list_.setBounds(737, 97, 471, 40);
-    visualizer_.setBounds(256, 164, 952, 102);
-    audio_controls_.setBounds(256, 288, 168, 257);
-    equalizer_.setBounds(440, 288, 768, 257);
-    smart_toggle_.setBounds(272, page_ == 1 ? 350 : 565, 220, 28);
-    smart_status_.setBounds(508, page_ == 1 ? 351 : 566, 678, 26);
+    if(page_==0) {
+        visualizer_.setBounds(275,328,577,9);
+        audio_controls_.setBounds(256,382,612,170);
+        equalizer_.setBounds(879,382,329,170);
+    } else {
+        visualizer_.setBounds(256,164,952,102);
+        audio_controls_.setBounds(256,288,168,257);
+        equalizer_.setBounds(440,288,768,257);
+    }
+    smart_toggle_.setBounds(272,page_==1?350:page_==0?571:565,220,28);
+    smart_status_.setBounds(508,page_==1?351:566,678,26);
+    smart_status_.setVisible(page_!=0 && page_!=3);
     if (page_ == 2)
     {
         smart_toggle_.setBounds(276, 406, 220, 28);
@@ -508,17 +527,25 @@ void FxProView::paint(Graphics& g)
     g.fillRoundedRectangle(68.0f,72.0f+42.0f*selected,152.0f,36.0f,12.0f);
     g.setColour(color(SliderTrack));
     g.fillRoundedRectangle(68.0f,83.0f+42.0f*selected,3.0f,14.0f,1.5f);
-    text("Your workspace", 76, 25, 140, 20, 14);
+    if(page_==0) {
+        g.setColour(Colour(0xff100f20));
+        g.fillRoundedRectangle(242.0f,0.0f,976.0f,612.0f,17.0f);
+        CynCrescendoStudio::draw(g,crescendo_samples_,crescendo_count_,
+            crescendo_cursor_,crescendo_scene_,crescendo_scene_ready_,
+            crescendo_drop_,FxController::getInstance().isAudioProcessing(),
+            FxController::getInstance().isSmartListening());
+    }
+    text(page_==0?"CYN / CRESCENDO":"Your workspace",76,25,140,20,page_==0?12.0f:14.0f);
     text("AUDIO", 80, 52, 132, 16, 10, true);
-    text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
-    text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.31", 80, 529, 140, 16, 10, true);
-    text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
-    text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
+    text(page_==0?"REAL MUSIC. REAL RESPONSE.":"Cyn / Personal audio",80,486,144,18,page_==0?9.0f:12.0f,true);
+    text(page_==0?"Let the music breathe.":"Made for your ears.",80,508,140,18,12,true);
+    text("Version 2.0.32",80,529,140,16,10,true);
+    text(page_ == 0 ? "From quiet to extraordinary." : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ",256,16,760,32,25);
+    text(page_ == 0 ? "Preserve the softness. Enhance the impact. Let the music lead." : page_ == 1
         ? "Choose Music AI or Movie AI. Each learns your preferences separately." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
     text("PRESET", 260, 78, 300, 16, 10, true);
     text("OUTPUT DEVICE", 741, 78, 300, 16, 10, true);
-    if (page_ == 0) card(256, 556, 952, 48);
+    if (page_ == 0) { /* Crescendo Studio panels painted above. */ }
     else if (page_ == 1)
     {
         card(256, 334, 952, 270);
