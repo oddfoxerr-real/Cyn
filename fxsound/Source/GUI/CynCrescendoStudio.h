@@ -22,7 +22,7 @@ inline void words(Graphics& g,const String& s,int x,int y,int w,int h,
     g.setFont(Font(size,bold?Font::bold:Font::plain));
     g.drawFittedText(s,x,y,w,h,Justification::centredLeft,1,0.86f);
 }
-inline void surface(Graphics& g,Rectangle<float> bounds,bool focus=false) {
+inline void surface(Graphics& g,juce::Rectangle<float> bounds,bool focus=false) {
     const auto base=paintRole(ControlBackground);
     const auto accent=paintRole(SliderTrack);
     const auto outline=paintRole(RowOutline);
@@ -69,11 +69,11 @@ inline void draw(Graphics& g,const std::array<float,96>& samples,
 
     // A radial sound stage. Bars and core intensity correspond to actual
     // RMS history, not generated beats, inferred amplitude or fake classifications.
-    const float cx=592.0f,cy=292.0f,radius=83.0f;
+    const float cx=592.0f,cy=284.0f,radius=73.0f;
     ColourGradient aura(accent.withAlpha(.20f+.16f*level),cx,cy,
                         Colours::transparentBlack,cx+152.0f,cy+123.0f,true);
     g.setGradientFill(aura);
-    g.fillEllipse(cx-151.0f,cy-151.0f,302.0f,302.0f);
+    g.fillEllipse(cx-135.0f,cy-135.0f,270.0f,270.0f);
     g.setColour(accent.withAlpha(.22f));
     g.drawEllipse(cx-radius-18.0f,cy-radius-18.0f,(radius+18.0f)*2,(radius+18.0f)*2,1.1f);
     g.setColour(highlight.withAlpha(.32f));
@@ -87,13 +87,13 @@ inline void draw(Graphics& g,const std::array<float,96>& samples,
             const auto slot=(cursor+samples.size()-have+i)%samples.size();
             sample=std::clamp(samples[slot],0.0f,1.0f);
         }
-        const float length=5.0f+27.0f*std::sqrt(sample);
+        const float length=5.0f+21.0f*std::sqrt(sample);
         const float angle=juce::MathConstants<float>::twoPi*(float)i/(float)spokeCount;
         Graphics::ScopedSaveState scoped(g);
         g.addTransform(AffineTransform::rotation(angle,cx,cy));
         g.setColour(accent.interpolatedWith(highlight,(float)i/spokeCount)
                        .withAlpha(processing?.84f:.16f));
-        g.fillRoundedRectangle(cx-2.3f,cy-108.0f-length,4.6f,length,2.1f);
+        g.fillRoundedRectangle(cx-2.3f,cy-94.0f-length,4.6f,length,2.1f);
     }
 
     g.setColour(paintRole(PanelBackground).withAlpha(.93f));
@@ -121,8 +121,8 @@ inline void draw(Graphics& g,const std::array<float,96>& samples,
 
     // A small grounded strip timeline provides temporal context below the orb.
     words(g,"RECENT AUDIO",271,387,128,15,10,soft,true);
-    const size_t shown=(std::min)((size_t)46,count);
-    for(size_t i=0;i<46;++i) {
+    const size_t shown=(std::min)((size_t)25,count);
+    for(size_t i=0;i<25;++i) {
         float sample=0.0f;
         if(i<shown)sample=std::clamp(samples[(cursor+samples.size()-shown+i)%samples.size()],0.0f,1.0f);
         const float bar=2.0f+17.0f*std::sqrt(sample);
@@ -130,7 +130,7 @@ inline void draw(Graphics& g,const std::array<float,96>& samples,
         g.fillRoundedRectangle(272.0f+(float)i*8.2f,411.0f-bar*.5f,4.7f,bar,2.0f);
     }
     words(g,"QUIET -> STRONG",272,420,176,13,9,soft);
-    words(g,"Waveform follows measured audio",495,420,205,13,9,soft);
+    words(g,"Waveform follows measured audio",481,420,215,13,9,soft);
     // Native Smart Listening toggle sits at x720,y392 and remains interactive.
 
     // Narrow AI telemetry console. No invented "AI thinking" percentages.
