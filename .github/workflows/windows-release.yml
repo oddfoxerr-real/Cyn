@@ -68,6 +68,11 @@ jobs:
         shell: powershell
         run: .\scripts\test_cyn_updater_ui.ps1
 
+      - name: Validate Crescendo Studio native UI wiring
+        if: steps.inspect.outputs.state != 'published'
+        shell: pwsh
+        run: node scripts/test_crescendo_ui.mjs
+
       - name: Validate AI Hub website and importable model
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh

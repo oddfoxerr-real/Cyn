@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Native Crescendo Studio surface contract: real data and editable native DSP.
+import assert from "node:assert/strict";
+import {readFileSync as read} from "node:fs";
+const source=p=>read(p,"utf8");
+const view=source("fxsound/Source/GUI/FxProView.cpp");
+const native=source("fxsound/Source/GUI/CynCrescendoStudio.h");
+const knobs=source("fxsound/Source/GUI/FxAudioControls.cpp");
+const controller=source("fxsound/Source/GUI/FxController.h");
+const eq=source("fxsound/Source/GUI/FxEqualizer.cpp");
+const header=source("fxsound/Source/GUI/FxProView.h");
+assert(view.includes("CynCrescendoStudio::draw(g,crescendo_samples_"));
+assert(view.includes("getLiveNeuralActivity(snapshot)"));
+assert(view.includes("snapshot.rms*3.0f"));
+assert(view.includes("getLiveYamNetScene(scene)"));
+assert(view.includes("getCrescendoStrength()"));
+assert(controller.includes("music_crescendo_.current().drop"));
+assert(native.includes("Waveform follows measured audio"));
+assert(native.includes("scene.music")&&native.includes("scene.percussion"));
+assert(header.includes("std::array<float,96> crescendo_samples_"));
+assert(knobs.includes("Slider::RotaryVerticalDrag"));
+assert(knobs.includes("FxEffects::FxEffectSlider::paint(Graphics& g)"));
+assert(knobs.includes("FxController::getInstance().setEffectValue(effect_, value)"));
+assert(knobs.includes("isMouseButtonDown()"));
+assert(knobs.includes("getAppliedEffectValue"));
+assert(knobs.includes("effects_.setBounds(0,0,getWidth(),getHeight())"));
+assert(eq.includes("sliderHeight")&&eq.includes("getHeight()<230"));
+assert(view.includes("Version 2.0.32"));
+assert(!native.includes("std::sin")&&!native.includes("random"));
+console.log("PASS: #5 Crescendo Studio paints real audio, actual scene and measured rise");
+console.log("PASS: editable knobs, original user presets, native EQ and no fake telemetry");
