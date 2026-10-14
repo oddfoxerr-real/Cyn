@@ -3131,6 +3131,7 @@ String FxController::FormatString(const String& format, const String& arg)
 
 void FxController::captureSmartBaseline()
 {
+    music_crescendo_.reset();
     for(int e=0;e<5;++e) smart_effects_[e]=jlimit(0.0f,10.0f,dfx_dsp_.getEffectValue((DfxDsp::Effect)e)*10);
     smart_bass_=smart_effects_[4]; smart_clarity_=smart_effects_[0];
     smart_leveling_=dfx_dsp_.getVolumeLeveling();
@@ -3140,6 +3141,7 @@ void FxController::captureSmartBaseline()
 }
 void FxController::restoreSmartBaseline()
 {
+    music_crescendo_.reset();
     if(!smart_enabled_) return;
     for(int e=0;e<5;++e) dfx_dsp_.setEffectValue((DfxDsp::Effect)e,smart_effects_[e]);
     for(int b=0;b<jmin(getNumEqBands(),(int)smart_eq_.size());++b) dfx_dsp_.setEqBandBoostCut(b,smart_eq_[b]);
@@ -3190,7 +3192,14 @@ void FxController::updateSmartListening()
     const auto& model=movie?movie_model_:smart_model_;
     const auto predictions=model.predict(input);
     const auto& sceneHead=movie?movie_scene_preferences_:music_scene_preferences_;
-    const CynMixDecision decision=CynFlagshipMixer::decide(scene,input,movie);
+    CynMixDecision decision=CynFlagshipMixer::decide(scene,input,movie);
+    if(!movie && listening && yamnetLive && smart_sensitivity_>0.0f) {
+        // Read real pre-effect RMS on the existing 100ms control timer.
+        const auto arc=fresh
+            ? music_crescendo_.observe(now,input.rms,scene.music,scene.speech,scene.silence)
+            : music_crescendo_.current();
+        CynFlagshipMixer::applyCrescendo(decision,scene,arc);
+    } else music_crescendo_.reset();
     const float amount=smart_sensitivity_/100.0f,depth=jmin(1.0f,amount*2);
 
     // Fuse scene and spectral analysis with optional personal preferences.

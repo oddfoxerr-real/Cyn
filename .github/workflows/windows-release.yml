@@ -98,6 +98,19 @@ jobs:
           node scripts/test_ai_applied_ui.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Applied DSP visual safety contract failed.' }
 
+      - name: Enable MSVC native regression runner
+        if: steps.inspect.outputs.state != 'published'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Validate musical crescendo and headroom behavior
+        if: steps.inspect.outputs.state != 'published'
+        shell: cmd
+        run: |
+          cl /nologo /O2 /EHsc /std:c++17 /I dsp\include /I fxsound\Source\GUI tests\cyn_crescendo_test.cpp /Fe:crescendo-test.exe
+          if errorlevel 1 exit /b 1
+          crescendo-test.exe
+          if errorlevel 1 exit /b 1
+
       - name: Compile Cyn native x64
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh

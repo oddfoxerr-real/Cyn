@@ -3,6 +3,7 @@
 #pragma once
 #include "InputAudioFeatures.h"
 #include "CynBalanceModel.h"
+#include "CynCrescendoTracker.h"
 #include <array>
 #include <cmath>
 #include <algorithm>
@@ -86,6 +87,23 @@ struct CynMixDecision {
 // energy into bounded DSP controls. Personal labels refine each listening mode.
 class CynFlagshipMixer {
 public:
+    // Retain real quiet-to-loud musical contrast. Accents are bounded by peak headroom.
+    static void applyCrescendo(CynMixDecision& d,const CynAudioScene& s,
+                               const CynCrescendoTracker::Motion& arc) noexcept {
+        if(!s.valid || !std::isfinite(s.music) || !std::isfinite(s.speech) ||
+           !std::isfinite(s.percussion) || !std::isfinite(s.bassDrum) ||
+           s.music<0.55f || (s.speech>0.80f && s.music<0.80f)) return;
+        // Do not automatically fill an intentionally quiet intro.
+        // The saved preset's volume leveling remains untouched in the controller.
+        d.levelingDb=0.0f;
+        const float rhythmic=std::clamp(0.55f*s.percussion+0.45f*s.bassDrum,0.0f,1.0f);
+        const float impact=std::clamp(arc.drop,0.0f,1.0f)*rhythmic*d.headroom;
+        d.preference[3]=std::clamp(d.preference[3]-
+            0.025f*std::clamp(arc.build,0.0f,1.0f)+0.06f*impact,0.0f,0.80f);
+        d.preference[4]=std::clamp(d.preference[4]+0.14f*impact,0.0f,0.94f);
+        d.lowEqDb=std::clamp(d.lowEqDb+0.48f*impact,-2.5f,2.7f);
+    }
+
     static CynMixDecision decide(const CynAudioScene& scene,
                                  const InputAudioFeatures& audio,
                                  bool movie) noexcept {

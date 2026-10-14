@@ -360,6 +360,7 @@ private:
     PersonalAudioModel movie_model_;
     std::vector<AudioExample> movie_examples_;
     CynScenePreference music_scene_preferences_,movie_scene_preferences_;
+    CynCrescendoTracker music_crescendo_;
     int smart_mode_ = 0; // 0 music, 1 movie/TV; this is not an automatic classifier.
     std::vector<AudioFrame> smart_history_;
     std::array<float,5> smart_effects_ {}, smart_scores_ {{0.5f,0.5f,0.5f,0.5f,0.5f}};
