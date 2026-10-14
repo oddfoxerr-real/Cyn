@@ -1,0 +1,46 @@
+{
+  "model": "Cyn starter 3 (beat & vocal feature-trained)",
+  "training": {
+    "optimizer_steps": 2500,
+    "selected_checkpoint": 2500,
+    "train": 2500,
+    "validation": 500,
+    "test": 500,
+    "seed_train": 20261030,
+    "seed_validation": 20261031,
+    "seed_test": 20261032
+  },
+  "validation": {
+    "before": {
+      "clarity_mse": 0.3399552644473208,
+      "bass_mse": 0.3546506738175726,
+      "mean_mse": 0.34730296913244674,
+      "max_bass": 0.9999999902466393,
+      "mean_bass": 0.9980398581231522
+    },
+    "after": {
+      "clarity_mse": 0.0027874623495442136,
+      "bass_mse": 0.007518317702854164,
+      "mean_mse": 0.005152890026199189,
+      "max_bass": 0.5170567615082476,
+      "mean_bass": 0.41114934985538615
+    }
+  },
+  "heldout": {
+    "before": {
+      "clarity_mse": 0.3433779612082171,
+      "bass_mse": 0.3462078402959489,
+      "mean_mse": 0.344792900752083,
+      "max_bass": 0.9999999877951385,
+      "mean_bass": 0.9962903886043057
+    },
+    "after": {
+      "clarity_mse": 0.0030435717630978142,
+      "bass_mse": 0.0072672789313889255,
+      "mean_mse": 0.005155425347243369,
+      "max_bass": 0.5637780495223125,
+      "mean_bass": 0.4088048517044833
+    }
+  },
+  "limitations": "Entirely synthetic source-mixture features and heuristic soft preference targets. No human-labeled real music, beat timestamps, vocal separation, audible AB test, or output true-peak measurement."
+}

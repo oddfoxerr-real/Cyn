@@ -41,3 +41,7 @@ Gradient optimization: **3600.0s**; **33,175,712 gradient updates**; 49 validate
 
 **Limitations:** All examples were synthetically generated. No real music, human preferences, vocal detection or source separation was evaluated. Only Bass and Clarity have starter labels.
 Existing personal learning remains intact. Select **Reset to starter** in Smart listening to activate the new bundled base model on an existing installation.
+
+## Starter 3 (Cyn 2.0.30)
+
+A 2,500-step Adam refresh of the 209-parameter Bass and Clarity heads uses independent synthetic training, validation and held-out spectral mixtures. Bass targets favor kick-like energy over persistent low rumble; clarity targets favor voice-like midrange without boosting hiss. The bundled model and AI Hub Cyn Starter have identical weights. A reproducible JavaScript generator is in training/train_starter_v3.mjs (rerun from a v2 starter checkpoint); metrics are in models/starter-evaluation-v3.json. All labels are heuristics, not real listener ratings. This network cannot detect BPM, isolate voices or verify sibilance by listening. Existing personal preferences are preserved until a user opts into Reset to starter.
