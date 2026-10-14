@@ -53,7 +53,7 @@ bool launchCynUpdater(bool interactive)
     if(!powershell.existsAsFile()) return false;
     const auto command=String("\"")+powershell.getFullPathName()+
         "\" -NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \""+
-        script.getFullPathName()+"\" -CurrentVersion 2.0.28"+
+        script.getFullPathName()+"\" -CurrentVersion 2.0.29"+
         (interactive?" -Interactive":"");
     const std::wstring wideCommand(command.toWideCharPointer());
     std::vector<wchar_t> writable(wideCommand.begin(),wideCommand.end());
@@ -261,7 +261,6 @@ FxController::~FxController()
     audioRepair_.reset();
     // Stop asynchronous inference before the audio DSP is destroyed.
     dj_worker_.reset();
-    spotify_worker_.reset();
     yamnet_worker_.reset();
 	if (powerNotify_ != nullptr && unregister_suspend_resume_notification_ != nullptr)
 	{
@@ -718,6 +717,8 @@ void FxController::printStatus()
     if(dj_worker_) {
         auto* dj=new DynamicObject();dj->setProperty("enabled",dj_worker_->enabled());
         dj->setProperty("status",dj_worker_->status());dj->setProperty("accents",int(dj_worker_->effects()));
+        dj->setProperty("remixes",int(dj_worker_->effects()));dj->setProperty("audio_processing",audio_process_on_);
+        dj->setProperty("intensity",dj_worker_->intensity());dj->setProperty("spacing",dj_worker_->spacing());
         dj->setProperty("background_analyses",int(dj_worker_->analyses()));dj->setProperty("last_effect",dj_worker_->lastEffect());
         settings->setProperty("ai_dj",var(dj));
     }
@@ -864,7 +865,6 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
         yamnet_worker_=std::make_unique<CynYamNetWorker>(dfx_dsp_);
         yamnet_worker_->startIfAvailable();
         dj_worker_=std::make_unique<CynDjWorker>(dfx_dsp_);
-        spotify_worker_=std::make_unique<CynSpotify::Worker>();
         smart_mode_=jlimit(0,1,settings_.getInt("cyn_ai_listening_mode",0));
         // Autonomous YAMNet + Balance is on for new installs; retain a saved opt-out.
         // Keep smart_enabled_ initially false so enabling captures the preset baseline.
@@ -2294,7 +2294,7 @@ void FxController::timerCallback()
     if(dj_worker_ && dj_worker_->enabled()) {
         CynAudioScene voice;
         const bool fresh=yamnet_worker_ && yamnet_worker_->latest(voice);
-        dj_worker_->liveScene(fresh&&audio_process_on_&&power,voice.music,voice.speech,voice.silence);
+        dj_worker_->liveScene(fresh,voice.music,voice.speech,voice.silence,audio_process_on_&&power);
     }
     updateSmartListening();
 

@@ -12,7 +12,7 @@ Cyn possible. If you enjoy Cyn, please [visit FxSound](https://www.fxsound.com/)
 ## Download
 
 Open [Releases](https://github.com/oddfoxerr-real/Cyn/releases) and download the
-latest **Cyn-Setup-2.0.28-x64.exe**. Exit any running Cyn or FxSound using its menu
+latest **Cyn-Setup-2.0.29-x64.exe**. Exit any running Cyn or FxSound using its menu
 before installing. Windows 10/11 on Intel/AMD x64 and administrator access are required.
 
 Setup includes presets, fonts, the starter model and the original signed FxSound
@@ -22,12 +22,8 @@ Uninstall keeps personal settings/training data and the shared audio driver.
 
 ## Features
 
-- **Misc → Spotify / EMBER:** reuse an existing signed-in EMBER Spotify JSON;
-  see current track/device and control playback without another app registration.
-  See [Spotify setup](docs/SPOTIFY.md).
-
 - **Misc → AI DJ:** optional 91 MB pretrained audio model, downloaded inside Cyn.
-  Adds restrained stereo sweeps, echo accents and shimmers to music. Includes
+  Remixes the playing song with beat repeats, rhythmic echoes and filter sweeps. Includes
   intensity, spacing, stereo movement, cancellation and removal. See
   [AI DJ](docs/AI-DJ.md) for setup and experimental timing limitations.
 

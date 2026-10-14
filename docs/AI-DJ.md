@@ -12,10 +12,10 @@ enabled; disabling AI DJ unloads the model after the current inference finishes.
 
 Controls:
 
-- **Intensity:** level of the added effects (starts at 25%). Zero adds no effects.
-- **Minimum spacing:** at least 4–45 seconds between accents (starts at 18 seconds).
-- **Move effects between ears:** pans the added effects while preserving the
-  original audio's left/right positions. Turn this off for centred accents.
+- **Intensity:** remix blend (starts at 25%). Zero leaves the song unchanged.
+- **Minimum spacing:** at least 4–45 seconds between remixes (starts at 18 seconds).
+- **Move echoes between ears:** alternates the echo contribution between channels.
+  Beat repeats and filter sweeps retain the song's stereo content.
 - **Remove download:** stops DJ inference and deletes its downloaded model.
   Personal Music AI and Movie AI training is preserved. DJ control preferences
   remain so reinstalling restores the controls.
@@ -35,17 +35,24 @@ speech, conversation and narration are classes 0, 4 and 5 in the pinned config.
 Fresh YAMNet recognition permits accents when music confidence is at least 0.65,
 speech is below 0.25 and silence below 0.6. Timely positive AST context lowers the
 music threshold to 0.35. Slow AST inference no longer prevents the live DJ from
-working. A fast local onset detector schedules short synthesised sweeps, echo
-accents and shimmers. Sustained music can also receive an accent after 1.5 times
-the chosen minimum spacing, preventing compressed tracks from waiting forever.
+working. A fast local onset detector estimates beat length from transients,
+starting at 120 BPM until useful onsets arrive. After the chosen minimum spacing,
+the next onset or estimated beat schedules a two-beat remix:
+
+- **Beat repeat:** loops the preceding half beat of the playing song.
+- **Rhythmic echo:** mixes half-beat and one-beat delayed copies of the song.
+- **Filter sweep:** sweeps the song's high frequencies down and back up.
+
+These replace the old faint noise sweeps and sine shimmers. Every effect uses
+the current audio; there are no Spotify accounts, JSON files or linking controls.
 The classifier is pretrained audio recognition, **not** a pretrained DJ decision
-model or a generative-music model. Effects are synthesised locally, not generated
-by a language model. No Mixxx code or executable is included.
+model or a generative-music model. Remix decisions are local rules informed by
+audio recognition. No Mixxx code or executable is included.
 
 The realtime path has fixed buffers and atomic parameters. Model loading,
 downloads, spectrograms and inference never execute on the playback callback.
-Effect energy is bounded to available output headroom; the dry audio is not
-normalised or repanned. Scene permission expires after 40 seconds of processed
+The remix blend is bounded to available output headroom. Original audio is
+unchanged between effects. Scene permission expires after 40 seconds of processed
 audio without a fresh result. Repeated accents respect the chosen spacing.
 The existing, faster YAMNet analysis also vetoes speech and silence; if its
 results stop arriving, that permission expires within three seconds of audio.
@@ -86,16 +93,16 @@ formats and capture. `scripts/verify_ast.py` compares native features against
 the reference Hugging Face frontend and executes the actual quantised model.
 Numeric fixture checks are not a listening-quality benchmark.
 
-## Checking activity (2.0.23)
+## Checking activity (2.0.29)
 
 The larger AST model provides optional slower background context. Fresh YAMNet
 results must report music >= 0.65 (0.35 with positive context), speech < 0.25
 and silence < 0.6. Without fresh results, no accents are allowed.
 The status shows which gate is waiting; background context is no longer a
-prerequisite. Generated sweeps use bounded current stereo energy, including
-opposite-phase stereo material.
+prerequisite. The effects use separate left/right history, so opposite-phase
+stereo does not cancel the remix audio.
 
-Watch **accents this session** to confirm automatic effects have triggered.
+Watch **remixes this session** to confirm automatic effects have triggered.
 Spacing is a minimum rather than a guaranteed interval; audible music and fresh
 recognition are required. Try 4-second spacing for testing, then restore your preferred
 setting. Pausing playback stops capture; the gathering-audio message is expected
