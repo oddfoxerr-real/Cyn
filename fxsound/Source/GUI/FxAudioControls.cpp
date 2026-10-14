@@ -286,15 +286,15 @@ void FxEffects::FxEffectSlider::paint(Graphics& g)
     Path track,arc;
     track.addCentredArc(cx,cy,radius,radius,0,-2.35f,2.35f,true);
     arc.addCentredArc(cx,cy,radius,radius,0,-2.35f,-2.35f+4.7f*value,true);
-    const auto accent=Colour(FXCOLOR(SliderTrack));
-    const auto soft=Colour(FXCOLOR(SliderHighlight));
+    const auto accent=Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f);
+    const auto soft=Colour(FXCOLOR(SliderHighlight)).withAlpha(1.0f);
     g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(.90f));
     g.strokePath(track,PathStrokeType(7.0f,PathStrokeType::curved,PathStrokeType::rounded));
     const float mix=0.17f*(float)effect_;
     const auto tint=accent.interpolatedWith(soft,mix);
     g.setColour(isEnabled()?tint:tint.withMultipliedAlpha(0.32f));
     g.strokePath(arc,PathStrokeType(7.0f,PathStrokeType::curved,PathStrokeType::rounded));
-    g.setColour(Colour(FXCOLOR(DefaultText)));
+    g.setColour(Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
     g.setFont(Font(17.0f,Font::bold));
     g.drawText(String(roundToInt(value*100.0f))+"%",0,roundToInt(cy-13),getWidth(),26,Justification::centred,false);
 }

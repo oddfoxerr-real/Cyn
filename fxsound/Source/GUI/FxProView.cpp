@@ -565,7 +565,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text(page_==0?"REAL MUSIC. REAL RESPONSE.":"Cyn / Personal audio",80,486,144,18,page_==0?9.0f:12.0f,true);
     text(page_==0?"Let the music breathe.":"Made for your ears.",80,508,140,18,12,true);
-    text("Version 2.0.33",80,529,140,16,10,true);
+    text("Version 2.0.34",80,529,140,16,10,true);
     text(page_ == 0 ? "From quiet to extraordinary." : page_ == 1 ? "Smart listening" :
          page_==2 ? "Output devices" : page_==4 ? "Full frequency control" : "Misc / AI DJ",
          256,16,760,32,25);
