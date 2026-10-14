@@ -4,8 +4,6 @@
 #include "FxController.h"
 #include "FxTheme.h"
 #include "CynThemeAtmosphere.h"
-#include "CynCrescendoStudio.h"
-#include "CynThemeStudio.h"
 #include "FxSettingsDialog.h"
 #include "CynAiHubDialog.h"
 #include <array>
@@ -17,8 +15,7 @@ FxProView::FxProView() : tool_tip_(this)
     tool_tip_.setOpaque(false);
     for (auto* component : std::initializer_list<Component*> {
         &audio_controls_, &equalizer_, &visualizer_, &sound_nav_, &smart_nav_,
-        &devices_nav_, &ai_hub_nav_, &themes_nav_, &eq_open_, &eq_back_,
-        &home_, &smart_rail_, &devices_rail_, &settings_,
+        &devices_nav_, &ai_hub_nav_, &home_, &smart_rail_, &devices_rail_, &settings_,
         &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &learning_timeline_, &neural_activity_, &learning_effect_, &listening_mode_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
         addAndMakeVisible(component);
     for(auto* c:std::initializer_list<Component*> {&misc_nav_,&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) addAndMakeVisible(c);
@@ -41,11 +38,6 @@ FxProView::FxProView() : tool_tip_(this)
     smart_nav_.onClick = smart_rail_.onClick = [this] { selectPage(1); };
     devices_nav_.onClick = devices_rail_.onClick = [this] { selectPage(2); };
     ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };
-    themes_nav_.onClick = [this] { CynThemeStudioDialog::show(this); };
-    themes_nav_.setTooltip("Open all Cyn themes, preview each and apply one.");
-    eq_open_.onClick = [this] { selectPage(4); };
-    eq_back_.onClick = [this] { selectPage(0); };
-    eq_open_.setTooltip("Open a full-width editable equalizer, including 31-band presets.");
     ai_hub_nav_.setTooltip("Manage shared AI profiles in Cyn. No separate website.");
     home_.setTooltip("Sound studio");
     smart_rail_.setTooltip("Smart listening");
@@ -181,18 +173,14 @@ void FxProView::selectPage(int page)
     page_ = page;
     misc_nav_.setToggleState(page==3,dontSendNotification);
     for(auto* c:std::initializer_list<Component*> {&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) c->setVisible(page==3);
-    smart_toggle_.setVisible(page!=3 && page!=4);
-    smart_status_.setVisible(page!=3 && page!=4);
-    themes_nav_.setVisible(true);
-    eq_open_.setVisible(page==0);
-    eq_back_.setVisible(page==4);
-    sound_nav_.setToggleState(page == 0 || page == 4, dontSendNotification);
+    smart_toggle_.setVisible(page!=3);smart_status_.setVisible(page!=3);
+    sound_nav_.setToggleState(page == 0, dontSendNotification);
     smart_nav_.setToggleState(page == 1, dontSendNotification);
     devices_nav_.setToggleState(page == 2, dontSendNotification);
-    home_.setToggleState(page == 0 || page == 4, dontSendNotification);
+    home_.setToggleState(page == 0, dontSendNotification);
     smart_rail_.setToggleState(page == 1, dontSendNotification);
     devices_rail_.setToggleState(page == 2, dontSendNotification);
-    for (auto* button : std::initializer_list<TextButton*> { &sound_nav_, &smart_nav_, &devices_nav_, &ai_hub_nav_, &themes_nav_, &misc_nav_, &home_, &smart_rail_, &devices_rail_ })
+    for (auto* button : std::initializer_list<TextButton*> { &sound_nav_, &smart_nav_, &devices_nav_, &ai_hub_nav_, &misc_nav_, &home_, &smart_rail_, &devices_rail_ })
     {
         button->setColour(TextButton::buttonColourId, Colours::transparentBlack);
         button->setColour(TextButton::buttonOnColourId, Colours::transparentBlack);
@@ -203,9 +191,8 @@ void FxProView::selectPage(int page)
     // The AI Hub navigation is available on every main page.
     ai_hub_nav_.setVisible(true);
     audio_controls_.setVisible(page == 0);
-    equalizer_.setVisible(page == 4);
-    // The live input chart on page 0 is painted directly from analyzer telemetry.
-    visualizer_.setVisible(false);
+    equalizer_.setVisible(page == 0);
+    visualizer_.setVisible(page == 0);
     for(auto* c : std::initializer_list<Component*> {&learning_timeline_, &learning_effect_, &listening_mode_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_}) c->setVisible(page==1);
     pin_toggle_.setVisible(page == 2);
     refresh_.setVisible(page == 2);
@@ -222,9 +209,6 @@ void FxProView::selectPage(int page)
             button->toFront(false);
     }
     ai_hub_nav_.toFront(false);
-    themes_nav_.toFront(false);
-    eq_open_.toFront(false);
-    eq_back_.toFront(false);
     repaint();
 }
 void FxProView::update()
@@ -293,22 +277,6 @@ void FxProView::timerCallback()
             : 0.0f;
         theme_audio_level_+=(level-theme_audio_level_)*
             (FxTheme::isReducedMotion()?1.0f:0.33f);
-        if(page_==0) {
-            // Snapshot the *applied* DSP bands, so the compact preview
-            // never fabricates audio or edits the user's saved EQ.
-            live_eq_bands_=jlimit(0,31,brainController.getNumEqBands());
-            for(int i=0;i<live_eq_bands_;++i)
-                live_eq_[(size_t)i]=brainController.getAppliedEqBandBoostCut(i);
-            // Real pre-effect level from the native analyzer, sampled on the UI thread.
-            crescendo_samples_[crescendo_cursor_]=hasAudio
-                ? jlimit(0.0f,1.0f,snapshot.rms*3.0f):0.0f;
-            crescendo_cursor_=(crescendo_cursor_+1)%crescendo_samples_.size();
-            crescendo_count_=jmin(crescendo_samples_.size(),crescendo_count_+1);
-            CynAudioScene scene;
-            crescendo_scene_ready_=hasAudio && brainController.getLiveYamNetScene(scene);
-            crescendo_scene_=crescendo_scene_ready_?scene:CynAudioScene{};
-            crescendo_drop_=crescendo_scene_ready_?brainController.getCrescendoStrength():0.0f;
-        }
         if(wantGraph) {
             neural_activity_.setTrainingActive(brainController.isSmartTraining());
             neural_activity_.setActivity(hasAudio?&snapshot:nullptr,
@@ -397,7 +365,7 @@ void FxProView::resized()
     devices_rail_.setBounds(10, 110, 32, 34);
     settings_rail_.setBounds(10, 565, 32, 34);
     // Reserve the empty sidebar area for the native neural-activity animation.
-    neural_activity_.setBounds(72, 329, 148, 144);
+    neural_activity_.setBounds(72, 286, 148, 187);
     learning_timeline_.setBounds(256,164,952,156);
     learning_effect_.setBounds(280,433,194,36);
     listening_mode_.setBounds(280,386,235,33);
@@ -413,9 +381,6 @@ void FxProView::resized()
     smart_nav_.setBounds(68, 114, 152, 36);
     devices_nav_.setBounds(68, 156, 152, 36);
     ai_hub_nav_.setBounds(68, 198, 152, 36);
-    themes_nav_.setBounds(68, 282, 152, 36);
-    eq_open_.setBounds(1060, 568, 130, 26);
-    eq_back_.setBounds(1010, 558, 176, 35);
     settings_.setBounds(68, 554, 152, 36);
     ai_hub_nav_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(MenuHighlightBackground)).withAlpha(1.0f));
     ai_hub_nav_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
@@ -433,20 +398,11 @@ void FxProView::resized()
     live_status_.setBounds(1000, 23, 208, 24);
     preset_list_.setBounds(256, 97, 465, 40);
     endpoint_list_.setBounds(737, 97, 471, 40);
-    if(page_==0) {
-        // Asymmetric Live Stage: circular audio focus, AI sidecar, effect dock.
-        visualizer_.setBounds(272,402,386,13);
-        audio_controls_.setBounds(250,447,694,155);
-    } else if(page_==4) {
-        equalizer_.setBounds(268,192,927,346);
-    } else {
-        visualizer_.setBounds(256,164,952,102);
-        audio_controls_.setBounds(256,288,168,257);
-        equalizer_.setBounds(440,288,768,257);
-    }
-    smart_toggle_.setBounds(page_==0?722:272,page_==1?350:page_==0?393:565,page_==0?205:220,28);
-    smart_status_.setBounds(508,page_==1?351:566,678,26);
-    smart_status_.setVisible(page_==1 || page_==2);
+    visualizer_.setBounds(256, 164, 952, 102);
+    audio_controls_.setBounds(256, 288, 168, 257);
+    equalizer_.setBounds(440, 288, 768, 257);
+    smart_toggle_.setBounds(272, page_ == 1 ? 350 : 565, 220, 28);
+    smart_status_.setBounds(508, page_ == 1 ? 351 : 566, 678, 26);
     if (page_ == 2)
     {
         smart_toggle_.setBounds(276, 406, 220, 28);
@@ -547,42 +503,22 @@ void FxProView::paint(Graphics& g)
         g.setColour(color(RowOutline).withAlpha(0.72f));
         g.drawRoundedRectangle(x+0.5f,y+0.5f,w-1.0f,h-1.0f,16.0f,1.0f);
     };
-    const float selected=theme.animate(*this,3,page_==3?4.0f:(float)(page_==4?0:page_));
+    const float selected=theme.animate(*this,3,page_==3?4.0f:(float)page_);
     g.setColour(color(MenuHighlightBackground));
     g.fillRoundedRectangle(68.0f,72.0f+42.0f*selected,152.0f,36.0f,12.0f);
     g.setColour(color(SliderTrack));
     g.fillRoundedRectangle(68.0f,83.0f+42.0f*selected,3.0f,14.0f,1.5f);
-    if(page_==0) {
-        // Never force one wallpaper/palette over another user's theme.
-        g.setColour(color(WindowBackground).withAlpha(0.93f));
-        g.fillRoundedRectangle(242.0f,0.0f,976.0f,612.0f,17.0f);
-        CynCrescendoStudio::draw(g,crescendo_samples_,crescendo_count_,
-            crescendo_cursor_,crescendo_scene_,crescendo_scene_ready_,
-            crescendo_drop_,FxController::getInstance().isAudioProcessing(),
-            FxController::getInstance().isSmartListening(),
-            live_eq_,live_eq_bands_);
-    }
-    text(page_==0?"CYN / CRESCENDO":"Your workspace",76,25,140,20,page_==0?12.0f:14.0f);
+    text("Your workspace", 76, 25, 140, 20, 14);
     text("AUDIO", 80, 52, 132, 16, 10, true);
-    text(page_==0?"REAL MUSIC. REAL RESPONSE.":"Cyn / Personal audio",80,486,144,18,page_==0?9.0f:12.0f,true);
-    text(page_==0?"Let the music breathe.":"Made for your ears.",80,508,140,18,12,true);
-    text("Version 2.0.35",80,529,140,16,10,true);
-    text(page_ == 0 ? "Cyn / Live Stage" : page_ == 1 ? "Smart listening" :
-         page_==2 ? "Output devices" : page_==4 ? "Full frequency control" : "Misc / AI DJ",
-         256,16,760,32,25);
-    text(page_ == 0 ? "Sound should move you. Watch real energy and steer the mix." : page_ == 1
-        ? "Choose Music AI or Movie AI. Each learns your preferences separately." :
-          page_==2 ? "Your output, with fewer interruptions." : page_==4
-        ? "Every band editable. Your original EQ settings are preserved." :
-          "Optional musical accents, made for your headphones.",256,49,680,22,13,true);
+    text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
+    text("Made for your ears.", 80, 508, 140, 18, 12, true);
+    text("Version 2.0.36", 80, 529, 140, 16, 10, true);
+    text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
+    text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
+        ? "Choose Music AI or Movie AI. Each learns your preferences separately." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
     text("PRESET", 260, 78, 300, 16, 10, true);
     text("OUTPUT DEVICE", 741, 78, 300, 16, 10, true);
-    if (page_ == 0) { /* Theme-aware Crescendo Studio panels painted above. */ }
-    else if (page_ == 4) {
-        card(256,166,952,386);
-        text("LIVE EDITABLE EQUALIZER",281,173,490,16,11,true);
-        text("All selected frequency bands, native drag controls and Alt-drag preserved.",281,548,680,18,11,true);
-    }
+    if (page_ == 0) card(256, 556, 952, 48);
     else if (page_ == 1)
     {
         card(256, 334, 952, 270);

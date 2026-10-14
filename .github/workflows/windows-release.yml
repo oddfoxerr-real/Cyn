@@ -68,11 +68,6 @@ jobs:
         shell: powershell
         run: .\scripts\test_cyn_updater_ui.ps1
 
-      - name: Validate Crescendo Studio native UI wiring
-        if: steps.inspect.outputs.state != 'published'
-        shell: pwsh
-        run: node scripts/test_crescendo_ui.mjs
-
       - name: Validate AI Hub website and importable model
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh
@@ -182,6 +177,22 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'GitHub release asset upload failed.' }
           gh release edit $env:RELEASE_TAG --draft=false --prerelease=false --latest
           if ($LASTEXITCODE -ne 0) { throw 'Could not publish release.' }
+
+      # One-time cleanup requested by the project owner after a verified
+      # reversion release has been published (or already exists).
+      - name: Remove withdrawn redesign releases and tags
+        if: success() && steps.version.outputs.version == '2.0.36'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          foreach ($withdrawn in @('v2.0.32','v2.0.33','v2.0.34','v2.0.35')) {
+            gh release delete $withdrawn --cleanup-tag --yes
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to remove withdrawn release/tag $withdrawn."
+            }
+            Write-Host "Removed withdrawn design release $withdrawn"
+          }
 
       - name: Make already-published updates visible to Cyn auto-updater
         if: steps.inspect.outputs.state == 'published'

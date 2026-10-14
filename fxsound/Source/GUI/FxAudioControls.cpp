@@ -85,34 +85,24 @@ void FxAudioControls::setLookAndFeel()
 
 void FxAudioControls::resized()
 {
-	effects_.setBounds(0,0,getWidth(),getHeight());
-	equalizer_control_.setBounds(0,0,getWidth(),getHeight());
+	effects_.setBounds(0, 0, WIDTH, HEIGHT);
+	equalizer_control_.setBounds(0, 0, WIDTH, HEIGHT);
 
 	flip_button_.setBounds(getWidth() - BUTTON_WIDTH - 5, 5, BUTTON_WIDTH, BUTTON_HEIGHT);
 }
 
 void FxAudioControls::paint(Graphics& g)
 {
-    auto& theme=dynamic_cast<FxTheme&>(getLookAndFeel());
-    const bool studio=getWidth()>=450;
-    if(!studio) {
-        auto bounds=getLocalBounds().toFloat();
-        g.setColour(Colour(FXCOLOR(ControlBackground)).withAlpha(0.94f));
-        g.fillRoundedRectangle(bounds,18.0f);
-        g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(0.82f));
-        g.drawRoundedRectangle(bounds.reduced(0.5f),18.0f,1.0f);
-    }
-    g.setColour(Colour(FXCOLOR(SliderTrack)).withAlpha(0.94f));
-    g.setFont(theme.getSmallFont().withHeight(10.0f));
-    g.drawText(studio?"CORE ENHANCEMENTS / 05":
-         (effects_shown_?"ENHANCEMENTS":"OUTPUT TUNING"),
-         15,8,juce::jmin(345,getWidth()-35),15,Justification::centredLeft,false);
-    if(studio) {
-        g.setFont(theme.getNormalFont().withHeight(15.0f));
-        g.setColour(Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
-        g.drawText(effects_shown_?"Mix your moment":"Fine-tune your output",
-                   15,23,juce::jmin(395,getWidth()-42),23,Justification::centredLeft,false);
-    }
+    auto bounds = getLocalBounds().toFloat();
+    g.setColour(Colour(FXCOLOR(ControlBackground)).withAlpha(0.94f));
+    g.fillRoundedRectangle(bounds, 18.0f);
+    g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(0.82f));
+    g.drawRoundedRectangle(bounds.reduced(0.5f), 18.0f, 1.0f);
+
+    auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
+    g.setFont(theme.getSmallFont().withHeight(9.0f));
+    g.setColour(Colour(FXCOLOR(HintText)).withAlpha(0.82f));
+    g.drawText(effects_shown_ ? "ENHANCEMENTS" : "OUTPUT TUNING", 12, 7, 128, 14, Justification::centredLeft, false);
 }
 
 FxEffects::FxEffects()
@@ -127,7 +117,7 @@ FxEffects::FxEffects()
 	for (int i = EffectType::Fidelity; i < EffectType::NumEffects; i++)
 	{
 		labels_[i].reset(new Label(texts[i], texts[i]));
-		labels_[i]->setFont(theme.getNormalFont().withHeight(getWidth()>=450?11.0f:14.0f));
+		labels_[i]->setFont(theme.getNormalFont().withHeight(14));
 		labels_[i]->setJustificationType(Justification::topLeft);
 		auto border = labels_[i]->getBorderSize();
 		border.setLeft(0);
@@ -135,7 +125,7 @@ FxEffects::FxEffects()
 		addAndMakeVisible(labels_[i].get());
 
 		effects_[i].reset(new FxEffectSlider(static_cast<EffectType>(i)));
-		effects_[i]->setSliderStyle(Slider::RotaryVerticalDrag);
+		effects_[i]->setSliderStyle(Slider::LinearHorizontal);
 		effects_[i]->setRange(0, 10, 0.01);
 		effects_[i]->setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
 		addAndMakeVisible(effects_[i].get());
@@ -184,22 +174,15 @@ void FxEffects::showValues(bool show)
 
 void FxEffects::resized()
 {
-    if(getWidth()>=450) {
-        const int col=(getWidth()-28)/5;
-        for(int i=0;i<EffectType::NumEffects;++i) {
-            const int x=14+i*col;
-            labels_[i]->setBounds(x,44,col-2,16);
-            labels_[i]->setJustificationType(Justification::centred);
-            effects_[i]->setBounds(x+juce::jmax(0,(col-94)/2),62,juce::jmin(94,col-8),88);
-        }
-        return;
-    }
-    int y=Y_MARGIN;
-    for(int i=0;i<EffectType::NumEffects;++i) {
-        labels_[i]->setBounds(X_MARGIN+FxTheme::SLIDER_THUMB_RADIUS,y,SLIDER_WIDTH,LABEL_HEIGHT);
-        effects_[i]->setBounds(X_MARGIN,labels_[i]->getBottom()+1,SLIDER_WIDTH,SLIDER_HEIGHT);
-        y=effects_[i]->getBottom()+10;
-    }
+	auto bounds = getLocalBounds();
+
+	int y = Y_MARGIN;
+	for (int i = EffectType::Fidelity; i < EffectType::NumEffects; i++)
+	{
+		labels_[i]->setBounds(X_MARGIN+FxTheme::SLIDER_THUMB_RADIUS, y, SLIDER_WIDTH, LABEL_HEIGHT);
+		effects_[i]->setBounds(X_MARGIN, labels_[i]->getBottom() + 1, SLIDER_WIDTH, SLIDER_HEIGHT);
+		y = effects_[i]->getBottom() + 10;
+	}
 }
 
 void FxEffects::paint(Graphics& g)
@@ -215,7 +198,7 @@ void FxEffects::paint(Graphics& g)
 
     for (int i = EffectType::Fidelity; i < EffectType::NumEffects; i++)
     {
-        labels_[i]->setFont(theme.getNormalFont().withHeight(getWidth()>=450?11.0f:14.0f));
+        labels_[i]->setFont(theme.getNormalFont().withHeight(14));
         labels_[i]->setText(texts[i], NotificationType::dontSendNotification);
         if (!FxController::getInstance().isHelpTooltipsHidden())
         {
@@ -262,7 +245,7 @@ void FxEffects::FxEffectSlider::setEffectValue(float value)
 
 void FxEffects::FxEffectSlider::showValue(bool show)
 {
-	value_label_.setVisible(show && isEnabled() && getSliderStyle()!=Slider::RotaryVerticalDrag);
+	value_label_.setVisible(show && isEnabled());
 }
 
 void FxEffects::FxEffectSlider::enablementChanged()
@@ -275,28 +258,6 @@ void FxEffects::FxEffectSlider::enablementChanged()
     {
         setMouseCursor(MouseCursor::NormalCursor);
     }
-}
-
-void FxEffects::FxEffectSlider::paint(Graphics& g)
-{
-    if(getSliderStyle()!=Slider::RotaryVerticalDrag) { Slider::paint(g); return; }
-    const float value=juce::jlimit(0.0f,1.0f,(float)getValue()/10.0f);
-    const float cx=getWidth()*0.5f,cy=getHeight()*0.47f;
-    const float radius=juce::jmin(getWidth(),getHeight())*0.31f;
-    Path track,arc;
-    track.addCentredArc(cx,cy,radius,radius,0,-2.35f,2.35f,true);
-    arc.addCentredArc(cx,cy,radius,radius,0,-2.35f,-2.35f+4.7f*value,true);
-    const auto accent=Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f);
-    const auto soft=Colour(FXCOLOR(SliderHighlight)).withAlpha(1.0f);
-    g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(.90f));
-    g.strokePath(track,PathStrokeType(7.0f,PathStrokeType::curved,PathStrokeType::rounded));
-    const float mix=0.17f*(float)effect_;
-    const auto tint=accent.interpolatedWith(soft,mix);
-    g.setColour(isEnabled()?tint:tint.withMultipliedAlpha(0.32f));
-    g.strokePath(arc,PathStrokeType(7.0f,PathStrokeType::curved,PathStrokeType::rounded));
-    g.setColour(Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
-    g.setFont(Font(17.0f,Font::bold));
-    g.drawText(String(roundToInt(value*100.0f))+"%",0,roundToInt(cy-13),getWidth(),26,Justification::centred,false);
 }
 
 void FxEffects::FxEffectSlider::paintOverChildren(Graphics& g)
@@ -312,19 +273,11 @@ void FxEffects::FxEffectSlider::paintOverChildren(Graphics& g)
     if (!std::isfinite(preset) || !std::isfinite(applied) ||
         std::abs(applied - preset) < 0.18f) return;
 
+    const float x = static_cast<float>(getPositionOfValue(juce::jlimit(0.0f, 10.0f, preset)));
+    const float y = getHeight() * 0.5f;
     g.setColour(Colour(FXCOLOR(HintText)).withAlpha(0.9f));
-    if(getSliderStyle()==Slider::RotaryVerticalDrag) {
-        const float v=juce::jlimit(0.0f,1.0f,preset/10.0f);
-        // Saved preset notch: a neutral, linear indicator (never audio motion).
-        const float x=5.0f+v*(getWidth()-10.0f);
-        const float y=getHeight()-7.0f;
-        g.drawLine(x,y-5.5f,x,y+4.0f,1.5f);
-    } else {
-        const float x=(float)getPositionOfValue(juce::jlimit(0.0f,10.0f,preset));
-        const float y=getHeight()*0.5f;
-        g.drawLine(x,y-6.5f,x,y+6.5f,1.5f);
-        g.fillEllipse(x-2,y-2,4,4);
-    }
+    g.drawLine(x, y - 6.5f, x, y + 6.5f, 1.5f);
+    g.fillEllipse(x - 2.0f, y - 2.0f, 4.0f, 4.0f);
 }
 
 void FxEffects::FxEffectSlider::resized()
@@ -535,21 +488,6 @@ void FxEqualizerControl::setLookAndFeel(FxTheme& theme)
 
 void FxEqualizerControl::resized()
 {
-    if(getWidth()>=450) {
-        const int col=(getWidth()-44)/2;
-        equalizer_.setBounds(18,27,getWidth()-68,23);
-        Label* titles[]={&master_gain_title_,&volume_leveling_title_,&filter_q_title_,&balance_title_};
-        Component* faders[]={&master_gain_slider_,&volume_leveling_slider_,&filter_q_slider_,&balance_slider_};
-        for(int i=0;i<4;++i) {
-            const int x=(i%2)?24+col:18,y=i<2?61:111;
-            titles[i]->setBounds(x,y,col,15);
-            faders[i]->setBounds(x,y+16,col-16,20);
-        }
-        left_label_.setBounds(24+col,147,52,14);
-        right_label_.setBounds(getWidth()-84,147,58,14);
-        restore_defaults_button_.setBounds(getWidth()-31,31,18,18);
-        return;
-    }
 	auto width = getWidth() - (X_MARGIN * 2);
 
 	int y = Y_MARGIN;

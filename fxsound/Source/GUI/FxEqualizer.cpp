@@ -274,11 +274,11 @@ void FxEqualizer::resized()
     int width = (bounds.getWidth() - X_MARGIN*2) / labels_.size();
     int rotary_width = jmin(ROTARY_SLIDER_HEIGHT, width);
 
-    // The #5 studio uses a compact 10-band meter inside the right-side card.
-    // Frequency adjustment remains accessible in a spacious EQ view.
-    const bool compact=getHeight()<230 || getWidth()<450;
-    const int sliderHeight=compact?juce::jmax(64,getHeight()-Y_MARGIN-34):SLIDER_HEIGHT;
-    const bool show_center_frequencies=labels_.size()<=10 && !compact;
+    bool show_center_frequencies = true;
+    if (labels_.size() > 10)
+    {
+        show_center_frequencies = false;
+    }
 
     auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
     for (auto i=0; i<labels_.size(); i++)
@@ -287,14 +287,14 @@ void FxEqualizer::resized()
         if (show_center_frequencies)
         {
             labels_[i]->setFont(theme.getNormalFont().withHeight(LABEL_HEIGHT));
-            band_boosts_[i]->setBounds(x + (width - FxTheme::SLIDER_THUMB_RADIUS * 4) / 2, Y_MARGIN, FxTheme::SLIDER_THUMB_RADIUS * 4, sliderHeight );
+            band_boosts_[i]->setBounds(x + (width - FxTheme::SLIDER_THUMB_RADIUS * 4) / 2, Y_MARGIN, FxTheme::SLIDER_THUMB_RADIUS * 4, SLIDER_HEIGHT );
             labels_[i]->setBounds(x, band_boosts_[i]->getBottom() + 6, width, LABEL_HEIGHT);
             center_frequencies_[i]->setBounds(x + (width - rotary_width) / 2, labels_[i]->getBottom() + 4, rotary_width, rotary_width);
         }
         else
         {
             labels_[i]->setFont(theme.getNormalFont().withHeight(SMALL_FONT));
-            band_boosts_[i]->setBounds(x + (width - FxTheme::SLIDER_THUMB_RADIUS * 4) / 2, Y_MARGIN, FxTheme::SLIDER_THUMB_RADIUS * 4, sliderHeight);
+            band_boosts_[i]->setBounds(x + (width - FxTheme::SLIDER_THUMB_RADIUS * 4) / 2, Y_MARGIN, FxTheme::SLIDER_THUMB_RADIUS * 4, SLIDER_HEIGHT + ROTARY_SLIDER_HEIGHT);
             labels_[i]->setBounds(x, band_boosts_[i]->getBottom() + 6, width, LABEL_HEIGHT*2);
         }
 
