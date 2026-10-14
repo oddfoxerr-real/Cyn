@@ -132,9 +132,17 @@ public:
             d.lowEqDb=0;
             d.levelingDb=safe*0.7f;
         } else {
-            // Scale bass and dynamics with rhythmic activity, low-frequency
-            // energy and available input headroom.
-            d.preference[0]=0.54f+0.12f*s.vocals+0.05f*motion;
+            // Music vocals need midrange intelligibility, not indiscriminate
+            // 5-8 kHz gain (which exaggerates "S" sounds). YAMNet provides
+            // scene context while the spectrum constrains how far we move.
+            const float vocalFocus=std::clamp(0.72f*s.vocals+0.38f*s.speech,0.0f,1.0f);
+            const float sibilance=band(7)/(band(6)+band(7)+1e-6f);
+            const float deEss=std::clamp((sibilance-0.50f)*3.0f,0.0f,1.0f);
+            const float beatConfidence=std::clamp(s.bassDrum*s.percussion,0.0f,1.0f);
+            // Kick confidence reinforces pulse only when the low end is not
+            // already booming and pre-effects headroom permits it.
+            d.preference[0]=std::clamp(0.52f+0.21f*vocalFocus*(1.0f-0.65f*deEss)
+                                           +0.05f*motion,0.45f,0.78f);
             d.preference[1]=0.50f+0.06f*musical*(1.0f-s.vocals);
             d.preference[2]=0.50f+0.09f*musical;
             d.preference[3]=std::clamp(0.55f+0.12f*rhythm+0.07f*motion-
@@ -143,6 +151,9 @@ public:
                                          0.08f*(1.0f-lowPresence)*kickPresence-
                                          0.16f*lowPresence-0.19f*(1.0f-safe),
                                          0.35f,0.94f);
+            d.preference[4]=std::clamp(d.preference[4]+
+                0.08f*beatConfidence*(1.0f-lowPresence)*safe-
+                0.04f*vocalFocus*(1.0f-beatConfidence),0.30f,0.94f);
             // Use musical frequencies, not classification scores, to identify
             // thin vs booming low end. EQ lift limited by measured headroom.
             const float lowCorrection=std::clamp((0.43f-lowPresence)*6.0f,-2.0f,2.7f);
@@ -158,9 +169,11 @@ public:
             // Preserve the snare attack by avoiding extra brightness/dynamic
             // boost on already peaky or bright percussion.
             const float attack=std::clamp((crest-3.0f)/4.0f,0.0f,1.0f);
-            d.presenceEqDb=-std::clamp((brightness-.55f)*3.0f,0.0f,1.0f)*roles.share[2];
+            d.presenceEqDb=std::clamp(1.05f*vocalFocus*(1.0f-deEss)*safe-
+                std::clamp((brightness-.55f)*3.0f,0.0f,1.0f)*roles.share[2],
+                -1.0f,1.05f);
             d.airEqDb=-std::clamp((brightness-.50f)*4.0f,0.0f,1.5f)*
-                (roles.share[2]+roles.share[3]);
+                (roles.share[2]+roles.share[3])-0.65f*deEss*vocalFocus;
             d.preference[3]-=0.10f*attack*(roles.share[1]+roles.share[2]);
             d.preference[4]-=0.12f*std::clamp((lowPresence-.6f)/.4f,0.0f,1.0f)*lowRole;
             d.levelingDb=std::clamp((0.19f-rms)*9.0f,0.0f,2.2f)*safe;
