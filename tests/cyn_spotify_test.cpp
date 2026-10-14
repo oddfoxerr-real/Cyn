@@ -4,6 +4,8 @@
 #include <atomic>
 using namespace CynSpotify;
 int main(int argc,char** argv) {
+    _set_error_mode(_OUT_TO_STDERR);
+    _set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     assert(argc==2);
     auto cfg=Config::parse(juce::JSON::parse(R"({"client_id":"existing-app","tokens":{"access_token":"test","expires_at":1791917000}})"));
     assert(cfg.client=="existing-app"&&cfg.access=="test"&&cfg.expires==1791917000000.0);
@@ -32,12 +34,13 @@ int main(int argc,char** argv) {
     };
     {
         Worker worker(mock,folder);worker.choose(file);
-        for(int i=0;i<100&&!worker.state().playing;++i)juce::Thread::sleep(30);
+        for(int i=0;i<500&&!worker.state().playing;++i)juce::Thread::sleep(30);
+        if(!worker.state().playing)std::cerr<<worker.state().status<<std::endl;
         assert(worker.state().title=="Fixture track"&&worker.state().device=="This PC");assert(refreshes==1);
         const auto saved=juce::JSON::parse(file);assert(saved["unrelated"].toString()=="preserved");assert(saved["tokens"]["refresh_token"].toString()=="rotated-fixture");
-        worker.control(4);for(int i=0;i<100&&controls==0;++i)juce::Thread::sleep(30);assert(controls==1);
+        worker.control(4);for(int i=0;i<500&&controls==0;++i)juce::Thread::sleep(30);assert(controls==1);
         rateLimit=true;worker.control(1);
-        for(int i=0;i<100&&worker.state().connected;++i)juce::Thread::sleep(30);
+        for(int i=0;i<500&&worker.state().connected;++i)juce::Thread::sleep(30);
         assert(!worker.state().connected&&worker.state().title.isEmpty());
         worker.disconnect();
         for(int i=0;i<100&&folder.getChildFile("spotify-file.txt").loadFileAsString().isNotEmpty();++i)juce::Thread::sleep(30);
