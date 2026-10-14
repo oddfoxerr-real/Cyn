@@ -303,11 +303,10 @@ void FxEffects::FxEffectSlider::paintOverChildren(Graphics& g)
     g.setColour(Colour(FXCOLOR(HintText)).withAlpha(0.9f));
     if(getSliderStyle()==Slider::RotaryVerticalDrag) {
         const float v=juce::jlimit(0.0f,1.0f,preset/10.0f);
-        const float angle=-2.35f+4.7f*v;
-        const float cx=getWidth()*0.5f,cy=getHeight()*0.47f;
-        const float r=juce::jmin(getWidth(),getHeight())*0.31f;
-        g.drawLine(cx+std::sin(angle)*(r-10),cy-std::cos(angle)*(r-10),
-                   cx+std::sin(angle)*(r+10),cy-std::cos(angle)*(r+10),1.5f);
+        // Saved preset notch: a neutral, linear indicator (never audio motion).
+        const float x=5.0f+v*(getWidth()-10.0f);
+        const float y=getHeight()-7.0f;
+        g.drawLine(x,y-5.5f,x,y+4.0f,1.5f);
     } else {
         const float x=(float)getPositionOfValue(juce::jlimit(0.0f,10.0f,preset));
         const float y=getHeight()*0.5f;
