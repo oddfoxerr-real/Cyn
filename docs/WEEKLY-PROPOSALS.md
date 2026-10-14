@@ -21,3 +21,11 @@ Current requested work: fix automatic effects and reuse EMBER's Spotify session.
 These are requested fixes, not a speculative weekly proposal. The supplied panel
 stores Spotify tokens under ember2_spotify_tokens; an export-enabled copy is in
 outputs/cyn-2.0.28. No user session JSON has been supplied. Never ship one.
+
+## 2026-10-14 correction
+
+The user explicitly removed Spotify linking from scope. Remove its UI, worker,
+session discovery and helpers; do not reintroduce account linking in proposals.
+AI DJ should remix the playing song for fun, using rhythmic repeats, echoes and
+filter sweeps, rather than adding faint unrelated accents. This supersedes the
+Spotify baseline above. No JSON or sign-in is needed for the live remix feature.

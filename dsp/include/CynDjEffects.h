@@ -53,7 +53,6 @@ public:
         for(int i=0;i<frames;++i) {
             auto* sample=audio+i*2;
             const float l=sample[0],r=sample[1];
-            const float mono=std::isfinite(l)&&std::isfinite(r)?(l+r)*0.5f:0.0f;
             // Opposite-phase stereo still has energy even if its mono sum cancels.
             const float level=std::isfinite(l)&&std::isfinite(r)?(std::abs(l)+std::abs(r))*0.5f:0.0f;
             fast_+=fastCoef*(level-fast_);
@@ -61,55 +60,85 @@ public:
             const bool onset=fast_>slow_*1.65f+0.003f && fast_>0.012f;
             if(lease_>0) --lease_;
             if(voiceLease_>0) --voiceLease_;
-            ++elapsed_;
-            // Compressed/sustained music may never cross the transient threshold.
-            // Allow a spaced accent after 1.5 intervals, only over audible music.
-            const bool moment=(onset&&!previousOnset_) || (elapsed_>cooldown*1.5 && slow_>0.012f);
+            ++elapsed_;++onsetAge_;
+            const bool transient=onset&&!previousOnset_;
+            if(transient) {
+                // Approximate tempo from onsets; use 120 BPM until useful
+                // transients arrive. This is not an exact beat grid.
+                if(onsetAge_>=rate_*0.30 && onsetAge_<=rate_*0.90)
+                    beatSamples_=beatSamples_*0.8+onsetAge_*0.2;
+                onsetAge_=0;
+            }
+            const int beat=(std::max)(2,int(beatSamples_));
+            const bool moment=slow_>0.008f && (transient || onsetAge_%beat==0);
             if(authorised && lease_>0 && voiceLease_>0 && amount>0 && moment && elapsed_>cooldown && remaining_==0) {
-                kind_=(kind_+1)%3; remaining_=int(rate_*0.7); total_=remaining_;
-                elapsed_=0; anchor_=bounded((std::max)(fast_,slow_)*0.8f,0.006f,0.08f);
+                kind_=(kind_+1)%3; remaining_=beat*2; total_=remaining_;
+                slice_=beat/2;loopStart_=(write_+historyFrames-size_t(slice_))%historyFrames;
+                effectBeat_=beat;elapsed_=0;filterL_=std::isfinite(l)?l:0;filterR_=std::isfinite(r)?r:0;
                 events_.fetch_add(1); lastEffect_.store(kind_+1);
             }
             previousOnset_=onset;
-            const int delay=int(rate_*0.19);
-            const float delayed=delay_[size_t((write_+delay_.size()-delay)%delay_.size())];
-            delay_[write_]=mono; write_=(write_+1)%delay_.size();
             const float target=authorised&&lease_>0&&voiceLease_>0&&amount>0&&fast_>0.001f?1.0f:0.0f;
             gate_+=gateCoef*(target-gate_);
             if(remaining_>0) {
-                const float t=1.0f-float(remaining_)/total_;
-                const float envelope=std::sin(3.14159265f*t)*std::sin(3.14159265f*t);
-                random_^=random_<<13; random_^=random_>>17; random_^=random_<<5;
-                const float noise=float(random_&65535)/32767.5f-1.0f;
-                noiseLow_+=0.12f*(noise-noiseLow_);
-                phase_+=6.28318530718*(kind_==2?900.0+1400.0*t:170.0)/rate_;
-                float wet=kind_==0?(noise-noiseLow_)*anchor_:
-                          kind_==1?bounded(delayed*0.14f,-0.045f,0.045f):float(std::sin(phase_))*anchor_*0.45f;
-                wet*=envelope*amount*gate_;
-                float pan=stereo?(events_.load()%2?t:1.0f-t):0.5f;
-                const float wl=wet*std::sqrt(1.0f-pan),wr=wet*std::sqrt(pan);
-                // Limit only the added signal to available headroom; never
-                // clip/normalise the dry signal or move its stereo image.
+                const int position=total_-remaining_;
+                const float t=float(position)/total_;
+                const float envelope=(std::min)(1.0f,(std::min)(position/(rate_*0.02f),remaining_/(rate_*0.03f)));
+                float wl=0,wr=0;
+                if(kind_==0) {
+                    // Repeat the preceding half beat, retaining stereo content.
+                    const int offset=position%slice_;
+                    const auto a=(loopStart_+size_t(offset))%historyFrames;
+                    float repeatL=history_[a*2],repeatR=history_[a*2+1];
+                    const int seam=(std::min)(slice_/4,rate_/200);
+                    if(offset<seam) {
+                        const auto b=(loopStart_+size_t(slice_-seam+offset))%historyFrames;
+                        const float blend=float(offset)/seam;
+                        repeatL=history_[b*2]*(1-blend)+repeatL*blend;
+                        repeatR=history_[b*2+1]*(1-blend)+repeatR*blend;
+                    }
+                    wl=(repeatL-l)*0.9f;wr=(repeatR-r)*0.9f;
+                } else if(kind_==1) {
+                    const auto a=(write_+historyFrames-size_t(effectBeat_/2))%historyFrames;
+                    const auto b=(write_+historyFrames-size_t(effectBeat_))%historyFrames;
+                    wl=history_[a*2]*0.5f+history_[b*2]*0.25f;
+                    wr=history_[a*2+1]*0.5f+history_[b*2+1]*0.25f;
+                    if(stereo) {wl*=0.7f+0.3f*std::cos(t*6.2831853f);wr*=0.7f-0.3f*std::cos(t*6.2831853f);}
+                } else {
+                    // Sweep the song's own high frequencies down and back up.
+                    const float curve=std::abs(2*t-1);
+                    const float cutoff=400.0f+7600.0f*curve*curve;
+                    const float coefficient=1.0f-std::exp(-6.2831853f*cutoff/rate_);
+                    filterL_+=coefficient*((std::isfinite(l)?l:0)-filterL_);filterR_+=coefficient*((std::isfinite(r)?r:0)-filterR_);
+                    wl=(filterL_-l)*0.95f;wr=(filterR_-r)*0.95f;
+                }
+                const float mix=std::sqrt(amount)*envelope*gate_;
+                wl*=mix;wr*=mix;
+                // Bound the remix contribution to available output headroom.
                 if(std::isfinite(l)) sample[0]=l+bounded(wl,-(std::max)(0.0f,0.98f+l),(std::max)(0.0f,0.98f-l));
                 if(std::isfinite(r)) sample[1]=r+bounded(wr,-(std::max)(0.0f,0.98f+r),(std::max)(0.0f,0.98f-r));
                 --remaining_;
             }
+            history_[write_*2]=std::isfinite(l)?l:0.0f;
+            history_[write_*2+1]=std::isfinite(r)?r:0.0f;
+            write_=(write_+1)%historyFrames;
         }
     }
 private:
     static float bounded(float x,float lo,float hi) noexcept {return (std::max)(lo,(std::min)(hi,x));}
-    void reset() noexcept { remaining_=0; elapsed_=0; lease_=voiceLease_=0; fast_=slow_=gate_=0; previousOnset_=false; write_=0; delay_.fill(0); }
+    void reset() noexcept { remaining_=0; elapsed_=onsetAge_=0; lease_=voiceLease_=0; fast_=slow_=gate_=0; previousOnset_=false; write_=0; history_.fill(0); beatSamples_=rate_*0.5; }
     std::atomic<bool> enabled_{false},power_{true},allowed_{false},stereo_{true};
     std::atomic<float> intensity_{0.25f},interval_{18.0f};
     std::atomic<uint32_t> sceneVersion_{0},events_{0};
     std::atomic<int> lastEffect_{0};
     std::atomic<bool> voiceSafe_{false};std::atomic<uint32_t> voiceVersion_{0};
-    std::array<float,38401> delay_{};
-    size_t write_=0;
-    int bits_=0,channels_=0,rate_=0,remaining_=0,total_=1,kind_=-1;
-    int64_t elapsed_=0,lease_=0,voiceLease_=0;
-    uint32_t seenScene_=0,seenVoice_=0,random_=0x76abcdef;
-    float fast_=0,slow_=0,gate_=0,anchor_=0,noiseLow_=0;
-    double phase_=0;
+    static constexpr size_t historyFrames=192000*3+1;
+    std::array<float,historyFrames*2> history_{};
+    size_t write_=0,loopStart_=0;
+    int bits_=0,channels_=0,rate_=0,remaining_=0,total_=1,kind_=-1,slice_=1,effectBeat_=1;
+    int64_t elapsed_=0,onsetAge_=0,lease_=0,voiceLease_=0;
+    uint32_t seenScene_=0,seenVoice_=0;
+    float fast_=0,slow_=0,gate_=0,filterL_=0,filterR_=0;
+    double beatSamples_=24000;
     bool previousOnset_=false,wasOn_=false;
 };

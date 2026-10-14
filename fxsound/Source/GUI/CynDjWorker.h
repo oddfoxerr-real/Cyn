@@ -47,24 +47,25 @@ public:
                 case 0:return "Waiting for fresh live audio analysis";
                 case 1:return "Voice detected now - effects paused";
                 case 2:return "Waiting for music in the current audio";
+                case 4:return "No audio passing through Cyn - start music and check your output";
                 default:break;
             }
             if(!contextReady_) return "Live DJ active - background context is warming up";
         }
         return status_;
     }
-    void liveScene(bool fresh,float music,float speech,float silence) {
+    void liveScene(bool fresh,float music,float speech,float silence,bool processing=true) {
         const auto stamp=contextStamp_.load();
         const bool context=contextReady_ && stamp!=0 && uint32_t(juce::Time::getMillisecondCounter()-stamp)<40000;
-        const bool safe=enabled_ && verified_ && CynDjPolicy::permitLive(fresh,music,speech,silence,context);
+        const bool safe=enabled_ && verified_ && processing && CynDjPolicy::permitLive(fresh,music,speech,silence,context);
         source_.setDjVoiceGate(safe);
         source_.setDjScene(safe?1.0f:0.0f,speech);
-        fastState_=!fresh?0:speech>=0.25f?1:!safe?2:3;
+        fastState_=!processing?4:!fresh?0:speech>=0.25f?1:!safe?2:3;
     }
     uint32_t effects() const { return source_.djEffectsCount(); }
     uint32_t analyses() const {return analyses_.load();}
     juce::String lastEffect() const {
-        switch(source_.djLastEffect()) {case 1:return "Stereo sweep";case 2:return "Echo accent";case 3:return "Shimmer";default:return "No effects yet";}
+        switch(source_.djLastEffect()) {case 1:return "Beat repeat";case 2:return "Rhythmic echo";case 3:return "Filter sweep";default:return "No remixes yet";}
     }
     void download() { if(busy()) return; setEnabled(false); cancel_=false; busy_=true; command_=1; notify(); }
     void cancelDownload() { cancel_=true; }

@@ -37,7 +37,9 @@ Get-ChildItem -LiteralPath (Join-Path $root 'fxsound\Fonts') -File | Copy-Item -
 Copy-Item -LiteralPath (Join-Path $root 'LICENSE'),(Join-Path $root 'README_CYN.md'),(Join-Path $root 'VALIDATION.md'),(Join-Path $root 'RELEASE_CHECKS.md'),(Join-Path $root 'CYN_CONTROL.ps1'),(Join-Path $root 'LAUNCH_CYN.ps1'),(Join-Path $root 'INSTALL_CYN.ps1') -Destination $dist -Force
 Copy-Item -LiteralPath (Join-Path $root 'third_party\JUCE\LICENSE.md') -Destination (Join-Path $dist 'JUCE-LICENSE.md') -Force
 Copy-Item -LiteralPath (Join-Path $root 'docs\AI-DJ.md') -Destination (Join-Path $dist 'AI-DJ.md') -Force
-Copy-Item -LiteralPath (Join-Path $root 'docs\SPOTIFY.md') -Destination (Join-Path $dist 'SPOTIFY.md') -Force
+# Remove obsolete documentation when reusing an older staged payload.
+$obsoleteSpotifyDoc = Join-Path $dist 'SPOTIFY.md'
+if (Test-Path -LiteralPath $obsoleteSpotifyDoc) { Remove-Item -LiteralPath $obsoleteSpotifyDoc }
 Copy-Item -LiteralPath (Join-Path $root 'third_party\ast\LICENSE.txt') -Destination (Join-Path $dist 'AST-LICENSE.txt') -Force
 # Optional AI DJ weights are user-downloaded only, never installer payload.
 if (Get-ChildItem $dist -Recurse -File -Filter '*ast*onnx') {throw 'AI DJ model must not be bundled.'}
