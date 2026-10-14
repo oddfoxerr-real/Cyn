@@ -42,7 +42,7 @@ function trainStarter(base,hub) {
    const low=powers[0]+powers[1]+powers[2], mid=powers[3]+powers[4]+powers[5],lowPresence=low/(low+mid+1e-9);
    const kickShare=kick/(kick+sub+.35*vocal+.12),rumble=sub/(sub+kick+.12);
    const thin=clamp((.41-lowPresence)*2,0,1);
-   const bass=clamp(.48+.27*kickShare*(1-.42*rumble)+.10*thin-.23*rumble-.085*vocal-.035*snare,.27,.78);
+   const bass=clamp(.56+.34*kickShare*(1-.35*rumble)+.10*thin-.19*rumble-.06*vocal-.025*snare,.27,.78);
    const sibilance=clamp(.55*hiss+.25*hat+.2*(1-dull),0,1);
    const clarity=clamp(.44+.30*vocal*(.65+.35*dull)-.14*sibilance*vocal-.075*hat+.085*dull+.025*kick,.27,.80);
    samples.push({x,raw,bass,clarity});
@@ -110,6 +110,9 @@ function trainStarter(base,hub) {
  const profile={...hub,profile:{...hub.profile,description:"Beat-conscious bass and vocal presence, trained on synthetic spectral mixtures, not real recordings. Fine-tune with More/Less."},model:{...hub.model,weights:best,ready:model.ready}};
  const report={model:model.name,training:{optimizer_steps:2500,selected_checkpoint:bestStep,train:train.length,validation:valid.length,test:test.length,seed_train:20261030,seed_validation:20261031,seed_test:20261032},validation:{before:oldValid,after:newValid},heldout:{before:oldTest,after:newTest},limitations:"Entirely synthetic source-mixture features and heuristic soft preference targets. No human-labeled real music, beat timestamps, vocal separation, audible AB test, or output true-peak measurement."};
  return {model,profile,report};
+}
+if(read("models/cyn-starter.json").name.includes("starter 3")) {
+ throw Error("Already a v3 model: reproduce with v2's cyn-starter.json rather than retraining the released model.");
 }
 const result=trainStarter(read("models/cyn-starter.json"),read("ai-hub/community/cyn-starter.cynai.json"));
 for(const [path,obj] of [
