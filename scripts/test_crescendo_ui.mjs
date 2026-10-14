@@ -16,6 +16,17 @@ assert(view.includes("getLiveYamNetScene(scene)"));
 assert(view.includes("getCrescendoStrength()"));
 assert(controller.includes("music_crescendo_.current().drop"));
 assert(native.includes("Waveform follows measured audio"));
+assert(native.includes("spokeCount=72"),"Live Stage needs its real-audio radial arrangement");
+assert(native.includes("LIVE STAGE / CYN"));
+assert(native.includes("PERFORMANCE RACK"));
+assert(native.includes("const auto slot=(cursor+samples.size()-have+i)%samples.size()"),
+       "Radial bar lengths must read sampled input, not a synthetic animation");
+assert(view.includes("audio_controls_.setBounds(250,447,694,155)"),
+       "Five native DSP controls must be in the lower stage dock");
+assert(view.includes("smart_toggle_.setBounds(page_==0?722:272"),
+       "Smart Listening must remain a visible, usable control on the stage");
+assert(view.includes("eq_open_.setBounds(1060, 568, 130, 26)"),
+       "Full EQ action must remain accessible on the slim EQ rail");
 assert(native.includes("scene.music")&&native.includes("scene.percussion"));
 assert(header.includes("std::array<float,96> crescendo_samples_"));
 assert(knobs.includes("Slider::RotaryVerticalDrag"));
@@ -25,7 +36,7 @@ assert(knobs.includes("isMouseButtonDown()"));
 assert(knobs.includes("getAppliedEffectValue"));
 assert(knobs.includes("effects_.setBounds(0,0,getWidth(),getHeight())"));
 assert(eq.includes("sliderHeight")&&eq.includes("getHeight()<230"));
-assert(view.includes("Version 2.0.34"));
+assert(view.includes("Version 2.0.35"));
 assert(!native.includes("std::sin")&&!native.includes("random"));
 console.log("PASS: #5 Crescendo Studio paints real audio, actual scene and measured rise");
 console.log("PASS: editable knobs, original user presets, native EQ and no fake telemetry");

@@ -1,111 +1,181 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Crescendo Studio: native graphics driven by actual 100-ms analyzer readings.
+// CYN Live Stage - native JUCE asymmetrical workspace.
+// All visual energy comes from real pre-effect measurements or live YAMNet.
+// Never alters DSP, presets, theme selection or the audio callback.
 #pragma once
 #include <JuceHeader.h>
 #include "CynFlagshipMixer.h"
 #include "FxTheme.h"
-#include <array>
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 
 namespace CynCrescendoStudio {
 using namespace juce;
-
 inline Colour paintRole(FxColor role) {
     return Colour(FxTheme::getColor(role)).withAlpha(1.0f);
 }
-inline void card(Graphics& g,float x,float y,float w,float h) {
-    const auto panel=paintRole(ControlBackground);
-    const auto outline=paintRole(RowOutline);
-    ColourGradient fill(panel.brighter(FxTheme::isLightTheme()?0.025f:0.075f),
-                        x,y,panel.darker(FxTheme::isLightTheme()?0.025f:0.085f),
-                        x+w,y+h,false);
-    fill.addColour(.49f,panel);
-    g.setGradientFill(fill);
-    g.fillRoundedRectangle(x,y,w,h,15.0f);
-    g.setColour(outline.withAlpha(0.86f));
-    g.drawRoundedRectangle(x+0.5f,y+0.5f,w-1,h-1,15.0f,1.0f);
-}
 inline void words(Graphics& g,const String& s,int x,int y,int w,int h,
-                  float font,Colour ink,bool bold=false) {
+                  float size,Colour ink,bool bold=false) {
     g.setColour(ink);
-    g.setFont(Font(font,bold?Font::bold:Font::plain));
-    g.drawFittedText(s,x,y,w,h,Justification::centredLeft,1,0.88f);
+    g.setFont(Font(size,bold?Font::bold:Font::plain));
+    g.drawFittedText(s,x,y,w,h,Justification::centredLeft,1,0.86f);
+}
+inline void surface(Graphics& g,Rectangle<float> bounds,bool focus=false) {
+    const auto base=paintRole(ControlBackground);
+    const auto accent=paintRole(SliderTrack);
+    const auto outline=paintRole(RowOutline);
+    const auto subtle=FxTheme::isLightTheme()?0.025f:0.095f;
+    ColourGradient grad(base.interpolatedWith(accent,focus?subtle*1.5f:subtle*.52f),
+                        bounds.getX(),bounds.getY(),
+                        base.darker(FxTheme::isLightTheme()?0.015f:.12f),
+                        bounds.getRight(),bounds.getBottom(),false);
+    grad.addColour(.44f,base);
+    g.setGradientFill(grad);
+    g.fillRoundedRectangle(bounds,focus?23.0f:17.0f);
+    g.setColour(outline.withAlpha(.84f));
+    g.drawRoundedRectangle(bounds.reduced(.5f),focus?23.0f:17.0f,1.0f);
+}
+inline void progress(Graphics& g,int x,int y,int width,float amount,Colour accent) {
+    const auto back=paintRole(RowOutline);
+    g.setColour(back.withAlpha(.72f));
+    g.fillRoundedRectangle((float)x,(float)y,(float)width,4.0f,2.0f);
+    const float active=std::clamp(amount,0.0f,1.0f)*(float)width;
+    if(active>0.6f) {
+        g.setColour(accent.withAlpha(.92f));
+        g.fillRoundedRectangle((float)x,(float)y,active,4.0f,2.0f);
+    }
 }
 inline void draw(Graphics& g,const std::array<float,96>& samples,
                  size_t count,size_t cursor,const CynAudioScene& scene,
                  bool sceneReady,float drop,bool processing,bool enabled,
                  const std::array<float,31>& eq,int eqCount) {
-    const auto white=paintRole(DefaultText),muted=paintRole(HintText),
-               purple=paintRole(SliderTrack),rose=paintRole(SliderHighlight),
-               green=paintRole(ValidTextBorder);
-    card(g,256,154,612,214); card(g,879,154,329,214);
-    card(g,256,382,612,170); card(g,879,382,329,170);
-    card(g,256,560,952,45);
-    words(g,"DYNAMIC ENERGY TIMELINE",275,166,380,14,10,purple,true);
-    words(g,"The moment everything comes alive.",275,183,550,25,17,white,true);
-    words(g,processing?"REAL INPUT LEVEL / LIVE":"WAITING FOR PLAYBACK",275,210,400,14,10,muted);
-    words(g,enabled?"CRESCENDO AWARE":"MANUAL MODE",731,168,130,18,9,enabled?green:muted,true);
-    const float x0=275,y0=274,step=576.0f/76.0f;
-    g.setColour(paintRole(RowOutline).withAlpha(.75f));
-    g.drawLine(x0,y0,x0+576,y0,1.0f);
-    for(size_t i=0;i<76;++i) {
-        float value=0;
-        if(count>0) {
-            const size_t start=count>76?count-76:0;
-            if(i+start<count) {
-                const size_t slot=(cursor+samples.size()-count+i+start)%samples.size();
-                value=std::clamp(samples[slot],0.0f,1.0f);
-            }
+    const auto ink=paintRole(DefaultText),soft=paintRole(HintText);
+    const auto accent=paintRole(SliderTrack),highlight=paintRole(SliderHighlight);
+    const auto positive=paintRole(ValidTextBorder);
+    const float level=count?std::clamp(samples[(cursor+samples.size()-1)%samples.size()],0.0f,1.0f):0.0f;
+    const float rise=std::clamp(drop,0.0f,1.0f);
+
+    // Large central stage + narrow intelligence rail + full-width effect dock.
+    surface(g,{250.0f,152.0f,694.0f,284.0f},true);
+    surface(g,{957.0f,152.0f,250.0f,195.0f});
+    surface(g,{957.0f,357.0f,250.0f,245.0f});
+    surface(g,{250.0f,447.0f,694.0f,155.0f});
+
+    words(g,"LIVE STAGE / CYN",271,166,255,16,10,accent,true);
+    words(g,"Feel the entire song.",271,184,280,24,19,ink,true);
+    words(g,processing?"LIVE INPUT / MEASURED":"NO AUDIO SIGNAL",271,215,220,16,10,processing?positive:soft,true);
+
+    // A radial sound stage. Bars and core intensity correspond to actual
+    // RMS history, not generated beats, random amplitude or fake classifications.
+    const float cx=592.0f,cy=292.0f,radius=83.0f;
+    ColourGradient aura(accent.withAlpha(.20f+.16f*level),cx,cy,
+                        Colours::transparentBlack,cx+152.0f,cy+123.0f,true);
+    g.setGradientFill(aura);
+    g.fillEllipse(cx-151.0f,cy-151.0f,302.0f,302.0f);
+    g.setColour(accent.withAlpha(.22f));
+    g.drawEllipse(cx-radius-18.0f,cy-radius-18.0f,(radius+18.0f)*2,(radius+18.0f)*2,1.1f);
+    g.setColour(highlight.withAlpha(.32f));
+    g.drawEllipse(cx-radius+5.0f,cy-radius+5.0f,(radius-5.0f)*2,(radius-5.0f)*2,2.0f);
+
+    constexpr size_t spokeCount=72;
+    const size_t have=(std::min)(count,spokeCount);
+    for(size_t i=0;i<spokeCount;++i) {
+        float sample=0.0f;
+        if(i<have) {
+            const auto slot=(cursor+samples.size()-have+i)%samples.size();
+            sample=std::clamp(samples[slot],0.0f,1.0f);
         }
-        const float h=std::clamp(std::sqrt(value)*46.0f,1.0f,46.0f);
-        g.setColour(purple.interpolatedWith(rose,(float)i/75.0f).withAlpha(processing?0.95f:0.32f));
-        g.fillRoundedRectangle(x0+i*step,y0-h,4.6f,2*h,2.2f);
+        const float length=5.0f+27.0f*std::sqrt(sample);
+        const float angle=juce::MathConstants<float>::twoPi*(float)i/(float)spokeCount;
+        Graphics::ScopedSaveState scoped(g);
+        g.addTransform(AffineTransform::rotation(angle,cx,cy));
+        g.setColour(accent.interpolatedWith(highlight,(float)i/spokeCount)
+                       .withAlpha(processing?.84f:.16f));
+        g.fillRoundedRectangle(cx-2.3f,cy-108.0f-length,4.6f,length,2.1f);
     }
-    words(g,"QUIET",275,323,90,13,9,muted);
-    words(g,"BUILDING ENERGY",493,323,180,13,9,muted);
-    words(g,drop>0.2f?"IMPACT / DROP":"NATURAL DYNAMICS",736,323,117,13,9,drop>0.2f?rose:muted);
-    words(g,"Waveform follows measured audio; no simulated beat animation.",275,344,555,15,10,muted);
-    words(g,"INTELLIGENT DYNAMICS",897,166,290,14,10,purple,true);
-    words(g,"Music energy response",897,185,290,23,15,white,true);
-    const float cx=942,cy=268,r=35;
-    g.setColour(paintRole(RowOutline).withAlpha(.92f));g.drawEllipse(cx-r,cy-r,r*2,r*2,8.0f);
-    const float amount=std::clamp(drop,0.0f,1.0f);
-    Path arc;
-    arc.addCentredArc(cx,cy,r,r,0,-2.35f,-2.35f+amount*4.65f,true);
-    g.setColour(purple);
-    g.strokePath(arc,PathStrokeType(8,PathStrokeType::curved,PathStrokeType::rounded));
-    words(g,sceneReady?String(roundToInt(amount*100))+"%":"--",921,251,56,28,22,white,true);
-    words(g,"RISE",922,281,50,12,9,muted,true);
-    words(g,sceneReady?"LIVE MUSIC SCENE":"WAITING FOR AI",999,223,193,16,10,sceneReady?green:muted,true);
-    words(g,sceneReady?"Music "+String(roundToInt(std::clamp(scene.music,0.0f,1.0f)*100))+"%":"No live classification",999,245,195,18,11,muted);
-    words(g,sceneReady?"Percussion "+String(roundToInt(std::clamp(scene.percussion,0.0f,1.0f)*100))+"%":"No rhythm estimate",999,266,195,18,11,muted);
-    words(g,enabled?"Adaptive processing":"Manual presets",999,287,190,18,10,muted);
-    g.setColour(paintRole(RowOutline).withAlpha(.92f));g.fillRoundedRectangle(898,347,289,4,2);
-    g.setColour(purple);g.fillRoundedRectangle(898,347,289*amount,4,2);
-    // Read-only compact preview of applied EQ gains, not a compressed 31-band editor.
-    words(g,"ADAPTIVE FREQUENCY RESPONSE",897,389,287,14,10,purple,true);
-    words(g,"LIVE EQ / ACTUAL DSP",897,407,282,18,13,white,true);
-    const float x0Eq=902.0f,y0Eq=477.0f,wEq=277.0f;
-    g.setColour(paintRole(RowOutline).withAlpha(.6f));
+
+    g.setColour(paintRole(PanelBackground).withAlpha(.93f));
+    g.fillEllipse(cx-70,cy-70,140,140);
+    g.setColour(paintRole(RowOutline));
+    g.drawEllipse(cx-70,cy-70,140,140,1.0f);
+    // This is an input-derived display scale, not a measured dB or LUFS value.
+    words(g,processing?String(roundToInt(level*100.0f))+"%":"--",
+          555,261,90,37,32,ink,true);
+    words(g,"INPUT ENERGY",554,300,97,17,10,soft,true);
+    words(g,"LOCAL DSP",562,322,70,13,9,processing?positive:soft,true);
+
+    // Stage mini-console on either side of the listening core.
+    words(g,"MUSIC MOMENT",272,258,170,15,10,soft,true);
+    words(g,sceneReady?"MUSIC  "+String(roundToInt(std::clamp(scene.music,0.0f,1.0f)*100.0f))+"%":"AI WAITING",
+          272,279,160,22,13,ink,true);
+    progress(g,273,307,112,sceneReady?scene.music:0,accent);
+    words(g,sceneReady?"Percussion "+String(roundToInt(std::clamp(scene.percussion,0.0f,1.0f)*100.0f))+"%":
+          "No live rhythm",272,321,174,16,10,soft);
+
+    words(g,"THE EMOTIONAL ARC",761,254,168,17,10,soft,true);
+    words(g,sceneReady?String(roundToInt(rise*100.0f))+"%":"--",761,278,130,36,30,ink,true);
+    words(g,"MEASURED RISE",762,316,166,15,10,soft);
+    progress(g,763,338,149,rise,highlight);
+
+    // A small grounded strip timeline provides temporal context below the orb.
+    words(g,"RECENT AUDIO",271,387,128,15,10,soft,true);
+    const size_t shown=(std::min)((size_t)46,count);
+    for(size_t i=0;i<46;++i) {
+        float sample=0.0f;
+        if(i<shown)sample=std::clamp(samples[(cursor+samples.size()-shown+i)%samples.size()],0.0f,1.0f);
+        const float bar=2.0f+17.0f*std::sqrt(sample);
+        g.setColour(accent.withAlpha(processing?.68f:.16f));
+        g.fillRoundedRectangle(272.0f+(float)i*8.2f,411.0f-bar*.5f,4.7f,bar,2.0f);
+    }
+    words(g,"QUIET -> STRONG",272,420,176,13,9,soft);
+    words(g,"Waveform follows measured audio",495,420,205,13,9,soft);
+    // Native Smart Listening toggle sits at x720,y392 and remains interactive.
+
+    // Narrow AI telemetry console. No invented "AI thinking" percentages.
+    words(g,"AI / ACTIVE ANALYSIS",976,167,220,17,10,accent,true);
+    words(g,sceneReady?"Listening to the mix":"Waiting for AI",976,189,220,24,15,ink,true);
+    const float signals[3]={
+        sceneReady?std::clamp(scene.music,0.0f,1.0f):0.0f,
+        sceneReady?std::clamp(scene.percussion,0.0f,1.0f):0.0f,
+        sceneReady?std::clamp(scene.speech,0.0f,1.0f):0.0f
+    };
+    const char* names[3]={"MUSIC","PERCUSSION","VOICE"};
     for(int i=0;i<3;++i) {
-        const float y=451.0f+24.0f*i;
-        g.drawLine(x0Eq,y,x0Eq+wEq,y,0.8f);
+        const int y=224+i*35;
+        words(g,names[i],976,y,120,14,9,soft,true);
+        words(g,sceneReady?String(roundToInt(signals[i]*100))+"%":"--",
+              1156,y,32,14,10,ink,true);
+        progress(g,977,y+17,211,signals[i],i==2?highlight:accent);
     }
+    words(g,enabled?"SMART LISTENING ENABLED":"MANUAL PROCESSING",
+          976,326,220,15,9,enabled?positive:soft,true);
+
+    // Vertical sidecar for the true applied EQ curve; editing opens a larger page.
+    words(g,"LIVE / FREQUENCY RESPONSE",976,370,220,16,10,accent,true);
+    words(g,"Real applied equalizer",976,391,220,21,14,ink,true);
+    const float x0=977.0f,y0=474.0f,w=208.0f;
+    g.setColour(paintRole(RowOutline).withAlpha(.72f));
+    for(int i=-1;i<=1;++i)g.drawLine(x0,y0+i*27.0f,x0+w,y0+i*27.0f,0.85f);
     if(eqCount>0) {
         Path curve;
         for(int i=0;i<eqCount && i<(int)eq.size();++i) {
-            const float x=x0Eq+wEq*(float)i/(float)juce::jmax(1,eqCount-1);
-            const float y=y0Eq-juce::jlimit(-12.0f,12.0f,eq[(size_t)i])*2.0f;
-            if(i==0)curve.startNewSubPath(x,y);
-            else curve.lineTo(x,y);
+            const float x=x0+w*(float)i/(float)jmax(1,eqCount-1);
+            const float y=y0-jlimit(-12.0f,12.0f,eq[(size_t)i])*2.05f;
+            if(i==0)curve.startNewSubPath(x,y); else curve.lineTo(x,y);
         }
-        g.setColour(purple.withAlpha(0.90f));
-        g.strokePath(curve,PathStrokeType(2.2f,PathStrokeType::curved,PathStrokeType::rounded));
+        g.setColour(accent.withAlpha(.98f));
+        g.strokePath(curve,PathStrokeType(2.3f,PathStrokeType::curved,PathStrokeType::rounded));
     }
-    words(g,String(eqCount)+" bands",901,521,125,18,11,muted);
-    words(g,"LET THE MUSIC BREATHE",274,564,390,17,11,white,true);
-    words(g,"Your preset + real-time response; no volume override.",274,584,650,14,10,muted);
+    words(g,"LOW",977,517,63,14,9,soft);
+    words(g,"MID",1059,517,51,14,9,soft);
+    words(g,"HIGH",1140,517,53,14,9,soft);
+    words(g,String(eqCount)+" ACTIVE BANDS",977,554,152,15,9,soft,true);
+    // The real Edit full EQ button is x1063,y568 (painted as a child).
+
+    // No text beneath the native five-knob interactive dock.
+    words(g,"PERFORMANCE RACK",272,460,360,18,10,accent,true);
+    words(g,"Five independent real-DSP effects",272,476,391,18,11,soft);
 }
 }

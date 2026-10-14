@@ -110,7 +110,7 @@ void FxAudioControls::paint(Graphics& g)
     if(studio) {
         g.setFont(theme.getNormalFont().withHeight(15.0f));
         g.setColour(Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
-        g.drawText(effects_shown_?"Fine-tune the feeling":"Fine-tune your output",
+        g.drawText(effects_shown_?"Mix your moment":"Fine-tune your output",
                    15,23,juce::jmin(395,getWidth()-42),23,Justification::centredLeft,false);
     }
 }
@@ -188,9 +188,9 @@ void FxEffects::resized()
         const int col=(getWidth()-28)/5;
         for(int i=0;i<EffectType::NumEffects;++i) {
             const int x=14+i*col;
-            labels_[i]->setBounds(x,46,col-2,16);
+            labels_[i]->setBounds(x,44,col-2,16);
             labels_[i]->setJustificationType(Justification::centred);
-            effects_[i]->setBounds(x+juce::jmax(0,(col-94)/2),65,juce::jmin(94,col-8),89);
+            effects_[i]->setBounds(x+juce::jmax(0,(col-94)/2),62,juce::jmin(94,col-8),88);
         }
         return;
     }

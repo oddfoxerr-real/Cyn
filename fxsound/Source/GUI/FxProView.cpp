@@ -414,7 +414,7 @@ void FxProView::resized()
     devices_nav_.setBounds(68, 156, 152, 36);
     ai_hub_nav_.setBounds(68, 198, 152, 36);
     themes_nav_.setBounds(68, 282, 152, 36);
-    eq_open_.setBounds(1055, 519, 131, 27);
+    eq_open_.setBounds(1060, 568, 130, 26);
     eq_back_.setBounds(1010, 558, 176, 35);
     settings_.setBounds(68, 554, 152, 36);
     ai_hub_nav_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(MenuHighlightBackground)).withAlpha(1.0f));
@@ -434,8 +434,9 @@ void FxProView::resized()
     preset_list_.setBounds(256, 97, 465, 40);
     endpoint_list_.setBounds(737, 97, 471, 40);
     if(page_==0) {
-        visualizer_.setBounds(275,328,577,9);
-        audio_controls_.setBounds(256,382,612,170);
+        // Asymmetric Live Stage: circular audio focus, AI sidecar, effect dock.
+        visualizer_.setBounds(272,402,386,13);
+        audio_controls_.setBounds(250,447,694,155);
     } else if(page_==4) {
         equalizer_.setBounds(268,192,927,346);
     } else {
@@ -443,7 +444,7 @@ void FxProView::resized()
         audio_controls_.setBounds(256,288,168,257);
         equalizer_.setBounds(440,288,768,257);
     }
-    smart_toggle_.setBounds(page_==0?973:272,page_==1?350:page_==0?571:565,220,28);
+    smart_toggle_.setBounds(page_==0?722:272,page_==1?350:page_==0?393:565,page_==0?205:220,28);
     smart_status_.setBounds(508,page_==1?351:566,678,26);
     smart_status_.setVisible(page_==1 || page_==2);
     if (page_ == 2)
@@ -565,11 +566,11 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text(page_==0?"REAL MUSIC. REAL RESPONSE.":"Cyn / Personal audio",80,486,144,18,page_==0?9.0f:12.0f,true);
     text(page_==0?"Let the music breathe.":"Made for your ears.",80,508,140,18,12,true);
-    text("Version 2.0.34",80,529,140,16,10,true);
-    text(page_ == 0 ? "From quiet to extraordinary." : page_ == 1 ? "Smart listening" :
+    text("Version 2.0.35",80,529,140,16,10,true);
+    text(page_ == 0 ? "Cyn / Live Stage" : page_ == 1 ? "Smart listening" :
          page_==2 ? "Output devices" : page_==4 ? "Full frequency control" : "Misc / AI DJ",
          256,16,760,32,25);
-    text(page_ == 0 ? "Preserve the softness. Enhance the impact. Let the music lead." : page_ == 1
+    text(page_ == 0 ? "Sound should move you. Watch real energy and steer the mix." : page_ == 1
         ? "Choose Music AI or Movie AI. Each learns your preferences separately." :
           page_==2 ? "Your output, with fewer interruptions." : page_==4
         ? "Every band editable. Your original EQ settings are preserved." :
