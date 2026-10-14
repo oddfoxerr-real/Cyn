@@ -33,13 +33,14 @@ const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
                   "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.32"]){
+                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.33"]){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
-assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
+assert(view.includes("&ai_hub_nav_, &themes_nav_, &eq_open_, &eq_back_"),
+       "AI Hub, Themes and full EQ navigation missing from component registration");
 assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
-console.log("PASS: visible native AI sidebar, profile actions and v2.0.31 version marker");
+console.log("PASS: native sidebar, AI Hub, themes and v2.0.33 version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
 assert(native.includes("componentToCentreAround = owner"),"AI Hub must be positioned over Cyn");
 assert(native.includes("dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f)"),"Dialog background is transparent");
@@ -70,7 +71,8 @@ const neural = readFileSync(path("fxsound/Source/GUI/CynNeuralActivity.h"), "utf
 assert(header.includes('#include "CynNeuralActivity.h"'), "Neural visualizer header missing");
 assert(header.includes("CynNeuralActivity neural_activity_"), "Missing visualizer instance");
 assert(neural.includes("std::array<Point<float>, 11> inputs") && neural.includes("std::array<Point<float>, 12> hidden") && neural.includes("std::array<Point<float>, 5> outputs"), "Must match real 11-12-5 model architecture");
-assert(view.includes("neural_activity_.setBounds(72, 286, 148, 187)"), "Must fit below Misc navigation without obstructing labeling controls");
+assert(view.includes("neural_activity_.setBounds(72, 329, 148, 144)"),
+       "Neural graph must fit below dedicated Themes navigation");
 assert(view.includes("neural_activity_.setTrainingActive(controller.isSmartTraining())"), "Brain must reflect actual training state");
 assert(view.includes("neural_activity_.setAnimationEnabled(page==1)") &&
        view.includes("const bool wantGraph=page_==1;"),
@@ -98,8 +100,10 @@ console.log("PASS: live neural inference and supervised epoch animation");
 // The existing personal-model network must be labeled separately from pretrained
 // YAMNet event classifications; no fabricated YAMNet weight-node activity.
 const themeHeader=readFileSync(path("fxsound/Source/GUI/FxTheme.h"),"utf8");
-assert(themeHeader.includes("CharcoalDesktop, NeuralCore, NumModes"),"Neural Core must preserve existing saved theme IDs");
-assert(theme.includes('"Charcoal Desktop", "Neural Core"'),"Neural Core missing from Theme menu names");
+assert(themeHeader.includes("CharcoalDesktop, NeuralCore, Crescendo, NumModes"),
+       "Append Crescendo without renumbering the original 20 saved theme IDs");
+assert(theme.includes('"Charcoal Desktop", "Neural Core", "Crescendo"'),
+       "Crescendo must be a separate Theme Studio choice");
 assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Neural theme must use real personal model activations");
 assert(view.includes("brainController.getLiveYamNetScene(scene)"),"Neural theme must read real YAMNet classifications");
 assert(controllerHeader.includes("getLiveYamNetScene(CynAudioScene& out)"),"Missing native read-only scene telemetry API");
@@ -114,7 +118,7 @@ console.log("PASS: Neural Core live inference visualization, distinct AI identit
 const atmosphere=readFileSync(path("fxsound/Source/GUI/CynThemeAtmosphere.h"),"utf8");
 const themeModes=[...themeHeader.matchAll(/enum FxThemeMode : int \{([^}]+)\}/g)][0][1]
   .split(",").map(item=>item.trim().replace(/=.*/,"")).filter(item=>item!=="NumModes");
-assert.equal(themeModes.length,20,"Expected to preserve all twenty user theme IDs");
+assert.equal(themeModes.length,21,"Expected all 20 original themes plus Crescendo");
 for(const mode of themeModes)
   assert(atmosphere.includes("case FxThemeMode::"+mode+":"),"No dynamic artwork for "+mode);
 assert(view.includes("CynThemeAtmosphere::paint(g,FxTheme::getThemeMode()"),
@@ -124,7 +128,7 @@ assert(atmosphere.includes("FxTheme::isReducedMotion()"),
        "Atmosphere must respect reduce-motion mode");
 assert(!atmosphere.includes("getLiveYamNetScene("),
        "Theme paint must not perform asynchronous inference");
-console.log("PASS: 20 distinct atmospheric themes, measured audio glow and motion fallback");
+console.log("PASS: all 20 preserved themes plus Crescendo, measured glow and motion fallback");
 
 const studio=readFileSync(path("fxsound/Source/GUI/CynThemeStudio.h"),"utf8");
 const menu=readFileSync(path("fxsound/Source/GUI/FxMainWindow.cpp"),"utf8");
@@ -145,6 +149,8 @@ assert(atmosphere.includes('Rectangle<float> bounds,bool preview=false'),
        "Theme art must be rendered across a real workspace or large preview");
 assert(!view.includes('g,theme_audio_level_);'),
        "Do not return to tiny decorative sidebar artwork");
+assert(view.includes('themes_nav_.onClick = [this] { CynThemeStudioDialog::show(this); }'),
+       "Sidebar must open full Theme Studio without hiding existing choices");
 assert(view.includes('neural_activity_.setVisible(page==1)'),
        "Neural widget must not crowd Sound Studio sidebar");
 console.log("PASS: full-workspace native scenes, arrow carousel, actual UI transition");

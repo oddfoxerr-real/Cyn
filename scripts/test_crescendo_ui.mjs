@@ -25,7 +25,30 @@ assert(knobs.includes("isMouseButtonDown()"));
 assert(knobs.includes("getAppliedEffectValue"));
 assert(knobs.includes("effects_.setBounds(0,0,getWidth(),getHeight())"));
 assert(eq.includes("sliderHeight")&&eq.includes("getHeight()<230"));
-assert(view.includes("Version 2.0.32"));
+assert(view.includes("Version 2.0.33"));
 assert(!native.includes("std::sin")&&!native.includes("random"));
 console.log("PASS: #5 Crescendo Studio paints real audio, actual scene and measured rise");
 console.log("PASS: editable knobs, original user presets, native EQ and no fake telemetry");
+
+const studio=source("fxsound/Source/GUI/CynThemeStudio.h");
+const theme=source("fxsound/Source/GUI/FxTheme.cpp");
+const themeHeader=source("fxsound/Source/GUI/FxTheme.h");
+assert(view.includes("themes_nav_.onClick = [this] { CynThemeStudioDialog::show(this); }"));
+assert(view.includes("eq_open_.onClick = [this] { selectPage(4); }"));
+assert(view.includes("eq_back_.onClick = [this] { selectPage(0); }"));
+assert(view.includes("equalizer_.setVisible(page == 4)"));
+assert(view.includes("equalizer_.setBounds(268,192,927,346)"));
+assert(view.includes("live_eq_[(size_t)i]=brainController.getAppliedEqBandBoostCut(i)"));
+assert(native.includes("const std::array<float,31>& eq,int eqCount"));
+assert(native.includes("paintRole(ControlBackground)"));
+assert(native.includes("paintRole(SliderTrack)"));
+assert(knobs.includes("Colour(FXCOLOR(SliderTrack))"));
+assert(knobs.includes("Colour(FXCOLOR(DefaultText))"));
+assert(!native.includes("0xff"),"Dashboard has hard-coded non-theme colors");
+assert(studio.includes("static void show(juce::Component* owner=nullptr)"));
+assert(themeHeader.includes("NeuralCore, Crescendo, NumModes"));
+assert(theme.includes('"Charcoal Desktop", "Neural Core", "Crescendo"'));
+assert(theme.includes("0x171a20, 0x1e222a, 0x232832"),
+       "Original Graphite colors must be restored");
+console.log("PASS: all themes persist; compact read-only EQ and full editable EQ wired");
+

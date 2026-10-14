@@ -134,7 +134,7 @@ public:
                    "PREVIEW ONLY  /  APPLY TO SAVE THIS THEME",
                    92,474,getWidth()-184,20,Justification::centred);
 
-        // Progress markers are deliberately subtle and scale to all 20 presets.
+        // Progress markers scale with all configured presets, including Crescendo.
         const float dotW=9.5f,space=19.0f;
         const float start=(getWidth()-((total-1)*space+dotW))*.5f;
         for(int i=0;i<total;++i)
