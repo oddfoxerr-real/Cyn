@@ -1,0 +1,265 @@
+name: Cyn 13-Hour Real-Audio CPU Training
+on:
+  push:
+    branches:
+      - experiment/real-audio-13h-20261015
+    paths:
+      - 'training/prepare_real_audio.py'
+      - 'training/train_real_13h.py'
+      - 'training/evaluate_real_13h.py'
+      - '.github/workflows/cyn-real-audio-13h.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cyn-real-audio-13h
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Get permission-cleared real audio and extract features
+    runs-on: ubuntu-24.04
+    timeout-minutes: 85
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.2.6 soundfile==0.13.1
+      - name: Prepare speaker/instrument-separated CC-BY audio (no recordings uploaded)
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+        run: python -u training/prepare_real_audio.py --output real-audio-data
+      - name: Brief gradient smoke test before committing 13 hours of CPU time
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+        run: python -u training/train_real_13h.py --seconds 5 --seed 567 --output smoke-checkpoint
+      - uses: actions/upload-artifact@v4
+        with:
+          name: real-audio-numeric-features
+          path: |
+            real-audio-data/*.npz
+            real-audio-data/provenance.json
+          retention-days: 3
+          if-no-files-found: error
+
+  stage1:
+    name: Real gradient training 1/4 (${{ fromJSON('{"1": "4h", "2": "4h", "3": "4h", "4": "1h"}')['1'] }})
+    needs: [prepare, prepare]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 285
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.2.6
+      - uses: actions/download-artifact@v4
+        with:
+          name: real-audio-numeric-features
+          path: real-audio-data
+      - name: Optimize neural weights for 14400 real seconds
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: >-
+          python -u training/train_real_13h.py
+          --seconds 14400 --seed 7159
+          
+          --output checkpoint
+      - name: Check cumulative optimization duration
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("checkpoint/checkpoint.json"))
+          assert r["complete"] is True
+          assert r["optimization_seconds"] >= 14400
+          assert r["gradient_steps"]>1000
+          print("Verified actual gradient compute",r["optimization_seconds"],"seconds")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cyn-real-audio-stage-1
+          path: checkpoint/
+          if-no-files-found: warn
+          retention-days: 7
+
+  stage2:
+    name: Real gradient training 2/4 (${{ fromJSON('{"1": "4h", "2": "4h", "3": "4h", "4": "1h"}')['2'] }})
+    needs: [stage1, prepare]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 285
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.2.6
+      - uses: actions/download-artifact@v4
+        with:
+          name: real-audio-numeric-features
+          path: real-audio-data
+      - uses: actions/download-artifact@v4
+        with:
+          name: cyn-real-audio-stage-1
+          path: preceding
+      - name: Optimize neural weights for 14400 real seconds
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: >-
+          python -u training/train_real_13h.py
+          --seconds 14400 --seed 7160
+          --input-checkpoint preceding/checkpoint.json 
+          --output checkpoint
+      - name: Check cumulative optimization duration
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("checkpoint/checkpoint.json"))
+          assert r["complete"] is True
+          assert r["optimization_seconds"] >= 28800
+          assert r["gradient_steps"]>1000
+          print("Verified actual gradient compute",r["optimization_seconds"],"seconds")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cyn-real-audio-stage-2
+          path: checkpoint/
+          if-no-files-found: warn
+          retention-days: 7
+
+  stage3:
+    name: Real gradient training 3/4 (${{ fromJSON('{"1": "4h", "2": "4h", "3": "4h", "4": "1h"}')['3'] }})
+    needs: [stage2, prepare]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 285
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.2.6
+      - uses: actions/download-artifact@v4
+        with:
+          name: real-audio-numeric-features
+          path: real-audio-data
+      - uses: actions/download-artifact@v4
+        with:
+          name: cyn-real-audio-stage-2
+          path: preceding
+      - name: Optimize neural weights for 14400 real seconds
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: >-
+          python -u training/train_real_13h.py
+          --seconds 14400 --seed 7161
+          --input-checkpoint preceding/checkpoint.json 
+          --output checkpoint
+      - name: Check cumulative optimization duration
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("checkpoint/checkpoint.json"))
+          assert r["complete"] is True
+          assert r["optimization_seconds"] >= 43200
+          assert r["gradient_steps"]>1000
+          print("Verified actual gradient compute",r["optimization_seconds"],"seconds")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cyn-real-audio-stage-3
+          path: checkpoint/
+          if-no-files-found: warn
+          retention-days: 7
+
+  stage4:
+    name: Real gradient training 4/4 (${{ fromJSON('{"1": "4h", "2": "4h", "3": "4h", "4": "1h"}')['4'] }})
+    needs: [stage3, prepare]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 85
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.2.6
+      - uses: actions/download-artifact@v4
+        with:
+          name: real-audio-numeric-features
+          path: real-audio-data
+      - uses: actions/download-artifact@v4
+        with:
+          name: cyn-real-audio-stage-3
+          path: preceding
+      - name: Optimize neural weights for 3600 real seconds
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+          OMP_NUM_THREADS: '1'
+        run: >-
+          python -u training/train_real_13h.py
+          --seconds 3600 --seed 7162
+          --input-checkpoint preceding/checkpoint.json 
+          --output checkpoint
+      - name: Check cumulative optimization duration
+        run: |
+          python - <<'PY'
+          import json
+          r=json.load(open("checkpoint/checkpoint.json"))
+          assert r["complete"] is True
+          assert r["optimization_seconds"] >= 46800
+          assert r["gradient_steps"]>1000
+          print("Verified actual gradient compute",r["optimization_seconds"],"seconds")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cyn-real-audio-stage-4
+          path: checkpoint/
+          if-no-files-found: warn
+          retention-days: 7
+
+  release:
+    name: Check real-audio holdout and publish experimental profile only
+    needs: [prepare, stage4]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.2.6
+      - uses: actions/download-artifact@v4
+        with:
+          name: real-audio-numeric-features
+          path: real-audio-data
+      - uses: actions/download-artifact@v4
+        with:
+          name: cyn-real-audio-stage-4
+          path: checkpoint
+      - name: Evaluate real-recording holdout against current Cyn
+        env:
+          OPENBLAS_NUM_THREADS: '1'
+        run: python -u training/evaluate_real_13h.py
+      - name: Publish optional profile pre-release, never replace stable installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="cyn-real-audio-lab-13h-20261016"
+          gh release view "$tag" >/dev/null 2>&1 && { echo "Experimental tag already exists"; exit 0; }
+          gh release create "$tag" \
+            selected-real-audio/cyn-real-audio-experimental.cynai.json \
+            selected-real-audio/real-audio-training-report.json \
+            --target "$GITHUB_SHA" \
+            --title "Cyn 13-Hour Real Audio AI - Experimental" \
+            --notes-file selected-real-audio/RELEASE-NOTES.md \
+            --prerelease
