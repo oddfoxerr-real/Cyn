@@ -46,8 +46,8 @@ jobs:
           if-no-files-found: error
 
   stage1:
-    name: Real gradient training 1/4 (${{ fromJSON('{"1": "4h", "2": "4h", "3": "4h", "4": "1h"}')['1'] }})
-    needs: [prepare, prepare]
+    name: Real gradient training stage 1 of 4
+    needs: prepare
     runs-on: ubuntu-24.04
     timeout-minutes: 285
     steps:
@@ -88,7 +88,7 @@ jobs:
           retention-days: 7
 
   stage2:
-    name: Real gradient training 2/4 (${{ fromJSON('{"1": "4h", "2": "4h", "3": "4h", "4": "1h"}')['2'] }})
+    name: Real gradient training stage 2 of 4
     needs: [stage1, prepare]
     runs-on: ubuntu-24.04
     timeout-minutes: 285
@@ -134,7 +134,7 @@ jobs:
           retention-days: 7
 
   stage3:
-    name: Real gradient training 3/4 (${{ fromJSON('{"1": "4h", "2": "4h", "3": "4h", "4": "1h"}')['3'] }})
+    name: Real gradient training stage 3 of 4
     needs: [stage2, prepare]
     runs-on: ubuntu-24.04
     timeout-minutes: 285
@@ -180,7 +180,7 @@ jobs:
           retention-days: 7
 
   stage4:
-    name: Real gradient training 4/4 (${{ fromJSON('{"1": "4h", "2": "4h", "3": "4h", "4": "1h"}')['4'] }})
+    name: Real gradient training stage 4 of 4
     needs: [stage3, prepare]
     runs-on: ubuntu-24.04
     timeout-minutes: 85
