@@ -1,0 +1,75 @@
+name: Cyn Open Audio AI Evaluation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cyn-open-audio-evaluation.yml'
+      - 'experiments/audio-model-lab/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  policy-and-catalog:
+    name: Verify candidate policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest discover -s experiments/audio-model-lab -p test_catalog.py
+
+  silero:
+    name: Silero VAD real ONNX inference (CPU)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install PyTorch CPU wheel
+        run: python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+      - name: Install model package
+        run: python -m pip install 'silero-vad[onnx-cpu]==6.2.3' numpy==1.26.4
+      - name: Run actual pretrained model
+        env:
+          CUDA_VISIBLE_DEVICES: "-1"
+          OMP_NUM_THREADS: "2"
+        run: python experiments/audio-model-lab/probe_silero.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cyn-silero-cpu-report
+          path: model-lab-reports/silero-vad.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  deepfilternet:
+    name: DeepFilterNet real enhancement inference (CPU)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install PyTorch CPU wheel
+        run: python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+      - name: Install open-source enhancement model
+        run: python -m pip install deepfilternet==0.5.6 numpy==1.26.4 soundfile==0.12.1
+      - name: Run actual pretrained model
+        env:
+          CUDA_VISIBLE_DEVICES: "-1"
+          OMP_NUM_THREADS: "2"
+        run: python experiments/audio-model-lab/probe_deepfilternet.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cyn-deepfilternet-cpu-report
+          path: model-lab-reports/deepfilternet.json
+          if-no-files-found: warn
+          retention-days: 7

@@ -1,0 +1,134 @@
+{
+  "schema": 1,
+  "policy": {
+    "activation": "research-only",
+    "training": "disabled-until-evaluation",
+    "release": "disabled",
+    "audio_upload": "none",
+    "hardware": "github-standard-ubuntu-cpu",
+    "model_weights_bundled": false,
+    "rule": "A passing inference smoke test is not proof of perceptual enhancement. Do not auto-promote."
+  },
+  "candidates": [
+    {
+      "id": "yamnet",
+      "name": "Google YAMNet",
+      "role": "audio-event tagging",
+      "status": "existing-native",
+      "code_license": "Apache-2.0",
+      "weights": "Existing Cyn model integration; review redistributed binary provenance",
+      "source": "https://github.com/tensorflow/models/tree/master/research/audioset/yamnet",
+      "notes": "521 sound events; classifies audio but does not perform mastering"
+    },
+    {
+      "id": "beat-this",
+      "name": "Beat This! small0",
+      "role": "offline beat/downbeat tracking",
+      "status": "existing-probe",
+      "code_license": "MIT",
+      "weights": "Upstream model checkpoint; verify specific checkpoint attribution",
+      "source": "https://github.com/CPJKU/beat_this",
+      "notes": "Existing Cyn experiment; whole-file latency unsuitable for realtime until tested"
+    },
+    {
+      "id": "silero-vad",
+      "name": "Silero VAD",
+      "role": "speech-activity detection",
+      "status": "new-probe",
+      "code_license": "MIT",
+      "weights": "Upstream package; not redistributed",
+      "source": "https://github.com/snakers4/silero-vad",
+      "notes": "Compact ONNX candidate for dialogue/voice detection"
+    },
+    {
+      "id": "deepfilternet",
+      "name": "DeepFilterNet",
+      "role": "speech noise suppression",
+      "status": "new-probe",
+      "code_license": "MIT OR Apache-2.0",
+      "weights": "Upstream package pretrained model; not redistributed",
+      "source": "https://github.com/Rikorose/DeepFilterNet",
+      "notes": "Voice cleanup only; do not apply blindly to music"
+    },
+    {
+      "id": "rnnoise",
+      "name": "RNNoise",
+      "role": "low-latency speech noise suppression",
+      "status": "blocked",
+      "code_license": "BSD-3-Clause",
+      "weights": "Upstream pretrained-weights license clarification pending: https://github.com/xiph/rnnoise/issues/284",
+      "source": "https://github.com/xiph/rnnoise",
+      "notes": "No redistribution until weights permissions are clarified"
+    },
+    {
+      "id": "panns",
+      "name": "PANNs Cnn14",
+      "role": "sound-event tagging",
+      "status": "research",
+      "code_license": "MIT",
+      "weights": "Review official checkpoint provenance before distribution",
+      "source": "https://github.com/qiuqiangkong/audioset_tagging_cnn",
+      "notes": "Potential YAMNet competitor; sizable CPU footprint"
+    },
+    {
+      "id": "laion-clap",
+      "name": "LAION CLAP",
+      "role": "text/music semantic embeddings",
+      "status": "research",
+      "code_license": "CC0 repository",
+      "weights": "Check checkpoint, training dataset and dependencies separately",
+      "source": "https://github.com/LAION-AI/CLAP",
+      "notes": "Heavy offline candidate; semantic similarity is not an EQ target"
+    },
+    {
+      "id": "demucs",
+      "name": "Demucs",
+      "role": "offline music-source separation",
+      "status": "research",
+      "code_license": "MIT",
+      "weights": "Training-data and checkpoint redistribution restrictions need review",
+      "source": "https://github.com/facebookresearch/demucs",
+      "notes": "Archived repository; separation is not automatic enhancement"
+    },
+    {
+      "id": "spleeter",
+      "name": "Spleeter",
+      "role": "offline music-source separation",
+      "status": "research",
+      "code_license": "MIT",
+      "weights": "Review each published weight artifact and dataset conditions",
+      "source": "https://github.com/deezer/spleeter",
+      "notes": "TensorFlow dependency, not suitable for automatic real-time use without benchmarking"
+    },
+    {
+      "id": "essentia",
+      "name": "Essentia",
+      "role": "music descriptors and classifiers",
+      "status": "blocked",
+      "code_license": "AGPL-3.0 with exceptions",
+      "weights": "Some published model weights prohibit commercial use; per-model review",
+      "source": "https://github.com/MTG/essentia",
+      "notes": "Do not bundle noncommercial weights in a distributed app"
+    },
+    {
+      "id": "muq",
+      "name": "MuQ",
+      "role": "music embeddings",
+      "status": "blocked",
+      "code_license": "MIT code",
+      "weights": "CC BY-NC 4.0 pretrained weights",
+      "source": "https://github.com/tencent-ailab/MuQ",
+      "notes": "No commercial model distribution"
+    },
+    {
+      "id": "torch-audiomentations",
+      "name": "torch-audiomentations",
+      "role": "training data augmentation",
+      "status": "research",
+      "code_license": "MIT",
+      "weights": "No model checkpoint",
+      "source": "https://github.com/iver56/torch-audiomentations",
+      "notes": "Training utility, not a pretrained enhancer"
+    }
+  ]
+}
