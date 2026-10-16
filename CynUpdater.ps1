@@ -22,7 +22,7 @@ if ($Probe) {
 # OS-owned instance lock: an update in progress must never open another
 # window/worker, even when Cyn's timer and an interactive check race.
 # Probe mode is intentionally outside the mutex for read-only CI diagnostics.
-$script:updaterMutex=New-Object System.Threading.Mutex($false,'Local\CynUpdaterSingleWindow')
+$script:updaterMutex=[System.Threading.Mutex]::new($false,'Local\CynUpdaterSingleWindow')
 try {
     $script:ownsUpdaterMutex=$script:updaterMutex.WaitOne(0,$false)
 } catch [System.Threading.AbandonedMutexException] {
