@@ -115,7 +115,7 @@ jobs:
         if: steps.inspect.outputs.state != 'published'
         shell: cmd
         run: |
-          cl /nologo /O2 /EHsc /std:c++17 /I dsp\\include /I fxsound\\Source\\GUI tests\\cyn_volume_kick_test.cpp /Fe:volume-kick-test.exe
+          cl /nologo /O2 /EHsc /std:c++17 /I dsp\include /I fxsound\Source\GUI tests\cyn_volume_kick_test.cpp /Fe:volume-kick-test.exe
           if errorlevel 1 exit /b 1
           volume-kick-test.exe
           if errorlevel 1 exit /b 1
