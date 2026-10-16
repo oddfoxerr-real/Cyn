@@ -3189,7 +3189,7 @@ std::vector<FxController::AIProfileOption> FxController::getAvailableAIProfiles(
     append(File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Cyn/AIModels"),"imported:");
     return choices;
 }
-String FxController::getActiveAIProfileId() const {
+String FxController::getActiveAIProfileId() {
     const String id=settings_.getString(smart_mode_==1?"cyn_active_ai_profile_movie":"cyn_active_ai_profile_music");
     return id.isEmpty()?"personal":id;
 }
