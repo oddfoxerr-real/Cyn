@@ -20,6 +20,16 @@
       "file": "cyn-cinema.cynai.json",
       "issue": 0,
       "license": "CC-BY-4.0"
+    },
+    {
+      "id": "cyn-real-audio-13h",
+      "name": "Cyn Real Audio 13h (Experimental)",
+      "author": "Cyn contributors",
+      "category": "experimental",
+      "description": "13 hours of neural training on real spoken audio and instrument notes. Better heuristic prediction on a held-out set; actual listening quality has not been verified. Import to try it without changing your current model until you select it.",
+      "file": "cyn-real-audio-13h.cynai.json",
+      "issue": 0,
+      "license": "CC-BY-4.0"
     }
   ]
 }

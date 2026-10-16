@@ -6,6 +6,9 @@ const path = p => new URL("../" + p, import.meta.url);
 const catalogue=JSON.parse(readFileSync(path("ai-hub/community/index.json"),"utf8"));
 assert.equal(catalogue.schema,1);
 assert(Array.isArray(catalogue.profiles)&&catalogue.profiles.length>0);
+const trained=catalogue.profiles.find(p=>p.id==="cyn-real-audio-13h");
+assert(trained && trained.file==="cyn-real-audio-13h.cynai.json", "Real-audio profile missing from native AI Hub");
+assert(trained.category==="experimental" && /real|audio/i.test(trained.description), "Trained model must retain experimental labelling");
 for(const entry of catalogue.profiles){
   assert.match(entry.file,/^[a-z0-9-]+\.cynai\.json$/);
   const profile=JSON.parse(readFileSync(path("ai-hub/community/"+entry.file),"utf8"));
@@ -33,13 +36,13 @@ const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
                   "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.36"]){
+                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.37"]){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
 assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
 assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
-console.log("PASS: visible native AI sidebar, profile actions and v2.0.36 version marker");
+console.log("PASS: visible native AI sidebar, profile actions and v2.0.37 version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
 assert(native.includes("componentToCentreAround = owner"),"AI Hub must be positioned over Cyn");
 assert(native.includes("dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f)"),"Dialog background is transparent");
