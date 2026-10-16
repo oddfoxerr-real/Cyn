@@ -452,16 +452,16 @@ void FxProView::paint(Graphics& g)
         // Let the full scene continue faintly beneath navigation, with a
         // legible tinted overlay. No separate sidebar theme card or obstruction.
         const bool webDark=FxTheme::getThemeMode()==FxThemeMode::DarkMesh;
-        ColourGradient sidebar((webDark?rail:rail.brighter(0.045f)).withAlpha(webDark?0.90f:0.94f),
+        ColourGradient sidebar((webDark?Colour(0xff000000):rail.brighter(0.045f)).withAlpha(webDark?0.90f:0.94f),
                                52.0f,0.0f,
-                               rail.darker(0.11f).withAlpha(webDark?0.88f:0.82f),
+                               (webDark?Colour(0xff000000):rail.darker(0.11f)).withAlpha(webDark?0.91f:0.82f),
                                232.0f,(float)HEIGHT,false);
         g.setGradientFill(sidebar);
         g.fillRect(52,0,180,HEIGHT);
         const float drift=FxTheme::isReducedMotion()?0.0f:
             (float)Time::getMillisecondCounterHiRes()*0.00032f;
         const float glowY=355.0f+112.0f*std::sin(drift);
-        ColourGradient railGlow(color(SliderTrack).withAlpha(0.075f+0.085f*theme_audio_level_),
+        ColourGradient railGlow(color(SliderTrack).withAlpha((webDark?0.017f+0.02f*theme_audio_level_:0.075f+0.085f*theme_audio_level_)),
                                 218.0f,glowY,
                                 Colours::transparentBlack,55.0f,glowY+185.0f,true);
         g.setGradientFill(railGlow);
@@ -514,8 +514,8 @@ void FxProView::paint(Graphics& g)
     };
     auto card = [&](int x, int y, int w, int h) {
         const auto panel=color(ControlBackground);
-        ColourGradient glass((FxTheme::getThemeMode()==FxThemeMode::DarkMesh ? panel : panel.brighter(0.095f)),(float)x,(float)y,
-                             panel.darker(0.055f),(float)(x+w),(float)(y+h),false);
+        ColourGradient glass((FxTheme::getThemeMode()==FxThemeMode::DarkMesh ? Colour(0xff010102) : panel.brighter(0.095f)),(float)x,(float)y,
+                             (FxTheme::getThemeMode()==FxThemeMode::DarkMesh?Colour(0xff010102):panel.darker(0.055f)),(float)(x+w),(float)(y+h),false);
         glass.addColour(0.42,panel);
         g.setGradientFill(glass);
         g.fillRoundedRectangle((float)x,(float)y,(float)w,(float)h,16.0f);
@@ -533,8 +533,8 @@ void FxProView::paint(Graphics& g)
             for(int ry=0;ry<rows;++ry)
                 for(int col=0;col<cols;++col) {
                     const auto p=dot(col,ry);
-                    const float opacity=0.014f+0.045f*(float)ry/(float)(rows-1);
-                    g.setColour(Colour(0xffa9bfdf).withAlpha(opacity));
+                    const float opacity=0.009f+0.033f*(float)ry/(float)(rows-1);
+                    g.setColour(Colour(0xff9fc7ff).withAlpha(opacity));
                     if(col+1<cols)g.drawLine(Line<float>(p,dot(col+1,ry)),0.6f);
                     if(ry+1<rows)g.drawLine(Line<float>(p,dot(col,ry+1)),0.6f);
                     g.setColour(Colour(0xffdeebff).withAlpha(opacity*1.7f));
@@ -555,7 +555,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.41", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.42", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
         ? "Choose a listening mode and the neural model that powers it." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
