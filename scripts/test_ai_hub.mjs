@@ -36,13 +36,13 @@ const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
                   "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.37"]){
+                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.38"]){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
 assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
 assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
-console.log("PASS: visible native AI sidebar, profile actions and v2.0.37 version marker");
+console.log("PASS: visible native AI sidebar, profile actions and v2.0.38 version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
 assert(native.includes("componentToCentreAround = owner"),"AI Hub must be positioned over Cyn");
 assert(native.includes("dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f)"),"Dialog background is transparent");
@@ -195,3 +195,14 @@ assert(movieCtrl.includes('getChildFile("cyn-cinema.cynai.json")'), 'Movie AI mu
 assert(movieCtrl.includes('package["format"].toString()=="cyn-ai-profile"'), 'Movie model format must be validated');
 assert(movieCtrl.includes('movie_model_=candidate;'), 'Default Movie AI needs candidate model weights');
 console.log('PASS: tested Cinema AI profile seeds Movie AI, generic starter fallback preserved');
+
+// v2.0.38: mode and model are separate; switching keeps private model slots.
+assert(view.includes('ai_profile_.setBounds(540,386,425,33)'), 'A separate model selector must be visible');
+assert(view.includes('ai_profile_.onChange=[this]'), 'The model dropdown must really switch neural models');
+assert(view.includes('refreshAIProfileChoices()'), 'Imported profiles must be discoverable without restarting');
+assert(controllerHeader.includes('selectAIProfile(const String& id'), 'Model switching controller API is missing');
+assert(controllerSource.includes('AIModelSlots') &&
+       controllerSource.includes('preferences-before-profile-switch.json'),
+       'The previous learned AI must survive model switching');
+assert(native.includes('Activate selected AI'), 'AI Hub must explain activation instead of import-only');
+console.log('PASS: separate persistent neural model selector with reversible backups');
