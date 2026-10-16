@@ -58,7 +58,8 @@ public:
         const float beat=1.0f+energy*.25f;
         const float breathe=std::sin(t*.41f);
         // Artwork belongs to the entire landscape, never a floating mini-widget.
-        halo(795+60*breathe,246,390,.16f+energy*.14f);
+        if(mode!=FxThemeMode::DarkMesh)
+            halo(795+60*breathe,246,390,.16f+energy*.14f);
         switch(mode)
         {
             case FxThemeMode::Dark:
@@ -259,28 +260,45 @@ public:
                     g.drawRoundedRectangle(x,y,430.0f,218.0f,22.0f,1.2f);
                 }
                 break;
-            case FxThemeMode::GeminiNight:
+            case FxThemeMode::DarkMesh:
             {
-                // Calm rounded workspace bands with a spectrum-coloured
-                // assistant arc. Kept behind controls to preserve contrast.
-                halo(785.0f+24.0f*breathe,240.0f,430.0f,0.23f+energy*0.075f);
-                for(int n=0;n<4;++n) {
-                    const float inset=n*18.0f;
-                    const float x=470.0f+inset,y=118.0f+inset*.65f;
-                    const float w=488.0f-inset*2,h=270.0f-inset*1.25f;
-                    g.setColour(soft.withAlpha((.08f-n*.012f)*strength));
-                    g.drawRoundedRectangle(x,y,w,h,28.0f,1.15f);
-                }
-                const Colour parts[4]={Colour(0xff6aabff),Colour(0xff7edac8),
-                                        Colour(0xffc5a0ff),Colour(0xffeaa3c8)};
-                for(int n=0;n<4;++n) {
-                    const float a=-2.4f+(float)n*.68f+t*.075f;
-                    const float x=770.0f+197.0f*std::cos(a);
-                    const float y=265.0f+122.0f*std::sin(a);
-                    ColourGradient glow(parts[n].withAlpha((.16f+.10f*energy)*strength),x,y,
-                                        parts[n].withAlpha(0.0f),x+125,y+125,true);
-                    g.setGradientFill(glow);
-                    g.fillEllipse(x-125,y-125,250.0f,250.0f);
+                // A low-luminance WEB of linked dots, across the whole lower
+                // workspace. Never draw a broad gray rectangle over the black.
+                auto softGlow=[&](float x,float y,float radius,Colour hue,float alpha) {
+                    ColourGradient bloom(hue.withAlpha(alpha*strength),x,y,
+                                         hue.withAlpha(0.0f),x+radius,y-radius,true);
+                    g.setGradientFill(bloom);
+                    g.fillEllipse(x-radius,y-radius,2*radius,2*radius);
+                };
+                softGlow(18.0f,602.0f,270.0f,Colour(0xffe7efff),0.20f+energy*0.03f);
+                softGlow(1000.0f,606.0f,305.0f,Colour(0xffa2b9e9),0.17f+energy*0.03f);
+                softGlow(520.0f,650.0f,220.0f,Colour(0xff8b96bf),0.055f);
+                constexpr int columns=32, rows=9;
+                const float sway=FxTheme::isReducedMotion()?0.0f:std::sin(t*0.18f)*2.0f;
+                auto node=[&](int col,int row) -> Point<float> {
+                    const float x=-14.0f+col*33.2f;
+                    const float wave=13.0f*std::sin(col*0.46f+row*0.28f)
+                                    +7.0f*std::sin(col*0.19f+row*0.52f);
+                    const float y=419.0f+row*24.0f+wave
+                                  +sway*std::sin(col*0.23f+row*0.37f);
+                    return {x,y};
+                };
+                for(int row=0;row<rows;++row) {
+                    for(int col=0;col<columns;++col) {
+                        const auto p=node(col,row);
+                        const float edge=std::pow(std::abs(p.x-500.0f)/500.0f,1.6f);
+                        const float lower=jlimit(0.0f,1.0f,(p.y-405.0f)/200.0f);
+                        const float opacity=(0.025f+0.13f*edge)*lower*strength;
+                        if(opacity<0.004f || p.y>612.0f)continue;
+                        g.setColour(Colour(0xffaabfdf).withAlpha(opacity*0.74f));
+                        if(col+1<columns)g.drawLine(Line<float>(p,node(col+1,row)),0.65f);
+                        if(row+1<rows)g.drawLine(Line<float>(p,node(col,row+1)),0.60f);
+                        if(row+1<rows && col+1<columns && (col+row)%3==0)
+                            g.drawLine(Line<float>(p,node(col+1,row+1)),0.55f);
+                        g.setColour(Colour(0xffe8f2ff).withAlpha(opacity*2.1f));
+                        const float radius=0.9f+0.4f*edge;
+                        g.fillEllipse(p.x-radius,p.y-radius,2*radius,2*radius);
+                    }
                 }
                 break;
             }
@@ -320,12 +338,18 @@ inline void paint(Graphics& g,FxThemeMode theme,float timeSeconds,float audioLev
     const auto detail=palette(theme,SliderHighlight);
     const bool light=theme==FxThemeMode::Light || theme==FxThemeMode::Sakura
                 || theme==FxThemeMode::Arctic || theme==FxThemeMode::Sandstone;
-    const float mix=preview?(light?.08f:.21f):(light?.027f:.073f);
-    ColourGradient surface(background.interpolatedWith(accent,mix),bounds.getX(),bounds.getY(),
-                           background.interpolatedWith(detail,mix*.7f),bounds.getRight(),bounds.getBottom(),false);
-    surface.addColour(.52,background.interpolatedWith(accent,mix*.46f));
-    g.setGradientFill(surface);
-    g.fillRect(bounds);
+    if(theme==FxThemeMode::DarkMesh) {
+        // True black even in the large Theme Studio preview.
+        g.setColour(Colour(0xff050607));
+        g.fillRect(bounds);
+    } else {
+        const float mix=preview?(light?.08f:.21f):(light?.027f:.073f);
+        ColourGradient surface(background.interpolatedWith(accent,mix),bounds.getX(),bounds.getY(),
+                               background.interpolatedWith(detail,mix*.7f),bounds.getRight(),bounds.getBottom(),false);
+        surface.addColour(.52,background.interpolatedWith(accent,mix*.46f));
+        g.setGradientFill(surface);
+        g.fillRect(bounds);
+    }
     {
         Graphics::ScopedSaveState sceneState(g);
         g.addTransform(AffineTransform::scale(bounds.getWidth()/1000.0f,bounds.getHeight()/600.0f)
