@@ -36,13 +36,13 @@ const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
                   "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.40"]){
+                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.41"]){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
 assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
 assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
-console.log("PASS: visible native AI sidebar, profile actions and v2.0.40 version marker");
+console.log("PASS: visible native AI sidebar, profile actions and v2.0.41 version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
 assert(native.includes("componentToCentreAround = owner"),"AI Hub must be positioned over Cyn");
 assert(native.includes("dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f)"),"Dialog background is transparent");
@@ -101,7 +101,7 @@ console.log("PASS: live neural inference and supervised epoch animation");
 // The existing personal-model network must be labeled separately from pretrained
 // YAMNet event classifications; no fabricated YAMNet weight-node activity.
 const themeHeader=readFileSync(path("fxsound/Source/GUI/FxTheme.h"),"utf8");
-assert(themeHeader.includes("CharcoalDesktop, NeuralCore, GeminiNight, NumModes"),"Neural Core must preserve existing saved theme IDs");
+assert(themeHeader.includes("CharcoalDesktop, NeuralCore, DarkMesh, NumModes"),"Neural Core must preserve existing saved theme IDs");
 assert(theme.includes('"Charcoal Desktop", "Neural Core"'),"Neural Core missing from Theme menu names");
 assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Neural theme must use real personal model activations");
 assert(view.includes("brainController.getLiveYamNetScene(scene)"),"Neural theme must read real YAMNet classifications");
@@ -117,7 +117,7 @@ console.log("PASS: Neural Core live inference visualization, distinct AI identit
 const atmosphere=readFileSync(path("fxsound/Source/GUI/CynThemeAtmosphere.h"),"utf8");
 const themeModes=[...themeHeader.matchAll(/enum FxThemeMode : int \{([^}]+)\}/g)][0][1]
   .split(",").map(item=>item.trim().replace(/=.*/,"")).filter(item=>item!=="NumModes");
-assert.equal(themeModes.length,21,"All original twenty theme IDs plus Gemini Night are required");
+assert.equal(themeModes.length,21,"All original twenty theme IDs plus Dark Theme are required");
 for(const mode of themeModes)
   assert(atmosphere.includes("case FxThemeMode::"+mode+":"),"No dynamic artwork for "+mode);
 assert(view.includes("CynThemeAtmosphere::paint(g,FxTheme::getThemeMode()"),
@@ -196,7 +196,7 @@ assert(movieCtrl.includes('package["format"].toString()=="cyn-ai-profile"'), 'Mo
 assert(movieCtrl.includes('movie_model_=candidate;'), 'Default Movie AI needs candidate model weights');
 console.log('PASS: tested Cinema AI profile seeds Movie AI, generic starter fallback preserved');
 
-// v2.0.40: mode and model are separate; switching keeps private model slots.
+// v2.0.41: mode and model are separate; switching keeps private model slots.
 assert(view.includes('ai_profile_.setBounds(540,386,425,33)'), 'A separate model selector must be visible');
 assert(view.includes('ai_profile_.onChange=[this]'), 'The model dropdown must really switch neural models');
 assert(view.includes('refreshAIProfileChoices()'), 'Imported profiles must be discoverable without restarting');
@@ -208,13 +208,13 @@ assert(native.includes('Activate selected AI'), 'AI Hub must explain activation 
 console.log('PASS: separate persistent neural model selector with reversible backups');
 
 
-// v2.0.40: installer, native executable, release controller and updater must agree.
+// v2.0.41: installer, native executable, release controller and updater must agree.
 const project=readFileSync(path("fxsound/Project/FxSound_App.vcxproj"),"utf8");
 const installer=readFileSync(path("Installer/Cyn/Cyn.iss"),"utf8");
 const updater=readFileSync(path("CynUpdater.ps1"),"utf8");
-assert.equal((project.match(/JUCE_APP_VERSION=2\.0\.40\.0/g)||[]).length,4,
-  'All native build configs must expose actual version 2.0.40.0');
-assert.match(installer,/^AppVersion=2\.0\.40$/m);
+assert.equal((project.match(/JUCE_APP_VERSION=2\.0\.41\.0/g)||[]).length,4,
+  'All native build configs must expose actual version 2.0.41.0');
+assert.match(installer,/^AppVersion=2\.0\.41$/m);
 assert(controllerSource.includes('const auto currentVersion=major+"."+minor+"."+patch'),
   'Use runtime version for updater, not old hard-coded version');
 assert(!controllerSource.includes('CurrentVersion 2.0.29'), 'Updater cannot repeatedly offer old v2.0.29');

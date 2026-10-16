@@ -77,7 +77,7 @@ public:
         const Colour border(Colour(FXCOLOR(RowOutline)).withAlpha(1.0f));
         const Colour bg(Colour(FXCOLOR(ControlBackground)).withAlpha(1.0f));
         const auto bounds = getLocalBounds().toFloat();
-        ColourGradient surface(bg.brighter(neuralCore?0.14f:0.06f),0.0f,0.0f,
+        ColourGradient surface((FxTheme::getThemeMode()==FxThemeMode::DarkMesh ? bg : bg.brighter(neuralCore?0.14f:0.06f)),0.0f,0.0f,
                                bg.darker(0.13f),(float)getWidth(),(float)getHeight(),false);
         g.setGradientFill(surface); g.fillRoundedRectangle(bounds,12.0f);
         g.setColour(border.withAlpha(0.65f));
