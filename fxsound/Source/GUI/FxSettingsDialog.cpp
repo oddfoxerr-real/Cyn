@@ -680,7 +680,7 @@ FxSettingsDialog::HelpSettingsPane::HelpSettingsPane() : SettingsPane("Help"), a
     // The Version action reads the installed binary only. Checking GitHub is opt-in.
     version_button_.setTooltip("Show the version of this installed Cyn application. No internet required.");
     version_button_.onClick = []() {
-        const auto* app=JUCEApplication::getInstance();
+        auto* app=JUCEApplication::getInstance();
         const auto version=app ? app->getApplicationVersion() : String("unknown");
         AlertWindow::showMessageBoxAsync(AlertWindow::InfoIcon,
             "Cyn version",
