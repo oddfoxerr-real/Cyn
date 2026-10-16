@@ -519,6 +519,28 @@ void FxProView::paint(Graphics& g)
         glass.addColour(0.42,panel);
         g.setGradientFill(glass);
         g.fillRoundedRectangle((float)x,(float)y,(float)w,(float)h,16.0f);
+        if (FxTheme::getThemeMode()==FxThemeMode::DarkMesh && w>=600 && h>=140) {
+            // Continue the page's dotted web faintly ON the large black card.
+            // Small controls and text remain unobstructed and readable.
+            Graphics::ScopedSaveState clip(g);
+            Path mask; mask.addRoundedRectangle((float)x,(float)y,(float)w,(float)h,16.0f);
+            g.reduceClipRegion(mask);
+            const int cols=23, rows=6;
+            auto dot=[&](int cx,int cy) -> Point<float> {
+                return {float(x+w-430+cx*21),float(y+h-122+cy*23)
+                     +4.0f*std::sin(cx*0.49f+cy*0.31f)};
+            };
+            for(int ry=0;ry<rows;++ry)
+                for(int col=0;col<cols;++col) {
+                    const auto p=dot(col,ry);
+                    const float opacity=0.014f+0.045f*(float)ry/(float)(rows-1);
+                    g.setColour(Colour(0xffa9bfdf).withAlpha(opacity));
+                    if(col+1<cols)g.drawLine(Line<float>(p,dot(col+1,ry)),0.6f);
+                    if(ry+1<rows)g.drawLine(Line<float>(p,dot(col,ry+1)),0.6f);
+                    g.setColour(Colour(0xffdeebff).withAlpha(opacity*1.7f));
+                    g.fillEllipse(p.x-0.85f,p.y-0.85f,1.7f,1.7f);
+                }
+        }
         g.setColour(color(DefaultText).withAlpha(0.065f));
         g.drawLine((float)x+17.0f,(float)y+1.0f,(float)(x+w)-17.0f,(float)y+1.0f,0.8f);
         g.setColour(color(RowOutline).withAlpha(0.72f));
