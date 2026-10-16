@@ -4,6 +4,7 @@
 #include "InputAudioFeatures.h"
 #include "CynBalanceModel.h"
 #include "CynCrescendoTracker.h"
+#include "CynLevelInvariant.h"
 #include <array>
 #include <cmath>
 #include <algorithm>
@@ -88,6 +89,26 @@ struct CynMixDecision {
 class CynFlagshipMixer {
 public:
     // Retain real quiet-to-loud musical contrast. Accents are bounded by peak headroom.
+    // A kick is a transient centered roughly around 80-120 Hz, not a permanent
+    // sub-bass shelf. Preserve manually chosen Bass preset boosts when the
+    // classifier thinks a low-heavy track is "too bassy"; only trim them when
+    // input headroom is dangerously scarce.
+    static float musicEqCorrection(const CynMixDecision& d,
+                                   const CynAudioScene& scene,
+                                   float frequency,float baselineDb) noexcept {
+        float delta=d.eqDelta(frequency);
+        if(frequency<=180.0f && baselineDb>0.1f && delta<0.0f && d.headroom>0.12f)
+            delta=0.0f;
+        if(scene.valid && std::isfinite(frequency) && frequency>0.0f) {
+            const float pulse=std::clamp(scene.music*
+                (0.55f*scene.bassDrum+0.45f*scene.percussion),0.0f,1.0f);
+            const float octaves=std::log2(frequency/95.0f)/0.65f;
+            delta+=0.85f*pulse*std::clamp(d.headroom,0.0f,1.0f)*
+                   std::exp(-0.5f*octaves*octaves);
+        }
+        return std::clamp(delta,-2.5f,2.7f);
+    }
+
     static void applyCrescendo(CynMixDecision& d,const CynAudioScene& s,
                                const CynCrescendoTracker::Motion& arc) noexcept {
         if(!s.valid || !std::isfinite(s.music) || !std::isfinite(s.speech) ||
@@ -119,7 +140,9 @@ public:
         s.impact=probability(s.impact); s.soundtrack=probability(s.soundtrack);
         s.novelty=probability(s.novelty); s.complexity=probability(s.complexity);
         s.silence=probability(s.silence);
-        const auto roles=CynBalanceModel::predict(audio);
+        // The source level is still used for silence/headroom. Semantic role
+        // recognition must not change when Windows/app volume is lowered.
+        const auto roles=CynBalanceModel::predict(CynLevelInvariant::forRecognition(audio));
         d.kickShare=roles.share[1]; d.snareShare=roles.share[2];
         const auto band=[&](int index) {
             return std::exp(std::clamp(std::isfinite(audio.values[(size_t)index])
@@ -164,13 +187,13 @@ public:
             d.preference[1]=0.50f+0.06f*musical*(1.0f-s.vocals);
             d.preference[2]=0.50f+0.09f*musical;
             d.preference[3]=std::clamp(0.55f+0.12f*rhythm+0.07f*motion-
-                                         0.15f*(1.0f-safe),0.42f,0.78f);
+                                         0.0f,0.42f,0.78f);
             d.preference[4]=std::clamp(0.55f+0.30f*rhythm+0.10f*musical+
                                          0.08f*(1.0f-lowPresence)*kickPresence-
-                                         0.16f*lowPresence-0.19f*(1.0f-safe),
+                                         0.16f*lowPresence,
                                          0.35f,0.94f);
             d.preference[4]=std::clamp(d.preference[4]+
-                0.08f*beatConfidence*(1.0f-lowPresence)*safe-
+                0.08f*beatConfidence*(1.0f-lowPresence)-
                 0.04f*vocalFocus*(1.0f-beatConfidence),0.30f,0.94f);
             // Use musical frequencies, not classification scores, to identify
             // thin vs booming low end. EQ lift limited by measured headroom.

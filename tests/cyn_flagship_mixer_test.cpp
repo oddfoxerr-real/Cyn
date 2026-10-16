@@ -47,7 +47,9 @@ int main() {
     const auto overloaded=CynFlagshipMixer::decide(phonk,hot,false);
     assert(overloaded.headroom<beat.headroom);
     assert(overloaded.lowEqDb<beat.lowEqDb);
-    assert(overloaded.preference[4]<beat.preference[4]);
+    // Sound identity / desired kick preference remains stable across a
+    // volume change. The raw-input headroom and actual actuator limit gain.
+    assert(std::abs(overloaded.preference[4]-beat.preference[4])<0.006f);
     CynAudioScene talk=phonk; talk.speech=0.95f; talk.vocals=0.5f;
     CynAudioScene quiet=talk; quiet.speech=0.01f; quiet.vocals=0;
     const auto dialogue=CynFlagshipMixer::decide(talk,a,true);

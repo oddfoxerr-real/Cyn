@@ -51,9 +51,19 @@ bool launchCynUpdater(bool interactive)
     const auto powershell=File(String(systemDirectory))
         .getChildFile("WindowsPowerShell/v1.0/powershell.exe");
     if(!powershell.existsAsFile()) return false;
+    // Read the actual native executable version (JUCE_APP_VERSION); never
+    // hard-code an older release or Cyn will repeatedly offer itself as an update.
+    const auto app=JUCEApplication::getInstance();
+    if(!app) return false;
+    const auto installed=StringArray::fromTokens(app->getApplicationVersion(),".","");
+    if(installed.size()<3) return false;
+    const auto major=installed[0],minor=installed[1],patch=installed[2];
+    if(!major.containsOnly("0123456789") || !minor.containsOnly("0123456789") ||
+       !patch.containsOnly("0123456789")) return false;
+    const auto currentVersion=major+"."+minor+"."+patch;
     const auto command=String("\"")+powershell.getFullPathName()+
         "\" -NoProfile -NonInteractive -STA -ExecutionPolicy Bypass -File \""+
-        script.getFullPathName()+"\" -CurrentVersion 2.0.29"+
+        script.getFullPathName()+"\" -CurrentVersion "+currentVersion+
         (interactive?" -Interactive":"");
     const std::wstring wideCommand(command.toWideCharPointer());
     std::vector<wchar_t> writable(wideCommand.begin(),wideCommand.end());
@@ -3308,7 +3318,9 @@ void FxController::updateSmartListening()
     const bool listening=active && smart_stale_ticks_<4 && input.rms>0.0001f;
     const bool movie=smart_mode_==1;
     const auto& model=movie?movie_model_:smart_model_;
-    const auto predictions=model.predict(input);
+    // Music recognition uses relative spectral shape and crest, not upstream
+    // output-volume level. Raw input RMS remains available for clipping protection.
+    const auto predictions=model.predict(CynLevelInvariant::forRecognition(input));
     const auto& sceneHead=movie?movie_scene_preferences_:music_scene_preferences_;
     CynMixDecision decision=CynFlagshipMixer::decide(scene,input,movie);
     if(!movie && listening && yamnetLive && smart_sensitivity_>0.0f) {
@@ -3321,7 +3333,7 @@ void FxController::updateSmartListening()
     const float amount=smart_sensitivity_/100.0f,depth=jmin(1.0f,amount*2);
 
     // Fuse scene and spectral analysis with optional personal preferences.
-    const float musicUp[5]={3.0f,1.4f,1.4f,3.3f,4.1f};
+    const float musicUp[5]={3.4f,1.4f,1.4f,4.2f,5.6f};
     const float movieUp[5]={2.5f,0.8f,1.0f,0.8f,0.8f};
     const float down[5]={0.65f,0.9f,0.9f,0.65f,0.85f};
     for(int e=0;e<5;++e) {
@@ -3366,7 +3378,8 @@ void FxController::updateSmartListening()
         if(movie && target>0)
             target*=1.0f+bassDirection*depth*0.65f*weight;
         else if(!movie && listening)
-            target+=decision.eqDelta(freq)*amount;
+            target+=CynFlagshipMixer::musicEqCorrection(
+                decision,scene,freq,smart_eq_[(size_t)b])*amount;
         target=jlimit(MIN_GAIN,MAX_GAIN,target);
         const float current=dfx_dsp_.getEqBandBoostCut(b);
         if(std::abs(target-current)>0.04f)
