@@ -676,10 +676,36 @@ FxSettingsDialog::HelpSettingsPane::HelpSettingsPane() : SettingsPane("Help"), a
         FxController::getInstance().setSmoothAnimations(smooth_animations_toggle_.getToggleState());
     };
 
+
+    // The Version action reads the installed binary only. Checking GitHub is opt-in.
+    version_button_.setTooltip("Show the version of this installed Cyn application. No internet required.");
+    version_button_.onClick = []() {
+        const auto* app=JUCEApplication::getInstance();
+        const auto version=app ? app->getApplicationVersion() : String("unknown");
+        AlertWindow::showMessageBoxAsync(AlertWindow::InfoIcon,
+            "Cyn version",
+            "Installed: Cyn v" + version +
+            "\n\nThis is your installed version, not the latest release online." +
+            "\nUse Check for updates to see if a newer version is available.");
+    };
+    check_updates_button_.setTooltip("Check GitHub for a newer stable Cyn release.");
+    check_updates_button_.onClick = []() {
+        FxController::getInstance().checkUpdates();
+    };
+    automatic_updates_toggle_.setToggleState(
+        FxController::getInstance().getAutoUpdates(),NotificationType::dontSendNotification);
+    automatic_updates_toggle_.setTooltip(
+        "Allow automatic release checks. Manual checks remain available.");
+    automatic_updates_toggle_.onClick = [this]() {
+        FxController::getInstance().setAutoUpdates(automatic_updates_toggle_.getToggleState());
+    };
     setText();
 
 	addAndMakeVisible(version_title_);
 	addAndMakeVisible(version_text_);
+    addAndMakeVisible(version_button_);
+    addAndMakeVisible(check_updates_button_);
+    addAndMakeVisible(automatic_updates_toggle_);
 	addAndMakeVisible(support_title_);
 	addAndMakeVisible(maintenance_title_);
 	addAndMakeVisible(changelog_link_);
@@ -695,10 +721,15 @@ void FxSettingsDialog::HelpSettingsPane::resized()
 	auto bounds = getLocalBounds().withLeft(X_MARGIN).withTop(Y_MARGIN).withHeight(TITLE_HEIGHT);
 	title_.setBounds(bounds);
 
-	version_title_.setBounds(X_MARGIN, TEXT_Y, getWidth()-X_MARGIN, TITLE_HEIGHT);
-	version_text_.setBounds(X_MARGIN, version_title_.getBottom()+10, getWidth()-X_MARGIN, TEXT_HEIGHT);
-	changelog_link_.setBounds(X_MARGIN+5, version_text_.getBottom()+10, getWidth()-X_MARGIN, HYPERLINK_HEIGHT);
-	support_title_.setBounds(X_MARGIN, changelog_link_.getBottom()+20, getWidth()-X_MARGIN, TITLE_HEIGHT);
+    version_title_.setBounds(X_MARGIN, TEXT_Y, getWidth()-X_MARGIN, TITLE_HEIGHT);
+    version_text_.setBounds(X_MARGIN, version_title_.getBottom()+6, getWidth()-X_MARGIN, TEXT_HEIGHT);
+    const int actionsY=version_text_.getBottom()+10;
+    version_button_.setBounds(X_MARGIN+5,actionsY,123,30);
+    check_updates_button_.setBounds(X_MARGIN+140,actionsY,190,30);
+    automatic_updates_toggle_.setBounds(X_MARGIN+5,version_button_.getBottom()+5,BUTTON_WIDTH,TOGGLE_BUTTON_HEIGHT);
+    changelog_link_.setBounds(X_MARGIN+5,automatic_updates_toggle_.getBottom()+6,
+                              getWidth()-X_MARGIN,HYPERLINK_HEIGHT);
+	support_title_.setBounds(X_MARGIN, changelog_link_.getBottom()+12, getWidth()-X_MARGIN, TITLE_HEIGHT);
 	helpcenter_link_.setBounds(X_MARGIN+5, support_title_.getBottom()+10, getWidth()-X_MARGIN, HYPERLINK_HEIGHT);
 	maintenance_title_.setBounds(X_MARGIN, helpcenter_link_.getBottom()+20, getWidth()-X_MARGIN, TITLE_HEIGHT);
 	auto_updates_toggle_.setBounds(X_MARGIN + 5, maintenance_title_.getBottom() + 10, BUTTON_WIDTH, TOGGLE_BUTTON_HEIGHT);
@@ -718,16 +749,20 @@ void FxSettingsDialog::HelpSettingsPane::setText()
 {
     auto& theme = dynamic_cast<FxTheme&>(LookAndFeel::getDefaultLookAndFeel());
 
-    version_title_.setText(TRANS("Version"), NotificationType::dontSendNotification);
+    version_title_.setText(String("Version & updates"), NotificationType::dontSendNotification);
     version_title_.setFont(theme.getNormalFont());
 
-    version_text_.setText("Cyn identity-2 / DSP v" + JUCEApplication::getInstance()->getApplicationVersion(), NotificationType::dontSendNotification);
+    version_text_.setText("Installed: Cyn v" + JUCEApplication::getInstance()->getApplicationVersion(),
+                          NotificationType::dontSendNotification);
     version_text_.setFont(theme.getSmallFont());
 
     support_title_.setText(TRANS("Support"), NotificationType::dontSendNotification);
     support_title_.setFont(theme.getNormalFont());
 
     maintenance_title_.setText(String("Appearance"), NotificationType::dontSendNotification);
+    version_button_.setButtonText("Version");
+    check_updates_button_.setButtonText("Check for updates");
+    automatic_updates_toggle_.setButtonText("Automatic updates");
     maintenance_title_.setFont(theme.getNormalFont());
 
     changelog_link_.setButtonText("FxSound engine changelog");
