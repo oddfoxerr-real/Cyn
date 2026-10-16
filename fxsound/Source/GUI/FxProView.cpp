@@ -451,9 +451,10 @@ void FxProView::paint(Graphics& g)
         const auto rail=color(PanelBackground);
         // Let the full scene continue faintly beneath navigation, with a
         // legible tinted overlay. No separate sidebar theme card or obstruction.
-        ColourGradient sidebar(rail.brighter(0.045f).withAlpha(0.94f),
+        const bool webDark=FxTheme::getThemeMode()==FxThemeMode::DarkMesh;
+        ColourGradient sidebar((webDark?rail:rail.brighter(0.045f)).withAlpha(webDark?0.90f:0.94f),
                                52.0f,0.0f,
-                               rail.darker(0.11f).withAlpha(0.82f),
+                               rail.darker(0.11f).withAlpha(webDark?0.88f:0.82f),
                                232.0f,(float)HEIGHT,false);
         g.setGradientFill(sidebar);
         g.fillRect(52,0,180,HEIGHT);
@@ -513,7 +514,7 @@ void FxProView::paint(Graphics& g)
     };
     auto card = [&](int x, int y, int w, int h) {
         const auto panel=color(ControlBackground);
-        ColourGradient glass(panel.brighter(0.095f),(float)x,(float)y,
+        ColourGradient glass((FxTheme::getThemeMode()==FxThemeMode::DarkMesh ? panel : panel.brighter(0.095f)),(float)x,(float)y,
                              panel.darker(0.055f),(float)(x+w),(float)(y+h),false);
         glass.addColour(0.42,panel);
         g.setGradientFill(glass);
@@ -532,7 +533,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.40", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.41", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
         ? "Choose a listening mode and the neural model that powers it." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
