@@ -110,6 +110,10 @@ private:
     double last_ai_controls_update_=0;
     FxComboBox learning_effect_;
     FxComboBox listening_mode_;
+    FxComboBox ai_profile_;
+    StringArray ai_profile_ids_;
+    int ai_profile_refresh_ticks_=0;
+    void refreshAIProfileChoices();
     TextButton more_ {"More here"}, less_ {"Less here"}, train_ {"Train my model"}, starter_ {"Reset to starter"}, resume_ {"Resume timeline"};
     TextButton export_ai_ { "Export AI" }, import_ai_ { "Import AI" }, browse_ai_ { "AI Hub" };
     Label learning_status_;

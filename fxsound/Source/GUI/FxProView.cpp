@@ -16,7 +16,7 @@ FxProView::FxProView() : tool_tip_(this)
     for (auto* component : std::initializer_list<Component*> {
         &audio_controls_, &equalizer_, &visualizer_, &sound_nav_, &smart_nav_,
         &devices_nav_, &ai_hub_nav_, &home_, &smart_rail_, &devices_rail_, &settings_,
-        &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &learning_timeline_, &neural_activity_, &learning_effect_, &listening_mode_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
+        &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &learning_timeline_, &neural_activity_, &learning_effect_, &listening_mode_, &ai_profile_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
         addAndMakeVisible(component);
     for(auto* c:std::initializer_list<Component*> {&misc_nav_,&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) addAndMakeVisible(c);
     misc_nav_.onClick=[this]{selectPage(3);};
@@ -56,10 +56,23 @@ FxProView::FxProView() : tool_tip_(this)
     listening_mode_.addItemList({"Music AI", "Movie & TV AI"},1);
     listening_mode_.setSelectedId(1,dontSendNotification);
     listening_mode_.setTooltip("Music and movies have separate neural models and learning history. Movie AI uses conservative dialogue-focused sound shaping until trained.");
+    ai_profile_.setTooltip("Select the actual neural model. Each listening mode can use a different AI; previous model training is backed up.");
+    ai_profile_.onChange=[this] {
+        auto& controller=FxController::getInstance();
+        const int index=ai_profile_.getSelectedId()-1;
+        if(index<0 || index>=ai_profile_ids_.size()) return;
+        String error;
+        if(!controller.selectAIProfile(ai_profile_ids_[index],error))
+            AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,"AI model not activated",error);
+        refreshAIProfileChoices();
+        update();
+    };
+    refreshAIProfileChoices();
     listening_mode_.onChange=[this] {
         auto& controller=FxController::getInstance();
         controller.setSmartListeningMode(listening_mode_.getSelectedId()-1);
         listening_mode_.setSelectedId(controller.getSmartListeningMode()+1,dontSendNotification);
+        refreshAIProfileChoices();
         learning_timeline_.clearSelection();
         update();
     };
@@ -193,7 +206,7 @@ void FxProView::selectPage(int page)
     audio_controls_.setVisible(page == 0);
     equalizer_.setVisible(page == 0);
     visualizer_.setVisible(page == 0);
-    for(auto* c : std::initializer_list<Component*> {&learning_timeline_, &learning_effect_, &listening_mode_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_}) c->setVisible(page==1);
+    for(auto* c : std::initializer_list<Component*> {&learning_timeline_, &learning_effect_, &listening_mode_, &ai_profile_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_}) c->setVisible(page==1);
     pin_toggle_.setVisible(page == 2);
     refresh_.setVisible(page == 2);
     sensitivity_.setVisible(page == 1);
@@ -227,6 +240,7 @@ void FxProView::update()
     audio_controls_.showValues(true);
     smart_toggle_.setToggleState(controller.isSmartListening(), dontSendNotification);
     listening_mode_.setSelectedId(controller.getSmartListeningMode()+1,dontSendNotification);
+    refreshAIProfileChoices();
     train_.setButtonText(controller.getSmartListeningMode()==1?"Train Movie AI":"Train Music AI");
     starter_.setButtonText(controller.getSmartListeningMode()==1?"Reset Movie AI":"Reset to starter");
     pin_toggle_.setToggleState(controller.isOutputPinned(), dontSendNotification);
@@ -334,6 +348,11 @@ void FxProView::timerCallback()
     const bool selected=learning_timeline_.selection().size()>=5;
     more_.setEnabled(selected && !controller.isSmartTraining()); less_.setEnabled(selected && !controller.isSmartTraining());
     listening_mode_.setEnabled(!controller.isSmartTraining());
+    ai_profile_.setEnabled(!controller.isSmartTraining());
+    if(page_==1 && ++ai_profile_refresh_ticks_>=20) {
+        ai_profile_refresh_ticks_=0;
+        refreshAIProfileChoices();
+    }
     train_.setEnabled(!controller.isSmartTraining()); starter_.setEnabled(!controller.isSmartTraining());
     export_ai_.setEnabled(!controller.isSmartTraining()); import_ai_.setEnabled(!controller.isSmartTraining());
     smart_toggle_.setToggleState(controller.isSmartListening(), dontSendNotification);
@@ -369,6 +388,7 @@ void FxProView::resized()
     learning_timeline_.setBounds(256,164,952,156);
     learning_effect_.setBounds(280,433,194,36);
     listening_mode_.setBounds(280,386,235,33);
+    ai_profile_.setBounds(540,386,425,33);
     more_.setBounds(490,433,136,36); less_.setBounds(638,433,136,36);
     train_.setBounds(790,433,210,36); resume_.setBounds(1012,433,170,36);
     sensitivity_.setBounds(444,491,738,28);
@@ -512,17 +532,19 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.37", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.38", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
-        ? "Choose Music AI or Movie AI. Each learns your preferences separately." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
+        ? "Choose a listening mode and the neural model that powers it." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
     text("PRESET", 260, 78, 300, 16, 10, true);
     text("OUTPUT DEVICE", 741, 78, 300, 16, 10, true);
     if (page_ == 0) card(256, 556, 952, 48);
     else if (page_ == 1)
     {
         card(256, 334, 952, 270);
-        text("Select audio above, then label More or Less for this AI.",535,386,640,33,13);
+        text("LISTENING MODE",280,360,235,21,11,true);
+        text("ACTIVE AI MODEL",540,360,425,21,11,true);
+        text("Swap models anytime.",977,386,205,28,12,true);
         text("AI PROFILES", 688, 521, 310, 18, 10, true);
         text("Sensitivity",280,491,150,28,14);
 
@@ -544,6 +566,22 @@ void FxProView::paint(Graphics& g)
         text("Device priorities and per-device presets are available in Settings.", 280, 490, 860, 24, 13, true);
     }
 }
+void FxProView::refreshAIProfileChoices()
+{
+    const auto models=FxController::getInstance().getAvailableAIProfiles();
+    StringArray ids;
+    for(const auto& entry:models) ids.add(entry.id);
+    if(ids!=ai_profile_ids_) {
+        ai_profile_.clear(dontSendNotification);
+        ai_profile_ids_=ids;
+        for(int i=0;i<static_cast<int>(models.size());++i)
+            ai_profile_.addItem(models[(size_t)i].name,i+1);
+    }
+    const auto selected=FxController::getInstance().getActiveAIProfileId();
+    const int index=ai_profile_ids_.indexOf(selected);
+    if(index>=0) ai_profile_.setSelectedId(index+1,dontSendNotification);
+}
+
 void FxProView::modelChanged(FxModel::Event event)
 {
     FxView::modelChanged(event);

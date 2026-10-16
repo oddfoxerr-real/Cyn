@@ -124,6 +124,10 @@ public:
     // Portable Cyn AI Hub interchange: model weights only, never private audio labels.
     bool exportSmartProfile(const File& file, const String& name, String& error) const;
     bool importSmartProfile(const File& file, String& error);
+    struct AIProfileOption { String id, name; };
+    std::vector<AIProfileOption> getAvailableAIProfiles() const;
+    String getActiveAIProfileId();
+    bool selectAIProfile(const String& id, String& error);
     String getLearningStatus() const;
     bool isSmartTraining() const { return smart_training_; }
     bool getLiveNeuralActivity(NeuralActivitySnapshot& out) const;

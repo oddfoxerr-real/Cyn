@@ -3167,6 +3167,124 @@ void FxController::setSmartListeningMode(int mode)
         "Movie AI is separate. Label dialogue, music and effects with More / Less." :
         "Music AI selected. Your music training remains independent.";
 }
+
+std::vector<FxController::AIProfileOption> FxController::getAvailableAIProfiles() const {
+    std::vector<AIProfileOption> choices{{"personal","My saved AI"}};
+    const auto append=[&](const File& dir,const String& prefix) {
+        for(const auto& f:dir.findChildFiles(File::findFiles,false,"*.cynai.json")) {
+            if(f.getSize()<=0 || f.getSize()>2*1024*1024) continue;
+            const auto data=JSON::parse(f), model=data["model"];
+            const auto* weights=model["weights"].getArray();
+            const auto* ready=model["ready"].getArray();
+            if(data["format"].toString()!="cyn-ai-profile" || (int)data["schema"]!=1 ||
+               model["architecture"].toString()!="cyn-audio-11x12x5" ||
+               !weights || weights->size()!=PersonalAudioModel::weightCount ||
+               !ready || ready->size()!=PersonalAudioModel::outputs) continue;
+            auto name=data["profile"]["name"].toString().trim();
+            if(name.isEmpty()) name=f.getFileNameWithoutExtension();
+            choices.push_back({prefix+f.getFileName(),name.substring(0,65)});
+        }
+    };
+    append(File::getSpecialLocation(File::currentExecutableFile).getSiblingFile("CynAiProfiles"),"bundled:");
+    append(File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Cyn/AIModels"),"imported:");
+    return choices;
+}
+String FxController::getActiveAIProfileId() {
+    const String id=settings_.getString(smart_mode_==1?"cyn_active_ai_profile_movie":"cyn_active_ai_profile_music");
+    return id.isEmpty()?"personal":id;
+}
+bool FxController::selectAIProfile(const String& id,String& error) {
+    if(smart_training_) { error="Wait for your model training to finish.";return false; }
+    if(id==getActiveAIProfileId()) { error.clear();return true; }
+    const auto choices=getAvailableAIProfiles();
+    const auto found=std::find_if(choices.begin(),choices.end(),
+        [&](const AIProfileOption& option){return option.id==id;});
+    if(found==choices.end()) { error="That AI model is not installed.";return false; }
+    const auto rootDir=File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Cyn");
+    const auto prefs=rootDir.getChildFile("preferences.json"), slots=rootDir.getChildFile("AIModelSlots");
+    if(slots.createDirectory().failed()) { error="Cannot create private AI backups.";return false; }
+    const auto slotFor=[&](String name) {
+        name=name.replaceCharacter(':','-');
+        return slots.getChildFile(String(smart_mode_==1?"movie-":"music-")+name+".json");
+    };
+    // Preserve weights AND all per-mode More/Less labels for the model we leave.
+    saveSmartModel();
+    if(!prefs.existsAsFile()) { error="Could not save current neural preferences.";return false; }
+    auto state=JSON::parse(prefs);
+    auto* root=state.getDynamicObject();
+    if(!root) { error="Current preferences are invalid.";return false; }
+    const var prior=smart_mode_==1?state["movie_ai"]:state;
+    if(!slotFor(getActiveAIProfileId()).replaceWithText(JSON::toString(prior))) {
+        error="Could not back up the active model. Switch cancelled.";return false;
+    }
+    var next;
+    const auto slot=slotFor(id);
+    if(slot.existsAsFile()) {
+        if(slot.getSize()>4*1024*1024) { error="Saved AI is too large.";return false; }
+        next=JSON::parse(slot);
+    } else if(id=="personal") {
+        error="My saved AI backup not found.";return false;
+    } else {
+        const String filename=id.fromFirstOccurrenceOf(":",false,false);
+        if(filename.isEmpty() || filename.contains("/") || filename.contains("\\") ||
+           filename.contains("..") || !filename.endsWith(".cynai.json")) {
+            error="Unsafe AI model filename.";return false;
+        }
+        const auto dir=id.startsWith("bundled:")?
+            File::getSpecialLocation(File::currentExecutableFile).getSiblingFile("CynAiProfiles"):
+            rootDir.getChildFile("AIModels");
+        const auto file=dir.getChildFile(filename);
+        if(!file.existsAsFile() || file.getSize()>2*1024*1024) {
+            error="Selected AI model file is missing.";return false;
+        }
+        const auto data=JSON::parse(file);
+        if(data["format"].toString()!="cyn-ai-profile" || (int)data["schema"]!=1 ||
+           data["model"]["architecture"].toString()!="cyn-audio-11x12x5") {
+            error="The selected AI format is unsupported.";return false;
+        }
+        auto* obj=new DynamicObject();
+        obj->setProperty("schema",1);
+        obj->setProperty("weights",data["model"]["weights"]);
+        obj->setProperty("ready",data["model"]["ready"]);
+        obj->setProperty("examples",Array<var>{});
+        next=var(obj);
+    }
+    const auto* weights=next["weights"].getArray();
+    const auto* ready=next["ready"].getArray();
+    if((int)next["schema"]!=1 || !weights || !ready ||
+       weights->size()!=PersonalAudioModel::weightCount ||
+       ready->size()!=PersonalAudioModel::outputs || !next["examples"].isArray()) {
+        error="Incompatible model or saved learning history.";return false;
+    }
+    for(const auto& weight:*weights)
+        if((!weight.isInt() && !weight.isInt64() && !weight.isDouble()) ||
+           !std::isfinite((double)weight) || std::abs((double)weight)>100.) {
+            error="Invalid neural model weights.";return false;
+        }
+    for(const auto& readyFlag:*ready) if(!readyFlag.isBool()) {
+        error="Invalid neural output flags.";return false;
+    }
+    if(!prefs.copyFileTo(rootDir.getChildFile("preferences-before-profile-switch.json"))) {
+        error="Could not back up your current preferences.";return false;
+    }
+    if(smart_enabled_) restoreSmartBaseline();
+    if(smart_mode_==1) root->setProperty("movie_ai",next);
+    else {
+        root->setProperty("weights",next["weights"]);
+        root->setProperty("ready",next["ready"]);
+        root->setProperty("examples",next["examples"]);
+    }
+    if(!prefs.replaceWithText(JSON::toString(state))) {
+        error="Could not write selected AI preferences.";return false;
+    }
+    loadSmartModel();
+    settings_.setString(smart_mode_==1?"cyn_active_ai_profile_movie":"cyn_active_ai_profile_music",id);
+    smart_learning_message_="Active AI: "+found->name+" ("+
+        String(smart_mode_==1?"Movie & TV":"Music")+").";
+    error.clear();
+    return true;
+}
+
 void FxController::setSmartSensitivity(float percent)
 {
     if(!std::isfinite(percent)) return;
@@ -3737,30 +3855,21 @@ bool FxController::importSmartProfile(const File& source, String& error)
         incoming.ready[i] = (bool)flag;
     }
 
-    const auto preferences = File::getSpecialLocation(File::userApplicationDataDirectory)
-        .getChildFile("Cyn/preferences.json");
-    if (preferences.existsAsFile())
-    {
-        const auto backup = preferences.getSiblingFile("preferences-before-import.json");
-        if (!preferences.copyFileTo(backup))
-        {
-            error = "Could not back up your existing learning data. Import cancelled.";
-            return false;
-        }
+    const auto bundledDir=File::getSpecialLocation(File::currentExecutableFile).getSiblingFile("CynAiProfiles");
+    const bool bundled=source.getParentDirectory()==bundledDir;
+    const String id=bundled?"bundled:"+source.getFileName():
+        "imported:custom-"+juce::Uuid().toString()+".cynai.json";
+    File localCopy;
+    if(!bundled) {
+        const auto dir=File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Cyn/AIModels");
+        if(dir.createDirectory().failed()) {error="Cannot create your local AI library.";return false;}
+        localCopy=dir.getChildFile(id.fromFirstOccurrenceOf(":",false,false));
+        if(!source.copyFileTo(localCopy)) {error="Could not keep the imported AI profile.";return false;}
     }
-
-    restoreSmartBaseline();
-    if(smart_mode_==1) {
-        movie_model_=incoming;
-        movie_examples_.clear();
-    } else {
-        smart_model_=incoming;
-        smart_examples_.clear();
-    } // Imported public models never carry another person's labels.
-    smart_learning_message_="AI Hub model imported into the selected listening mode.";
-    rebuildScenePreferences();
-    saveSmartModel();
-    error.clear();
+    if(!selectAIProfile(id,error)) {
+        if(!bundled) localCopy.deleteFile();
+        return false;
+    }
     return true;
 }
 
