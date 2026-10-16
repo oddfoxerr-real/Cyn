@@ -259,6 +259,31 @@ public:
                     g.drawRoundedRectangle(x,y,430.0f,218.0f,22.0f,1.2f);
                 }
                 break;
+            case FxThemeMode::GeminiNight:
+            {
+                // Calm rounded workspace bands with a spectrum-coloured
+                // assistant arc. Kept behind controls to preserve contrast.
+                halo(785.0f+24.0f*breathe,240.0f,430.0f,0.23f+energy*0.075f);
+                for(int n=0;n<4;++n) {
+                    const float inset=n*18.0f;
+                    const float x=470.0f+inset,y=118.0f+inset*.65f;
+                    const float w=488.0f-inset*2,h=270.0f-inset*1.25f;
+                    g.setColour(soft.withAlpha((.08f-n*.012f)*strength));
+                    g.drawRoundedRectangle(x,y,w,h,28.0f,1.15f);
+                }
+                const Colour parts[4]={Colour(0xff6aabff),Colour(0xff7edac8),
+                                        Colour(0xffc5a0ff),Colour(0xffeaa3c8)};
+                for(int n=0;n<4;++n) {
+                    const float a=-2.4f+(float)n*.68f+t*.075f;
+                    const float x=770.0f+197.0f*std::cos(a);
+                    const float y=265.0f+122.0f*std::sin(a);
+                    ColourGradient glow(parts[n].withAlpha((.16f+.10f*energy)*strength),x,y,
+                                        parts[n].withAlpha(0.0f),x+125,y+125,true);
+                    g.setGradientFill(glow);
+                    g.fillEllipse(x-125,y-125,250.0f,250.0f);
+                }
+                break;
+            }
             case FxThemeMode::NeuralCore:
                 for(int n=0;n<26;++n)
                 {

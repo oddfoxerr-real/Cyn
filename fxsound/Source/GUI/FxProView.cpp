@@ -362,7 +362,7 @@ void FxProView::timerCallback()
     if (!sensitivity_.isMouseButtonDown())
         sensitivity_.setValue(controller.getSmartSensitivity(), dontSendNotification);
     auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
-    smart_status_.setFont(theme.getNormalFont().withHeight(13));
+    smart_status_.setFont(theme.getNormalFont().withHeight(page_ == 1 ? 11.5f : 13.0f));
     smart_status_.setColour(Label::textColourId, Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     const bool power = FxModel::getModel().getPowerState();
     live_status_.setFont(theme.getNormalFont().withHeight(12));
@@ -421,8 +421,8 @@ void FxProView::resized()
     visualizer_.setBounds(256, 164, 952, 102);
     audio_controls_.setBounds(256, 288, 168, 257);
     equalizer_.setBounds(440, 288, 768, 257);
-    smart_toggle_.setBounds(272, page_ == 1 ? 350 : 565, 220, 28);
-    smart_status_.setBounds(508, page_ == 1 ? 351 : 566, 678, 26);
+    smart_toggle_.setBounds(272, page_ == 1 ? 339 : 565, 220, 25);
+    smart_status_.setBounds(508, page_ == 1 ? 340 : 566, 678, 23);
     if (page_ == 2)
     {
         smart_toggle_.setBounds(276, 406, 220, 28);
@@ -532,7 +532,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.39", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.40", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
         ? "Choose a listening mode and the neural model that powers it." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
@@ -542,8 +542,8 @@ void FxProView::paint(Graphics& g)
     else if (page_ == 1)
     {
         card(256, 334, 952, 270);
-        text("LISTENING MODE",280,360,235,21,11,true);
-        text("ACTIVE AI MODEL",540,360,425,21,11,true);
+        text("LISTENING MODE",280,369,235,13,10,true);
+        text("ACTIVE AI MODEL",540,369,425,13,10,true);
         text("Swap models anytime.",977,386,205,28,12,true);
         text("AI PROFILES", 688, 521, 310, 18, 10, true);
         text("Sensitivity",280,491,150,28,14);
@@ -578,6 +578,7 @@ void FxProView::refreshAIProfileChoices()
             ai_profile_.addItem(models[(size_t)i].name,i+1);
     }
     const auto selected=FxController::getInstance().getActiveAIProfileId();
+    neural_activity_.setProfileId(selected);
     const int index=ai_profile_ids_.indexOf(selected);
     if(index>=0) ai_profile_.setSelectedId(index+1,dontSendNotification);
 }

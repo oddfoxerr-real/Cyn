@@ -36,13 +36,13 @@ const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
                   "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.39"]){
+                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.40"]){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
 assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
 assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
-console.log("PASS: visible native AI sidebar, profile actions and v2.0.39 version marker");
+console.log("PASS: visible native AI sidebar, profile actions and v2.0.40 version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
 assert(native.includes("componentToCentreAround = owner"),"AI Hub must be positioned over Cyn");
 assert(native.includes("dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f)"),"Dialog background is transparent");
@@ -101,7 +101,7 @@ console.log("PASS: live neural inference and supervised epoch animation");
 // The existing personal-model network must be labeled separately from pretrained
 // YAMNet event classifications; no fabricated YAMNet weight-node activity.
 const themeHeader=readFileSync(path("fxsound/Source/GUI/FxTheme.h"),"utf8");
-assert(themeHeader.includes("CharcoalDesktop, NeuralCore, NumModes"),"Neural Core must preserve existing saved theme IDs");
+assert(themeHeader.includes("CharcoalDesktop, NeuralCore, GeminiNight, NumModes"),"Neural Core must preserve existing saved theme IDs");
 assert(theme.includes('"Charcoal Desktop", "Neural Core"'),"Neural Core missing from Theme menu names");
 assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Neural theme must use real personal model activations");
 assert(view.includes("brainController.getLiveYamNetScene(scene)"),"Neural theme must read real YAMNet classifications");
@@ -110,14 +110,14 @@ assert(controllerSource.includes("return yamnet_worker_->latest(out)"),"Neural t
 assert(view.includes("neural_core_live_?neural_core_scene_"),"No fade-to-idle for stale YAMNet output");
 assert(view.includes("const double interval=FxTheme::isReducedMotion()?500.0:42.0;") &&
        view.includes("now-last_theme_repaint_>=interval"),"UI repaint must remain <=24Hz");
-assert(neural.includes("neuralCore?0xff67edee"),"Neural Core must have its own network lighting");
+assert(neural.includes("setProfileId(const juce::String& id)") && neural.includes("const Colour accent=trained"),"Neural Core must have its own network lighting");
 assert(neural.includes("PERSONAL NEURAL NETWORK"),"Do not confuse small preference model with YAMNet internals");
 assert(view.includes("FxTheme::isReducedMotion()"),"Neural theme must respect reduced-motion");
 console.log("PASS: Neural Core live inference visualization, distinct AI identities and bounded redraw");
 const atmosphere=readFileSync(path("fxsound/Source/GUI/CynThemeAtmosphere.h"),"utf8");
 const themeModes=[...themeHeader.matchAll(/enum FxThemeMode : int \{([^}]+)\}/g)][0][1]
   .split(",").map(item=>item.trim().replace(/=.*/,"")).filter(item=>item!=="NumModes");
-assert.equal(themeModes.length,20,"Expected to preserve all twenty user theme IDs");
+assert.equal(themeModes.length,21,"All original twenty theme IDs plus Gemini Night are required");
 for(const mode of themeModes)
   assert(atmosphere.includes("case FxThemeMode::"+mode+":"),"No dynamic artwork for "+mode);
 assert(view.includes("CynThemeAtmosphere::paint(g,FxTheme::getThemeMode()"),
@@ -127,7 +127,7 @@ assert(atmosphere.includes("FxTheme::isReducedMotion()"),
        "Atmosphere must respect reduce-motion mode");
 assert(!atmosphere.includes("getLiveYamNetScene("),
        "Theme paint must not perform asynchronous inference");
-console.log("PASS: 20 distinct atmospheric themes, measured audio glow and motion fallback");
+console.log("PASS: 21 atmospheric themes, measured audio glow and motion fallback");
 
 const studio=readFileSync(path("fxsound/Source/GUI/CynThemeStudio.h"),"utf8");
 const menu=readFileSync(path("fxsound/Source/GUI/FxMainWindow.cpp"),"utf8");
@@ -196,7 +196,7 @@ assert(movieCtrl.includes('package["format"].toString()=="cyn-ai-profile"'), 'Mo
 assert(movieCtrl.includes('movie_model_=candidate;'), 'Default Movie AI needs candidate model weights');
 console.log('PASS: tested Cinema AI profile seeds Movie AI, generic starter fallback preserved');
 
-// v2.0.39: mode and model are separate; switching keeps private model slots.
+// v2.0.40: mode and model are separate; switching keeps private model slots.
 assert(view.includes('ai_profile_.setBounds(540,386,425,33)'), 'A separate model selector must be visible');
 assert(view.includes('ai_profile_.onChange=[this]'), 'The model dropdown must really switch neural models');
 assert(view.includes('refreshAIProfileChoices()'), 'Imported profiles must be discoverable without restarting');
@@ -208,13 +208,13 @@ assert(native.includes('Activate selected AI'), 'AI Hub must explain activation 
 console.log('PASS: separate persistent neural model selector with reversible backups');
 
 
-// v2.0.39: installer, native executable, release controller and updater must agree.
+// v2.0.40: installer, native executable, release controller and updater must agree.
 const project=readFileSync(path("fxsound/Project/FxSound_App.vcxproj"),"utf8");
 const installer=readFileSync(path("Installer/Cyn/Cyn.iss"),"utf8");
 const updater=readFileSync(path("CynUpdater.ps1"),"utf8");
-assert.equal((project.match(/JUCE_APP_VERSION=2\.0\.39\.0/g)||[]).length,4,
-  'All native build configs must expose actual version 2.0.39.0');
-assert.match(installer,/^AppVersion=2\.0\.39$/m);
+assert.equal((project.match(/JUCE_APP_VERSION=2\.0\.40\.0/g)||[]).length,4,
+  'All native build configs must expose actual version 2.0.40.0');
+assert.match(installer,/^AppVersion=2\.0\.40$/m);
 assert(controllerSource.includes('const auto currentVersion=major+"."+minor+"."+patch'),
   'Use runtime version for updater, not old hard-coded version');
 assert(!controllerSource.includes('CurrentVersion 2.0.29'), 'Updater cannot repeatedly offer old v2.0.29');

@@ -20,6 +20,12 @@ public:
     }
     ~CynNeuralActivity() override { stopTimer(); }
 
+    void setProfileId(const juce::String& id) {
+        if (profileId_ == id) return;
+        profileId_ = id;
+        repaint();
+    }
+
     void setTrainingActive(bool active) {
         if (training_ == active) return;
         if (training_ && !active)
@@ -51,8 +57,22 @@ public:
         using namespace juce;
         if (getWidth() < 64 || getHeight() < 90) return;
         const bool neuralCore=FxTheme::getThemeMode()==FxThemeMode::NeuralCore;
-        const Colour accent(neuralCore?0xff67edee:0xffeeb060),
-                     bright(neuralCore?0xffc2ffff:0xffffdd9b);
+        const auto id=profileId_.toLowerCase();
+        const bool cinema=id.contains("cinema") || id.contains("movie");
+        const bool trained=id.contains("real-audio") || id.contains("13h");
+        const bool personal=id=="personal" || id.isEmpty();
+        // The profile changes presentation, not the 11->12->5 model topology.
+        // Custom imports get a consistent color using their filename hash.
+        const Colour accent=trained ? Colour(0xffffb963)
+            : cinema ? Colour(0xffb5a1ff)
+            : personal ? Colour(0xff74dcc7)
+            : id.contains("starter") ? Colour(0xff6fc6fc)
+            : Colour::fromHSV((float)(static_cast<juce::uint32>(id.hashCode())%360u)/360.0f,
+                              .58f,.97f,1.0f);
+        const Colour bright=accent.brighter(0.48f);
+        // This threshold only hides visually negligible live contributions.
+        // It must never imply more artificial hidden layers or better measured IQ.
+        const float displayFloor=trained?0.025f:cinema?0.095f:personal?0.070f:0.18f;
         const Colour text(Colour(FXCOLOR(HintText)).withAlpha(1.0f));
         const Colour border(Colour(FXCOLOR(RowOutline)).withAlpha(1.0f));
         const Colour bg(Colour(FXCOLOR(ControlBackground)).withAlpha(1.0f));
@@ -86,6 +106,7 @@ public:
             ? (float)(Time::getMillisecondCounterHiRes()*0.001) : 0.0f;
         const float trainingGlow = training_ ? 0.14f+0.14f*progress_ : 0.0f;
 
+        int visiblePaths=0;
         // All 192 physical neural connections; their contribution is the
         // current activation times the trained weight for that connection.
         auto drawConnections = [&](const auto& from, const auto& to,
@@ -95,6 +116,10 @@ public:
                 for (size_t i=0;i<from.size();++i) {
                     const size_t index=j*(size_t)fromCount+i;
                     const float influence = std::abs(contributions[index]);
+                    // Stable sparse backbone plus links selected by the ACTUAL
+                    // weighted inference signal, rather than random movement.
+                    if(influence < displayFloor && index%17 != 0) continue;
+                    ++visiblePaths;
                     const float activity = signal_ *
                         (1.0f-std::exp(-influence*(second?0.50f:0.80f)));
                     const float lum = juce::jlimit(0.0f,1.0f,activity+trainingGlow);
@@ -158,7 +183,7 @@ public:
                                    width*progress_,4.0f,2.0f);
         } else {
             g.setColour(text.withAlpha(0.9f)); g.setFont(Font(9.0f));
-            g.drawText("11 INPUT  /  12 HIDDEN  /  5 OUTPUT",
+            g.drawText(String(visiblePaths)+"/192 LIVE PATHS · 11/12/5",
                        3,getHeight()-23,getWidth()-6,15,
                        Justification::centred,false);
         }
@@ -180,6 +205,7 @@ private:
         signal_+=((hasAudio_?1.0f:0.0f)-signal_)*0.24f;
         repaint();
     }
+    juce::String profileId_ { "personal" };
     NeuralActivitySnapshot target_ {},displayed_ {};
     bool training_=false,hasAudio_=false,animating_=false;
     float signal_=0.0f,progress_=0.0f;

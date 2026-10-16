@@ -63,6 +63,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: .\scripts\diagnose_cyn_updater.ps1
 
+      - name: Validate Gemini Night and model-specific neural visuals
+        shell: pwsh
+        run: node scripts/test_theme_neural.mjs
+      - name: Validate installed version and update controls
+        shell: pwsh
+        run: node scripts/test_version_controls.mjs
       - name: Validate updater animation XAML
         if: steps.inspect.outputs.state != 'published'
         shell: powershell
