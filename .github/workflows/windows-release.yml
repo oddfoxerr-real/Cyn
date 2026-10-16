@@ -111,6 +111,15 @@ jobs:
           crescendo-test.exe
           if errorlevel 1 exit /b 1
 
+      - name: Verify volume-neutral model inputs and kick across presets
+        if: steps.inspect.outputs.state != 'published'
+        shell: cmd
+        run: |
+          cl /nologo /O2 /EHsc /std:c++17 /I dsp\\include /I fxsound\\Source\\GUI tests\\cyn_volume_kick_test.cpp /Fe:volume-kick-test.exe
+          if errorlevel 1 exit /b 1
+          volume-kick-test.exe
+          if errorlevel 1 exit /b 1
+
       - name: Compile Cyn native x64
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh
