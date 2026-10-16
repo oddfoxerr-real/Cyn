@@ -212,9 +212,9 @@ console.log('PASS: separate persistent neural model selector with reversible bac
 const project=readFileSync(path("fxsound/Project/FxSound_App.vcxproj"),"utf8");
 const installer=readFileSync(path("Installer/Cyn/Cyn.iss"),"utf8");
 const updater=readFileSync(path("CynUpdater.ps1"),"utf8");
-assert.equal((project.match(/JUCE_APP_VERSION=2\.0\.39\.0/g)||[]).length,4,
+assert.equal((project.match(/JUCE_APP_VERSION=2\.0\.40\.0/g)||[]).length,4,
   'All native build configs must expose actual version 2.0.40.0');
-assert.match(installer,/^AppVersion=2\.0\.39$/m);
+assert.match(installer,/^AppVersion=2\.0\.40$/m);
 assert(controllerSource.includes('const auto currentVersion=major+"."+minor+"."+patch'),
   'Use runtime version for updater, not old hard-coded version');
 assert(!controllerSource.includes('CurrentVersion 2.0.29'), 'Updater cannot repeatedly offer old v2.0.29');
