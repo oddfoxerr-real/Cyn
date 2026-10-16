@@ -20,7 +20,7 @@ assert(controller.includes("sceneHead.predict(scene,e,contextual,confidence)"),"
 assert(worker.includes("for(int i=0;i<521;++i)") && worker.includes("for(int i=0;i<1024;++i)"),"All 521 classes and 1024 embedding dimensions must be used");
 assert(engine.includes("class CynScenePreference") && engine.includes("CynFlagshipMixer"),"Missing local neural scene preference head");
 assert(!controller.includes("desired=jmin(desired,0.58f)") && !controller.includes("movie?4.8f:6.5f"),"Arbitrary Music Bass limiter returned");
-assert(controller.includes("decision.eqDelta(freq)*amount"),"Combined model must control frequency-specific signed EQ");
+assert(controller.includes("CynFlagshipMixer::musicEqCorrection(") && engine.includes("decision.eqDelta")===false && engine.includes("d.eqDelta(frequency)"),"Combined model must preserve signed spectral EQ and preset-aware kick");
 assert(controller.includes("rebuildScenePreferences()"),"Embedding-learning persistence missing");
 assert(model.includes("onnxruntime"),"Missing tested pretrained model conversion");
 console.log("PASS: native YAMNet audio tap, ONNX inference and embedding-driven flagship and dynamic bass control");
