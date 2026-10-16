@@ -48,7 +48,7 @@ public:
                          juce::dontSendNotification);
 
         refresh_.setButtonText ("Refresh community");
-        import_.setButtonText ("Import selected AI");
+        import_.setButtonText ("Activate selected AI");
         review_.setButtonText ("Reviews");
         publish_.setButtonText ("Share my AI");
         close_.setButtonText ("Close");
@@ -153,8 +153,10 @@ private:
                 + p->description + "\n\n"
                 + "Creator: " + p->author + "\n"
                 + "Category: " + p->category + "\n\n"
-                + "Import to activate this model in Cyn. Your current learning data "
-                  "will be backed up first.\n\n"
+                + "Activate it in the current Music or Movie mode. You can then "
+                  "switch models in Smart Listening without reimporting.\n\n"
+                + (FxController::getInstance().getActiveAIProfileId()
+                    == "bundled:" + p->filename ? "ACTIVE IN THIS MODE\n\n" : "")
                 + "Community profiles are user-submitted; listening preferences differ.",
                 juce::dontSendNotification);
         }
@@ -273,9 +275,10 @@ private:
         if (! item) return;
 
         if (! juce::AlertWindow::showOkCancelBox (
-                juce::AlertWindow::QuestionIcon, "Import " + item->name + "?",
-                "Cyn will back up your current learning data and replace only your "
-                "neural model. Continue?", "Import", "Cancel"))
+                juce::AlertWindow::QuestionIcon, "Activate " + item->name + "?",
+                "Use this neural model for " + juce::String(FxController::getInstance().getSmartListeningMode()==1 ?
+                    "Movie & TV AI" : "Music AI") +
+                "? Your earlier model and learning are saved for switching back.", "Activate", "Cancel"))
             return;
 
         const auto embedded = juce::File::getSpecialLocation (juce::File::currentExecutableFile)
@@ -284,7 +287,7 @@ private:
         {
             juce::String error;
             const bool success = FxController::getInstance().importSmartProfile (embedded, error);
-            status_.setText (success ? "Imported " + item->name + ". Train further in Smart listening."
+            status_.setText (success ? "Activated " + item->name + ". Switch models in Smart listening."
                                     : "Import failed: " + error,
                              juce::dontSendNotification);
             return;
@@ -316,7 +319,7 @@ private:
                     }
                     else error = "GitHub returned an invalid Cyn AI profile.";
                     view->setBusy (false);
-                    view->status_.setText (success ? "Imported " + name + ". You can train it in Cyn."
+                    view->status_.setText (success ? "Activated " + name + ". Switch models in Smart listening."
                          : "Import failed: " + error, juce::dontSendNotification);
                 }
             });
