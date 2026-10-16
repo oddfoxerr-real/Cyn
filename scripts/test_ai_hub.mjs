@@ -101,7 +101,7 @@ console.log("PASS: live neural inference and supervised epoch animation");
 // The existing personal-model network must be labeled separately from pretrained
 // YAMNet event classifications; no fabricated YAMNet weight-node activity.
 const themeHeader=readFileSync(path("fxsound/Source/GUI/FxTheme.h"),"utf8");
-assert(themeHeader.includes("CharcoalDesktop, NeuralCore, NumModes"),"Neural Core must preserve existing saved theme IDs");
+assert(themeHeader.includes("CharcoalDesktop, NeuralCore, GeminiNight, NumModes"),"Neural Core must preserve existing saved theme IDs");
 assert(theme.includes('"Charcoal Desktop", "Neural Core"'),"Neural Core missing from Theme menu names");
 assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Neural theme must use real personal model activations");
 assert(view.includes("brainController.getLiveYamNetScene(scene)"),"Neural theme must read real YAMNet classifications");
@@ -110,14 +110,14 @@ assert(controllerSource.includes("return yamnet_worker_->latest(out)"),"Neural t
 assert(view.includes("neural_core_live_?neural_core_scene_"),"No fade-to-idle for stale YAMNet output");
 assert(view.includes("const double interval=FxTheme::isReducedMotion()?500.0:42.0;") &&
        view.includes("now-last_theme_repaint_>=interval"),"UI repaint must remain <=24Hz");
-assert(neural.includes("neuralCore?0xff67edee"),"Neural Core must have its own network lighting");
+assert(neural.includes("setProfileId(const juce::String& id)") && neural.includes("const Colour accent=trained"),"Neural Core must have its own network lighting");
 assert(neural.includes("PERSONAL NEURAL NETWORK"),"Do not confuse small preference model with YAMNet internals");
 assert(view.includes("FxTheme::isReducedMotion()"),"Neural theme must respect reduced-motion");
 console.log("PASS: Neural Core live inference visualization, distinct AI identities and bounded redraw");
 const atmosphere=readFileSync(path("fxsound/Source/GUI/CynThemeAtmosphere.h"),"utf8");
 const themeModes=[...themeHeader.matchAll(/enum FxThemeMode : int \{([^}]+)\}/g)][0][1]
   .split(",").map(item=>item.trim().replace(/=.*/,"")).filter(item=>item!=="NumModes");
-assert.equal(themeModes.length,20,"Expected to preserve all twenty user theme IDs");
+assert.equal(themeModes.length,21,"All original twenty theme IDs plus Gemini Night are required");
 for(const mode of themeModes)
   assert(atmosphere.includes("case FxThemeMode::"+mode+":"),"No dynamic artwork for "+mode);
 assert(view.includes("CynThemeAtmosphere::paint(g,FxTheme::getThemeMode()"),
@@ -127,7 +127,7 @@ assert(atmosphere.includes("FxTheme::isReducedMotion()"),
        "Atmosphere must respect reduce-motion mode");
 assert(!atmosphere.includes("getLiveYamNetScene("),
        "Theme paint must not perform asynchronous inference");
-console.log("PASS: 20 distinct atmospheric themes, measured audio glow and motion fallback");
+console.log("PASS: 21 atmospheric themes, measured audio glow and motion fallback");
 
 const studio=readFileSync(path("fxsound/Source/GUI/CynThemeStudio.h"),"utf8");
 const menu=readFileSync(path("fxsound/Source/GUI/FxMainWindow.cpp"),"utf8");
