@@ -175,6 +175,9 @@ private:
 		Label support_title_;
 		Label maintenance_title_;
 		Label version_text_;
+        TextButton version_button_ { "Version" };
+        TextButton check_updates_button_ { "Check for updates" };
+        ToggleButton automatic_updates_toggle_ { "Automatic updates" };
 		FxHyperlink changelog_link_;
 		FxHyperlink quicktour_link_;
 		FxHyperlink submitlogs_link_;
