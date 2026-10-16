@@ -64,11 +64,7 @@ jobs:
         env:
           OPENBLAS_NUM_THREADS: '1'
           OMP_NUM_THREADS: '1'
-        run: >-
-          python -u training/train_real_13h.py
-          --seconds 14400 --seed 7159
-          
-          --output checkpoint
+        run: python -u training/train_real_13h.py --seconds 14400 --seed 7159 --output checkpoint
       - name: Check cumulative optimization duration
         run: |
           python - <<'PY'
@@ -110,11 +106,7 @@ jobs:
         env:
           OPENBLAS_NUM_THREADS: '1'
           OMP_NUM_THREADS: '1'
-        run: >-
-          python -u training/train_real_13h.py
-          --seconds 14400 --seed 7160
-          --input-checkpoint preceding/checkpoint.json 
-          --output checkpoint
+        run: python -u training/train_real_13h.py --seconds 14400 --seed 7160 --input-checkpoint preceding/checkpoint.json --output checkpoint
       - name: Check cumulative optimization duration
         run: |
           python - <<'PY'
@@ -156,11 +148,7 @@ jobs:
         env:
           OPENBLAS_NUM_THREADS: '1'
           OMP_NUM_THREADS: '1'
-        run: >-
-          python -u training/train_real_13h.py
-          --seconds 14400 --seed 7161
-          --input-checkpoint preceding/checkpoint.json 
-          --output checkpoint
+        run: python -u training/train_real_13h.py --seconds 14400 --seed 7161 --input-checkpoint preceding/checkpoint.json --output checkpoint
       - name: Check cumulative optimization duration
         run: |
           python - <<'PY'
@@ -202,11 +190,7 @@ jobs:
         env:
           OPENBLAS_NUM_THREADS: '1'
           OMP_NUM_THREADS: '1'
-        run: >-
-          python -u training/train_real_13h.py
-          --seconds 3600 --seed 7162
-          --input-checkpoint preceding/checkpoint.json 
-          --output checkpoint
+        run: python -u training/train_real_13h.py --seconds 3600 --seed 7162 --input-checkpoint preceding/checkpoint.json --output checkpoint
       - name: Check cumulative optimization duration
         run: |
           python - <<'PY'
