@@ -3202,7 +3202,7 @@ bool FxController::selectAIProfile(const String& id,String& error) {
     if(found==choices.end()) { error="That AI model is not installed.";return false; }
     const auto rootDir=File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Cyn");
     const auto prefs=rootDir.getChildFile("preferences.json"), slots=rootDir.getChildFile("AIModelSlots");
-    if(!slots.createDirectory()) { error="Cannot create private AI backups.";return false; }
+    if(slots.createDirectory().failed()) { error="Cannot create private AI backups.";return false; }
     const auto slotFor=[&](String name) {
         name=name.replaceCharacter(':','-');
         return slots.getChildFile(String(smart_mode_==1?"movie-":"music-")+name+".json");
@@ -3858,11 +3858,11 @@ bool FxController::importSmartProfile(const File& source, String& error)
     const auto bundledDir=File::getSpecialLocation(File::currentExecutableFile).getSiblingFile("CynAiProfiles");
     const bool bundled=source.getParentDirectory()==bundledDir;
     const String id=bundled?"bundled:"+source.getFileName():
-        "imported:custom-"+Uuid().toString()+".cynai.json";
+        "imported:custom-"+juce::Uuid().toString()+".cynai.json";
     File localCopy;
     if(!bundled) {
         const auto dir=File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Cyn/AIModels");
-        if(!dir.createDirectory()) {error="Cannot create your local AI library.";return false;}
+        if(dir.createDirectory().failed()) {error="Cannot create your local AI library.";return false;}
         localCopy=dir.getChildFile(id.fromFirstOccurrenceOf(":",false,false));
         if(!source.copyFileTo(localCopy)) {error="Could not keep the imported AI profile.";return false;}
     }
