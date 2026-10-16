@@ -27,13 +27,30 @@ const colors=(paletteRow[1].match(/0x[0-9a-f]{6}/gi)||[]).map(v=>parseInt(v,16))
 assert.equal(colors.length,27,"Theme must cover all palette roles");
 assert(colors[0]<=0x08090a && colors[1]<=0x101216 && colors[15]<=0x12161a,
        "Background, chrome and cards must be near-black instead of gray");
-assert(atmosphere.includes("constexpr int columns=32, rows=9") &&
+assert(atmosphere.includes("constexpr int columns=33, rows=9") &&
        atmosphere.includes("node(col+1,row)") &&
        atmosphere.includes("node(col,row+1)"),
        "Connected dotted web mesh must cover workspace lower corners");
 assert(atmosphere.includes("if(theme==FxThemeMode::DarkMesh)") &&
-       atmosphere.includes("g.setColour(Colour(0xff050607))"),
+       atmosphere.includes("g.setColour(Colour(0xff000000))"),
        "Dark Theme must fill near-black with no opaque blue-gray gradient");
 assert(view.includes("const bool webDark=FxTheme::getThemeMode()==FxThemeMode::DarkMesh;"),
        "Dark sidebar must use black glass rather than a gray rail");
-console.log("PASS: near-black palette, connected mesh, model colors and black controls");
+console.log("PASS: pure-black palette, fluid retained mesh, model colors and controls");
+
+const blackRoles=[0,1,2,5,9,10,15,24];
+for(const n of blackRoles)
+    assert(colors[n]<=0x030407,`Dark Theme surface ${n} must be black, not gray`);
+assert(atmosphere.includes('const float phase=FxTheme::isReducedMotion()?0.0f:t;'),
+       "Liquid web motion must freeze on reduced motion");
+assert(atmosphere.includes('const float liquid=.68f+.32f*std::sin') &&
+       atmosphere.includes('node(col+1,row)') &&
+       atmosphere.includes('node(col,row+1)'),
+       "Keep low-speed flowing connected neural mesh lines and dots");
+assert(theme.includes('getThemeMode()==FxThemeMode::DarkMesh?base:base.brighter(0.035f)'),
+       "Black dropdowns must not be brightened into gray");
+assert(view.includes('webDark?Colour(0xff000000):rail.brighter'),
+       "Sidebar must be black, not charcoal");
+assert(view.includes('Colour(0xff010102) : panel.brighter'),
+       "Cards must be nearly black, not gray");
+console.log("PASS: mesh retained and flowing, surfaces pure black, no gray bloom");

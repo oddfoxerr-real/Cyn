@@ -57,8 +57,8 @@ const uint32 FxTheme::theme_colors_[FxThemeMode::NumModes][FxColor::NumColors] =
 ,
   // Neural Core: layered deep-indigo surfaces, cyan live activity and violet inference accent.
   { 0x0a1020, 0x101b31, 0x14213a, 0x315175, 0xeaf8ff, 0x142339, 0xffffff, 0x1d3557, 0xe2f5ff, 0x142339, 0x192a42, 0x95b7d3, 0x95b7d3, 0x67edee, 0xff7899, 0x122238, 0x56d9f4, 0x9c8cff, 0x9c8cff, 0x67edee, 0x67edee, 0x1d3557, 0x96dcff, 0x203b63, 0x101b31, 0x315175, 0x67edee },
-  // Dark Theme: near-black surfaces, cool-white mesh and restrained blue/violet glow.
-  { 0x050607, 0x090b0f, 0x080a0e, 0x293341, 0xf3f6fb, 0x0d1015, 0xffffff, 0x152238, 0xe9eff9, 0x0a0d11, 0x101319, 0xb6c2d3, 0xa8b5c7, 0x7cbaff, 0xe68ba7, 0x0b0e13, 0x76b5ff, 0xbbadff, 0xc8d9ff, 0x8ab4f8, 0x93aaff, 0x1a2b48, 0xbed8ff, 0x17243b, 0x090c11, 0x263347, 0x8fbbff }
+  // Dark Theme: jet-black surfaces and retained liquid-blue mesh; no gray fills.
+  { 0x000000, 0x010102, 0x020306, 0x14213a, 0xf4f8ff, 0x020307, 0xffffff, 0x112540, 0xf4f8ff, 0x010203, 0x020306, 0x99b8e3, 0x94b6e6, 0x76b8ff, 0xe88bb9, 0x010102, 0x76b8ff, 0xaacfff, 0xbcdcff, 0x6fb4ff, 0x7cbaff, 0x0d213b, 0xaad4ff, 0x102543, 0x000102, 0x12233d, 0x7dbaff }
 };
 
 const char* FxTheme::theme_images_[2][FxImage::NumImages] =
@@ -175,7 +175,7 @@ void FxTheme::drawComboBox(Graphics& g, int width, int height, bool,
     auto accent = Colour(FXCOLOR(SliderTrack)).withAlpha(box.isEnabled() ? 0.85f : 0.25f);
     auto outline = Colour(FXCOLOR(RowOutline)).withAlpha(0.9f);
 
-    ColourGradient fill(base.brighter(0.035f), 0.0f, 0.0f, base.darker(0.05f), 0.0f, (float)height, false);
+    ColourGradient fill((getThemeMode()==FxThemeMode::DarkMesh?base:base.brighter(0.035f)), 0.0f, 0.0f, (getThemeMode()==FxThemeMode::DarkMesh?base:base.darker(0.05f)), 0.0f, (float)height, false);
     g.setGradientFill(fill);
     g.fillRoundedRectangle(bounds, radius);
 
@@ -423,8 +423,8 @@ void FxTheme::drawPopupMenuBackground(Graphics& g,int width,int height)
 {
     const auto bounds=juce::Rectangle<float>(0,0,(float)width,(float)height).reduced(0.5f);
     const auto fill=Colour(FXCOLOR(MenuBackground)).withAlpha(1.0f);
-    ColourGradient glass(fill.brighter(0.095f),0.0f,0.0f,
-                         fill.darker(0.085f),(float)width,(float)height,false);
+    ColourGradient glass((getThemeMode()==FxThemeMode::DarkMesh?fill:fill.brighter(0.095f)),0.0f,0.0f,
+                         (getThemeMode()==FxThemeMode::DarkMesh?fill:fill.darker(0.085f)),(float)width,(float)height,false);
     glass.addColour(0.48,fill);
     g.setGradientFill(glass);
     g.fillRoundedRectangle(bounds,14.0f);
@@ -531,8 +531,8 @@ void FxTheme::drawButtonBackground(Graphics& g, Button& button, const Colour& ba
         g.setColour(fill); g.fillRoundedRectangle(bounds,radius);
         return;
     }
-    ColourGradient material(fill.brighter(0.105f),bounds.getX(),bounds.getY(),
-                            fill.darker(0.065f),bounds.getRight(),bounds.getBottom(),false);
+    ColourGradient material((getThemeMode()==FxThemeMode::DarkMesh?fill:fill.brighter(0.105f)),bounds.getX(),bounds.getY(),
+                            (getThemeMode()==FxThemeMode::DarkMesh?fill:fill.darker(0.065f)),bounds.getRight(),bounds.getBottom(),false);
     g.setGradientFill(material); g.fillRoundedRectangle(bounds,radius);
     g.setColour(Colour(FXCOLOR(DefaultText)).withAlpha(0.09f+hover*0.07f));
     g.drawLine(bounds.getX()+10.0f,bounds.getY()+1.0f,

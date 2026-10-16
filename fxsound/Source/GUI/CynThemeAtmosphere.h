@@ -262,41 +262,46 @@ public:
                 break;
             case FxThemeMode::DarkMesh:
             {
-                // A low-luminance WEB of linked dots, across the whole lower
-                // workspace. Never draw a broad gray rectangle over the black.
-                auto softGlow=[&](float x,float y,float radius,Colour hue,float alpha) {
-                    ColourGradient bloom(hue.withAlpha(alpha*strength),x,y,
-                                         hue.withAlpha(0.0f),x+radius,y-radius,true);
+                // Connected liquid WEB: black underneath, gentle blue-white
+                // light only near the lower edges; never a gray surface layer.
+                const float phase=FxTheme::isReducedMotion()?0.0f:t;
+                const float live=jlimit(0.0f,1.0f,energy);
+                auto glow=[&](float x,float y,float radius,Colour light,float opacity) {
+                    ColourGradient bloom(light.withAlpha(opacity*strength),x,y,
+                                         light.withAlpha(0.0f),x+radius,y,true);
+                    bloom.addColour(.48f,light.withAlpha(opacity*.31f*strength));
                     g.setGradientFill(bloom);
-                    g.fillEllipse(x-radius,y-radius,2*radius,2*radius);
+                    g.fillEllipse(x-radius,y-radius,2.0f*radius,2.0f*radius);
                 };
-                softGlow(18.0f,602.0f,270.0f,Colour(0xffe7efff),0.20f+energy*0.03f);
-                softGlow(1000.0f,606.0f,305.0f,Colour(0xffa2b9e9),0.17f+energy*0.03f);
-                softGlow(520.0f,650.0f,220.0f,Colour(0xff8b96bf),0.055f);
-                constexpr int columns=32, rows=9;
-                const float sway=FxTheme::isReducedMotion()?0.0f:std::sin(t*0.18f)*2.0f;
-                auto node=[&](int col,int row) -> Point<float> {
-                    const float x=-14.0f+col*33.2f;
-                    const float wave=13.0f*std::sin(col*0.46f+row*0.28f)
-                                    +7.0f*std::sin(col*0.19f+row*0.52f);
-                    const float y=419.0f+row*24.0f+wave
-                                  +sway*std::sin(col*0.23f+row*0.37f);
-                    return {x,y};
+                glow(15.0f+18.0f*std::sin(phase*.16f),621.0f,207.0f,
+                     Colour(0xff94bdff),.085f+.018f*live);
+                glow(983.0f-20.0f*std::sin(phase*.14f),622.0f,225.0f,
+                     Colour(0xffa8c5ff),.095f+.018f*live);
+                glow(495.0f+42.0f*std::cos(phase*.11f),659.0f,195.0f,
+                     Colour(0xff789ced),.029f+.01f*live);
+
+                constexpr int columns=33, rows=9;
+                const auto node=[&](int col,int row)->Point<float> {
+                    const float x=-25.0f+col*33.0f+2.5f*std::sin(row*.41f+phase*.15f);
+                    const float drift=10.0f*std::sin(col*.37f+row*.53f+phase*.19f);
+                    const float curl=7.0f*std::sin(col*.18f-row*.41f-phase*.12f);
+                    return {x,414.0f+row*23.0f+drift+curl};
                 };
                 for(int row=0;row<rows;++row) {
                     for(int col=0;col<columns;++col) {
                         const auto p=node(col,row);
-                        const float edge=std::pow(std::abs(p.x-500.0f)/500.0f,1.6f);
-                        const float lower=jlimit(0.0f,1.0f,(p.y-405.0f)/200.0f);
-                        const float opacity=(0.025f+0.13f*edge)*lower*strength;
-                        if(opacity<0.004f || p.y>612.0f)continue;
-                        g.setColour(Colour(0xffaabfdf).withAlpha(opacity*0.74f));
-                        if(col+1<columns)g.drawLine(Line<float>(p,node(col+1,row)),0.65f);
-                        if(row+1<rows)g.drawLine(Line<float>(p,node(col,row+1)),0.60f);
+                        const float edge=jlimit(0.0f,1.0f,std::abs(p.x-500.0f)/500.0f);
+                        const float lower=jlimit(0.0f,1.0f,(p.y-410.0f)/195.0f);
+                        const float liquid=.68f+.32f*std::sin(col*.31f-row*.19f+phase*.27f);
+                        const float opacity=(.013f+.076f*edge*edge)*lower*liquid*strength;
+                        if(opacity<.004f || p.y>606.0f)continue;
+                        g.setColour(Colour(0xff8ab8ff).withAlpha(opacity*.73f));
+                        if(col+1<columns)g.drawLine(Line<float>(p,node(col+1,row)),.62f);
+                        if(row+1<rows)g.drawLine(Line<float>(p,node(col,row+1)),.58f);
                         if(row+1<rows && col+1<columns && (col+row)%3==0)
-                            g.drawLine(Line<float>(p,node(col+1,row+1)),0.55f);
-                        g.setColour(Colour(0xffe8f2ff).withAlpha(opacity*2.1f));
-                        const float radius=0.9f+0.4f*edge;
+                            g.drawLine(Line<float>(p,node(col+1,row+1)),.45f);
+                        const float radius=.8f+.35f*edge;
+                        g.setColour(Colour(0xffc6deff).withAlpha(opacity*1.7f));
                         g.fillEllipse(p.x-radius,p.y-radius,2*radius,2*radius);
                     }
                 }
@@ -340,7 +345,7 @@ inline void paint(Graphics& g,FxThemeMode theme,float timeSeconds,float audioLev
                 || theme==FxThemeMode::Arctic || theme==FxThemeMode::Sandstone;
     if(theme==FxThemeMode::DarkMesh) {
         // True black even in the large Theme Studio preview.
-        g.setColour(Colour(0xff050607));
+        g.setColour(Colour(0xff000000));
         g.fillRect(bounds);
     } else {
         const float mix=preview?(light?.08f:.21f):(light?.027f:.073f);
