@@ -20,7 +20,7 @@ import soundfile as sf
 
 SOURCES = {
     "speech": "https://openslr.trmal.net/resources/31/dev-clean-2.tar.gz",
-    "notes": "https://download.magenta.tensorflow.org/datasets/nsynth/nsynth-test.jsonwav.tar.gz",
+    "notes": "https://storage.googleapis.com/download.magenta.tensorflow.org/datasets/nsynth/nsynth-test.jsonwav.tar.gz",
 }
 RATE = 16000
 N = 4096
