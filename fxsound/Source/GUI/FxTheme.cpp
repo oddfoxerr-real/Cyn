@@ -57,8 +57,8 @@ const uint32 FxTheme::theme_colors_[FxThemeMode::NumModes][FxColor::NumColors] =
 ,
   // Neural Core: layered deep-indigo surfaces, cyan live activity and violet inference accent.
   { 0x0a1020, 0x101b31, 0x14213a, 0x315175, 0xeaf8ff, 0x142339, 0xffffff, 0x1d3557, 0xe2f5ff, 0x142339, 0x192a42, 0x95b7d3, 0x95b7d3, 0x67edee, 0xff7899, 0x122238, 0x56d9f4, 0x9c8cff, 0x9c8cff, 0x67edee, 0x67edee, 0x1d3557, 0x96dcff, 0x203b63, 0x101b31, 0x315175, 0x67edee },
-  // Gemini Night: charcoal workspace surfaces with restrained indigo-blue and violet assistant glows.
-  { 0x101214, 0x1b1e21, 0x25292c, 0x454b52, 0xf3f6fa, 0x202326, 0xf5f7ff, 0x263341, 0xe2e7f1, 0x25292d, 0x292d33, 0xb6becb, 0x9ca8bb, 0x6aabff, 0xd68efc, 0x24282d, 0x74baff, 0xa7caff, 0xc3b0ff, 0x6daeff, 0x8e9fff, 0x2b394d, 0xa4c7ff, 0x2f425c, 0x202327, 0x343f51, 0x74adfb }
+  // Dark Theme: near-black surfaces, cool-white mesh and restrained blue/violet glow.
+  { 0x050607, 0x090b0f, 0x080a0e, 0x293341, 0xf3f6fb, 0x0d1015, 0xffffff, 0x152238, 0xe9eff9, 0x0a0d11, 0x101319, 0xb6c2d3, 0xa8b5c7, 0x7cbaff, 0xe68ba7, 0x0b0e13, 0x76b5ff, 0xbbadff, 0xc8d9ff, 0x8ab4f8, 0x93aaff, 0x1a2b48, 0xbed8ff, 0x17243b, 0x090c11, 0x263347, 0x8fbbff }
 };
 
 const char* FxTheme::theme_images_[2][FxImage::NumImages] =
@@ -828,7 +828,7 @@ bool FxTheme::reduced_motion_ = false;
 bool FxTheme::smooth_animations_ = false;
 const char* FxTheme::getThemeName(int i)
 {
-    static const char* names[] = { "Graphite", "Pearl", "Aurora", "Dusk", "Copper", "Midnight", "Sakura", "Arctic", "Sandstone", "Obsidian", "Emerald", "Deep Sea", "Neon Tokyo", "Synthwave", "Solar Flare", "Crimson", "Mocha", "Monochrome", "Charcoal Desktop", "Neural Core", "Gemini Night" };
+    static const char* names[] = { "Graphite", "Pearl", "Aurora", "Dusk", "Copper", "Midnight", "Sakura", "Arctic", "Sandstone", "Obsidian", "Emerald", "Deep Sea", "Neon Tokyo", "Synthwave", "Solar Flare", "Crimson", "Mocha", "Monochrome", "Charcoal Desktop", "Neural Core", "Dark Theme" };
     return names[jlimit(0,(int)FxThemeMode::NumModes-1,i)];
 }
 bool FxTheme::isLightTheme()
