@@ -20,6 +20,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "FxSettingsDialog.h"
 #include "../Utils/SysInfo/SysInfo.h"
 
+// The native version is four numeric components (e.g. 2.0.40.0) while the
+// release tag and user-facing version are three (v2.0.40).
+namespace {
+String installedCynVersion()
+{
+    auto* app=JUCEApplication::getInstance();
+    if(!app) return "unknown";
+    const auto raw=app->getApplicationVersion();
+    const auto parts=StringArray::fromTokens(raw,".","");
+    if(parts.size()<3) return raw;
+    return parts[0]+"."+parts[1]+"."+parts[2];
+}
+}
+
 //==============================================================================
 FxSettingsDialog::FxSettingsDialog() : FxWindow("Settings"), tooltip_window_(this)
 {
@@ -680,8 +694,7 @@ FxSettingsDialog::HelpSettingsPane::HelpSettingsPane() : SettingsPane("Help"), a
     // The Version action reads the installed binary only. Checking GitHub is opt-in.
     version_button_.setTooltip("Show the version of this installed Cyn application. No internet required.");
     version_button_.onClick = []() {
-        auto* app=JUCEApplication::getInstance();
-        const auto version=app ? app->getApplicationVersion() : String("unknown");
+        const auto version=installedCynVersion();
         AlertWindow::showMessageBoxAsync(AlertWindow::InfoIcon,
             "Cyn version",
             "Installed: Cyn v" + version +
@@ -752,7 +765,7 @@ void FxSettingsDialog::HelpSettingsPane::setText()
     version_title_.setText(String("Version & updates"), NotificationType::dontSendNotification);
     version_title_.setFont(theme.getNormalFont());
 
-    version_text_.setText("Installed: Cyn v" + JUCEApplication::getInstance()->getApplicationVersion(),
+    version_text_.setText("Installed: Cyn v" + installedCynVersion(),
                           NotificationType::dontSendNotification);
     version_text_.setFont(theme.getSmallFont());
 
