@@ -126,7 +126,7 @@ public:
     bool importSmartProfile(const File& file, String& error);
     struct AIProfileOption { String id, name; };
     std::vector<AIProfileOption> getAvailableAIProfiles() const;
-    String getActiveAIProfileId() const;
+    String getActiveAIProfileId();
     bool selectAIProfile(const String& id, String& error);
     String getLearningStatus() const;
     bool isSmartTraining() const { return smart_training_; }
