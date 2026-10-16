@@ -461,7 +461,7 @@ void FxProView::paint(Graphics& g)
         const float drift=FxTheme::isReducedMotion()?0.0f:
             (float)Time::getMillisecondCounterHiRes()*0.00032f;
         const float glowY=355.0f+112.0f*std::sin(drift);
-        ColourGradient railGlow(color(SliderTrack).withAlpha((webDark?0.017f+0.02f*theme_audio_level_:0.075f+0.085f*theme_audio_level_)),
+        ColourGradient railGlow(color(SliderTrack).withAlpha((webDark?0.075f+0.065f*theme_audio_level_:0.075f+0.085f*theme_audio_level_)),
                                 218.0f,glowY,
                                 Colours::transparentBlack,55.0f,glowY+185.0f,true);
         g.setGradientFill(railGlow);
