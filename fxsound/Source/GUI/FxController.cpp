@@ -3235,7 +3235,7 @@ void FxController::rebuildPresetCyclingProfiles()
         if(preset.type!=FxModel::PresetType::AppPreset ||
            preset.path.isEmpty() || !File(preset.path).existsAsFile()) continue;
         DfxPresetSnapshot raw;
-        if(!dfx_dsp_.readPresetSnapshot(preset.path.toStdWstring(),raw)) continue;
+        if(!dfx_dsp_.readPresetSnapshot(std::wstring(preset.path.toWideCharPointer()),raw)) continue;
         CyclingProfile next;next.name=preset.name;
         next.effects=raw.effects;
         next.eq.reserve(smart_eq_.size());
@@ -3454,14 +3454,24 @@ void FxController::updateSmartListening()
         const auto& desired=cycling_profiles_[(size_t)chosen];
         smart_cycling_preset_name_=desired.name;
         const auto& goals=listening?desired.effects:smart_effects_;
-        for(int e=0;e<5;++e)
+        for(int e=0;e<5;++e) {
+            float goal=goals[(size_t)e];
+            if(listening && (e==0 || e==3 || e==4) && goal>smart_effects_[(size_t)e])
+                goal=smart_effects_[(size_t)e]+
+                    (goal-smart_effects_[(size_t)e])*decision.headroom;
             cycling_effects_[(size_t)e]+=jlimit(-0.24f,0.24f,
-                goals[(size_t)e]-cycling_effects_[(size_t)e]);
+                goal-cycling_effects_[(size_t)e]);
+        }
         const auto& eqGoal=listening?desired.eq:smart_eq_;
         const int eqCount=jmin((int)cycling_eq_.size(),(int)eqGoal.size());
-        for(int b=0;b<eqCount;++b)
+        for(int b=0;b<eqCount;++b) {
+            float goal=eqGoal[(size_t)b];
+            if(listening && goal>smart_eq_[(size_t)b])
+                goal=smart_eq_[(size_t)b]+
+                    (goal-smart_eq_[(size_t)b])*decision.headroom;
             cycling_eq_[(size_t)b]+=jlimit(-0.16f,0.16f,
-                eqGoal[(size_t)b]-cycling_eq_[(size_t)b]);
+                goal-cycling_eq_[(size_t)b]);
+        }
     }
     const float amount=CynSmartRange::normalized(smart_sensitivity_);
     const float depth=jmin(1.0f,amount*2);
