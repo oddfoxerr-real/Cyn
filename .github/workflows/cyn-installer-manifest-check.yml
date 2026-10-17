@@ -19,3 +19,15 @@ jobs:
         with:
           node-version: "22"
       - run: node scripts/test_version_controls.mjs
+      - name: Parse installer build script with PowerShell
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'BUILD_INSTALLER.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count -ne 0) {
+            $errors | ForEach-Object { Write-Host $_.Message }
+            throw 'BUILD_INSTALLER.ps1 contains syntax errors.'
+          }
+

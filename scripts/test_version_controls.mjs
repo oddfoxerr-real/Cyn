@@ -33,3 +33,12 @@ assert(buildInstaller.includes('^OutputBaseFilename=') && buildInstaller.include
 assert(!/\$installer\s*=\s*Join-Path\s+\$PSScriptRoot\s+'dist\\Cyn-Setup-\d/.test(buildInstaller),
   "Do not hardcode last release's installer path");
 console.log("PASS: installer hash generated from compiled Inno Setup output filename");
+
+assert.match(buildInstaller,
+  /^\$outputName\s*=\s*\[regex\]::Match\(\$innoScript,\s*'[^'\r\n]+'\)\s*$/m,
+  "Inno output-name regex must be one complete, parseable PowerShell expression");
+assert.equal((buildInstaller.match(/Get-FileHash -LiteralPath \$installer -Algorithm SHA256/g)||[]).length,1,
+  "Only hash installer once, after resolving and checking its path");
+assert(buildInstaller.indexOf("$installer = Join-Path") <
+       buildInstaller.indexOf("Get-FileHash -LiteralPath $installer"),
+  "Resolve generated installer path before calculating its hash");
