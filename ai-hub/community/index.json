@@ -30,6 +30,17 @@
       "file": "cyn-real-audio-13h.cynai.json",
       "issue": 0,
       "license": "CC-BY-4.0"
+    },
+    {
+      "id": "cyn-apex6m-flowsense",
+      "name": "CYN APEX-6M FlowSense (Research)",
+      "author": "CYN contributors",
+      "category": "research",
+      "kind": "research",
+      "description": "Separate 6.3-million-parameter offline denoising experiment, plus FlowSense intensity, rhythmic onset and buildup/breakdown analysis. Trained on synthetic audio only. Not an emotional-understanding model, not a Windows live-DSP plug-in, and not compatible with the 209-weight Cyn AI Hub importer. View the experimental ZIP and benchmark; your current AI remains unchanged.",
+      "url": "https://github.com/oddfoxerr-real/Cyn/releases/tag/cyn-apex6m-flowsense-research-20261017",
+      "issue": 0,
+      "license": "AGPL-3.0-or-later"
     }
   ]
 }
