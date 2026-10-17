@@ -3200,7 +3200,7 @@ void FxController::rebuildPresetCyclingProfiles()
     smart_cycling_preset_name_="Manual";
     if(!smart_preset_cycling_ || smart_mode_!=0 || !smart_enabled_) return;
 
-    auto buildSignature=[](const CyclingProfile& p) {
+    auto buildSignature=[&](const CyclingProfile& p) {
         CynPresetSignature signature;
         signature.bass=jlimit(0.0f,1.0f,p.effects[4]/10.0f);
         signature.impact=jlimit(0.0f,1.0f,p.effects[3]/10.0f);
@@ -3443,6 +3443,26 @@ void FxController::updateSmartListening()
             : music_crescendo_.current();
         CynFlagshipMixer::applyCrescendo(decision,scene,arc);
     } else music_crescendo_.reset();
+    // Preset selection is passage-level (scene features refresh ~100ms), not
+    // per-sample. Even when a new preset is chosen, the DSP never reloads .fac;
+    // effects and EQ move gradually toward the cached REAL preset values.
+    if(smart_preset_cycling_ && !movie && cycling_dirty_)
+        rebuildPresetCyclingProfiles();
+    if(smart_preset_cycling_ && !movie && !cycling_profiles_.empty()) {
+        const auto chosen=cycling_policy_.update(cycling_signatures_,scene,
+                                                  (uint64_t)now,listening && fresh);
+        const auto& desired=cycling_profiles_[(size_t)chosen];
+        smart_cycling_preset_name_=desired.name;
+        const auto& goals=listening?desired.effects:smart_effects_;
+        for(int e=0;e<5;++e)
+            cycling_effects_[(size_t)e]+=jlimit(-0.24f,0.24f,
+                goals[(size_t)e]-cycling_effects_[(size_t)e]);
+        const auto& eqGoal=listening?desired.eq:smart_eq_;
+        const int eqCount=jmin((int)cycling_eq_.size(),(int)eqGoal.size());
+        for(int b=0;b<eqCount;++b)
+            cycling_eq_[(size_t)b]+=jlimit(-0.16f,0.16f,
+                eqGoal[(size_t)b]-cycling_eq_[(size_t)b]);
+    }
     const float amount=CynSmartRange::normalized(smart_sensitivity_);
     const float depth=jmin(1.0f,amount*2);
 
@@ -3478,7 +3498,9 @@ void FxController::updateSmartListening()
         // bass positive shifts still require measured pre-effect headroom.
         const float up=movie?movieUp[e]:musicUp[e];
         float target=CynSmartRange::effectTarget(
-            smart_effects_[e],smart_scores_[e],smart_sensitivity_,up,down[e],
+            (smart_preset_cycling_&&!movie&&!cycling_profiles_.empty()?
+                cycling_effects_[(size_t)e]:smart_effects_[e]),
+            smart_scores_[e],smart_sensitivity_,up,down[e],
             decision.headroom,movie,(e==3 || e==4 || (e==0 && smart_sensitivity_>55.0f)));
         if(movie && e==4) target=jmin(target,jmax(smart_effects_[4],6.3f));
         if(movie && e==3) target=jmin(target,jmax(smart_effects_[3],5.0f));
@@ -3494,12 +3516,15 @@ void FxController::updateSmartListening()
     for(int b=0;b<jmin(getNumEqBands(),(int)smart_eq_.size());++b) {
         const float freq=dfx_dsp_.getEqBandFrequency(b);
         const float weight=jlimit(0.0f,1.0f,(300.0f-freq)/200.0f);
-        float target=smart_eq_[(size_t)b];
+        const float cycledBaseline=smart_preset_cycling_&&!movie&&
+            b<(int)cycling_eq_.size()&&!cycling_profiles_.empty()?
+            cycling_eq_[(size_t)b]:smart_eq_[(size_t)b];
+        float target=cycledBaseline;
         if(movie && target>0)
             target*=1.0f+bassDirection*depth*0.65f*weight;
         else if(!movie && listening) {
             const float correction=CynFlagshipMixer::musicEqCorrection(
-                decision,scene,freq,smart_eq_[(size_t)b]);
+                decision,scene,freq,cycledBaseline);
             // More expressive signed EQ at high sensitivity. Restrict
             // positive gain as input peak headroom vanishes, and avoid
             // excessive upper treble boost that would amplify sibilance.
@@ -3550,6 +3575,8 @@ String FxController::getAppliedMixSummary()
     for (int b = 0; b < bands; ++b)
         if (std::abs(dfx_dsp_.getEqBandBoostCut(b) - smart_eq_[(size_t)b]) >= 0.10f)
             ++shapedBands;
+    if (smart_preset_cycling_ && smart_mode_==0 && cycling_profiles_.size()>1)
+        status += " / Auto preset: "+smart_cycling_preset_name_;
     if (shapedBands > 0)
         status += " / EQ " + String(shapedBands) + (shapedBands == 1 ? " band" : " bands");
 
