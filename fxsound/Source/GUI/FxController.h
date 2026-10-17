@@ -50,7 +50,7 @@ class FxController : public Timer, public DeletedAtShutdown, private AudioPassth
 {
 public:
     static constexpr int NUM_SPECTRUM_BANDS = 10;
-	static constexpr int DEFAULT_NUM_EQ_BANDS = 10;
+	static constexpr int DEFAULT_NUM_EQ_BANDS = 31;
 	static constexpr float DEFAULT_NORMALIZATION = 0.0f;
 	static constexpr float DEFAULT_VOLUME_LEVELING = 0.0f;
 	static constexpr float DEFAULT_BALANCE = 0.0f;
