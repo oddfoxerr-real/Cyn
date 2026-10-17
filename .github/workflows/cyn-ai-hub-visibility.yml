@@ -5,6 +5,9 @@ on:
     paths:
       - "ai-hub/community/**"
       - "fxsound/Source/GUI/CynAiHubDialog.h"
+      - "fxsound/Source/GUI/CynAiHubCataloguePolicy.h"
+      - "tests/cyn_ai_hub_catalogue_policy_test.cpp"
+      - ".github/ISSUE_TEMPLATE/publish-ai.yml"
       - "scripts/test_ai_hub.mjs"
       - ".github/workflows/cyn-ai-hub-visibility.yml"
   workflow_dispatch:
@@ -24,3 +27,7 @@ jobs:
           node-version: "22"
       - name: Run AI Hub regression tests
         run: node scripts/test_ai_hub.mjs
+      - name: Compile and execute real URL-validation code used in CYN
+        run: |
+          g++ -O2 -Wall -Wextra -Werror -std=c++17 tests/cyn_ai_hub_catalogue_policy_test.cpp -o /tmp/cyn-ai-hub-policy
+          /tmp/cyn-ai-hub-policy
