@@ -681,9 +681,9 @@ void FxProView::updateDjTouch(double now)
     const int n=juce::jmin(39,controller.getNumEqBands());
     for(int i=0;i<5;++i) {
         const auto value=controller.getAppliedEffectValue(
-            static_cast<FxController::EffectType>(i))*10.0f;
+            static_cast<FxEffects::EffectType>(i))*10.0f;
         const auto preset=controller.getEffectValue(
-            static_cast<FxController::EffectType>(i))*10.0f;
+            static_cast<FxEffects::EffectType>(i))*10.0f;
         if(!std::isfinite(value) || !std::isfinite(preset))continue;
         const float movement=std::abs(value-dj_touch_last_effect_[(size_t)i]);
         dj_touch_last_effect_[(size_t)i]=value;
