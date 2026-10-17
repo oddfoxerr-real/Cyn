@@ -98,6 +98,8 @@ private:
     TextButton settings_ { "Settings" };
     TextButton refresh_ { "Refresh devices" };
     ToggleButton smart_toggle_ { "Smart listening" }, pin_toggle_ { "Keep my selected output" };
+    ToggleButton preset_cycling_ { "Auto preset cycling" };
+    Label preset_cycling_status_;
     Label live_status_, smart_status_;
     Slider sensitivity_ { Slider::LinearHorizontal, Slider::TextBoxRight };
     Slider headroom_cap_ { Slider::LinearHorizontal, Slider::TextBoxRight };
