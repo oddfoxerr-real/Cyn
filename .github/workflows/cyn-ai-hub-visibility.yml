@@ -1,0 +1,26 @@
+name: Cyn AI Hub Research Listing Regression
+
+on:
+  pull_request:
+    paths:
+      - "ai-hub/community/**"
+      - "fxsound/Source/GUI/CynAiHubDialog.h"
+      - "scripts/test_ai_hub.mjs"
+      - ".github/workflows/cyn-ai-hub-visibility.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate actual native APEX listing and UI contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run AI Hub regression tests
+        run: node scripts/test_ai_hub.mjs
