@@ -289,6 +289,10 @@ void FxController::initConfig(const String& commandline)
     const auto saved_value = settings_.getString("ember_smart_sensitivity");
     const auto saved_sensitivity = saved_value.isEmpty() ? 50.0f : saved_value.getFloatValue();
     smart_sensitivity_ = std::isfinite(saved_sensitivity) ? jlimit(0.0f, 100.0f, saved_sensitivity) : 50.0f;
+    const auto saved_headroom=settings_.getString("cyn_music_headroom_cap");
+    const float headroom_value=saved_headroom.isEmpty()?50.0f:saved_headroom.getFloatValue();
+    smart_headroom_cap_=std::isfinite(headroom_value)
+        ? jlimit(0.0f,100.0f,headroom_value):50.0f;
 	auto arg_list = ArgumentList(File::getSpecialLocation(File::SpecialLocationType::invokedExecutableFile).getFileName(), commandline);
     auto requested_theme=arg_list.getValueForOption("--theme").unquoted();
     for(int i=0;i<(int)FxThemeMode::NumModes;++i)
@@ -716,6 +720,7 @@ void FxController::printStatus()
     auto* smart = new DynamicObject();
     smart->setProperty("enabled", smart_enabled_);
     smart->setProperty("sensitivity", smart_sensitivity_);
+    smart->setProperty("headroom_cap",smart_headroom_cap_);
     smart->setProperty("summary", getSmartSummary());
     smart->setProperty("model", "local 11-12-5 neural preference model");
     smart->setProperty("learning", getLearningStatus());
@@ -3303,6 +3308,12 @@ void FxController::setSmartSensitivity(float percent)
     if(percent!=smart_sensitivity_) restoreSmartBaseline();
     smart_sensitivity_=percent; settings_.setDouble("ember_smart_sensitivity",percent);
 }
+void FxController::setSmartHeadroomCap(float percent)
+{
+    if(!std::isfinite(percent)) return;
+    smart_headroom_cap_=jlimit(0.0f,100.0f,percent);
+    settings_.setDouble("cyn_music_headroom_cap",smart_headroom_cap_);
+}
 void FxController::updateSmartListening()
 {
     const auto input=dfx_dsp_.getInputAudioFeatures();
@@ -3324,6 +3335,15 @@ void FxController::updateSmartListening()
     const auto predictions=model.predict(CynLevelInvariant::forRecognition(input));
     const auto& sceneHead=movie?movie_scene_preferences_:music_scene_preferences_;
     CynMixDecision decision=CynFlagshipMixer::decide(scene,input,movie);
+    if(!movie) {
+        // Relative musical identity drives the model; measured original
+        // input peak independently limits the gain permissions.
+        const float crest=std::exp(jlimit(0.0f,3.5f,input.values[8]));
+        const float rawPeak=(std::isfinite(input.rms)&&std::isfinite(crest))
+            ? jmax(0.0f,input.rms)*crest : 10.0f;
+        decision.headroom=CynSmartRange::headroomGate(
+            decision.headroom,rawPeak,smart_headroom_cap_,false);
+    }
     if(!movie && listening && yamnetLive && smart_sensitivity_>0.0f) {
         // Read real pre-effect RMS on the existing 100ms control timer.
         const auto arc=fresh
@@ -3355,6 +3375,8 @@ void FxController::updateSmartListening()
             else if(movie && e==0) desired=0.58f;
         }
         desired=jlimit(0.0f,1.0f,desired);
+        if(!movie && listening)
+            desired=CynSmartRange::expressiveScore(desired,smart_sensitivity_,false);
         smart_scores_[e]+=(desired-smart_scores_[e])*
             CynSmartRange::scoreFollower(smart_sensitivity_,desired>smart_scores_[e],movie);
         // Below 55%, retain the old restrained DSP mix. As sensitivity moves
