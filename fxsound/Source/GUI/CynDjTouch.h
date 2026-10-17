@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #pragma once
 #include <JuceHeader.h>
+#include "FxTheme.h"
 #include <cmath>
 
 namespace CynDjTouch {
