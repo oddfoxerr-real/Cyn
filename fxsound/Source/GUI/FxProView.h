@@ -118,7 +118,7 @@ private:
     int dj_touch_style_=0;
     juce::Image dj_touch_image_;
     juce::Time dj_touch_image_stamp_;
-    juce::Point<float> dj_touch_pos_ {365.0f,340.0f};
+    juce::Point<float> dj_touch_pos_ {365.0f,340.0f},dj_touch_target_ {365.0f,340.0f};
     float dj_touch_opacity_=0.0f;
     double dj_touch_last_activity_=0.0;
     bool dj_touch_seeded_=false;
