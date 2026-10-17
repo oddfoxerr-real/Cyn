@@ -13,7 +13,9 @@ for(const entry of catalogue.profiles){
   if(entry.kind==="research"){
     assert.equal(entry.category,"research");
     assert.equal(entry.file,undefined,"Research-only model cannot masquerade as .cynai");
-    assert(entry.url.startsWith("https://github.com/oddfoxerr-real/Cyn/releases/tag/cyn-apex6m-"));
+    assert(entry.url.startsWith("https://github.com/oddfoxerr-real/Cyn/releases/tag/cyn-apex6m-") ||
+           entry.url === "https://github.com/oddfoxerr-real/Cyn/releases/tag/apex-6m-v1.0.0",
+           "Only official APEX releases are admissible");
     assert.match(entry.description,/not compatible|not.*importer/i);
     continue;
   }
@@ -252,6 +254,7 @@ const singleEscapedNewline = String.fromCharCode(92, 110);
 const doubleEscapedNewline = String.fromCharCode(92, 92, 110);
 assert(selectionBody.includes(singleEscapedNewline) && !selectionBody.includes(doubleEscapedNewline),
   "Research details render literal backslash-n sequences instead of real line breaks");
-assert(researchListings.some(p => p.id === "cyn-apex6m-flowsense"),
+assert(researchListings.some(p => p.id === "cyn-apex6m-flowsense" &&
+   p.url === "https://github.com/oddfoxerr-real/Cyn/releases/tag/apex-6m-v1.0.0" && p.issue === 32),
   "APEX-6M is absent from refreshable catalogue");
 console.log("PASS: APEX research listing admitted by native validator and profile newlines render correctly");
