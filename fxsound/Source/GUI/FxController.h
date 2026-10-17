@@ -111,6 +111,8 @@ public:
     void setSmartListening(bool enabled);
     void setSmartSensitivity(float percent);
     float getSmartSensitivity() const { return smart_sensitivity_; }
+    void setSmartHeadroomCap(float percent);
+    float getSmartHeadroomCap() const { return smart_headroom_cap_; }
     bool isSmartListening() const { return smart_enabled_; }
     // Separate Music AI and Movie / TV AI models, labels and settings.
     int getSmartListeningMode() const { return smart_mode_; }
@@ -376,6 +378,7 @@ private:
     String smart_learning_message_;
     bool smart_enabled_ = false;
     float smart_sensitivity_ = 50.0f;
+    float smart_headroom_cap_ = 50.0f; // soft AI authority, hard peak gate remains independent
     float smart_bass_ = 0, smart_clarity_ = 0, smart_leveling_ = 0;
 	CriticalSection lock_;
 	CriticalSection save_lock_;

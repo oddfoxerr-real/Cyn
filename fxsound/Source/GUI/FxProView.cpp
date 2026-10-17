@@ -16,7 +16,7 @@ FxProView::FxProView() : tool_tip_(this)
     for (auto* component : std::initializer_list<Component*> {
         &audio_controls_, &equalizer_, &visualizer_, &sound_nav_, &smart_nav_,
         &devices_nav_, &ai_hub_nav_, &home_, &smart_rail_, &devices_rail_, &settings_,
-        &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &learning_timeline_, &neural_activity_, &learning_effect_, &listening_mode_, &ai_profile_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
+        &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &headroom_cap_, &learning_timeline_, &neural_activity_, &learning_effect_, &listening_mode_, &ai_profile_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
         addAndMakeVisible(component);
     for(auto* c:std::initializer_list<Component*> {&misc_nav_,&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) addAndMakeVisible(c);
     misc_nav_.onClick=[this]{selectPage(3);};
@@ -52,6 +52,14 @@ FxProView::FxProView() : tool_tip_(this)
     sensitivity_.setTooltip("0% keeps your preset. 50% uses gentle AI adjustments. At 100%, Music AI can use the full 0–10 effect range when the song calls for it; peak protection remains active.");
     sensitivity_.onValueChange = [this] {
         FxController::getInstance().setSmartSensitivity((float)sensitivity_.getValue());
+    };
+    headroom_cap_.setName("Headroom cap");
+    headroom_cap_.setRange(0,100,1);
+    headroom_cap_.setTextValueSuffix("%");
+    headroom_cap_.setTextBoxStyle(Slider::TextBoxRight,false,58,26);
+    headroom_cap_.setTooltip("0% conservative headroom, 50% original limit, 100% maximum permitted AI freedom. High source peaks still restrict extra digital gain; not a true-peak limiter.");
+    headroom_cap_.onValueChange=[this] {
+        FxController::getInstance().setSmartHeadroomCap((float)headroom_cap_.getValue());
     };
     listening_mode_.addItemList({"Music AI", "Movie & TV AI"},1);
     listening_mode_.setSelectedId(1,dontSendNotification);
@@ -210,6 +218,7 @@ void FxProView::selectPage(int page)
     pin_toggle_.setVisible(page == 2);
     refresh_.setVisible(page == 2);
     sensitivity_.setVisible(page == 1);
+    headroom_cap_.setVisible(page == 1);
     const bool neuralCore=FxTheme::getThemeMode()==FxThemeMode::NeuralCore;
     neural_activity_.setVisible(page==1);
     neural_activity_.setAnimationEnabled(page==1);
@@ -361,6 +370,9 @@ void FxProView::timerCallback()
                           dontSendNotification);
     if (!sensitivity_.isMouseButtonDown())
         sensitivity_.setValue(controller.getSmartSensitivity(), dontSendNotification);
+    headroom_cap_.setEnabled(controller.getSmartListeningMode()==0);
+    if (!headroom_cap_.isMouseButtonDown())
+        headroom_cap_.setValue(controller.getSmartHeadroomCap(),dontSendNotification);
     auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
     smart_status_.setFont(theme.getNormalFont().withHeight(page_ == 1 ? 11.5f : 13.0f));
     smart_status_.setColour(Label::textColourId, Colour(FXCOLOR(HintText)).withAlpha(1.0f));
@@ -391,7 +403,8 @@ void FxProView::resized()
     ai_profile_.setBounds(540,386,425,33);
     more_.setBounds(490,433,136,36); less_.setBounds(638,433,136,36);
     train_.setBounds(790,433,210,36); resume_.setBounds(1012,433,170,36);
-    sensitivity_.setBounds(444,491,738,28);
+    sensitivity_.setBounds(403,491,323,28);
+    headroom_cap_.setBounds(879,491,303,28);
     learning_status_.setBounds(280, 542, 390, 42);
     export_ai_.setBounds(685, 545, 96, 35);
     import_ai_.setBounds(791, 545, 96, 35);
@@ -555,7 +568,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.43", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.44", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
         ? "Choose a listening mode and the neural model that powers it." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
@@ -569,7 +582,8 @@ void FxProView::paint(Graphics& g)
         text("ACTIVE AI MODEL",540,369,425,13,10,true);
         text("Swap models anytime.",977,386,205,28,12,true);
         text("AI PROFILES", 688, 521, 310, 18, 10, true);
-        text("Sensitivity",280,491,150,28,14);
+        text("Sensitivity",280,491,120,28,14);
+        text("Headroom Cap",747,491,134,28,13);
 
     }
     else if(page_==3)

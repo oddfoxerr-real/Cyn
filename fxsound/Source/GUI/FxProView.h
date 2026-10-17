@@ -100,6 +100,7 @@ private:
     ToggleButton smart_toggle_ { "Smart listening" }, pin_toggle_ { "Keep my selected output" };
     Label live_status_, smart_status_;
     Slider sensitivity_ { Slider::LinearHorizontal, Slider::TextBoxRight };
+    Slider headroom_cap_ { Slider::LinearHorizontal, Slider::TextBoxRight };
     AudioLearningTimeline learning_timeline_;
     CynNeuralActivity neural_activity_;
     // Message-thread copies only: never fetch inference inside paint or DSP.

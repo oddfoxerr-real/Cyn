@@ -135,6 +135,15 @@ jobs:
           cyn-sensitivity-test.exe
           if errorlevel 1 exit /b 1
 
+      - name: Validate Music AI Headroom Cap and expressive response
+        if: steps.inspect.outputs.state != 'published'
+        shell: cmd
+        run: |
+          cl /nologo /O2 /EHsc /std:c++17 /I fxsound\Source\GUI tests\cyn_headroom_cap_test.cpp /Fe:cyn-headroom-cap-test.exe
+          if errorlevel 1 exit /b 1
+          cyn-headroom-cap-test.exe
+          if errorlevel 1 exit /b 1
+
       - name: Compile Cyn native x64
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh
