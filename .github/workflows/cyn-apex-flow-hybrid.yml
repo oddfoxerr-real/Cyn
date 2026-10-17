@@ -1,0 +1,50 @@
+name: CYN APEX Flow Hybrid Native Preview
+
+on:
+  pull_request:
+    paths:
+      - "fxsound/Source/GUI/CynApexFlowHybrid.h"
+      - "fxsound/Source/GUI/FxController.*"
+      - "ai-hub/community/**"
+      - "tests/cyn_apex_flow_hybrid_test.cpp"
+      - "scripts/test_apex_flow_hybrid.mjs"
+      - ".github/workflows/cyn-apex-flow-hybrid.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  music-flow:
+    name: Real native DSP-flow regression tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Compile and execute native music transitions
+        run: |
+          g++ -O2 -Wall -Wextra -Werror -std=c++17 tests/cyn_apex_flow_hybrid_test.cpp -o /tmp/cyn-apex-flow-test
+          /tmp/cyn-apex-flow-test
+      - name: Test actual UI model selection and trained-weight provenance
+        run: |
+          node scripts/test_apex_flow_hybrid.mjs
+          node scripts/test_version_controls.mjs
+          node scripts/test_ai_hub.mjs
+  native-windows:
+    name: Compile real CYN Windows application (not just mocked model)
+    runs-on: windows-2022
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile CYN x64
+        shell: pwsh
+        run: ./BUILD_CYN.ps1
+      - name: Verify APEX is actually bundled
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'dist/Cyn/Cyn.exe')) { throw 'Cyn.exe missing' }
+          if (!(Test-Path 'dist/Cyn/CynAiProfiles/cyn-apex-flow-hybrid.cynai.json')) { throw 'Missing active hybrid profile' }
+          if (!(Test-Path 'dist/Cyn/CynAiProfiles/index.json')) { throw 'Missing bundled AI Hub index' }
