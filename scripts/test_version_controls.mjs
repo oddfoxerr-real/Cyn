@@ -27,7 +27,7 @@ console.log("PASS: installed version UI, manual update, auto-update toggle and m
 const buildInstaller=file("BUILD_INSTALLER.ps1");
 const outputNameMatch=installer.match(/^OutputBaseFilename=([A-Za-z0-9._-]+)\s*$/m);
 assert(outputNameMatch, "Inno Setup manifest must declare an output filename");
-assert.equal(outputNameMatch[1], "Cyn-Setup-2.0.46-x64");
+assert.equal(outputNameMatch[1], "Cyn-Setup-2.0.47-x64");
 assert(buildInstaller.includes('^OutputBaseFilename=') && buildInstaller.includes('Groups[1].Value'),
   "Installer build must compute the actual executable name from Cyn.iss");
 assert(!/\$installer\s*=\s*Join-Path\s+\$PSScriptRoot\s+'dist\\Cyn-Setup-\d/.test(buildInstaller),
