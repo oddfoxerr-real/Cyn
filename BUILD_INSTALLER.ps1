@@ -34,12 +34,8 @@ foreach ($file in $manifest) {
 & $CompilerPath ('/DPayloadDir=' + $payload) ('/DOutputDir=' + (Join-Path $PSScriptRoot 'dist')) (Join-Path $PSScriptRoot 'Installer\Cyn\Cyn.iss')
 if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed: $LASTEXITCODE" }
 $innoScript = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Installer\Cyn\Cyn.iss') -Raw
-$outputName = [regex]::Match($innoScript, '(?m)^OutputBaseFilename=([A-Za-z0-9._-]+)\s*
-$hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
-[IO.File]::WriteAllText("$installer.sha256", $hash + [Environment]::NewLine, (New-Object Text.UTF8Encoding($false)))
-Write-Host "SHA-256: $hash"
-Write-Host "Installer ready: $installer"
-)
+# Inno Setup decides the output name. Do not derive it from an older release.
+$outputName = [regex]::Match($innoScript, '(?m)^OutputBaseFilename=([A-Za-z0-9._-]+)[ \t]*\r?$')
 if (-not $outputName.Success) { throw 'Installer output filename is missing or invalid in Cyn.iss.' }
 $installer = Join-Path (Join-Path $PSScriptRoot 'dist') ($outputName.Groups[1].Value + '.exe')
 if (!(Test-Path -LiteralPath $installer)) { throw "Inno Setup did not produce the expected installer: $installer" }
