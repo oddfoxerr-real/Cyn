@@ -1,0 +1,61 @@
+name: Cyn AI Hub APEX Research Preview
+
+on:
+  pull_request:
+    paths:
+      - "ai-hub/community/index.json"
+      - "ai-hub/README.md"
+      - "fxsound/Source/GUI/CynAiHubDialog.h"
+      - "scripts/test_ai_hub.mjs"
+      - ".github/workflows/cyn-aihub-apex-preview.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  native-ai-hub-contract:
+    name: Verify importer boundaries and official experimental link
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node scripts/test_ai_hub.mjs
+      - name: Assert APEX release exists and links to actual downloadable assets
+        run: |
+          python - <<'PY'
+          import json,urllib.request
+          with open("ai-hub/community/index.json") as f:
+            data=json.load(f)
+          record=next((r for r in data["profiles"] if r.get("id")=="cyn-apex6m-flowsense"),None)
+          assert record and record["kind"]=="research" and "file" not in record
+          url="https://api.github.com/repos/oddfoxerr-real/Cyn/releases/tags/cyn-apex6m-flowsense-research-20261017"
+          req=urllib.request.Request(url,headers={"User-Agent":"Cyn-AI-Hub-CI","Accept":"application/vnd.github+json"})
+          with urllib.request.urlopen(req,timeout=15) as response:
+            release=json.load(response)
+          assert release["prerelease"] and not release["draft"]
+          names={a["name"] for a in release["assets"]}
+          assert "CYN-APEX-6M-FlowSense-Research.zip" in names
+          assert "SHA256.json" in names
+          print("Verified downloadable experimental prerelease and research-only importer boundary.")
+          PY
+
+  native-windows-compile:
+    name: Compile actual CYN JUCE Windows application
+    runs-on: windows-2022
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build CYN FxSound x64 code
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          if (!(Test-Path $vswhere)) { throw 'Visual Studio 2022 missing' }
+          $root = & $vswhere -latest -version '[17.0,18.0)' -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1
+          if (!$root) { throw 'MSVC x64 tools missing' }
+          $msbuild = Join-Path $root 'MSBuild\Current\Bin\MSBuild.exe'
+          & $msbuild 'fxsound\Project\FxSound.sln' /m:2 /nr:false /t:Build /p:Configuration=Release /p:Platform=x64 /nologo
+          if ($LASTEXITCODE -ne 0) { throw "CYN native compilation failed with exit code $LASTEXITCODE" }
