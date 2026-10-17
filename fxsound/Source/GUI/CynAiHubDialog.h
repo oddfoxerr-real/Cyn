@@ -152,10 +152,10 @@ private:
         {
             if (p->researchOnly)
             {
-                description_.setText ("RESEARCH PREVIEW  /  " + p->name + "\\n\\n"
-                    + p->description + "\\n\\n"
-                    + "Creator: " + p->author + "\\n"
-                    + "Category: " + p->category + "\\n\\n"
+                description_.setText ("RESEARCH PREVIEW  /  " + p->name + "\n\n"
+                    + p->description + "\n\n"
+                    + "Creator: " + p->author + "\n"
+                    + "Category: " + p->category + "\n\n"
                     + "This is a 6.3-million-parameter OFFLINE research model, NOT a Cyn "
                       "smart-listening profile. It cannot activate in this Cyn version. "
                       "Use View research files to open its separate GitHub prerelease. "
@@ -165,14 +165,14 @@ private:
             }
             else
             {
-                description_.setText ("PROFILE  /  " + p->name + "\\n\\n"
-                    + p->description + "\\n\\n"
-                    + "Creator: " + p->author + "\\n"
-                    + "Category: " + p->category + "\\n\\n"
+                description_.setText ("PROFILE  /  " + p->name + "\n\n"
+                    + p->description + "\n\n"
+                    + "Creator: " + p->author + "\n"
+                    + "Category: " + p->category + "\n\n"
                     + "Activate it in the current Music or Movie mode. You can then "
-                      "switch models in Smart Listening without reimporting.\\n\\n"
+                      "switch models in Smart Listening without reimporting.\n\n"
                     + (FxController::getInstance().getActiveAIProfileId()
-                        == "bundled:" + p->filename ? "ACTIVE IN THIS MODE\\n\\n" : "")
+                        == "bundled:" + p->filename ? "ACTIVE IN THIS MODE\n\n" : "")
                     + "Community profiles are user-submitted; listening preferences differ.",
                     juce::dontSendNotification);
                 import_.setButtonText ("Activate selected AI");
@@ -217,7 +217,7 @@ private:
             // Only our official GitHub experimental release URLs are acceptable.
             const bool trustedResearchUrl =
                 p.researchUrl.startsWith ("https://github.com/oddfoxerr-real/Cyn/releases/tag/cyn-apex6m-")
-                && ! p.researchUrl.containsAnyOf ("?# \\t\\r\\n")
+                && ! p.researchUrl.containsAnyOf ("?# \t\r\n")
                 && p.researchUrl.length() <= 240;
             if (p.name.isNotEmpty()
                 && (p.researchOnly ? trustedResearchUrl : isSafeFilename (p.filename)))
