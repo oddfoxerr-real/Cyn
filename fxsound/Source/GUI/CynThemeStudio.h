@@ -5,20 +5,32 @@
 #include "FxController.h"
 #include "FxTheme.h"
 #include "CynThemeAtmosphere.h"
+#include "CynDjTouch.h"
 #include <cmath>
 
 class CynThemeStudioContent final : public juce::Component, private juce::Timer
 {
 public:
     CynThemeStudioContent()
-        : previous_("<"), next_(">"), apply_("Apply theme"), cancel_("Close")
+        : previous_("<"), next_(">"), apply_("Apply studio"), cancel_("Close"), importTouch_("Choose PNG...")
     {
-        setSize(900, 555);
+        setSize(900, 700);
         setOpaque(true);
         setWantsKeyboardFocus(true);
         setFocusContainerType(juce::Component::FocusContainerType::focusContainer);
         selected_ = (int)FxTheme::getThemeMode();
         source_ = selected_;
+        auto& settings=FxController::getInstance().getSettings();
+        touchStyle_=juce::jlimit(0,5,settings.getInt("cyn_dj_touch_style",0));
+        customTouch_=CynDjTouch::readCustomImage();
+        for(int i=0;i<=5;++i) touchPicker_.addItem(CynDjTouch::name(i),i+1);
+        touchPicker_.setSelectedId(touchStyle_+1,juce::dontSendNotification);
+        addAndMakeVisible(touchPicker_);
+        addAndMakeVisible(importTouch_);
+        touchPicker_.setTooltip("Choose how AI adjustments touch real controls. None uses no extra drawing.");
+        importTouch_.setTooltip("Choose transparent PNG (max 2 MB and 1024 x 1024). Stored locally.");
+        touchPicker_.onChange=[this] {touchStyle_=touchPicker_.getSelectedId()-1;repaint();};
+        importTouch_.onClick=[this] {chooseCustomTouch();};
 
         for (auto* control : std::initializer_list<juce::Button*> {
                 &previous_, &next_, &apply_, &cancel_ })
@@ -38,7 +50,24 @@ public:
         previous_.onClick = [this] { selectRelative(-1); };
         next_.onClick = [this] { selectRelative(1); };
         apply_.onClick = [this] {
-            FxController::getInstance().setThemeMode(static_cast<FxThemeMode>(selected_));
+            if(touchStyle_==CynDjTouch::CustomPng && !customTouch_.isValid()) {
+                juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                    "Custom PNG needed","Choose a PNG or select another AI Touch style.");
+                return;
+            }
+            if(customChoice_.existsAsFile()) {
+                const auto target=CynDjTouch::customImageFile();
+                if(!target.getParentDirectory().createDirectory().wasOk() ||
+                   (customChoice_!=target && (!target.deleteFile() && target.existsAsFile() ||
+                                              !customChoice_.copyFileTo(target)))) {
+                    juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                        "Couldn't save image","Check local storage permissions.");
+                    return;
+                }
+            }
+            auto& controller=FxController::getInstance();
+            controller.getSettings().setInt("cyn_dj_touch_style",touchStyle_);
+            controller.setThemeMode(static_cast<FxThemeMode>(selected_));
             close();
         };
         cancel_.onClick = [this] { close(); };
@@ -55,7 +84,9 @@ public:
         previous_.setBounds(25,225,52,64);
         next_.setBounds(w-77,225,52,64);
         cancel_.setBounds(w-255,h-58,105,36);
-        apply_.setBounds(w-140,h-58,115,36);
+        apply_.setBounds(w-148,h-58,123,36);
+        touchPicker_.setBounds(250,555,247,32);
+        importTouch_.setBounds(515,555,142,32);
         preview_ = juce::Rectangle<float>(92.0f,116.0f,(float)w-184.0f,315.0f);
         repaint();
     }
@@ -134,6 +165,18 @@ public:
                    "PREVIEW ONLY  /  APPLY TO SAVE THIS THEME",
                    92,474,getWidth()-184,20,Justification::centred);
 
+        // Independent AI gesture selector; no sound processing is changed here.
+        g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(.65f));
+        g.drawHorizontalLine(540,25.0f,(float)getWidth()-25.0f);
+        g.setColour(text);
+        g.setFont(Font(14.0f,Font::bold));
+        g.drawText("AI TOUCH / DJ HAND",35,555,210,25,Justification::centredLeft);
+        g.setColour(muted);
+        g.setFont(Font(11.0f));
+        g.drawText("Reacts only to measured live EQ and effect changes.",35,603,590,24,
+                   Justification::centredLeft);
+        CynDjTouch::paint(g,touchStyle_,{734.0f,569.0f},0.75f,customTouch_,
+                          (float)(Time::getMillisecondCounterHiRes()*0.001));
         // Progress markers are deliberately subtle and scale to all 20 presets.
         const float dotW=9.5f,space=19.0f;
         const float start=(getWidth()-((total-1)*space+dotW))*.5f;
@@ -187,6 +230,27 @@ private:
         g.drawRoundedRectangle(area.reduced(.8f),16,1.2f);
     }
 
+    void chooseCustomTouch()
+    {
+        juce::FileChooser chooser("Choose an AI Touch PNG", juce::File::getSpecialLocation(juce::File::userPicturesDirectory), "*.png");
+        if(!chooser.browseForFileToOpen()) return;
+        const auto file=chooser.getResult();
+        if(!file.hasFileExtension(".png") || file.getSize()>2*1024*1024) {
+            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,"PNG too large","Use a PNG of 2 MB or less.");
+            return;
+        }
+        const auto image=juce::ImageFileFormat::loadFrom(file);
+        if(!image.isValid() || image.getWidth()>1024 || image.getHeight()>1024) {
+            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,"Invalid PNG","Use an image up to 1024 x 1024 pixels.");
+            return;
+        }
+        customChoice_=file;
+        customTouch_=image;
+        touchStyle_=CynDjTouch::CustomPng;
+        touchPicker_.setSelectedId(touchStyle_+1,juce::dontSendNotification);
+        repaint();
+    }
+
     void selectRelative(int direction)
     {
         if(direction==0)return;
@@ -217,7 +281,11 @@ private:
             dialog->exitModalState(0);
     }
 
-    juce::TextButton previous_,next_,apply_,cancel_;
+    juce::TextButton previous_,next_,apply_,cancel_,importTouch_;
+    juce::ComboBox touchPicker_;
+    juce::File customChoice_;
+    juce::Image customTouch_;
+    int touchStyle_=0;
     juce::Rectangle<float> preview_;
     int selected_=0,source_=0,slideDirection_=1;
     bool transitioning_=false;
