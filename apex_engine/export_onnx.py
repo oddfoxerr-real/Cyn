@@ -29,10 +29,10 @@ def main():
         def unique_ending(suffix):
             matches=[name for name in z.namelist() if name.endswith(suffix)]
             if len(matches)!=1:
-                raise RuntimeError(f"APEX archive must contain exactly one {suffix}; found {matches}")
+                raise RuntimeError(f"APEX archive must contain exactly one {suffix}; found {matches}; archive names: {z.namelist()[:90]}")
             return matches[0]
         source=z.read(unique_ending("apex/model.py"))
-        checkpoint_bytes=z.read(unique_ending("weights/apex6m-225.pt"))
+        checkpoint_bytes=z.read(unique_ending(".pt"))
     # Load ONLY audited plain model source from pinned ZIP into isolated namespace.
     namespace={"__name__":"apex_checkpoint_model"}
     exec(compile(source, "apex/model.py", "exec"), namespace)
