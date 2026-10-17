@@ -65,13 +65,13 @@ int PT_DECLSPEC GraphicEqNew( PT_HANDLE **hpp_GraphicEq, int i_num_bands, int i_
 	cast_handle->num_bands = i_num_bands;
 
 	// Reserve capacity for selectable 31 / 35 / 39-band modes once, not on live audio.
-\tif ( sosNew( (PT_HANDLE **)&(cast_handle->sos_hdl), NULL, GRAPHIC_EQ_MAX_NUM_BANDS) != OKAY )
+	if ( sosNew( (PT_HANDLE **)&(cast_handle->sos_hdl), NULL, GRAPHIC_EQ_MAX_NUM_BANDS) != OKAY )
 		return(NOT_OKAY);
 
 	if (sosSetNumActiveSections(cast_handle->sos_hdl, i_num_bands) != OKAY)
-\t\treturn(NOT_OKAY);
+		return(NOT_OKAY);
 
-\tif (GraphicEq_InitSections(*hpp_GraphicEq) != OKAY)
+	if (GraphicEq_InitSections(*hpp_GraphicEq) != OKAY)
 		return(NOT_OKAY);
 
 	return(OKAY);
