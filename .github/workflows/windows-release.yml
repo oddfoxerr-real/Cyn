@@ -126,6 +126,15 @@ jobs:
           volume-kick-test.exe
           if errorlevel 1 exit /b 1
 
+      - name: Validate full-range Music AI sensitivity safety
+        if: steps.inspect.outputs.state != 'published'
+        shell: cmd
+        run: |
+          cl /nologo /O2 /EHsc /std:c++17 /I fxsound\Source\GUI tests\cyn_sensitivity_range_test.cpp /Fe:cyn-sensitivity-test.exe
+          if errorlevel 1 exit /b 1
+          cyn-sensitivity-test.exe
+          if errorlevel 1 exit /b 1
+
       - name: Compile Cyn native x64
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh
