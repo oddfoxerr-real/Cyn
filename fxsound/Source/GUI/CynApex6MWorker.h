@@ -110,11 +110,11 @@ private:
                 const float m=mask[index],a=magnitudes[index];
                 if(!std::isfinite(m) || m<0 || m>2 ||
                    !std::isfinite(a)) return {};
-                const float w=std::min(50.0f,a);
+                const float w=(std::min)(50.0f,a);
                 total+=w*m;mass+=w;
                 for(int b=0;b<8;++b) {
                     const float width=std::abs(std::log(
-                        std::max(freq,1.0f)/centers[b]));
+                        (std::max)(freq,1.0f)/centers[b]));
                     if(width<0.65f) {
                         const float cw=1.0f-width/0.65f;
                         sum[(size_t)b]+=cw*w*m;weight[(size_t)b]+=cw*w;
@@ -127,7 +127,7 @@ private:
         for(int b=0;b<8;++b) {
             const double value=weight[(size_t)b]>0.01 ?
                 sum[(size_t)b]/weight[(size_t)b]:avg;
-            const double ratio=std::clamp(value/std::max(avg,0.01),0.2,5.0);
+            const double ratio=std::clamp(value/(std::max)(avg,0.01),0.2,5.0);
             result[(size_t)b]=(float)std::clamp(
                 20.0*std::log10(ratio)*0.32,-1.35,1.15);
         }
