@@ -176,8 +176,8 @@ int DfxDspPrivate::getGraphicEqInfoFromVals(PT_HANDLE *hp_vals)
 		int nBands;
 		GraphicEqGetNumBands(hp_graphicEq, &nBands);
 		// ---------------------------------------------------------- Dimension arrays more than max bands number (31)
-		realtype r_boost_cut_original[35];
-		realtype r_boost_cut_interpolated[35];
+		realtype r_boost_cut_original[GRAPHIC_EQ_MAX_NUM_BANDS+1] = {};
+		realtype r_boost_cut_interpolated[GRAPHIC_EQ_MAX_NUM_BANDS+1] = {};
 		// ---------------------------------------------------------- Read values into the original array
 		for (int i_band_num = 1; i_band_num <= nBands; i_band_num++)
 		{
