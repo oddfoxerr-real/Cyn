@@ -269,9 +269,9 @@
       "ordinal": 27,
       "id": "riffusion",
       "name": "Riffusion",
-      "source": "https://github.com/riffusion/riffusion",
+      "source": "https://github.com/iai-project/riffusion",
       "role": "generation",
-      "code_license": "review-required",
+      "code_license": "MIT",
       "weights_status": "separate-checkpoint-license-review-required",
       "enabled": false
     },
