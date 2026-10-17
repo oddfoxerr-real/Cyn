@@ -1,0 +1,25 @@
+{
+  "model": "CYN APEX-6M",
+  "parameters": 6307477,
+  "trained_steps": 225,
+  "training": "100 gradient steps AdamW from fixed seed; 125 resumed steps with optimizer reset",
+  "sampling_rate_hz": 48000,
+  "metric": "mean scale-invariant signal-to-distortion ratio in dB",
+  "dataset": "96 independently seeded synthetic bass, melody, percussion, harmonic and colored noise mixtures; not real songs",
+  "evaluation_seed": 910100,
+  "results": {
+    "unprocessed_si_sdr_db": 0.1389,
+    "classical_spectral_gate_si_sdr_db": 2.6255,
+    "apex_225_si_sdr_db": 5.71,
+    "improvement_vs_input_db": 5.5711,
+    "improvement_vs_gate_db": 3.0844,
+    "fraction_beating_gate": 0.75,
+    "cpu_inference_for_one_second_median_ms": 24.1666,
+    "cpu_inference_for_one_second_max_ms": 34.3641
+  },
+  "source": "local seeded PyTorch CPU benchmark, 2026-10-17",
+  "real_music_listening_validated": false,
+  "beats_moises_or_lalal": false,
+  "comparable_to_cyn_13h": false,
+  "artifact": "trained weights distributed separately from source branch"
+}
