@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "u_DfxDsp.h"
 #include "vals.h"
+#include "GraphicEq.h"
 #include "qnt.h"
 #include <algorithm>
 #include <cmath>
