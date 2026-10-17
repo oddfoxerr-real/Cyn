@@ -572,11 +572,9 @@ void FxEqualizerControl::selectEqualizerBands()
 
 	switch (num_eq_bands)
 	{
-	case 5:
-	case 10:
-	case 15:
-	case 20:
 	case 31:
+	case 35:
+	case 39:
 		equalizer_.setSelectedId(num_eq_bands, NotificationType::dontSendNotification);
 		break;
 
