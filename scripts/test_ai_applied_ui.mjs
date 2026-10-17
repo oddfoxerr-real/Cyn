@@ -8,6 +8,25 @@ const equalizer = read("fxsound/Source/GUI/FxEqualizer.cpp");
 const view = read("fxsound/Source/GUI/FxProView.cpp");
 const follower = read("fxsound/Source/GUI/CynDspUiFollow.h");
 const controllers = read("fxsound/Source/GUI/FxController.h");
+const cyclingPolicy=read("fxsound/Source/GUI/CynPresetCycler.h");
+const dspPreset=read("dsp/DfxDspPreset.cpp");
+assert(cyclingPolicy.includes("const CynAudioScene& scene") &&
+       cyclingPolicy.includes("stable_>=7") &&
+       cyclingPolicy.includes("lastSwitch_+1800"),"Cycling needs real music analysis and anti-flutter behavior");
+assert(dspPreset.includes("DfxDspPrivate::readPresetSnapshot(") &&
+       dspPreset.includes("valsGetGraphicEq(") &&
+       !dspPreset.slice(dspPreset.indexOf("bool DfxDspPrivate::readPresetSnapshot"),dspPreset.indexOf("int DfxDspPrivate::loadPreset(")).includes("loadPreset("),
+       "Preset snapshots must read real saved EQ without reloading live DSP");
+assert(controllers.includes("setSmartPresetCycling(bool enabled)") &&
+       controller.includes('settings_.setBool("cyn_auto_preset_cycling"') &&
+       controller.includes("cycling_policy_.update(") &&
+       controller.includes("cycling_effects_[(size_t)e]") &&
+       controller.includes("cycling_eq_[(size_t)b]"),
+       "Auto cycling must be persisted and control actual DSP effect/EQ baselines");
+assert(view.includes("preset_cycling_.onClick=") &&
+       view.includes("preset_cycling_.setBounds(280,520,225,24)") &&
+       view.includes("getSmartCyclingPreset()"),
+       "Smart Listening must contain a wired toggle and live preset status");
 const headroomPolicy=read("fxsound/Source/GUI/CynSmartRange.h");
 assert(headroomPolicy.includes("static float expressiveScore(") &&
        headroomPolicy.includes("static float headroomGate("),

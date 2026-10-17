@@ -85,6 +85,7 @@ public:
 	int processAudio(short int *si_input_samples, short int *si_output_samples, int i_num_sample_sets, int i_check_for_duplicate_buffers);
 	int setSignalFormat(int i_bps, int i_nch, int i_srate, int i_valid_bits);
 	int loadPreset(std::wstring preset_file_full_path);
+    bool readPresetSnapshot(std::wstring path,DfxPresetSnapshot& output);
 	int savePreset(std::wstring preset_name, std::wstring preset_file_full_path);
 	int exportPreset(std::wstring preset_source_file_full_path, std::wstring preset_name, std::wstring preset_export_path);
 	int resetEQ();

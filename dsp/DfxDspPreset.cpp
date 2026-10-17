@@ -17,7 +17,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "u_DfxDsp.h"
 #include "vals.h"
+#include "GraphicEq.h"
 #include "qnt.h"
+#include <algorithm>
+#include <cmath>
+#include <utility>
 #include "ptutil/dfxp/u_dfxp.h"
 
 /* Vals indexes */
@@ -55,6 +59,60 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 /*
 * Modeled after dfxg_LoadPreset() in dfxgPreset.cpp.
 */
+// Read preset values into a temporary snapshot without calling loadPreset()
+// or altering the active DSP. Called only on a UI timer when enabling cycling.
+bool DfxDspPrivate::readPresetSnapshot(std::wstring file,DfxPresetSnapshot& output)
+{
+    if(file.empty()) return false;
+    PT_HANDLE* vals=nullptr;
+    if(valsRead(&file[0],IS_FALSE,NULL,&vals)!=OKAY || vals==nullptr) return false;
+    DfxPresetSnapshot snap;
+    const int param[5]={
+        DFXG_VALS_FIDELITY_INDEX, DFXG_VALS_AMBIENCE_INDEX,
+        DFXG_VALS_SURROUND_INDEX, DFXG_VALS_DYNAMIC_BOOST_INDEX,
+        DFXG_VALS_BASS_BOOST_INDEX
+    };
+    const int flags[5]={
+        DFXG_VALS_APP_DEPEND_FIDELITY_INDEX,
+        DFXG_VALS_APP_DEPEND_AMBIENCE_INDEX,
+        DFXG_VALS_APP_DEPEND_SURROUND_INDEX,
+        DFXG_VALS_APP_DEPEND_DYNAMIC_BOOST_INDEX,
+        DFXG_VALS_APP_DEPEND_BASS_BOOST_INDEX
+    };
+    realtype version=0;
+    bool ok=valsGetFileVersion(vals,&version)==OKAY;
+    for(int i=0;ok && i<5;++i) {
+        if(i==4 && version<3.0) {snap.effects[4]=0.0f;continue;}
+        int midi=0,enabled=0;
+        realtype amount=0;
+        ok=valsGetMainParamValue(vals,param[i],&midi)==OKAY &&
+           valsGetAppDependentInt(vals,flags[i],&enabled)==OKAY &&
+           qntIToRCalc(midi_to_rval_qnt_handle_,midi,&amount)==OKAY;
+        if(ok) snap.effects[(size_t)i]=enabled ?
+             (float)(std::max)(0.0,(std::min)(10.0,(double)amount*10.0)):0.0f;
+    }
+    PT_HANDLE* graph=nullptr;
+    int eqOn=0;
+    if(ok) ok=valsGetGraphicEq(vals,&graph,&eqOn)==OKAY;
+    if(ok && graph && eqOn) {
+        int count=0;
+        ok=GraphicEqGetNumBands(graph,&count)==OKAY && count>0 && count<=32;
+        for(int i=1;ok && i<=count;++i) {
+            realtype freq=0,gain=0;
+            ok=GraphicEqGetBandCenterFrequency(graph,i,&freq)==OKAY &&
+               GraphicEqGetBandBoostCut(graph,i,&gain)==OKAY;
+            if(ok && std::isfinite((double)freq) && std::isfinite((double)gain) && freq>0) {
+                snap.eqFrequencies.push_back((float)freq);
+                snap.eqGains.push_back((float)(std::max)(-12.0,(std::min)(12.0,(double)gain)));
+            } else ok=false;
+        }
+    }
+    valsFreeUp(&vals);
+    if(!ok) return false;
+    output=std::move(snap);
+    return true;
+}
+
 int DfxDspPrivate::loadPreset(std::wstring preset_file_full_path)
 {
 	//	int exists;

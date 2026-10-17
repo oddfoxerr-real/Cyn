@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "FxModel.h"
 #include "PersonalAudioModel.h"
 #include "CynYamNetWorker.h"
+#include "CynPresetCycler.h"
 #include "CynDjWorker.h"
 #include "CynAudioRepair.h"
 #include "FxTheme.h"
@@ -109,6 +110,9 @@ public:
 
     CynDjWorker* dj() const {return dj_worker_.get();}
     void setSmartListening(bool enabled);
+    void setSmartPresetCycling(bool enabled);
+    bool isSmartPresetCycling() const {return smart_preset_cycling_;}
+    String getSmartCyclingPreset() const {return smart_cycling_preset_name_;}
     void setSmartSensitivity(float percent);
     float getSmartSensitivity() const { return smart_sensitivity_; }
     void setSmartHeadroomCap(float percent);
@@ -352,6 +356,7 @@ private:
 	DWORD session_id_;
 
     void updateSmartListening();
+    void rebuildPresetCyclingProfiles();
     void restoreSmartBaseline();
     void captureSmartBaseline();
     void saveManualPreset(const wchar_t* name, const wchar_t* directory);
@@ -376,6 +381,19 @@ private:
     bool smart_training_ = false;
     std::atomic<int> smart_training_epoch_ {0};
     String smart_learning_message_;
+    struct CyclingProfile {
+        String name;
+        std::array<float,5> effects {};
+        std::vector<float> eq;
+        CynPresetSignature signature;
+    };
+    std::vector<CyclingProfile> cycling_profiles_;
+    std::vector<CynPresetSignature> cycling_signatures_;
+    std::array<float,5> cycling_effects_ {};
+    std::vector<float> cycling_eq_;
+    CynPresetCycler cycling_policy_;
+    String smart_cycling_preset_name_ {"Manual"};
+    bool smart_preset_cycling_ = false, cycling_dirty_ = true;
     bool smart_enabled_ = false;
     float smart_sensitivity_ = 50.0f;
     float smart_headroom_cap_ = 50.0f; // soft AI authority, hard peak gate remains independent

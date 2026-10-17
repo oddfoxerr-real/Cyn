@@ -144,6 +144,15 @@ jobs:
           cyn-headroom-cap-test.exe
           if errorlevel 1 exit /b 1
 
+      - name: Validate adaptive preset cycling policy and stability
+        if: steps.inspect.outputs.state != 'published'
+        shell: cmd
+        run: |
+          cl /nologo /O2 /EHsc /std:c++17 /I dsp\include /I fxsound\Source\GUI tests\cyn_preset_cycler_test.cpp /Fe:cyn-preset-cycler-test.exe
+          if errorlevel 1 exit /b 1
+          cyn-preset-cycler-test.exe
+          if errorlevel 1 exit /b 1
+
       - name: Compile Cyn native x64
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh

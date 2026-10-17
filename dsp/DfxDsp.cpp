@@ -52,6 +52,11 @@ void DfxDsp::setEffectValue(Effect effect, float value)
 	data_->setEffectValue(effect, value);
 }
 
+bool DfxDsp::readPresetSnapshot(std::wstring path,DfxPresetSnapshot& output)
+{
+    return data_->readPresetSnapshot(std::move(path),output);
+}
+
 int DfxDsp::loadPreset(std::wstring preset_file_full_path)
 {
 	return data_->loadPreset(preset_file_full_path);
