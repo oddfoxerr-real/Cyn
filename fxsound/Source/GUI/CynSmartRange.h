@@ -42,10 +42,10 @@ struct CynSmartRange {
         if(!std::isfinite(rawPeak) || rawPeak<0.0f) return 0.0f;
         const float hard=std::clamp((0.97f-rawPeak)/0.47f,0.0f,1.0f);
         if(rawPeak>=0.97f) return 0.0f;
-        if(cap<=0.5f) return std::min(hard,conservative*(0.35f+1.3f*cap));
+        if(cap<=0.5f) return (std::min)(hard,conservative*(0.35f+1.3f*cap));
         const float t=(cap-0.5f)*2.0f;
-        const float permissive=std::max(conservative,hard);
-        return std::min(hard,conservative+(permissive-conservative)*t);
+        const float permissive=(std::max)(conservative,hard);
+        return (std::min)(hard,conservative+(permissive-conservative)*t);
     }
     static float scoreFollower(float percent,bool rising,bool movie) noexcept {
         const float f=freedom(percent,movie);
