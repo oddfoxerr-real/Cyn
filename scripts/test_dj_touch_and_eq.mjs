@@ -31,8 +31,8 @@ assert(init.includes("sosSetNumActiveSections(cast_handle->sos_hdl, i_num_bands)
 assert(resize.includes("num_bands > GRAPHIC_EQ_MAX_NUM_BANDS") &&
        resize.includes("sosSetNumActiveSections(cast_handle->sos_hdl, num_bands)"),
   "Switching to 39 requires REAL extra sections; not just 39 rendered controls");
-assert(restore.includes("r_boost_cut_original[GRAPHIC_EQ_MAX_NUM_BANDS+1]") &&
-       restore.includes("r_boost_cut_interpolated[GRAPHIC_EQ_MAX_NUM_BANDS+1]"),
+assert(restore.includes("r_boost_cut_original[SOS_MAX_NUM_SOS_SECTIONS+1]") &&
+       restore.includes("r_boost_cut_interpolated[SOS_MAX_NUM_SOS_SECTIONS+1]"),
   "Preset conversion must never overflow with 39-band input");
 assert(controller.includes('settings_.setInt("num_bands", dfx_dsp_.getNumEqBands())'),
   "Persist actual DSP value, not a failed request");
