@@ -374,6 +374,7 @@ private:
     CynScenePreference music_scene_preferences_,movie_scene_preferences_;
     CynCrescendoTracker music_crescendo_;
     CynApexFlowHybrid apex_flow_; // Opt-in passage controller; music profile only.
+    bool apex_hybrid_active_ = false; // UI-thread status, never audio callback.
     int smart_mode_ = 0; // 0 music, 1 movie/TV; this is not an automatic classifier.
     std::vector<AudioFrame> smart_history_;
     std::array<float,5> smart_effects_ {}, smart_scores_ {{0.5f,0.5f,0.5f,0.5f,0.5f}};
