@@ -142,6 +142,7 @@ public:
 
 	void update(bool snapValues = true);
     void syncAppliedDsp(float elapsedMs, bool animate);
+    bool isEffectsShown() const noexcept { return effects_shown_; }
 	void showValues(bool show);
 
 	void setLookAndFeel();
