@@ -1,0 +1,50 @@
+name: CYN APEX 6M Native Activation Test
+
+on:
+  pull_request:
+    paths:
+      - "dsp/include/SourceAudioAnalyzer.h"
+      - "dsp/DfxDsp.cpp"
+      - "dsp/include/DfxDsp.h"
+      - "fxsound/Source/GUI/CynApex6MWorker.h"
+      - "fxsound/Source/GUI/FxController.*"
+      - "fxsound/Source/GUI/CynAiHubDialog.h"
+      - "scripts/test_apex6m_activation.mjs"
+      - "BUILD_CYN.ps1"
+      - "PREPARE_CYN_APEX6M.ps1"
+      - "tests/cyn_apex6m_onnx_smoke.cpp"
+      - ".github/workflows/cyn-apex6m-native.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  activation-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          node scripts/test_apex6m_activation.mjs
+          node scripts/test_ai_hub.mjs
+          node scripts/test_version_controls.mjs
+  real-native:
+    runs-on: windows-2022
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Compile actual Cyn application and package signed-off existing ONNX weights
+        shell: pwsh
+        run: ./BUILD_CYN.ps1
+      - name: Run native full ONNX session with exact shipped model
+        shell: pwsh
+        run: |
+          & cl.exe /nologo /EHsc /O2 /std:c++17 tests/cyn_apex6m_onnx_smoke.cpp /Fe:apex-onnx-smoke.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Compiling APEX native probe failed' }
+          & .\apex-onnx-smoke.exe (Resolve-Path 'dist/Cyn')
+          if ($LASTEXITCODE -ne 0) { throw 'Bundled APEX runtime did not execute full ONNX inference' }
