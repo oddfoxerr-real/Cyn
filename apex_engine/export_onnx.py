@@ -24,8 +24,15 @@ def main():
     if hashlib.sha256(blob).hexdigest() != EXPECTED_ZIP_SHA256:
         raise RuntimeError("APEX source ZIP SHA-256 mismatch; refusing export")
     with zipfile.ZipFile(io.BytesIO(blob)) as z:
-        source = z.read("cyn-apex/apex/model.py")
-        checkpoint_bytes = z.read(CHECKPOINT_NAME)
+        # Published releases may have a different top-level directory.
+        # Exact pinned archive hash still protects the contents.
+        def unique_ending(suffix):
+            matches=[name for name in z.namelist() if name.endswith(suffix)]
+            if len(matches)!=1:
+                raise RuntimeError(f"APEX archive must contain exactly one {suffix}; found {matches}")
+            return matches[0]
+        source=z.read(unique_ending("apex/model.py"))
+        checkpoint_bytes=z.read(unique_ending("weights/apex6m-225.pt"))
     # Load ONLY audited plain model source from pinned ZIP into isolated namespace.
     namespace={"__name__":"apex_checkpoint_model"}
     exec(compile(source, "apex/model.py", "exec"), namespace)
