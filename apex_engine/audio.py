@@ -63,7 +63,7 @@ def process_audio(session, incoming: Path, destination: Path, wet: float = 0.65,
             raise RuntimeError("APEX model returned invalid output")
         restored=signal.istft(spectrum*neural_mask,fs=SAMPLE_RATE,
                                window="hann",nperseg=FFT,
-                               noverlap=FFT-HOP,boundary=True,axis=-1)[1]
+                               noverlap=FFT-HOP,boundary=True)[1]
         restored=np.asarray(restored[:,:window_size].T,dtype=np.float32)
         weight=fade[:length].copy()
         if start==0: weight[:min(step,length)]=1
