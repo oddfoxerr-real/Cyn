@@ -1,0 +1,40 @@
+name: Export existing APEX 6M ONNX for native Cyn
+
+on:
+  push:
+    branches:
+      - feature/apex6m-real-onnx-activation-20261017
+    paths:
+      - ".github/workflows/export-apex6m-onnx.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-weights:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install checkpoint conversion dependencies
+        shell: pwsh
+        run: |
+          python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r apex_engine/requirements-win.txt
+      - name: Export exact pinned 225-step checkpoint and test PyTorch parity
+        shell: pwsh
+        run: python apex_engine/export_onnx.py dist-apex/apex6m-225.onnx
+      - name: Verify full neural model actually processes waveform
+        shell: pwsh
+        run: python apex_engine/test_real_model.py
+      - name: Publish separate model weight asset for Cyn's live ONNX runtime
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload apex-6m-v1.0.0 dist-apex/apex6m-225.onnx dist-apex/apex6m-manifest.json --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Could not publish full ONNX checkpoint.' }
