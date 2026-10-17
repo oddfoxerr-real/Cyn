@@ -1,10 +1,10 @@
 # CYN APEX-6M — independent experimental neural audio engine
 
-**Status:** trained research checkpoint for synthetic-noise removal, not a new CYN installer or a proven commercial-AI replacement.
+**Status:** source-only Git branch plus a separate downloadable trained checkpoint for synthetic-noise removal, not a new CYN installer or a proven commercial-AI replacement.
 
 APEX-6M is a **6,307,477 trainable-parameter neural network** implemented in PyTorch. It operates on 48-kHz PCM audio and predicts a time-varying, per-frequency denoising mask from a complex STFT magnitude plus six auxiliary, synthetic-label audio-scene scores. The network contains 14 depthwise-convolution temporal residual blocks with trainable scaling, and an auxiliary scene head. It is a new model, not a merger or rebranding of 30 incompatible external checkpoints.
 
-The checkpoint included with this bundle was **actually optimized for 225 gradient steps** on procedural bass/drum/lead/harmonic sound mixtures with added white, colored and high-frequency noise. The speech-like synthetic generator is *not* human speech.
+The checkpoint included in the downloadable experiment bundle (not checked into Git) was **actually optimized for 225 gradient steps** on procedural bass/drum/lead/harmonic sound mixtures with added white, colored and high-frequency noise. The speech-like synthetic generator is *not* human speech.
 
 ## What it does NOW
 
@@ -69,6 +69,6 @@ This continuation resets the optimizer, since only model parameters, not Adam mo
 - `apex/benchmark.py`: matched naive vs classical gate vs APEX test
 - `apex/infer.py`: offline mono/stereo WAV processing
 - `tests/test_apex.py`: sanity, determinism, parameter count and audio-shape assertions
-- `weights/apex6m-225.pt`: trained 225-step model state (~25 MB)
+- `weights/apex6m-225.pt`: trained 225-step model state (~25 MB), distributed in the downloadable ZIP; CI creates separate 15-step smoke-test weights
 - `reports/benchmark-final.json`: fixed-seed test metrics
 - `demo/`: synthetic noisy input, clean reference and processed output WAVs
