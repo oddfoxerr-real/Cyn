@@ -3418,7 +3418,11 @@ void FxController::updateSmartListening()
     const bool yamnetLive=yamnet_worker_ && yamnet_worker_->latest(scene);
     if(fresh && active && input.rms>0.0001f) smart_history_.push_back({input,now,scene});
     while(!smart_history_.empty() && (smart_history_.front().id<now-60000 || smart_history_.size()>600)) smart_history_.erase(smart_history_.begin());
-    if(!smart_enabled_) return;
+    if(!smart_enabled_) {
+        apex_hybrid_active_=false;
+        apex_flow_.reset();
+        return;
+    }
     const bool listening=active && smart_stale_ticks_<4 && input.rms>0.0001f;
     const bool movie=smart_mode_==1;
     const auto& model=movie?movie_model_:smart_model_;
@@ -3447,8 +3451,9 @@ void FxController::updateSmartListening()
     // pretrained YAMNet scene evidence and the trained 13h preference head
     // with a measured temporal envelope. The 6.3M offline APEX denoiser is
     // NOT run here (it requires its own neural runtime).
-    const bool apexHybrid=!movie &&
+    apex_hybrid_active_=!movie &&
         getActiveAIProfileId()=="bundled:cyn-apex-flow-hybrid.cynai.json";
+    const bool apexHybrid=apex_hybrid_active_;
     if(apexHybrid && listening && yamnetLive && fresh && smart_sensitivity_>0.0f) {
         const float crest=std::exp(jlimit(0.0f,3.5f,input.values[8]));
         const float inputPeak=(std::isfinite(input.rms) && std::isfinite(crest))
@@ -3640,9 +3645,7 @@ String FxController::getSmartSummary() const
     if(!smart_enabled_) return mode+" / learning available (processing off)";
     if(smart_stale_ticks_>=4) return mode+" / waiting for audio";
     CynAudioScene scene;
-    if(smart_mode_==0 &&
-       settings_.getString("cyn_active_ai_profile_music")==
-           "bundled:cyn-apex-flow-hybrid.cynai.json") {
+    if(smart_mode_==0 && apex_hybrid_active_) {
         if(!yamnet_worker_ || !yamnet_worker_->latest(scene))
             return "Music AI / APEX Flow Hybrid / waiting for pretrained YAMNet";
         const auto flow=apex_flow_.current();
