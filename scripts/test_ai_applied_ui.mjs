@@ -8,6 +8,22 @@ const equalizer = read("fxsound/Source/GUI/FxEqualizer.cpp");
 const view = read("fxsound/Source/GUI/FxProView.cpp");
 const follower = read("fxsound/Source/GUI/CynDspUiFollow.h");
 const controllers = read("fxsound/Source/GUI/FxController.h");
+const headroomPolicy=read("fxsound/Source/GUI/CynSmartRange.h");
+assert(headroomPolicy.includes("static float expressiveScore(") &&
+       headroomPolicy.includes("static float headroomGate("),
+       "Full-range Music AI must support score contrast and adjustable headroom");
+assert(controllers.includes("setSmartHeadroomCap(float percent)") &&
+       controllers.includes("getSmartHeadroomCap()"),
+       "Headroom cap must be a real persisted native setting");
+assert(controller.includes('settings_.setDouble("cyn_music_headroom_cap"') &&
+       controller.includes("CynSmartRange::headroomGate(") &&
+       controller.includes("CynSmartRange::expressiveScore("),
+       "Native Music AI DSP must actually use the adjustable cap and score mapping");
+assert(view.includes('headroom_cap_.onValueChange=') &&
+       view.includes('headroom_cap_.setBounds(879,491,303,28)') &&
+       view.includes('text("Headroom Cap"') &&
+       view.includes("controller.getSmartListeningMode()==0"),
+       "Headroom Cap slider must be visible, wired and restricted to Music AI");
 const smartRange = read("fxsound/Source/GUI/CynSmartRange.h");
 assert(smartRange.includes("static float effectTarget("), "Missing full-range Music AI authority map");
 assert(smartRange.includes("static float freedom(") && smartRange.includes("return 0.0f;"),"Movie AI must preserve its original range");
