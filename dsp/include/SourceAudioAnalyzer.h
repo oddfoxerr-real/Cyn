@@ -12,7 +12,7 @@
 class SourceAudioAnalyzer
 {
 public:
-    SourceAudioAnalyzer() { for (auto& value : published_) value.store(0); for(auto& sample:yamnet_ring_) sample.store(0.0f,std::memory_order_relaxed); }
+    SourceAudioAnalyzer() { for (auto& value : published_) value.store(0); for(auto& sample:yamnet_ring_) sample.store(0.0f,std::memory_order_relaxed); for(auto& sample:apex_ring_) sample.store(0.0f,std::memory_order_relaxed); }
     void setFormat(int bits, int channels, int rate)
     {
         if (bits != 32 || channels < 1 || channels > 8 || rate < 8000 || rate > 384000)
@@ -21,6 +21,7 @@ public:
         channels_ = channels; rate_ = rate; clearWindow();
         yamnet_phase_ = 0; yamnet_sum_ = 0; yamnet_count_ = 0;
         yamnet_write_.store(0,std::memory_order_release);
+        apex_write_.store(0,std::memory_order_release);
         filters_ = {}; publish({});
         if (!channels_) return;
         static const double centers[8] = {45,75,120,200,400,900,2200,5000};
@@ -52,6 +53,14 @@ public:
             }
             // Real-time thread never blocks or invokes neural inference.
             feedYamNet((float)(monoSum/channels_));
+            // Preserve true 48 kHz bandwidth for full APEX ONNX features.
+            // Mono/stereo only, lock-free; unsupported device formats bypass.
+            if(rate_==48000 && channels_<=2) {
+                const auto n=apex_write_.load(std::memory_order_relaxed);
+                apex_ring_[n%apexRingCapacity].store(
+                    (float)(monoSum/channels_),std::memory_order_relaxed);
+                apex_write_.store(n+1,std::memory_order_release);
+            }
             if (channels_ > 1) {
                 double l=audio[frame*channels_],r=audio[frame*channels_+1];
                 if (std::isfinite(l) && std::isfinite(r)) { stereo_+=(l-r)*(l-r); stereoPower_+=l*l+r*r; }
@@ -91,6 +100,19 @@ public:
         if(yamnet_write_.load(std::memory_order_acquire)-end>=yamnetRingCapacity-out.size()) return false;
         sampleNumber=end; return true;
     }
+    static constexpr size_t apexSamples=48000;
+    bool copyApexWindow(std::array<float,apexSamples>& out,
+                        uint64_t& sampleNumber) const noexcept {
+        const auto end=apex_write_.load(std::memory_order_acquire);
+        if(end<apexSamples || end==sampleNumber) return false;
+        for(size_t i=0;i<apexSamples;++i)
+            out[i]=apex_ring_[(end-apexSamples+i)%apexRingCapacity].load(
+                std::memory_order_relaxed);
+        if(apex_write_.load(std::memory_order_acquire)-end >=
+           apexRingCapacity-apexSamples) return false;
+        sampleNumber=end;
+        return true;
+    }
     InputAudioFeatures snapshot() const
     {
         for (int retry=0;retry<3;++retry)
@@ -106,6 +128,9 @@ public:
         return {};
     }
 private:
+    static constexpr size_t apexRingCapacity=131072;
+    std::array<std::atomic<float>,apexRingCapacity> apex_ring_ {};
+    std::atomic<uint64_t> apex_write_ {0};
     static constexpr size_t yamnetRingCapacity=262144;
     std::array<std::atomic<float>,yamnetRingCapacity> yamnet_ring_ {};
     std::atomic<uint64_t> yamnet_write_ {0};
