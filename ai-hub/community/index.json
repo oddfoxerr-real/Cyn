@@ -43,13 +43,13 @@
     },
     {
       "id": "cyn-apex6m-flowsense",
-      "name": "CYN APEX-6M FlowSense (Research)",
+      "name": "CYN APEX 6M (Full Neural Preview)",
       "author": "CYN contributors",
       "category": "research",
       "kind": "research",
-      "description": "Separate 6.3-million-parameter offline denoising experiment, plus FlowSense intensity, rhythmic onset and buildup/breakdown analysis. Trained on synthetic audio only. Not an emotional-understanding model, not a Windows live-DSP plug-in, and not compatible with the 209-weight Cyn AI Hub importer. View the experimental ZIP and benchmark; your current AI remains unchanged.",
-      "url": "https://github.com/oddfoxerr-real/Cyn/releases/tag/cyn-apex6m-flowsense-research-20261017",
-      "issue": 0,
+      "description": "Official full 6,307,477-parameter APEX ONNX neural audio model. Download the standalone Windows WAV processor, adjust neural processing strength and compare the saved audio. Existing 225-step synthetic denoising checkpoint; NO new training. Not a 209-weight CYN AI profile, and not real-time system playback. Requires manual download; never auto-executes.",
+      "url": "https://github.com/oddfoxerr-real/Cyn/releases/tag/apex-6m-v1.0.0",
+      "issue": 32,
       "license": "AGPL-3.0-or-later"
     }
   ]
