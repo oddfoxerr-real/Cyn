@@ -3475,7 +3475,7 @@ void FxController::updateSmartListening()
                 smart_eq_[(size_t)band]+jlimit(-1.35f,1.15f,change));
             const float current=dfx_dsp_.getEqBandBoostCut(band);
             if(std::abs(target-current)>0.025f) {
-                const auto slew=std::max(0.015f,
+                const auto slew=(std::max)(0.015f,
                     CynSmartRange::eqStep(smart_sensitivity_,false));
                 dfx_dsp_.setEqBandBoostCut(band,
                     current+jlimit(-slew,slew,target-current));
