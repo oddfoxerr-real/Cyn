@@ -36,7 +36,7 @@ struct CynSmartRange {
             std::clamp(std::isfinite(baseline)?baseline:0.0f,0.0f,10.0f);
         baseline=std::clamp(baseline,0.0f,10.0f);
         const float s=normalized(percent);
-        const float depth=std::min(1.0f,s*2.0f);
+        const float depth=std::clamp(s*2.0f,0.0f,1.0f);
         const float direction=std::clamp(2.0f*(score-0.5f),-1.0f,1.0f);
         const float legacy=baseline+(direction>0 ?
             direction*legacyUp*s : direction*baseline*legacyDown*depth);
