@@ -15,6 +15,38 @@ struct CynSmartRange {
         const float ramp=std::clamp((normalized(percent)-0.55f)/0.45f,0.0f,1.0f);
         return ramp*ramp*(3.0f-2.0f*ramp);
     }
+    // When Music AI gets more authority, stop leaving useful model scores
+    // clustered around 0.5. Deadband suppresses tiny ambiguous changes;
+    // high-confidence music scores acquire real expressive contrast.
+    static float expressiveScore(float score,float sensitivity,bool movie) noexcept {
+        if(!std::isfinite(score)) return 0.5f;
+        score=std::clamp(score,0.0f,1.0f);
+        const float f=freedom(sensitivity,movie);
+        if(f==0.0f) return score;
+        const float shift=score-0.5f;
+        const float mag=std::abs(shift);
+        const float useful=std::clamp((mag-0.012f)/0.488f,0.0f,1.0f);
+        const float lifted=0.5f+std::copysign(0.5f*std::pow(useful,0.64f),shift);
+        return std::clamp(score+(lifted-score)*f,0.0f,1.0f);
+    }
+    // Adjustable *soft* pre-effect headroom envelope. At 50% preserve the
+    // existing DSP. At 100% use more of the estimated usable headroom, but
+    // independent hard peak gating never permits positive gain at >= 0.97
+    // estimated input peak. NOT a true output-peak limiter.
+    static float headroomGate(float estimate,float rawPeak,float capPercent,
+                              bool movie) noexcept {
+        const float conservative=std::isfinite(estimate)?
+            std::clamp(estimate,0.0f,1.0f):0.0f;
+        if(movie) return conservative;
+        const float cap=normalized(capPercent);
+        if(!std::isfinite(rawPeak) || rawPeak<0.0f) return 0.0f;
+        const float hard=std::clamp((0.97f-rawPeak)/0.47f,0.0f,1.0f);
+        if(rawPeak>=0.97f) return 0.0f;
+        if(cap<=0.5f) return std::min(hard,conservative*(0.35f+1.3f*cap));
+        const float t=(cap-0.5f)*2.0f;
+        const float permissive=std::max(conservative,hard);
+        return std::min(hard,conservative+(permissive-conservative)*t);
+    }
     static float scoreFollower(float percent,bool rising,bool movie) noexcept {
         const float f=freedom(percent,movie);
         return (rising?0.18f:0.12f)+f*(rising?0.17f:0.13f);
