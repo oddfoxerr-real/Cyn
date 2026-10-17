@@ -3321,11 +3321,15 @@ bool FxController::selectAIProfile(const String& id,String& error) {
         if(smart_enabled_) restoreSmartBaseline();
         settings_.setString("cyn_active_ai_profile_music","apex6m");
         if(smart_enabled_) captureSmartBaseline();
-        smart_learning_message_="APEX 6M full ONNX inference selected. Live neural EQ preview.";
+        smart_learning_message_="APEX 6M neural Music AI selected: ONNX + adaptive live DSP.";
         error.clear();return true;
     }
+    const auto choices=getAvailableAIProfiles();
+    const auto found=std::find_if(choices.begin(),choices.end(),
+        [&](const AIProfileOption& option){return option.id==id;});
+    if(found==choices.end()) { error="That AI model is not installed.";return false; }
     if(smart_mode_==0 && getActiveAIProfileId()=="apex6m") {
-        // Nothing was written to the previous 209-weight model when APEX ran.
+        // Validate the new model before touching the currently active one.
         const String old=settings_.getString("cyn_apex_previous_music_profile");
         const String previous=(old.isEmpty() || old=="apex6m")?"personal":old;
         if(smart_enabled_) restoreSmartBaseline();
@@ -3337,10 +3341,6 @@ bool FxController::selectAIProfile(const String& id,String& error) {
         }
         if(smart_enabled_) captureSmartBaseline();
     }
-    const auto choices=getAvailableAIProfiles();
-    const auto found=std::find_if(choices.begin(),choices.end(),
-        [&](const AIProfileOption& option){return option.id==id;});
-    if(found==choices.end()) { error="That AI model is not installed.";return false; }
     const auto rootDir=File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Cyn");
     const auto prefs=rootDir.getChildFile("preferences.json"), slots=rootDir.getChildFile("AIModelSlots");
     if(slots.createDirectory().failed()) { error="Cannot create private AI backups.";return false; }
@@ -3426,6 +3426,16 @@ bool FxController::selectAIProfile(const String& id,String& error) {
     return true;
 }
 
+bool FxController::restorePreviousApexMusicAI(String& error)
+{
+    if(smart_mode_!=0 || getActiveAIProfileId()!="apex6m") {
+        error="APEX 6M is not the active Music AI."; return false;
+    }
+    String previous=settings_.getString("cyn_apex_previous_music_profile");
+    if(previous.isEmpty() || previous=="apex6m") previous="personal";
+    return selectAIProfile(previous,error);
+}
+
 void FxController::setSmartSensitivity(float percent)
 {
     if(!std::isfinite(percent)) return;
@@ -3453,36 +3463,19 @@ void FxController::updateSmartListening()
     while(!smart_history_.empty() && (smart_history_.front().id<now-60000 || smart_history_.size()>600)) smart_history_.erase(smart_history_.begin());
     if(!smart_enabled_) {
         apex_hybrid_active_=false;
+        apex6m_active_=false;
         apex_flow_.reset();
         return;
     }
-    // When selected, full APEX ONNX inference exclusively drives bounded
-    // LIVE EQ corrections. This is not 209-weight inference and does not
-    // pretend that the WAV denoiser's full per-bin mask is on the DSP callback.
+    // APEX uses the ACTUAL 6,307,477-parameter ONNX model, not a renamed
+    // 209-weight profile. Inference runs off-thread; other Smart Listening
+    // controls continue to work instead of stopping at an early return.
     apex6m_active_=smart_mode_==0 && getActiveAIProfileId()=="apex6m";
-    if(apex6m_active_) {
-        std::array<float,8> neural {};
-        const bool valid=apex_worker_ && apex_worker_->latest(neural) &&
-            active && smart_stale_ticks_<4 && smart_sensitivity_>0.0f;
-        const float mix=CynSmartRange::normalized(smart_sensitivity_);
-        for(int band=0;band<jmin(getNumEqBands(),(int)smart_eq_.size());++band) {
-            const auto frequency=dfx_dsp_.getEqBandFrequency(band);
-            const float change=valid?
-                CynApex6MWorker::interpolate(neural,frequency)*mix:0.0f;
-            // Neural mask is attenuation-based: never increase gain more
-            // than +1.15 dB over the user's original manual preset.
-            const float target=jlimit(MIN_GAIN,MAX_GAIN,
-                smart_eq_[(size_t)band]+jlimit(-1.35f,1.15f,change));
-            const float current=dfx_dsp_.getEqBandBoostCut(band);
-            if(std::abs(target-current)>0.025f) {
-                const auto slew=(std::max)(0.015f,
-                    CynSmartRange::eqStep(smart_sensitivity_,false));
-                dfx_dsp_.setEqBandBoostCut(band,
-                    current+jlimit(-slew,slew,target-current));
-            }
-        }
-        return;
-    }
+    std::array<float,8> neuralBands {};
+    const bool apexNeuralLive=apex6m_active_ && apex_worker_ &&
+        apex_worker_->latest(neuralBands) && active &&
+        smart_stale_ticks_<4 && input.rms>0.0001f &&
+        smart_sensitivity_>0.0f;
     const bool listening=active && smart_stale_ticks_<4 && input.rms>0.0001f;
     const bool movie=smart_mode_==1;
     const auto& model=movie?movie_model_:smart_model_;
@@ -3507,14 +3500,12 @@ void FxController::updateSmartListening()
             : music_crescendo_.current();
         CynFlagshipMixer::applyCrescendo(decision,scene,arc);
     } else music_crescendo_.reset();
-    // APEX Flow Hybrid is a distinct, OPT-IN music model. It combines real
-    // pretrained YAMNet scene evidence and the trained 13h preference head
-    // with a measured temporal envelope. The 6.3M offline APEX denoiser is
-    // NOT run here (it requires its own neural runtime).
+    // The full 6M model and the lightweight APEX hybrid can both benefit
+    // from CYN's independent musical passage controller, but remain distinct.
     apex_hybrid_active_=!movie &&
         getActiveAIProfileId()=="bundled:cyn-apex-flow-hybrid.cynai.json";
-    const bool apexHybrid=apex_hybrid_active_;
-    if(apexHybrid && listening && yamnetLive && fresh && smart_sensitivity_>0.0f) {
+    const bool apexFlowActive=apex_hybrid_active_ || apex6m_active_;
+    if(apexFlowActive && listening && yamnetLive && fresh && smart_sensitivity_>0.0f) {
         const float crest=std::exp(jlimit(0.0f,3.5f,input.values[8]));
         const float inputPeak=(std::isfinite(input.rms) && std::isfinite(crest))
             ? jmax(0.0f,input.rms)*crest : 10.0f;
@@ -3540,7 +3531,7 @@ void FxController::updateSmartListening()
             decision.lowEqDb=jlimit(-2.5f,2.7f,
                 decision.lowEqDb+flow.lowEqDb);
         }
-    } else if(!apexHybrid || !listening || !yamnetLive ||
+    } else if(!apexFlowActive || !listening || !yamnetLive ||
               smart_sensitivity_<=0.0f) {
         apex_flow_.reset(); // Stale pretrained evidence cannot affect DSP.
     }
@@ -3642,6 +3633,15 @@ void FxController::updateSmartListening()
             float delta=correction*CynSmartRange::eqAmount(smart_sensitivity_,movie);
             if(delta>0.0f) delta*=jlimit(0.0f,1.0f,decision.headroom);
             target+=jlimit(-4.2f,freq>4200.0f?2.0f:4.3f,delta);
+            if(apexNeuralLive) {
+                // APEX's pretrained spectral-mask response changes LIVE DSP
+                // on top of the scene-aware bass, clarity and flow controls.
+                // This is neural EQ, not full per-sample STFT denoising.
+                float learned=CynApex6MWorker::interpolate(neuralBands,freq)*
+                    CynSmartRange::normalized(smart_sensitivity_);
+                if(learned>0.0f) learned*=jlimit(0.0f,1.0f,decision.headroom);
+                target+=jlimit(-1.35f,1.15f,learned);
+            }
         }
         target=jlimit(MIN_GAIN,MAX_GAIN,target);
         const float current=dfx_dsp_.getEqBandBoostCut(b);
@@ -3708,8 +3708,8 @@ String FxController::getSmartSummary() const
     if(smart_mode_==0 && apex6m_active_) {
         std::array<float,8> response {};
         return apex_worker_ && apex_worker_->latest(response)
-            ? "Music AI / APEX 6M / 6,307,477 ONNX parameters / Neural EQ ACTIVE"
-            : "Music AI / APEX 6M / waiting for 48kHz neural inference";
+            ? "Music AI / CYN APEX 6M / Neural inference ACTIVE + adaptive sound"
+            : "Music AI / CYN APEX 6M / waiting for 48 kHz neural audio";
     }
     if(smart_mode_==0 && apex_hybrid_active_) {
         if(!yamnet_worker_ || !yamnet_worker_->latest(scene))
