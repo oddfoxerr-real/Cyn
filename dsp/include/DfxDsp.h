@@ -92,6 +92,7 @@ public:
     uint32_t djEffectsCount() const;
     int djLastEffect() const;
     bool copyYamNetWindow(std::array<float,15600>& out,uint64_t& sampleNumber) const;
+    bool copyApexWindow(std::array<float,48000>& out,uint64_t& sampleNumber) const;
 
 private:
 	DfxDspPrivate *data_;
