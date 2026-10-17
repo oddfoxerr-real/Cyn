@@ -32,6 +32,16 @@
       "license": "CC-BY-4.0"
     },
     {
+      "id": "cyn-apex-flow-hybrid",
+      "name": "CYN APEX Flow Hybrid (Live Preview)",
+      "author": "CYN contributors",
+      "category": "experimental",
+      "description": "Selectable Music AI for Cyn 2.0.47+: real pretrained YAMNet recognition + 13h-trained Bass/Clarity preference weights + separate passage-flow DSP control for builds, drops and breakdowns. Opt-in, reversible and peak-gated. Not the offline APEX-6M denoiser; not listening-validated.",
+      "file": "cyn-apex-flow-hybrid.cynai.json",
+      "issue": 0,
+      "license": "CC-BY-4.0"
+    },
+    {
       "id": "cyn-apex6m-flowsense",
       "name": "CYN APEX-6M FlowSense (Research)",
       "author": "CYN contributors",
