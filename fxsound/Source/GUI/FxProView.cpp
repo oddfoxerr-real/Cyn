@@ -49,7 +49,7 @@ FxProView::FxProView() : tool_tip_(this)
     sensitivity_.setRange(0, 100, 1);
     sensitivity_.setTextValueSuffix("%");
     sensitivity_.setTextBoxStyle(Slider::TextBoxRight, false, 64, 26);
-    sensitivity_.setTooltip("How strongly your learned More / Less preferences change effects. At 0%, effect settings remain manual.");
+    sensitivity_.setTooltip("0% keeps your preset. 50% uses gentle AI adjustments. At 100%, Music AI can use the full 0–10 effect range when the song calls for it; peak protection remains active.");
     sensitivity_.onValueChange = [this] {
         FxController::getInstance().setSmartSensitivity((float)sensitivity_.getValue());
     };
@@ -555,7 +555,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.42", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.43", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
         ? "Choose a listening mode and the neural model that powers it." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
