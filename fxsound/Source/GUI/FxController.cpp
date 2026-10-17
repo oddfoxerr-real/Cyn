@@ -3365,7 +3365,7 @@ void FxController::updateSmartListening()
         const float up=movie?movieUp[e]:musicUp[e];
         float target=CynSmartRange::effectTarget(
             smart_effects_[e],smart_scores_[e],smart_sensitivity_,up,down[e],
-            decision.headroom,movie,(e==0 || e==3 || e==4));
+            decision.headroom,movie,(e==3 || e==4 || (e==0 && smart_sensitivity_>55.0f)));
         if(movie && e==4) target=jmin(target,jmax(smart_effects_[4],6.3f));
         if(movie && e==3) target=jmin(target,jmax(smart_effects_[3],5.0f));
         target=jlimit(0.0f,10.0f,target);
