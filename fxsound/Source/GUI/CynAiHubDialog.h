@@ -102,7 +102,7 @@ private:
     {
         juce::String id, name, author, category, description, filename, researchUrl;
         int issue = 0;
-        bool researchOnly = false;
+        bool researchOnly = false, nativeApex = false;
     };
 
     static constexpr int maxCatalogueBytes = 256 * 1024;
@@ -152,23 +152,31 @@ private:
     {
         if (const auto* p = selected())
         {
-            if (p->researchOnly && p->id=="cyn-apex6m-flowsense" &&
-                FxController::getInstance().apex6MInstalled())
+            if (p->nativeApex)
             {
-                auto& ctrl=FxController::getInstance();
-                description_.setText ("FULL NEURAL AI  /  " + p->name + "\n\n"
-                    + "CYN APEX 6M executes 6,307,477 actual ONNX model parameters "
-                      "on live captured music. Its neural mask currently controls "
-                      "bounded 48 kHz EQ bands, not the WAV application's full "
-                      "per-sample denoising output. Original model and training "
-                      "remain preserved.\n\n"
-                    + (ctrl.apex6MReady() ? "NEURAL RUNTIME READY\n\n"
-                       : "Loading full APEX ONNX runtime...\n\n")
-                    + p->description + "\n\n"
-                    + (ctrl.getActiveAIProfileId()=="apex6m" ?
-                       "ACTIVE IN MUSIC MODE" : "Select Activate to try the live preview."),
+                auto& ctrl = FxController::getInstance();
+                const bool installed = ctrl.apex6MInstalled();
+                const bool ready = ctrl.apex6MReady();
+                const bool activeAI = ctrl.getActiveAIProfileId() == "apex6m"
+                    && ctrl.getSmartListeningMode() == 0;
+                description_.setText (
+                    "NEURAL MUSIC AI  /  CYN APEX 6M\n\n"
+                    "6,307,477 actual trained ONNX parameters, built into Cyn. "
+                    "Combines neural spectral analysis with adaptive EQ, Bass, "
+                    "Dynamics, music passage tracking and Smart Listening.\n\n"
+                    + (installed ? (ready ? juce::String("MODEL READY\n\n")
+                                           : juce::String("LOADING NEURAL ENGINE...\n\n"))
+                                 : juce::String("MODEL FILE MISSING — reinstall Cyn to repair.\n\n"))
+                    + (activeAI ? juce::String("ACTIVE — Music AI selected.\n\n")
+                                : juce::String("Select this AI to use it for live music.\n\n"))
+                    + "Training: original 225 synthetic steps. The model's full spectral "
+                      "output currently steers real DSP controls; it does not "
+                      "replace the audio buffer with offline denoised samples. "
+                      "Listening-quality improvement has not yet been proven.\n\n"
+                    + "Creator: " + p->author,
                     juce::dontSendNotification);
-                import_.setButtonText ("Activate selected AI");
+                import_.setButtonText (activeAI ? "Switch to previous AI"
+                    : installed ? "Activate selected AI" : "View model files");
             }
             else if (p->researchOnly)
             {
@@ -236,13 +244,16 @@ private:
             p.filename = row["file"].toString();
             p.issue = juce::jlimit (0, 100000000, static_cast<int> (row["issue"]));
             p.researchOnly = row["kind"].toString() == "research";
+            p.nativeApex = row["kind"].toString() == "onnx"
+                && p.id == "cyn-apex6m-flowsense"
+                && row["activation"].toString() == "apex6m";
             p.researchUrl = row["url"].toString();
             // Publish AI submissions may offer a full-model download (not .cynai).
             // Validate the actual official release URL with the native-tested policy.
             const bool trustedResearchUrl =
                 cyn::isTrustedResearchReleaseUrl (p.researchUrl.toStdString());
             if (p.name.isNotEmpty()
-                && (p.researchOnly ? trustedResearchUrl : isSafeFilename (p.filename)))
+                && ((p.researchOnly || p.nativeApex) ? trustedResearchUrl : isSafeFilename (p.filename)))
             {
                 if (p.researchOnly) ++researchCount;
                 collected.push_back (p);
@@ -345,20 +356,45 @@ private:
         if (busy_) return;
         auto* item = selected();
         if (! item) return;
-        if(item->researchOnly && item->id=="cyn-apex6m-flowsense" &&
-            FxController::getInstance().apex6MInstalled())
+        if (item->nativeApex)
         {
-            if(! juce::AlertWindow::showOkCancelBox(
-                juce::AlertWindow::QuestionIcon,"Activate APEX 6M?",
-                "Run all 6,307,477 ONNX parameters on live music "
-                "to drive bounded neural EQ. This preview requires a 48 kHz "
-                "mono/stereo device. Your trained AI stays backed up. "
-                "It is NOT the standalone denoiser's per-bin audio processor.",
-                "Activate","Cancel")) return;
+            auto& ctrl = FxController::getInstance();
+            if (!ctrl.apex6MInstalled())
+            {
+                juce::URL (item->researchUrl).launchInDefaultBrowser();
+                status_.setText ("APEX ONNX model missing. Reinstall Cyn 2.0.51+ to activate.",
+                    juce::dontSendNotification);
+                return;
+            }
+            if (ctrl.getSmartListeningMode() == 0 &&
+                ctrl.getActiveAIProfileId() == "apex6m")
+            {
+                juce::String error;
+                const bool success = ctrl.restorePreviousApexMusicAI(error);
+                status_.setText (success ? "Previous Music AI restored."
+                    : "Could not switch AI: " + error, juce::dontSendNotification);
+                updateSelection();
+                return;
+            }
+            if (! juce::AlertWindow::showOkCancelBox (
+                    juce::AlertWindow::QuestionIcon, "Activate CYN APEX 6M?",
+                    "Switch to Music AI and enable Smart Listening? APEX runs its "
+                    "6.3M-parameter ONNX model on your PC and combines the result "
+                    "with adaptive DSP. Your current trained models are preserved.",
+                    "Activate", "Cancel")) return;
+            if (ctrl.getSmartListeningMode() != 0)
+                ctrl.setSmartListeningMode(0);
+            if (ctrl.getSmartListeningMode() != 0)
+            {
+                status_.setText ("Finish current training before changing to Music AI.",
+                    juce::dontSendNotification);
+                return;
+            }
             juce::String error;
-            const bool success=FxController::getInstance().selectAIProfile("apex6m",error);
-            status_.setText(success ? "APEX 6M activated: full ONNX neural EQ (Music AI)."
-                : "APEX activation failed: "+error,juce::dontSendNotification);
+            const bool success = ctrl.selectAIProfile ("apex6m", error);
+            if (success) ctrl.setSmartListening(true);
+            status_.setText (success ? "CYN APEX 6M active. Play music to start neural inference."
+                : "APEX activation failed: " + error, juce::dontSendNotification);
             updateSelection();
             return;
         }
@@ -367,7 +403,7 @@ private:
             // Other models still require a compatible runtime.
             // This action NEVER invokes importSmartProfile or changes live audio.
             juce::URL (item->researchUrl).launchInDefaultBrowser();
-            status_.setText ("Opened official APEX research prerelease; current AI unchanged.",
+            status_.setText ("Opened model files. Install a compatible Cyn runtime to activate.",
                              juce::dontSendNotification);
             return;
         }
