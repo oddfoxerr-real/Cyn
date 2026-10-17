@@ -1,12 +1,12 @@
-name: "Publish a Cyn AI profile"
-description: "Submit an exported .cynai.json package for review and listing in the Cyn AI Hub"
-title: "[AI Hub profile] "
+name: "Publish a Cyn AI model"
+description: "Submit trained Cyn profiles or full neural models for AI Hub review and sharing"
+title: "[AI Hub model] "
 labels: []
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for sharing! Export from **Cyn → Smart listening → Export AI** or the [Cyn AI Hub Studio](https://github.com/oddfoxerr-real/Cyn/tree/main/ai-hub). Upload your `.cynai.json` as a ZIP attachment or provide a direct download link / public Gist.
+        Thanks for sharing! Publish an exported `.cynai.json` **or your own larger trained model** (e.g. `.onnx`, `.pt`, model ZIP). Provide a public model download and describe what runtime it needs. Compatible `.cynai.json` profiles can be activated; larger models may be listed with a manual download until Cyn supports their inference engine.
 
         **Never attach `%APPDATA%\Cyn\preferences.json`, your private examples, raw audio, personal logs, or account tokens.**
   - type: input
@@ -19,9 +19,19 @@ body:
   - type: input
     id: profile_link
     attributes:
-      label: Public profile download URL
-      description: Link to your exported .cynai.json or a ZIP containing only that exported profile.
+      label: Public model download URL
+      description: Link to your released model file or archive. It can be a standard Cyn profile or a full trained neural model.
       placeholder: https://gist.github.com/...
+    validations:
+      required: true
+  - type: dropdown
+    id: model_format
+    attributes:
+      label: AI model format
+      options:
+        - "Cyn .cynai.json (activatable profile)"
+        - "Full neural model (ONNX / PyTorch / weights / ZIP)"
+        - "Other compatible or experimental format"
     validations:
       required: true
   - type: dropdown
@@ -35,7 +45,7 @@ body:
     id: description
     attributes:
       label: What makes this model special?
-      description: Describe music, games, listening devices, trained effects and intended sound.
+      description: Describe intended sound, training data, actual functions, license, runtime dependencies, and whether this model runs in Cyn or needs a standalone application.
     validations:
       required: true
   - type: checkboxes
@@ -43,9 +53,13 @@ body:
     attributes:
       label: Sharing permissions and privacy
       options:
-        - label: I made or have permission to redistribute this trained model and license it as CC BY 4.0 or CC0.
+        - label: I created this model or have permission to redistribute its code and weights under the license I identify in my description.
           required: true
-        - label: My submission contains only a Cyn AI profile and does not contain private audio, examples or credentials.
+        - label: My shared files contain no private audio, personal training examples, account tokens, or credentials.
           required: true
         - label: I understand submissions may be reviewed before appearing in the public catalogue.
           required: true
+  - type: markdown
+    attributes:
+      value: |
+        **Publishing is not automatic activation.** Every shared model can be reviewed and credited. Standard `.cynai.json` profiles use Cyn's compatible importer; external checkpoints need an appropriate inference runtime before they can affect live audio. AI Hub browsing will not auto-download or run untrusted executables.

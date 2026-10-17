@@ -6,6 +6,7 @@
 #include <memory>
 #include "FxTheme.h"
 #include "FxController.h"
+#include "CynAiHubCataloguePolicy.h"
 
 class CynAiHubContent final : public juce::Component, private juce::ListBoxModel
 {
@@ -114,6 +115,7 @@ private:
     juce::TextEditor description_;
     juce::TextButton refresh_, import_, review_, publish_, close_;
     std::vector<Profile> profiles_;
+    int catalogueTotal_ = 0, catalogueRejected_ = 0, catalogueExternal_ = 0;
     bool busy_ = false;
 
     int getNumRows() override { return static_cast<int> (profiles_.size()); }
@@ -202,6 +204,8 @@ private:
         auto* rows = root["profiles"].getArray();
         if (rows == nullptr || rows->size() > 200) return false;
         std::vector<Profile> collected;
+        const int submittedCount = rows->size();
+        int researchCount = 0;
         for (const auto& row : *rows)
         {
             if (! row.isObject()) continue;
@@ -214,16 +218,20 @@ private:
             p.issue = juce::jlimit (0, 100000000, static_cast<int> (row["issue"]));
             p.researchOnly = row["kind"].toString() == "research";
             p.researchUrl = row["url"].toString();
-            // Only our official GitHub experimental release URLs are acceptable.
+            // Publish AI submissions may offer a full-model download (not .cynai).
+            // Validate the actual official release URL with the native-tested policy.
             const bool trustedResearchUrl =
-                (p.researchUrl.startsWith ("https://github.com/oddfoxerr-real/Cyn/releases/tag/cyn-apex6m-")
-                || p.researchUrl == "https://github.com/oddfoxerr-real/Cyn/releases/tag/apex-6m-v1.0.0")
-                && ! p.researchUrl.containsAnyOf ("?# \t\r\n")
-                && p.researchUrl.length() <= 240;
+                cyn::isTrustedResearchReleaseUrl (p.researchUrl.toStdString());
             if (p.name.isNotEmpty()
                 && (p.researchOnly ? trustedResearchUrl : isSafeFilename (p.filename)))
+            {
+                if (p.researchOnly) ++researchCount;
                 collected.push_back (p);
+            }
         }
+        catalogueTotal_ = submittedCount;
+        catalogueRejected_ = submittedCount - static_cast<int> (collected.size());
+        catalogueExternal_ = researchCount;
         profiles_ = std::move (collected);
         list_.updateContent();
         if (! profiles_.empty()) list_.selectRow (0);
@@ -243,8 +251,11 @@ private:
         }
         else
         {
-            status_.setText ("Loaded built-in community profiles. No server required.",
-                             juce::dontSendNotification);
+            status_.setText ("Loaded " + juce::String (profiles_.size())
+                + " built-in profiles (" + juce::String (catalogueExternal_)
+                + " external)."
+                + (catalogueRejected_ > 0 ? " Some entries were rejected." : ""),
+                juce::dontSendNotification);
         }
     }
 
@@ -290,8 +301,20 @@ private:
                 {
                     const bool ok = view->loadCatalogue (parsed);
                     view->setBusy (false);
-                    view->status_.setText (ok ? "Community profiles refreshed. No account needed to browse."
-                         : "Offline: Could not refresh. Bundled profiles remain available.",
+                    if (ok)
+                    {
+                        const auto accepted = view->catalogueTotal_ - view->catalogueRejected_;
+                        view->status_.setText ("Community refreshed: "
+                            + juce::String (accepted) + "/" + juce::String (view->catalogueTotal_)
+                            + " listings (" + juce::String (view->catalogueExternal_)
+                            + " external)."
+                            + (view->catalogueRejected_ > 0
+                                ? " " + juce::String (view->catalogueRejected_) + " rejected."
+                                : " No account needed."),
+                            juce::dontSendNotification);
+                    }
+                    else view->status_.setText (
+                        "Offline: Could not refresh. Bundled profiles remain available.",
                         juce::dontSendNotification);
                 }
             });
