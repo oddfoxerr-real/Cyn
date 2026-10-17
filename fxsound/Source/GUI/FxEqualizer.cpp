@@ -273,6 +273,9 @@ void FxEqualizer::resized()
     int x = X_MARGIN;
     int width = (bounds.getWidth() - X_MARGIN*2) / labels_.size();
     int rotary_width = jmin(ROTARY_SLIDER_HEIGHT, width);
+    // 39 genuine filter controls must fit without mouse-hit areas overlapping.
+    const int thumbWidth = jmin(FxTheme::SLIDER_THUMB_RADIUS * 4, width);
+
 
     bool show_center_frequencies = true;
     if (labels_.size() > 10)
@@ -284,17 +287,21 @@ void FxEqualizer::resized()
     for (auto i=0; i<labels_.size(); i++)
     {
         center_frequencies_[i]->setVisible(show_center_frequencies);
+        // On high-density layouts, every second label is visually hidden,
+        // but ALL real filter controls remain accessible and live.
+        labels_[i]->setVisible(labels_.size() < 35 || i == 0 ||
+                                i == labels_.size()-1 || i%2 == 0);
         if (show_center_frequencies)
         {
             labels_[i]->setFont(theme.getNormalFont().withHeight(LABEL_HEIGHT));
-            band_boosts_[i]->setBounds(x + (width - FxTheme::SLIDER_THUMB_RADIUS * 4) / 2, Y_MARGIN, FxTheme::SLIDER_THUMB_RADIUS * 4, SLIDER_HEIGHT );
+            band_boosts_[i]->setBounds(x + (width - thumbWidth) / 2, Y_MARGIN, thumbWidth, SLIDER_HEIGHT );
             labels_[i]->setBounds(x, band_boosts_[i]->getBottom() + 6, width, LABEL_HEIGHT);
             center_frequencies_[i]->setBounds(x + (width - rotary_width) / 2, labels_[i]->getBottom() + 4, rotary_width, rotary_width);
         }
         else
         {
             labels_[i]->setFont(theme.getNormalFont().withHeight(SMALL_FONT));
-            band_boosts_[i]->setBounds(x + (width - FxTheme::SLIDER_THUMB_RADIUS * 4) / 2, Y_MARGIN, FxTheme::SLIDER_THUMB_RADIUS * 4, SLIDER_HEIGHT + ROTARY_SLIDER_HEIGHT);
+            band_boosts_[i]->setBounds(x + (width - thumbWidth) / 2, Y_MARGIN, thumbWidth, SLIDER_HEIGHT + ROTARY_SLIDER_HEIGHT);
             labels_[i]->setBounds(x, band_boosts_[i]->getBottom() + 6, width, LABEL_HEIGHT*2);
         }
 
