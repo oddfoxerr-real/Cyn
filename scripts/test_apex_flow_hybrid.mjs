@@ -6,7 +6,8 @@ const catalogue = JSON.parse(read("ai-hub/community/index.json"));
 const hybrid = catalogue.profiles.find(p=>p.id==="cyn-apex-flow-hybrid");
 const offline = catalogue.profiles.find(p=>p.id==="cyn-apex6m-flowsense");
 assert(hybrid && hybrid.kind!== "research" && hybrid.file==="cyn-apex-flow-hybrid.cynai.json");
-assert(offline?.kind==="research", "Keep offline APEX-6M distinct");
+assert(offline?.kind==="onnx" && offline.activation==="apex6m",
+  "Keep APEX Flow Hybrid separate from full 6.3M activatable ONNX model");
 const profile=JSON.parse(read("ai-hub/community/" + hybrid.file));
 const trained=JSON.parse(read("ai-hub/community/cyn-real-audio-13h.cynai.json"));
 assert.deepEqual(profile.model.weights, trained.model.weights,
@@ -14,7 +15,7 @@ assert.deepEqual(profile.model.weights, trained.model.weights,
 assert.deepEqual(profile.model.ready, trained.model.ready);
 assert.equal(profile.profile.runtime_extension,"cyn-apex-flow-hybrid-v1");
 assert.match(profile.profile.description,/NOT part|NOT.*denoiser|not.*denoiser/i,
-  "Be clear 6.3M offline checkpoint is NOT playing in CYN");
+  "Be clear Flow Hybrid alone does NOT load the full 6.3M denoiser");
 const controller=read("fxsound/Source/GUI/FxController.cpp");
 const header=read("fxsound/Source/GUI/FxController.h");
 const hybridHeader=read("fxsound/Source/GUI/CynApexFlowHybrid.h");
@@ -35,4 +36,4 @@ assert(hub.includes("FxController::getInstance().importSmartProfile (embedded, e
   "Bundled AI Hub activation must use real native model switch");
 const build=read("BUILD_CYN.ps1");
 assert(build.includes("ai-hub\\community\\*"),"Installer must bundle new hybrid profile");
-console.log("PASS: APEX Hybrid truly selectable, trained 13h+YAMNet provenance, separate offline 6M, native DSP wired");
+console.log("PASS: APEX Flow Hybrid selectable independently of native 6M ONNX AI, trained weights and DSP wired");

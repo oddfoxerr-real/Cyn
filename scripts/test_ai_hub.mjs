@@ -10,6 +10,16 @@ const trained=catalogue.profiles.find(p=>p.id==="cyn-real-audio-13h");
 assert(trained && trained.file==="cyn-real-audio-13h.cynai.json", "Real-audio profile missing from native AI Hub");
 assert(trained.category==="experimental" && /real|audio/i.test(trained.description), "Trained model must retain experimental labelling");
 for(const entry of catalogue.profiles){
+  if(entry.kind==="onnx"){
+    assert.equal(entry.id,"cyn-apex6m-flowsense","Unknown ONNX catalog entry");
+    assert.equal(entry.activation,"apex6m");
+    assert.equal(entry.runtime,"apex6m-225.onnx");
+    assert.equal(entry.category,"neural music");
+    assert.equal(entry.file,undefined,"The full model must not pretend to be a 209-weight profile");
+    assert.equal(entry.url,"https://github.com/oddfoxerr-real/Cyn/releases/tag/apex-6m-v1.0.0");
+    assert.match(entry.description,/live|adaptive/i);
+    continue;
+  }
   if(entry.kind==="research"){
     assert.equal(entry.category,"research");
     assert.equal(entry.file,undefined,"Research-only model cannot masquerade as .cynai");
@@ -36,8 +46,8 @@ assert(native.includes("juce::DialogWindow::LaunchOptions"),"Hub must run inside
 assert(native.includes("CynAiProfiles/index.json"),"Missing bundled offline catalogue");
 assert(native.includes("refreshCommunity"),"Missing optional GitHub refresh");
 assert(native.includes("importSmartProfile"),"Missing native model import");
-assert(native.includes("item->researchOnly") && native.includes("View research files") &&
-       native.includes("trustedResearchUrl"),"Research preview must not activate as a Cyn AI preset");
+assert(native.includes("item->nativeApex") && native.includes('selectAIProfile ("apex6m", error)') &&
+       native.includes("trustedResearchUrl"),"Full ONNX APEX AI must activate with a validated real runtime");
 const view=readFileSync(path("fxsound/Source/GUI/FxProView.cpp"),"utf8");
 assert(view.includes("browse_ai_.onClick = [this] { CynAiHubDialog::show(this); };"),"AI Hub button must open native dialog");
 assert(!view.includes('URL("https://github.com/oddfoxerr-real/Cyn/tree/main/ai-hub").launchInDefaultBrowser()'),"Website link still exists");
@@ -47,13 +57,13 @@ const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
                   "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.50"]){
+                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.51"]){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
 assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
 assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
-console.log("PASS: visible native AI sidebar, profile actions and v2.0.50 version marker");
+console.log("PASS: visible native AI sidebar, profile actions and v2.0.51 version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
 assert(native.includes("componentToCentreAround = owner"),"AI Hub must be positioned over Cyn");
 assert(native.includes("dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f)"),"Dialog background is transparent");
@@ -207,7 +217,7 @@ assert(movieCtrl.includes('package["format"].toString()=="cyn-ai-profile"'), 'Mo
 assert(movieCtrl.includes('movie_model_=candidate;'), 'Default Movie AI needs candidate model weights');
 console.log('PASS: tested Cinema AI profile seeds Movie AI, generic starter fallback preserved');
 
-// v2.0.50: mode and model are separate; switching keeps private model slots.
+// v2.0.51: mode and model are separate; switching keeps private model slots.
 assert(view.includes('ai_profile_.setBounds(540,386,425,33)'), 'A separate model selector must be visible');
 assert(view.includes('ai_profile_.onChange=[this]'), 'The model dropdown must really switch neural models');
 assert(view.includes('refreshAIProfileChoices()'), 'Imported profiles must be discoverable without restarting');
@@ -219,13 +229,13 @@ assert(native.includes('Activate selected AI'), 'AI Hub must explain activation 
 console.log('PASS: separate persistent neural model selector with reversible backups');
 
 
-// v2.0.50: installer, native executable, release controller and updater must agree.
+// v2.0.51: installer, native executable, release controller and updater must agree.
 const project=readFileSync(path("fxsound/Project/FxSound_App.vcxproj"),"utf8");
 const installer=readFileSync(path("Installer/Cyn/Cyn.iss"),"utf8");
 const updater=readFileSync(path("CynUpdater.ps1"),"utf8");
-assert.equal((project.match(/JUCE_APP_VERSION=2\.0\.50\.0/g)||[]).length,4,
-  'All native build configs must expose actual version 2.0.50.0');
-assert.match(installer,/^AppVersion=2\.0\.50$/m);
+assert.equal((project.match(/JUCE_APP_VERSION=2\.0\.51\.0/g)||[]).length,4,
+  'All native build configs must expose actual version 2.0.51.0');
+assert.match(installer,/^AppVersion=2\.0\.51$/m);
 assert(controllerSource.includes('const auto currentVersion=major+"."+minor+"."+patch'),
   'Use runtime version for updater, not old hard-coded version');
 assert(!controllerSource.includes('CurrentVersion 2.0.29'), 'Updater cannot repeatedly offer old v2.0.29');
@@ -247,14 +257,18 @@ assert(policy.includes("https://github.com/oddfoxerr-real/Cyn/releases/tag/"),
 assert(native.includes('catalogueRejected_') && native.includes('catalogueExternal_')
   && native.includes('Community refreshed: '),
   "Never report generic success while silently dropping models");
-const researchListings = catalogue.profiles.filter(p => p.kind === "research");
-assert.equal(researchListings.length,1,"APEX release should remain a visible, distinct external entry");
+const neuralListings = catalogue.profiles.filter(p => p.kind === "onnx");
+assert.equal(neuralListings.length,1,"APEX must be a visible native ONNX AI, not research");
 const selectionBody = native.split("void updateSelection()")[1].split("static bool isSafeFilename")[0];
 const singleEscapedNewline = String.fromCharCode(92, 110);
 const doubleEscapedNewline = String.fromCharCode(92, 92, 110);
 assert(selectionBody.includes(singleEscapedNewline) && !selectionBody.includes(doubleEscapedNewline),
   "Research details render literal backslash-n sequences instead of real line breaks");
-assert(researchListings.some(p => p.id === "cyn-apex6m-flowsense" &&
+assert(neuralListings.some(p => p.id === "cyn-apex6m-flowsense" &&
    p.url === "https://github.com/oddfoxerr-real/Cyn/releases/tag/apex-6m-v1.0.0" && p.issue === 32),
-  "APEX-6M is absent from refreshable catalogue");
-console.log("PASS: APEX research listing admitted by native validator and profile newlines render correctly");
+  "APEX-6M is absent from refreshable model catalogue");
+assert(native.includes('p.nativeApex = row["kind"].toString() == "onnx"') &&
+       native.includes("Switch to previous AI") &&
+       native.includes("ctrl.setSmartListening(true)"),
+  "APEX full model must be installable, activatable and reversible");
+console.log("PASS: genuine native APEX ONNX AI listed with activation, restoration and model URL");

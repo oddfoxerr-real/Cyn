@@ -1,4 +1,4 @@
-name: Cyn AI Hub APEX Research Preview
+name: CYN APEX ONNX AI Hub Activation
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   native-ai-hub-contract:
-    name: Verify importer boundaries and official experimental link
+    name: Verify real ONNX model release and native catalog
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -30,16 +30,16 @@ jobs:
           with open("ai-hub/community/index.json") as f:
             data=json.load(f)
           record=next((r for r in data["profiles"] if r.get("id")=="cyn-apex6m-flowsense"),None)
-          assert record and record["kind"]=="research" and "file" not in record
-          url="https://api.github.com/repos/oddfoxerr-real/Cyn/releases/tags/cyn-apex6m-flowsense-research-20261017"
+          assert record and record["kind"]=="onnx" and record["activation"]=="apex6m" and "file" not in record
+          url="https://api.github.com/repos/oddfoxerr-real/Cyn/releases/tags/apex-6m-v1.0.0"
           req=urllib.request.Request(url,headers={"User-Agent":"Cyn-AI-Hub-CI","Accept":"application/vnd.github+json"})
           with urllib.request.urlopen(req,timeout=15) as response:
             release=json.load(response)
-          assert release["prerelease"] and not release["draft"]
+          assert not release["draft"]
           names={a["name"] for a in release["assets"]}
-          assert "CYN-APEX-6M-FlowSense-Research.zip" in names
-          assert "SHA256.json" in names
-          print("Verified downloadable experimental prerelease and research-only importer boundary.")
+          assert "apex6m-225.onnx" in names
+          assert "apex6m-manifest.json" in names
+          print("Verified full ONNX model weights and proper activatable AI catalog.")
           PY
 
   native-windows-compile:

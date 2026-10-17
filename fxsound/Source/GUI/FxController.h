@@ -138,6 +138,7 @@ public:
     bool apex6MInstalled() const { return apex_worker_ && apex_worker_->installed(); }
     bool apex6MReady() const { return apex_worker_ && apex_worker_->ready(); }
     bool selectAIProfile(const String& id, String& error);
+    bool restorePreviousApexMusicAI(String& error);
     String getLearningStatus() const;
     bool isSmartTraining() const { return smart_training_; }
     bool getLiveNeuralActivity(NeuralActivitySnapshot& out) const;
