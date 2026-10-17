@@ -155,7 +155,7 @@ private:
             if (p->researchOnly && p->id=="cyn-apex6m-flowsense" &&
                 FxController::getInstance().apex6MInstalled())
             {
-                const auto& ctrl=FxController::getInstance();
+                auto& ctrl=FxController::getInstance();
                 description_.setText ("FULL NEURAL AI  /  " + p->name + "\n\n"
                     + "CYN APEX 6M executes 6,307,477 actual ONNX model parameters "
                       "on live captured music. Its neural mask currently controls "
