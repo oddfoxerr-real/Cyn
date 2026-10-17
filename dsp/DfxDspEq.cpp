@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "DfxSdk.h"
 #include "vals.h"
 #include "GraphicEq.h"
+#include "sos.h"
 #include "reg.h"
 #include "mth.h"
 #include "ptutil/dfxp/u_dfxp.h"
@@ -176,8 +177,8 @@ int DfxDspPrivate::getGraphicEqInfoFromVals(PT_HANDLE *hp_vals)
 		int nBands;
 		GraphicEqGetNumBands(hp_graphicEq, &nBands);
 		// ---------------------------------------------------------- Dimension arrays more than max bands number (31)
-		realtype r_boost_cut_original[GRAPHIC_EQ_MAX_NUM_BANDS+1] = {};
-		realtype r_boost_cut_interpolated[GRAPHIC_EQ_MAX_NUM_BANDS+1] = {};
+		realtype r_boost_cut_original[SOS_MAX_NUM_SOS_SECTIONS+1] = {};
+		realtype r_boost_cut_interpolated[SOS_MAX_NUM_SOS_SECTIONS+1] = {};
 		// ---------------------------------------------------------- Read values into the original array
 		for (int i_band_num = 1; i_band_num <= nBands; i_band_num++)
 		{
