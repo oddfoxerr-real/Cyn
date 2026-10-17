@@ -99,8 +99,9 @@ public:
 private:
     struct Profile
     {
-        juce::String name, author, category, description, filename;
+        juce::String name, author, category, description, filename, researchUrl;
         int issue = 0;
+        bool researchOnly = false;
     };
 
     static constexpr int maxCatalogueBytes = 256 * 1024;
@@ -149,19 +150,39 @@ private:
     {
         if (const auto* p = selected())
         {
-            description_.setText ("PROFILE  /  " + p->name + "\n\n"
-                + p->description + "\n\n"
-                + "Creator: " + p->author + "\n"
-                + "Category: " + p->category + "\n\n"
-                + "Activate it in the current Music or Movie mode. You can then "
-                  "switch models in Smart Listening without reimporting.\n\n"
-                + (FxController::getInstance().getActiveAIProfileId()
-                    == "bundled:" + p->filename ? "ACTIVE IN THIS MODE\n\n" : "")
-                + "Community profiles are user-submitted; listening preferences differ.",
-                juce::dontSendNotification);
+            if (p->researchOnly)
+            {
+                description_.setText ("RESEARCH PREVIEW  /  " + p->name + "\\n\\n"
+                    + p->description + "\\n\\n"
+                    + "Creator: " + p->author + "\\n"
+                    + "Category: " + p->category + "\\n\\n"
+                    + "This is a 6.3-million-parameter OFFLINE research model, NOT a Cyn "
+                      "smart-listening profile. It cannot activate in this Cyn version. "
+                      "Use View research files to open its separate GitHub prerelease. "
+                      "Your existing AI model and settings stay unchanged.",
+                    juce::dontSendNotification);
+                import_.setButtonText ("View research files");
+            }
+            else
+            {
+                description_.setText ("PROFILE  /  " + p->name + "\\n\\n"
+                    + p->description + "\\n\\n"
+                    + "Creator: " + p->author + "\\n"
+                    + "Category: " + p->category + "\\n\\n"
+                    + "Activate it in the current Music or Movie mode. You can then "
+                      "switch models in Smart Listening without reimporting.\\n\\n"
+                    + (FxController::getInstance().getActiveAIProfileId()
+                        == "bundled:" + p->filename ? "ACTIVE IN THIS MODE\\n\\n" : "")
+                    + "Community profiles are user-submitted; listening preferences differ.",
+                    juce::dontSendNotification);
+                import_.setButtonText ("Activate selected AI");
+            }
         }
         else
+        {
             description_.setText ("No profiles available.", juce::dontSendNotification);
+            import_.setButtonText ("Activate selected AI");
+        }
         import_.setEnabled (selected() != nullptr && ! busy_);
         review_.setEnabled (selected() != nullptr && selected()->issue > 0);
     }
@@ -191,7 +212,15 @@ private:
             p.description = row["description"].toString().substring (0, 900);
             p.filename = row["file"].toString();
             p.issue = juce::jlimit (0, 100000000, static_cast<int> (row["issue"]));
-            if (p.name.isNotEmpty() && isSafeFilename (p.filename))
+            p.researchOnly = row["kind"].toString() == "research";
+            p.researchUrl = row["url"].toString();
+            // Only our official GitHub experimental release URLs are acceptable.
+            const bool trustedResearchUrl =
+                p.researchUrl.startsWith ("https://github.com/oddfoxerr-real/Cyn/releases/tag/cyn-apex6m-")
+                && ! p.researchUrl.containsAnyOf ("?# \\t\\r\\n")
+                && p.researchUrl.length() <= 240;
+            if (p.name.isNotEmpty()
+                && (p.researchOnly ? trustedResearchUrl : isSafeFilename (p.filename)))
                 collected.push_back (p);
         }
         profiles_ = std::move (collected);
@@ -273,6 +302,15 @@ private:
         if (busy_) return;
         auto* item = selected();
         if (! item) return;
+        if (item->researchOnly)
+        {
+            // APEX weights are NOT compatible with the small .cynai model importer.
+            // This action NEVER invokes importSmartProfile or changes live audio.
+            juce::URL (item->researchUrl).launchInDefaultBrowser();
+            status_.setText ("Opened official APEX research prerelease; current AI unchanged.",
+                             juce::dontSendNotification);
+            return;
+        }
 
         if (! juce::AlertWindow::showOkCancelBox (
                 juce::AlertWindow::QuestionIcon, "Activate " + item->name + "?",

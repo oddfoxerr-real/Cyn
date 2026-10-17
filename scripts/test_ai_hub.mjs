@@ -10,6 +10,13 @@ const trained=catalogue.profiles.find(p=>p.id==="cyn-real-audio-13h");
 assert(trained && trained.file==="cyn-real-audio-13h.cynai.json", "Real-audio profile missing from native AI Hub");
 assert(trained.category==="experimental" && /real|audio/i.test(trained.description), "Trained model must retain experimental labelling");
 for(const entry of catalogue.profiles){
+  if(entry.kind==="research"){
+    assert.equal(entry.category,"research");
+    assert.equal(entry.file,undefined,"Research-only model cannot masquerade as .cynai");
+    assert(entry.url.startsWith("https://github.com/oddfoxerr-real/Cyn/releases/tag/cyn-apex6m-"));
+    assert.match(entry.description,/not compatible|not.*importer/i);
+    continue;
+  }
   assert.match(entry.file,/^[a-z0-9-]+\.cynai\.json$/);
   const profile=JSON.parse(readFileSync(path("ai-hub/community/"+entry.file),"utf8"));
   assert.equal(profile.format,"cyn-ai-profile");
@@ -27,6 +34,8 @@ assert(native.includes("juce::DialogWindow::LaunchOptions"),"Hub must run inside
 assert(native.includes("CynAiProfiles/index.json"),"Missing bundled offline catalogue");
 assert(native.includes("refreshCommunity"),"Missing optional GitHub refresh");
 assert(native.includes("importSmartProfile"),"Missing native model import");
+assert(native.includes("item->researchOnly") && native.includes("View research files") &&
+       native.includes("trustedResearchUrl"),"Research preview must not activate as a Cyn AI preset");
 const view=readFileSync(path("fxsound/Source/GUI/FxProView.cpp"),"utf8");
 assert(view.includes("browse_ai_.onClick = [this] { CynAiHubDialog::show(this); };"),"AI Hub button must open native dialog");
 assert(!view.includes('URL("https://github.com/oddfoxerr-real/Cyn/tree/main/ai-hub").launchInDefaultBrowser()'),"Website link still exists");
