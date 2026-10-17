@@ -100,7 +100,7 @@ public:
 private:
     struct Profile
     {
-        juce::String name, author, category, description, filename, researchUrl;
+        juce::String id, name, author, category, description, filename, researchUrl;
         int issue = 0;
         bool researchOnly = false;
     };
@@ -152,7 +152,25 @@ private:
     {
         if (const auto* p = selected())
         {
-            if (p->researchOnly)
+            if (p->researchOnly && p->id=="cyn-apex6m-flowsense" &&
+                FxController::getInstance().apex6MInstalled())
+            {
+                auto& ctrl=FxController::getInstance();
+                description_.setText ("FULL NEURAL AI  /  " + p->name + "\n\n"
+                    + "CYN APEX 6M executes 6,307,477 actual ONNX model parameters "
+                      "on live captured music. Its neural mask currently controls "
+                      "bounded 48 kHz EQ bands, not the WAV application's full "
+                      "per-sample denoising output. Original model and training "
+                      "remain preserved.\n\n"
+                    + (ctrl.apex6MReady() ? "NEURAL RUNTIME READY\n\n"
+                       : "Loading full APEX ONNX runtime...\n\n")
+                    + p->description + "\n\n"
+                    + (ctrl.getActiveAIProfileId()=="apex6m" ?
+                       "ACTIVE IN MUSIC MODE" : "Select Activate to try the live preview."),
+                    juce::dontSendNotification);
+                import_.setButtonText ("Activate selected AI");
+            }
+            else if (p->researchOnly)
             {
                 description_.setText ("RESEARCH PREVIEW  /  " + p->name + "\n\n"
                     + p->description + "\n\n"
@@ -210,6 +228,7 @@ private:
         {
             if (! row.isObject()) continue;
             Profile p;
+            p.id = row["id"].toString().substring (0, 90);
             p.name = row["name"].toString().substring (0, 80);
             p.author = row["author"].toString().substring (0, 60);
             p.category = row["category"].toString().substring (0, 30);
@@ -326,9 +345,26 @@ private:
         if (busy_) return;
         auto* item = selected();
         if (! item) return;
+        if(item->researchOnly && item->id=="cyn-apex6m-flowsense" &&
+            FxController::getInstance().apex6MInstalled())
+        {
+            if(! juce::AlertWindow::showOkCancelBox(
+                juce::AlertWindow::QuestionIcon,"Activate APEX 6M?",
+                "Run all 6,307,477 ONNX parameters on live music "
+                "to drive bounded neural EQ. This preview requires a 48 kHz "
+                "mono/stereo device. Your trained AI stays backed up. "
+                "It is NOT the standalone denoiser's per-bin audio processor.",
+                "Activate","Cancel")) return;
+            juce::String error;
+            const bool success=FxController::getInstance().selectAIProfile("apex6m",error);
+            status_.setText(success ? "APEX 6M activated: full ONNX neural EQ (Music AI)."
+                : "APEX activation failed: "+error,juce::dontSendNotification);
+            updateSelection();
+            return;
+        }
         if (item->researchOnly)
         {
-            // APEX weights are NOT compatible with the small .cynai model importer.
+            // Other models still require a compatible runtime.
             // This action NEVER invokes importSmartProfile or changes live audio.
             juce::URL (item->researchUrl).launchInDefaultBrowser();
             status_.setText ("Opened official APEX research prerelease; current AI unchanged.",

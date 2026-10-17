@@ -210,6 +210,7 @@ InputAudioFeatures DfxDsp::getInputAudioFeatures() { return data_->source_analyz
 bool DfxDsp::copyYamNetWindow(std::array<float,15600>& out,uint64_t& sampleNumber) const
 { return data_->source_analyzer_.copyYamNetWindow(out,sampleNumber); }
 
+bool DfxDsp::copyApexWindow(std::array<float,48000>& out,uint64_t& number) const {return data_->source_analyzer_.copyApexWindow(out,number);}
 bool DfxDsp::copyDjWindow(std::array<float,128000>& out,uint64_t& number) const {return data_->source_analyzer_.copyDjWindow(out,number);}
 void DfxDsp::enableDj(bool value) {data_->dj_.enable(value);}
 void DfxDsp::configureDj(float amount,float spacing,bool stereo) {data_->dj_.configure(amount,spacing,stereo);}

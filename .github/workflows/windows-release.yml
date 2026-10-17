@@ -160,6 +160,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: .\BUILD_CYN.ps1
 
+      - name: Verify real APEX 6M ONNX inference and native activation
+        if: steps.inspect.outputs.state != 'published'
+        shell: pwsh
+        run: |
+          node scripts/test_apex6m_activation.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'APEX 6M native activation tests failed.' }
+          & cl.exe /nologo /EHsc /O2 /std:c++17 tests/cyn_apex6m_onnx_smoke.cpp /Fe:apex-onnx-smoke.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Failed compiling native APEX ONNX smoke test.' }
+          & .\apex-onnx-smoke.exe (Resolve-Path 'dist/Cyn')
+          if ($LASTEXITCODE -ne 0) { throw 'Full APEX ONNX failed with Cyn bundled runtime.' }
+
       - name: Build Windows installer
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh

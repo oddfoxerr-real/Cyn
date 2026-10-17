@@ -74,6 +74,17 @@ if ([version]$published -ge [version]'2.0.18') {
     Copy-Item -LiteralPath (Join-Path $root 'third_party/yamnet/LICENSE.txt') -Destination (Join-Path $dist 'YAMNET-LICENSE.txt') -Force
 }
 
+# Native APEX 6M preview loads its separately exported full ONNX model.
+# Never substitute the old 209-parameter .cynai, nor silently skip missing weights.
+if ([version]$published -ge [version]'2.0.50') {
+    $apexStage=Join-Path $root '.build-tools\apex-package'
+    & (Join-Path $root 'PREPARE_CYN_APEX6M.ps1') -Destination $apexStage
+    foreach($name in @('apex6m-225.onnx','apex6m-manifest.json')) {
+        Copy-Item -LiteralPath (Join-Path $apexStage $name) -Destination $dist -Force
+        if (!(Test-Path (Join-Path $dist $name))) { throw "Full APEX ONNX package missing: $name" }
+    }
+}
+
 Compress-Archive -Path (Join-Path $dist '*') -DestinationPath (Join-Path $root 'dist\Cyn-Windows-x64.zip') -Force
 Write-Host "Built: $dist\Cyn.exe"
 Write-Host 'Close the original FxSound, then run dist\Cyn\LAUNCH_CYN.ps1. Keep the installed FxSound driver.'
