@@ -147,7 +147,12 @@ int PT_DECLSPEC GraphicEqSetNumBands(PT_HANDLE* hp_GraphicEq, int num_bands)
 		}
 	}
 
-	// SOS storage was reserved to 40 at construction; only change active sections.\n\t// Never write 35/39 filters into an old 31-section allocation.\n\tif (sosSetNumActiveSections(cast_handle->sos_hdl, num_bands) != OKAY)\n\t\treturn(NOT_OKAY);\n\n\t// Update the number of bands in the structure
+	// SOS storage was reserved to 40 at construction; only change active sections.
+	// Never write 35/39 filters into an old 31-section allocation.
+	if (sosSetNumActiveSections(cast_handle->sos_hdl, num_bands) != OKAY)
+		return(NOT_OKAY);
+
+	// Update the number of bands in the structure
 	cast_handle->num_bands = num_bands;
 
 	// Also update the global variable if needed
