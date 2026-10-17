@@ -14,7 +14,7 @@ def apply(checkpoint: Path, source: Path, output: Path, wet: float = 1.0):
     torch.set_num_threads(2)
     data, rate = sf.read(source, always_2d=True, dtype="float32")
     if rate != SAMPLE_RATE:
-        raise ValueError("Experimental audio inference accepts 8 kHz WAV only; resample with an explicit high-quality converter")
+        raise ValueError("Experimental audio inference accepts 48 kHz WAV only; resample with an explicit high-quality converter")
     if not np.isfinite(data).all() or data.size == 0:
         raise ValueError("Audio must be finite, nonempty")
     if data.shape[1] > 2: raise ValueError("Only mono/stereo supported")
