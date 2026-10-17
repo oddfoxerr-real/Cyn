@@ -44,7 +44,7 @@ class ApexApp(tk.Tk):
         self._label(frame,"Checkpoint: 225 earlier synthetic training steps. Further training is paused.",9,fg="#8399ac").pack(anchor="w")
         self._label(frame,self.status,10,fg="#67d1df").pack(anchor="w",pady=(14,0))
     def _label(self,parent,text,size,bold=False,fg="#e8f5ff"):
-        return tk.Label(parent,text=text,font=("Segoe UI",size,"bold" if bold else "normal"),
+        return tk.Label(parent,**({"textvariable":text} if isinstance(text,tk.Variable) else {"text":text}),font=("Segoe UI",size,"bold" if bold else "normal"),
                         bg="#090b12",fg=fg,anchor="w",wraplength=595,justify="left")
     def choose(self):
         name=filedialog.askopenfilename(filetypes=[("WAV audio","*.wav")],title="Choose test audio")
