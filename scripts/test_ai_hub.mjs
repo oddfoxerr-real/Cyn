@@ -234,3 +234,24 @@ assert(controllerSource.includes('CynLevelInvariant::forRecognition(input)'),
 assert(controllerSource.includes('CynFlagshipMixer::musicEqCorrection('),
   'Music EQ must respect kick pulse and an existing Bass preset');
 console.log('PASS: consistent native/updater/installer version; singleton updater; volume-neutral AI and preset kick');
+
+
+// Regression: verify the C++ URL guard accepts real official APEX release URLs.
+// A previous double-escaped C++ literal accidentally forbade ordinary letters t/r/n.
+const urlGuard = native.match(/researchUrl\.containsAnyOf\s*\("([^"]+)"\)/);
+assert(urlGuard, "Missing native research URL guard");
+const forbiddenChars = JSON.parse('"' + urlGuard[1] + '"');
+const researchListings = catalogue.profiles.filter(p => p.kind === "research");
+assert(researchListings.length > 0, "No research models advertised in AI Hub");
+for (const entry of researchListings) {
+  assert(![...entry.url].some(char => forbiddenChars.includes(char)),
+    "Research entry silently rejected by native URL validator: " + entry.name);
+}
+const selectionBody = native.split("void updateSelection()")[1].split("static bool isSafeFilename")[0];
+const singleEscapedNewline = String.fromCharCode(92, 110);
+const doubleEscapedNewline = String.fromCharCode(92, 92, 110);
+assert(selectionBody.includes(singleEscapedNewline) && !selectionBody.includes(doubleEscapedNewline),
+  "Research details render literal backslash-n sequences instead of real line breaks");
+assert(researchListings.some(p => p.id === "cyn-apex6m-flowsense"),
+  "APEX-6M is absent from refreshable catalogue");
+console.log("PASS: APEX research listing admitted by native validator and profile newlines render correctly");
