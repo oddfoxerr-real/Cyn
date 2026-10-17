@@ -272,6 +272,7 @@ FxController::~FxController()
     audioRepair_.reset();
     // Stop asynchronous inference before the audio DSP is destroyed.
     dj_worker_.reset();
+    apex_worker_.reset();
     yamnet_worker_.reset();
 	if (powerNotify_ != nullptr && unregister_suspend_resume_notification_ != nullptr)
 	{
@@ -883,6 +884,8 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
         loadSmartModel();
         yamnet_worker_=std::make_unique<CynYamNetWorker>(dfx_dsp_);
         yamnet_worker_->startIfAvailable();
+        apex_worker_=std::make_unique<CynApex6MWorker>(dfx_dsp_);
+        apex_worker_->startIfAvailable();
         dj_worker_=std::make_unique<CynDjWorker>(dfx_dsp_);
         smart_mode_=jlimit(0,1,settings_.getInt("cyn_ai_listening_mode",0));
         // Autonomous YAMNet + Balance is on for new installs; retain a saved opt-out.
@@ -3295,6 +3298,8 @@ std::vector<FxController::AIProfileOption> FxController::getAvailableAIProfiles(
     };
     append(File::getSpecialLocation(File::currentExecutableFile).getSiblingFile("CynAiProfiles"),"bundled:");
     append(File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Cyn/AIModels"),"imported:");
+    if(smart_mode_==0 && apex6MInstalled())
+        choices.push_back({"apex6m","CYN APEX 6M (Full ONNX · Live Neural EQ)"});
     return choices;
 }
 String FxController::getActiveAIProfileId() {
@@ -3304,6 +3309,34 @@ String FxController::getActiveAIProfileId() {
 bool FxController::selectAIProfile(const String& id,String& error) {
     if(smart_training_) { error="Wait for your model training to finish.";return false; }
     if(id==getActiveAIProfileId()) { error.clear();return true; }
+    // The full APEX ONNX model is a distinct runtime, NOT a 209-weight .cynai.
+    // Leave private learning and the previous model untouched.
+    if(id=="apex6m") {
+        if(smart_mode_!=0) {error="Full APEX is a Music AI preview only.";return false;}
+        if(!apex6MInstalled() || !apex6MReady()) {
+            error="Full APEX model is missing or still loading; try again shortly.";
+            return false;
+        }
+        settings_.setString("cyn_apex_previous_music_profile",getActiveAIProfileId());
+        if(smart_enabled_) restoreSmartBaseline();
+        settings_.setString("cyn_active_ai_profile_music","apex6m");
+        if(smart_enabled_) captureSmartBaseline();
+        smart_learning_message_="APEX 6M full ONNX inference selected. Live neural EQ preview.";
+        error.clear();return true;
+    }
+    if(smart_mode_==0 && getActiveAIProfileId()=="apex6m") {
+        // Nothing was written to the previous 209-weight model when APEX ran.
+        const String old=settings_.getString("cyn_apex_previous_music_profile");
+        const String previous=(old.isEmpty() || old=="apex6m")?"personal":old;
+        if(smart_enabled_) restoreSmartBaseline();
+        settings_.setString("cyn_active_ai_profile_music",previous);
+        if(id==previous) {
+            if(smart_enabled_) captureSmartBaseline();
+            smart_learning_message_="Restored previous Music AI and its trained preferences.";
+            error.clear();return true;
+        }
+        if(smart_enabled_) captureSmartBaseline();
+    }
     const auto choices=getAvailableAIProfiles();
     const auto found=std::find_if(choices.begin(),choices.end(),
         [&](const AIProfileOption& option){return option.id==id;});
@@ -3421,6 +3454,32 @@ void FxController::updateSmartListening()
     if(!smart_enabled_) {
         apex_hybrid_active_=false;
         apex_flow_.reset();
+        return;
+    }
+    // When selected, full APEX ONNX inference exclusively drives bounded
+    // LIVE EQ corrections. This is not 209-weight inference and does not
+    // pretend that the WAV denoiser's full per-bin mask is on the DSP callback.
+    if(smart_mode_==0 && getActiveAIProfileId()=="apex6m") {
+        std::array<float,8> neural {};
+        const bool valid=apex_worker_ && apex_worker_->latest(neural) &&
+            active && smart_stale_ticks_<4 && smart_sensitivity_>0.0f;
+        const float mix=CynSmartRange::normalized(smart_sensitivity_);
+        for(int band=0;band<jmin(getNumEqBands(),(int)smart_eq_.size());++band) {
+            const auto frequency=dfx_dsp_.getEqBandFrequency(band);
+            const float change=valid?
+                CynApex6MWorker::interpolate(neural,frequency)*mix:0.0f;
+            // Neural mask is attenuation-based: never increase gain more
+            // than +1.15 dB over the user's original manual preset.
+            const float target=jlimit(MIN_GAIN,MAX_GAIN,
+                smart_eq_[(size_t)band]+jlimit(-1.35f,1.15f,change));
+            const float current=dfx_dsp_.getEqBandBoostCut(band);
+            if(std::abs(target-current)>0.025f) {
+                const auto slew=std::max(0.015f,
+                    CynSmartRange::eqStep(smart_sensitivity_,false));
+                dfx_dsp_.setEqBandBoostCut(band,
+                    current+jlimit(-slew,slew,target-current));
+            }
+        }
         return;
     }
     const bool listening=active && smart_stale_ticks_<4 && input.rms>0.0001f;
@@ -3645,6 +3704,13 @@ String FxController::getSmartSummary() const
     if(!smart_enabled_) return mode+" / learning available (processing off)";
     if(smart_stale_ticks_>=4) return mode+" / waiting for audio";
     CynAudioScene scene;
+    if(smart_mode_==0 &&
+       settings_.getString("cyn_active_ai_profile_music")=="apex6m") {
+        std::array<float,8> response {};
+        return apex_worker_ && apex_worker_->latest(response)
+            ? "Music AI / APEX 6M / 6,307,477 ONNX parameters / Neural EQ ACTIVE"
+            : "Music AI / APEX 6M / waiting for 48kHz neural inference";
+    }
     if(smart_mode_==0 && apex_hybrid_active_) {
         if(!yamnet_worker_ || !yamnet_worker_->latest(scene))
             return "Music AI / APEX Flow Hybrid / waiting for pretrained YAMNet";
