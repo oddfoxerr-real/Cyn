@@ -45,13 +45,13 @@ const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
                   "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.45"]){
+                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.46"]){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
 assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
 assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
-console.log("PASS: visible native AI sidebar, profile actions and v2.0.45 version marker");
+console.log("PASS: visible native AI sidebar, profile actions and v2.0.46 version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
 assert(native.includes("componentToCentreAround = owner"),"AI Hub must be positioned over Cyn");
 assert(native.includes("dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f)"),"Dialog background is transparent");
@@ -205,7 +205,7 @@ assert(movieCtrl.includes('package["format"].toString()=="cyn-ai-profile"'), 'Mo
 assert(movieCtrl.includes('movie_model_=candidate;'), 'Default Movie AI needs candidate model weights');
 console.log('PASS: tested Cinema AI profile seeds Movie AI, generic starter fallback preserved');
 
-// v2.0.45: mode and model are separate; switching keeps private model slots.
+// v2.0.46: mode and model are separate; switching keeps private model slots.
 assert(view.includes('ai_profile_.setBounds(540,386,425,33)'), 'A separate model selector must be visible');
 assert(view.includes('ai_profile_.onChange=[this]'), 'The model dropdown must really switch neural models');
 assert(view.includes('refreshAIProfileChoices()'), 'Imported profiles must be discoverable without restarting');
@@ -217,13 +217,13 @@ assert(native.includes('Activate selected AI'), 'AI Hub must explain activation 
 console.log('PASS: separate persistent neural model selector with reversible backups');
 
 
-// v2.0.45: installer, native executable, release controller and updater must agree.
+// v2.0.46: installer, native executable, release controller and updater must agree.
 const project=readFileSync(path("fxsound/Project/FxSound_App.vcxproj"),"utf8");
 const installer=readFileSync(path("Installer/Cyn/Cyn.iss"),"utf8");
 const updater=readFileSync(path("CynUpdater.ps1"),"utf8");
-assert.equal((project.match(/JUCE_APP_VERSION=2\.0\.45\.0/g)||[]).length,4,
-  'All native build configs must expose actual version 2.0.45.0');
-assert.match(installer,/^AppVersion=2\.0\.45$/m);
+assert.equal((project.match(/JUCE_APP_VERSION=2\.0\.46\.0/g)||[]).length,4,
+  'All native build configs must expose actual version 2.0.46.0');
+assert.match(installer,/^AppVersion=2\.0\.46$/m);
 assert(controllerSource.includes('const auto currentVersion=major+"."+minor+"."+patch'),
   'Use runtime version for updater, not old hard-coded version');
 assert(!controllerSource.includes('CurrentVersion 2.0.29'), 'Updater cannot repeatedly offer old v2.0.29');
@@ -234,3 +234,24 @@ assert(controllerSource.includes('CynLevelInvariant::forRecognition(input)'),
 assert(controllerSource.includes('CynFlagshipMixer::musicEqCorrection('),
   'Music EQ must respect kick pulse and an existing Bass preset');
 console.log('PASS: consistent native/updater/installer version; singleton updater; volume-neutral AI and preset kick');
+
+
+// Regression: verify the C++ URL guard accepts real official APEX release URLs.
+// A previous double-escaped C++ literal accidentally forbade ordinary letters t/r/n.
+const urlGuard = native.match(/researchUrl\.containsAnyOf\s*\("([^"]+)"\)/);
+assert(urlGuard, "Missing native research URL guard");
+const forbiddenChars = JSON.parse('"' + urlGuard[1] + '"');
+const researchListings = catalogue.profiles.filter(p => p.kind === "research");
+assert(researchListings.length > 0, "No research models advertised in AI Hub");
+for (const entry of researchListings) {
+  assert(![...entry.url].some(char => forbiddenChars.includes(char)),
+    "Research entry silently rejected by native URL validator: " + entry.name);
+}
+const selectionBody = native.split("void updateSelection()")[1].split("static bool isSafeFilename")[0];
+const singleEscapedNewline = String.fromCharCode(92, 110);
+const doubleEscapedNewline = String.fromCharCode(92, 92, 110);
+assert(selectionBody.includes(singleEscapedNewline) && !selectionBody.includes(doubleEscapedNewline),
+  "Research details render literal backslash-n sequences instead of real line breaks");
+assert(researchListings.some(p => p.id === "cyn-apex6m-flowsense"),
+  "APEX-6M is absent from refreshable catalogue");
+console.log("PASS: APEX research listing admitted by native validator and profile newlines render correctly");
