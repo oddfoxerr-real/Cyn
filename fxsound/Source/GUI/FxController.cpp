@@ -366,7 +366,7 @@ void FxController::initConfig(const String& commandline)
 	// ------------------------------------------------------------------------------------------
 	//  NumBands / Balance / FilterQ / MasterGain  / Volume Leveling - SET ON START
 	// ------------------------------------------------------------------------------------------
-	int nb = 10;
+	int nb = DEFAULT_NUM_EQ_BANDS;
 	if (numbands == "")
 	{
 		nb = settings_.getInt("num_bands");
@@ -375,7 +375,7 @@ void FxController::initConfig(const String& commandline)
 	{
 		nb = numbands.getIntValue();
 	}
-	if (nb != 5 && nb != 10 && nb != 15 && nb != 20 && nb != 31) nb = DEFAULT_NUM_EQ_BANDS;
+	if (nb != 31 && nb != 35 && nb != 39) nb = DEFAULT_NUM_EQ_BANDS;
 	setNumEqBands(nb);
 
 	float vl = 0;
@@ -571,7 +571,7 @@ void FxController::applyConfig(const String& commandline)
 	if (numbands.isNotEmpty())
 	{
 		nb = numbands.getIntValue();
-		if (nb != 5 && nb != 10 && nb != 15 && nb != 20 && nb != 31) nb = DEFAULT_NUM_EQ_BANDS;
+		if (nb != 31 && nb != 35 && nb != 39) nb = DEFAULT_NUM_EQ_BANDS;
 		setNumEqBands(nb);
 	}
 
@@ -1976,10 +1976,15 @@ int FxController::getNumEqBands()
 
 void FxController::setNumEqBands(int num_bands)
 {
+    if (num_bands != 31 && num_bands != 35 && num_bands != 39) return;
+    if (dfx_dsp_.getNumEqBands() == num_bands) {
+        settings_.setInt("num_bands", num_bands);
+        return;
+    }
     restoreSmartBaseline();
-	dfx_dsp_.setNumBands(num_bands);
+    dfx_dsp_.setNumBands(num_bands);
     if (smart_enabled_) captureSmartBaseline();
-	settings_.setInt("num_bands", num_bands);
+    settings_.setInt("num_bands", dfx_dsp_.getNumEqBands());
 }
 
 float FxController::getVolumeLeveling()

@@ -125,7 +125,7 @@ int PT_DECLSPEC GraphicEqSetNumBands(PT_HANDLE* hp_GraphicEq, int num_bands)
 		return(NOT_OKAY);
 
 	// Check that the number of bands is valid
-	if (num_bands < 1 || num_bands > 31)  // Assuming a maximum limit of 31 bands
+	if (num_bands < 1 || num_bands > GRAPHIC_EQ_MAX_NUM_BANDS)
 		return(NOT_OKAY);
 
 	// If the number of bands hasn't changed, do nothing
@@ -147,7 +147,7 @@ int PT_DECLSPEC GraphicEqSetNumBands(PT_HANDLE* hp_GraphicEq, int num_bands)
 		}
 	}
 
-	// Update the number of bands in the structure
+	// SOS storage was reserved to 40 at construction; only change active sections.\n\t// Never write 35/39 filters into an old 31-section allocation.\n\tif (sosSetNumActiveSections(cast_handle->sos_hdl, num_bands) != OKAY)\n\t\treturn(NOT_OKAY);\n\n\t// Update the number of bands in the structure
 	cast_handle->num_bands = num_bands;
 
 	// Also update the global variable if needed

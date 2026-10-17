@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  
 /* Maximum number of Second Order Sections response handle can take */
 /* #define SOS_MAX_NUM_SOS_SECTIONS 16   Setting used up to 12/23/02 */
-#define SOS_MAX_NUM_SOS_SECTIONS 32
+#define SOS_MAX_NUM_SOS_SECTIONS 40
 
 /* Section filter types */
 #define SOS_GENERIC 0

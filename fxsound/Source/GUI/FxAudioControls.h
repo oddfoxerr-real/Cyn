@@ -105,7 +105,7 @@ private:
     static constexpr int BUTTON_WIDTH = 18;
 	static constexpr int BUTTON_HEIGHT = 18;
 	
-	std::vector<int> equalizer_bands_ = { 5, 10, 15, 20, 31 };
+	std::vector<int> equalizer_bands_ = { 31, 35, 39 };
 
 	void setText();
 	void updateEqualizerBandsText();
@@ -142,6 +142,7 @@ public:
 
 	void update(bool snapValues = true);
     void syncAppliedDsp(float elapsedMs, bool animate);
+    bool isEffectsShown() const noexcept { return effects_shown_; }
 	void showValues(bool show);
 
 	void setLookAndFeel();

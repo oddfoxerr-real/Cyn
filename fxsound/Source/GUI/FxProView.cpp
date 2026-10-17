@@ -340,6 +340,7 @@ void FxProView::timerCallback()
             && !FxTheme::isReducedMotion();
         audio_controls_.syncAppliedDsp(elapsedMs, animate);
         equalizer_.syncAppliedDsp(elapsedMs, animate);
+        updateDjTouch(now);
     }
     if(now-last_status_update_<500) return;
     last_status_update_=now;
@@ -586,7 +587,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.51", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.52", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
         ? "Choose a listening mode and the neural model that powers it." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
@@ -645,6 +646,86 @@ void FxProView::modelChanged(FxModel::Event event)
     else { timerCallback(); repaint(); }
 }
 
+// Visual AI Touch follows ONLY verified changes in actual applied DSP gains.
+// No audio thread work, random movements, input interception, or model calls.
+void FxProView::updateDjTouch(double now)
+{
+    auto& controller=FxController::getInstance();
+    const int chosen=juce::jlimit(0,5,
+        controller.getSettings().getInt("cyn_dj_touch_style",0));
+    if(chosen!=dj_touch_style_) {
+        dj_touch_style_=chosen;
+        dj_touch_seeded_=false;
+        dj_touch_opacity_=0;
+        dj_touch_last_activity_=0;
+    }
+    if(chosen==CynDjTouch::CustomPng) {
+        const auto asset=CynDjTouch::customImageFile();
+        const auto stamp=asset.getLastModificationTime();
+        if(dj_touch_image_stamp_!=stamp) {
+            dj_touch_image_stamp_=stamp;
+            dj_touch_image_=CynDjTouch::readCustomImage();
+        }
+    }
+    if(chosen==CynDjTouch::None || FxTheme::isReducedMotion() ||
+       page_!=0 || !controller.isSmartListening() ||
+       !controller.isAudioProcessing()) {
+        dj_touch_opacity_=0;
+        dj_touch_seeded_=false;
+        return;
+    }
+    // Save a small UI-thread snapshot. Only changes relative to the user's
+    // original preset AND the previous measured DSP state count as AI motion.
+    float best=0;
+    juce::Point<float> target=dj_touch_pos_;
+    const int n=juce::jmin(39,controller.getNumEqBands());
+    for(int i=0;i<5;++i) {
+        const auto value=controller.getAppliedEffectValue(
+            static_cast<FxEffects::EffectType>(i))*10.0f;
+        const auto preset=controller.getEffectValue(
+            static_cast<FxEffects::EffectType>(i))*10.0f;
+        if(!std::isfinite(value) || !std::isfinite(preset))continue;
+        const float movement=std::abs(value-dj_touch_last_effect_[(size_t)i]);
+        dj_touch_last_effect_[(size_t)i]=value;
+        if(!dj_touch_seeded_ || !audio_controls_.isEffectsShown())continue;
+        const float score=(std::min)(movement,1.0f)*
+                          (std::min)(std::abs(value-preset),2.0f);
+        if(movement>0.022f && std::abs(value-preset)>0.08f && score>best) {
+            best=score;
+            target={audio_controls_.getX()+22.0f+value*12.5f,
+                    audio_controls_.getY()+52.0f+i*43.0f};
+        }
+    }
+    for(int i=0;i<n;++i) {
+        const float value=controller.getAppliedEqBandBoostCut(i);
+        const float preset=controller.getEqBandBoostCut(i);
+        if(!std::isfinite(value) || !std::isfinite(preset))continue;
+        const float movement=std::abs(value-dj_touch_last_eq_[(size_t)i]);
+        dj_touch_last_eq_[(size_t)i]=value;
+        if(!dj_touch_seeded_)continue;
+        const float score=(std::min)(movement,0.6f)*
+                          (std::min)(std::abs(value-preset),2.0f);
+        if(movement>0.028f && std::abs(value-preset)>0.09f &&
+           score>best) {
+            best=score;
+            const float stride=(float)(equalizer_.getWidth()-22)/n;
+            target={equalizer_.getX()+11.0f+stride*(i+0.5f),
+                    equalizer_.getY()+40.0f+
+                       juce::jlimit(0.0f,1.0f,(12.0f-value)/24.0f)*166.0f};
+        }
+    }
+    dj_touch_seeded_=true;
+    if(best>0.0017f) {
+        dj_touch_target_=target;
+        dj_touch_last_activity_=now;
+    }
+    const float goal=now-dj_touch_last_activity_<=900 ? 0.8f:0.0f;
+    const float ease=juce::jlimit(0.03f,0.35f,
+        (float)((now-last_ai_controls_update_)*.006f)+.13f);
+    dj_touch_pos_+= (dj_touch_target_-dj_touch_pos_)*ease;
+    dj_touch_opacity_+=(goal-dj_touch_opacity_)*0.15f;
+}
+
 void FxProView::paintOverChildren(Graphics& g)
 {
     if(theme_from_image_.isValid() && theme_to_image_.isValid() &&
@@ -664,6 +745,12 @@ void FxProView::paintOverChildren(Graphics& g)
         const float progress=jlimit(0.0f,1.0f,(float)((Time::getMillisecondCounterHiRes()-transition_start_)/220.0));
         g.setOpacity((1-progress)*(1-progress));
         g.drawImageAt(transition_image_,0,0);
+    }
+    if(page_==0 && dj_touch_style_!=CynDjTouch::None &&
+       dj_touch_opacity_>0.004f && !FxTheme::isReducedMotion()) {
+        CynDjTouch::paint(g,dj_touch_style_,dj_touch_pos_,
+                         dj_touch_opacity_,dj_touch_image_,
+                         (float)(Time::getMillisecondCounterHiRes()*0.001));
     }
 }
 void FxProView::lookAndFeelChanged()
