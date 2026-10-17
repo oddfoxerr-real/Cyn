@@ -3459,7 +3459,8 @@ void FxController::updateSmartListening()
     // When selected, full APEX ONNX inference exclusively drives bounded
     // LIVE EQ corrections. This is not 209-weight inference and does not
     // pretend that the WAV denoiser's full per-bin mask is on the DSP callback.
-    if(smart_mode_==0 && getActiveAIProfileId()=="apex6m") {
+    apex6m_active_=smart_mode_==0 && getActiveAIProfileId()=="apex6m";
+    if(apex6m_active_) {
         std::array<float,8> neural {};
         const bool valid=apex_worker_ && apex_worker_->latest(neural) &&
             active && smart_stale_ticks_<4 && smart_sensitivity_>0.0f;
@@ -3704,8 +3705,7 @@ String FxController::getSmartSummary() const
     if(!smart_enabled_) return mode+" / learning available (processing off)";
     if(smart_stale_ticks_>=4) return mode+" / waiting for audio";
     CynAudioScene scene;
-    if(smart_mode_==0 &&
-       settings_.getString("cyn_active_ai_profile_music")=="apex6m") {
+    if(smart_mode_==0 && apex6m_active_) {
         std::array<float,8> response {};
         return apex_worker_ && apex_worker_->latest(response)
             ? "Music AI / APEX 6M / 6,307,477 ONNX parameters / Neural EQ ACTIVE"
