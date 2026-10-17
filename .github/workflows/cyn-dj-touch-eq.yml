@@ -1,0 +1,53 @@
+name: CYN AI DJ Touch and 39-band EQ
+
+on:
+  pull_request:
+    paths:
+      - "dsp/ptutil/include/sos.h"
+      - "dsp/ptutil/DspUtil/GraphicEq/**"
+      - "dsp/DfxDspEq.cpp"
+      - "fxsound/Source/GUI/CynDjTouch.h"
+      - "fxsound/Source/GUI/CynThemeStudio.h"
+      - "fxsound/Source/GUI/FxAudioControls.*"
+      - "fxsound/Source/GUI/FxProView.*"
+      - "fxsound/Source/GUI/FxController.*"
+      - "scripts/test_dj_touch_and_eq.mjs"
+      - ".github/workflows/cyn-dj-touch-eq.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-control-and-dsp-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          node scripts/test_dj_touch_and_eq.mjs
+          node scripts/test_version_controls.mjs
+          node scripts/test_ai_hub.mjs
+  compile-native-real-dsp:
+    runs-on: windows-2022
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Compile Cyn's real x64 DSP and AI Touch UI, package APEX unchanged
+        shell: pwsh
+        run: ./BUILD_CYN.ps1
+      - name: Verify real installer and model assets
+        shell: pwsh
+        run: |
+          foreach ($name in @('Cyn.exe','apex6m-225.onnx','onnxruntime.dll')) {
+            $file=Join-Path 'dist/Cyn' $name
+            if (!(Test-Path -LiteralPath $file)) { throw "Missing shipped asset: $name" }
+          }
+          & cl.exe /nologo /EHsc /O2 /std:c++17 tests/cyn_apex6m_onnx_smoke.cpp /Fe:apex-onnx-smoke.exe
+          if ($LASTEXITCODE -ne 0) { throw "APEX native smoke test did not compile" }
+          & ./apex-onnx-smoke.exe (Resolve-Path 'dist/Cyn')
+          if ($LASTEXITCODE -ne 0) { throw "Existing APEX checkpoint was modified or broken" }
