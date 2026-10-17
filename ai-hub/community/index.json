@@ -47,7 +47,7 @@
       "author": "CYN contributors",
       "category": "research",
       "kind": "research",
-      "description": "Official full 6,307,477-parameter APEX ONNX neural audio model. Download the standalone Windows WAV processor, adjust neural processing strength and compare the saved audio. Existing 225-step synthetic denoising checkpoint; NO new training. Not a 209-weight CYN AI profile, and not real-time system playback. Requires manual download; never auto-executes.",
+      "description": "Official full 6,307,477-parameter APEX ONNX neural audio model. Download the standalone Windows WAV processor, adjust neural processing strength and compare the saved audio. Existing 225-step synthetic denoising checkpoint; NO new training. Not compatible with CYN's 209-weight profile importer or real-time system playback. Requires manual download; never auto-executes.",
       "url": "https://github.com/oddfoxerr-real/Cyn/releases/tag/apex-6m-v1.0.0",
       "issue": 32,
       "license": "AGPL-3.0-or-later"
