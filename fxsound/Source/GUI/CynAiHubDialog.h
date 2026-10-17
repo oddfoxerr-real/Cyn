@@ -216,7 +216,8 @@ private:
             p.researchUrl = row["url"].toString();
             // Only our official GitHub experimental release URLs are acceptable.
             const bool trustedResearchUrl =
-                p.researchUrl.startsWith ("https://github.com/oddfoxerr-real/Cyn/releases/tag/cyn-apex6m-")
+                (p.researchUrl.startsWith ("https://github.com/oddfoxerr-real/Cyn/releases/tag/cyn-apex6m-")
+                || p.researchUrl == "https://github.com/oddfoxerr-real/Cyn/releases/tag/apex-6m-v1.0.0")
                 && ! p.researchUrl.containsAnyOf ("?# \t\r\n")
                 && p.researchUrl.length() <= 240;
             if (p.name.isNotEmpty()

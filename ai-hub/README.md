@@ -18,8 +18,10 @@ This folder contains only the catalogue and model data for the native app, not a
 
 The catalogue also supports a restricted `kind: "research"` record with an official repository release URL. This is **not a Cyn smart-listening profile**. The native AI Hub labels the action **View research files**, opening the GitHub research prerelease. It never calls `importSmartProfile`, replaces local preferences, or installs an executable. Non-research entries continue using the existing `.cynai.json` schema and activation flow.
 
-**CYN APEX-6M FlowSense** is a distinct 6.3-million-parameter offline denoiser, trained on synthetic mixtures, plus separate signal-based timing/energy analysis. FlowSense computes objective intensity arcs, onset activity and build/transition/breakdown *candidates*; it is not neural emotion recognition and is not trained to interpret personal listening preferences. There is no native Windows real-time audio integration.
+**CYN APEX 6M (Full Neural Preview)** is a standalone, CPU ONNX Windows executable containing the existing 6,307,477-parameter neural checkpoint. It locally processes WAV files through a neural spectral mask; it is not real-time Windows playback, neural music mastering, or a native 209-weight Smart Listening profile. The model's 225 earlier training steps used synthetic audio; **no new training** is being done until owner listening tests.
 
-Official prerelease (research only): https://github.com/oddfoxerr-real/Cyn/releases/tag/cyn-apex6m-flowsense-research-20261017
+**Download the runnable APEX:** https://github.com/oddfoxerr-real/Cyn/releases/tag/apex-6m-v1.0.0
 
-The local model files and Python runtime must be downloaded and run separately; this optional research listing does not ship a working APEX plug-in.
+**Submitted via Publish AI issue form:** https://github.com/oddfoxerr-real/Cyn/issues/32
+
+The Hub entry remains **research-only** with a **View research files** action. Users manually download and test the signed-off release; refreshing a catalogue never automatically installs or executes its EXE. Activating the full neural model in CYN's live DSP requires separate Windows inference integration and latency validation.
