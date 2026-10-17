@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "PersonalAudioModel.h"
 #include "CynApexFlowHybrid.h"
 #include "CynYamNetWorker.h"
+#include "CynApex6MWorker.h"
 #include "CynPresetCycler.h"
 #include "CynDjWorker.h"
 #include "CynAudioRepair.h"
@@ -134,6 +135,8 @@ public:
     struct AIProfileOption { String id, name; };
     std::vector<AIProfileOption> getAvailableAIProfiles() const;
     String getActiveAIProfileId();
+    bool apex6MInstalled() const { return apex_worker_ && apex_worker_->installed(); }
+    bool apex6MReady() const { return apex_worker_ && apex_worker_->ready(); }
     bool selectAIProfile(const String& id, String& error);
     String getLearningStatus() const;
     bool isSmartTraining() const { return smart_training_; }
@@ -366,6 +369,7 @@ private:
     void saveSmartModel();
     void rebuildScenePreferences();
     std::unique_ptr<CynYamNetWorker> yamnet_worker_;
+    std::unique_ptr<CynApex6MWorker> apex_worker_;
     std::unique_ptr<CynDjWorker> dj_worker_;
     PersonalAudioModel smart_model_;
     std::vector<AudioExample> smart_examples_;
