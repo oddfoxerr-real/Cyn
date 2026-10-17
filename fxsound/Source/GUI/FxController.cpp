@@ -3443,6 +3443,42 @@ void FxController::updateSmartListening()
             : music_crescendo_.current();
         CynFlagshipMixer::applyCrescendo(decision,scene,arc);
     } else music_crescendo_.reset();
+    // APEX Flow Hybrid is a distinct, OPT-IN music model. It combines real
+    // pretrained YAMNet scene evidence and the trained 13h preference head
+    // with a measured temporal envelope. The 6.3M offline APEX denoiser is
+    // NOT run here (it requires its own neural runtime).
+    const bool apexHybrid=!movie &&
+        getActiveAIProfileId()=="bundled:cyn-apex-flow-hybrid.cynai.json";
+    if(apexHybrid && listening && yamnetLive && fresh && smart_sensitivity_>0.0f) {
+        const float crest=std::exp(jlimit(0.0f,3.5f,input.values[8]));
+        const float inputPeak=(std::isfinite(input.rms) && std::isfinite(crest))
+            ? jmax(0.0f,input.rms)*crest : 10.0f;
+        CynApexFlowHybrid::Observation sample;
+        sample.ms=now;
+        sample.rms=input.rms;
+        sample.peak=inputPeak;
+        sample.music=scene.music;
+        sample.speech=scene.speech;
+        sample.vocals=scene.vocals;
+        sample.percussion=scene.percussion;
+        sample.bassDrum=scene.bassDrum;
+        sample.silence=scene.silence;
+        sample.pretrainedSceneValid=scene.valid;
+        const auto flow=apex_flow_.observe(sample);
+        if(flow.valid) {
+            decision.preference[0]=jlimit(0.0f,1.0f,
+                decision.preference[0]+flow.clarityBias);
+            decision.preference[3]=jlimit(0.0f,0.94f,
+                decision.preference[3]+flow.dynamicsBias);
+            decision.preference[4]=jlimit(0.0f,0.96f,
+                decision.preference[4]+flow.bassBias);
+            decision.lowEqDb=jlimit(-2.5f,2.7f,
+                decision.lowEqDb+flow.lowEqDb);
+        }
+    } else if(!apexHybrid || !listening || !yamnetLive ||
+              smart_sensitivity_<=0.0f) {
+        apex_flow_.reset(); // Stale pretrained evidence cannot affect DSP.
+    }
     // Preset selection is passage-level (scene features refresh ~100ms), not
     // per-sample. Even when a new preset is chosen, the DSP never reloads .fac;
     // effects and EQ move gradually toward the cached REAL preset values.
@@ -3604,6 +3640,18 @@ String FxController::getSmartSummary() const
     if(!smart_enabled_) return mode+" / learning available (processing off)";
     if(smart_stale_ticks_>=4) return mode+" / waiting for audio";
     CynAudioScene scene;
+    if(smart_mode_==0 &&
+       settings_.getString("cyn_active_ai_profile_music")==
+           "bundled:cyn-apex-flow-hybrid.cynai.json") {
+        if(!yamnet_worker_ || !yamnet_worker_->latest(scene))
+            return "Music AI / APEX Flow Hybrid / waiting for pretrained YAMNet";
+        const auto flow=apex_flow_.current();
+        const String state=flow.impact>0.12f?"impact":flow.build>0.13f?
+            "building":flow.breakdown>0.13f?"breakdown":"steady";
+        return "Music AI / APEX Flow Hybrid / "+state+
+               " / music "+String(scene.music*100.0f,0)+
+               "% / percussion "+String(scene.percussion*100.0f,0)+"%";
+    }
     if(yamnet_worker_ && yamnet_worker_->latest(scene))
         return mode+(smart_mode_==0?" / YAMNet + Balance / music ":" / YAMNet flagship / music ")+String(scene.music*100.0f,0)+
             "% / drums "+String(scene.percussion*100.0f,0)+
