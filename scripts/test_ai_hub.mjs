@@ -160,8 +160,9 @@ assert(studio.includes('previous_.onClick = [this] { selectRelative(-1); };') &&
 assert(studio.includes('const float stride=preview_.getWidth()+19.0f;') &&
        studio.includes('progress=linear*linear*(3.0f-2.0f*linear)'),
        "Theme transitions must be smooth horizontal slides");
-assert(studio.includes('FxController::getInstance().setThemeMode(static_cast<FxThemeMode>(selected_))'),
-       "Selecting a preview must persist the theme through the real Cyn controller");
+assert(studio.includes('controller.setThemeMode(static_cast<FxThemeMode>(selected_))') &&
+       studio.includes('controller.getSettings().setInt("cyn_dj_touch_style",touchStyle_)'),
+       "Studio Apply must persist BOTH the theme and independent AI DJ Touch choice through the real controller");
 assert(view.includes('theme_from_image_,-offset') &&
        view.includes('theme_to_image_,getWidth()-offset'),
        "Live application theme changes must slide between actual UI snapshots");
