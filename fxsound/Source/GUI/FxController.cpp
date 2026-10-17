@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "FxController.h"
+#include "CynSmartRange.h"
 #include "FxMainWindow.h"
 #include "FxSystemTrayView.h"
 #include "FxMessage.h"
@@ -3330,7 +3331,8 @@ void FxController::updateSmartListening()
             : music_crescendo_.current();
         CynFlagshipMixer::applyCrescendo(decision,scene,arc);
     } else music_crescendo_.reset();
-    const float amount=smart_sensitivity_/100.0f,depth=jmin(1.0f,amount*2);
+    const float amount=CynSmartRange::normalized(smart_sensitivity_);
+    const float depth=jmin(1.0f,amount*2);
 
     // Fuse scene and spectral analysis with optional personal preferences.
     const float musicUp[5]={3.4f,1.4f,1.4f,4.2f,5.6f};
@@ -3353,21 +3355,25 @@ void FxController::updateSmartListening()
             else if(movie && e==0) desired=0.58f;
         }
         desired=jlimit(0.0f,1.0f,desired);
-        smart_scores_[e]+=(desired-smart_scores_[e])*(desired>smart_scores_[e]?0.18f:0.12f);
-        const float direction=2.0f*(smart_scores_[e]-0.5f);
+        smart_scores_[e]+=(desired-smart_scores_[e])*
+            CynSmartRange::scoreFollower(smart_sensitivity_,desired>smart_scores_[e],movie);
+        // Below 55%, retain the old restrained DSP mix. As sensitivity moves
+        // toward 100%, grant Music AI progressively more of each effect's full
+        // 0..10 range instead of a fixed +1.4/+5.6 band around the preset.
+        // Neutral decisions keep the manual baseline. Clarity, dynamics and
+        // bass positive shifts still require measured pre-effect headroom.
         const float up=movie?movieUp[e]:musicUp[e];
-        float target=smart_effects_[e]+
-            (direction>0?direction*up*amount:direction*smart_effects_[e]*down[e]*depth);
-        // Reduce added bass and dynamics gain as input peaks approach full scale.
-        if(!movie && listening && (e==4 || e==3) && target>smart_effects_[e])
-            target=smart_effects_[e]+(target-smart_effects_[e])*
-                   decision.headroom;
+        float target=CynSmartRange::effectTarget(
+            smart_effects_[e],smart_scores_[e],smart_sensitivity_,up,down[e],
+            decision.headroom,movie,(e==0 || e==3 || e==4));
         if(movie && e==4) target=jmin(target,jmax(smart_effects_[4],6.3f));
         if(movie && e==3) target=jmin(target,jmax(smart_effects_[3],5.0f));
         target=jlimit(0.0f,10.0f,target);
         const float current=dfx_dsp_.getEffectValue((DfxDsp::Effect)e)*10;
-        if(std::abs(target-current)>0.04f)
-            dfx_dsp_.setEffectValue((DfxDsp::Effect)e,current+jlimit(-0.30f,0.30f,target-current));
+        if(std::abs(target-current)>0.04f) {
+            const float slew=CynSmartRange::effectStep(smart_sensitivity_,movie);
+            dfx_dsp_.setEffectValue((DfxDsp::Effect)e,current+jlimit(-slew,slew,target-current));
+        }
     }
     // Temporary signed spectral corrections; baseline restores on stop/bypass.
     const float bassDirection=jmin(0.0f,2.0f*(smart_scores_[4]-0.5f));
@@ -3377,13 +3383,22 @@ void FxController::updateSmartListening()
         float target=smart_eq_[(size_t)b];
         if(movie && target>0)
             target*=1.0f+bassDirection*depth*0.65f*weight;
-        else if(!movie && listening)
-            target+=CynFlagshipMixer::musicEqCorrection(
-                decision,scene,freq,smart_eq_[(size_t)b])*amount;
+        else if(!movie && listening) {
+            const float correction=CynFlagshipMixer::musicEqCorrection(
+                decision,scene,freq,smart_eq_[(size_t)b]);
+            // More expressive signed EQ at high sensitivity. Restrict
+            // positive gain as input peak headroom vanishes, and avoid
+            // excessive upper treble boost that would amplify sibilance.
+            float delta=correction*CynSmartRange::eqAmount(smart_sensitivity_,movie);
+            if(delta>0.0f) delta*=jlimit(0.0f,1.0f,decision.headroom);
+            target+=jlimit(-4.2f,freq>4200.0f?2.0f:4.3f,delta);
+        }
         target=jlimit(MIN_GAIN,MAX_GAIN,target);
         const float current=dfx_dsp_.getEqBandBoostCut(b);
-        if(std::abs(target-current)>0.04f)
-            dfx_dsp_.setEqBandBoostCut(b,current+jlimit(-0.20f,0.20f,target-current));
+        if(std::abs(target-current)>0.04f) {
+            const float slew=CynSmartRange::eqStep(smart_sensitivity_,movie);
+            dfx_dsp_.setEqBandBoostCut(b,current+jlimit(-slew,slew,target-current));
+        }
     }
     // Preserve system volume and master gain; never override manual presets.
     float leveling=smart_leveling_;
