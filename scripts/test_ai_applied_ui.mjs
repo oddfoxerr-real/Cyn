@@ -8,6 +8,14 @@ const equalizer = read("fxsound/Source/GUI/FxEqualizer.cpp");
 const view = read("fxsound/Source/GUI/FxProView.cpp");
 const follower = read("fxsound/Source/GUI/CynDspUiFollow.h");
 const controllers = read("fxsound/Source/GUI/FxController.h");
+const smartRange = read("fxsound/Source/GUI/CynSmartRange.h");
+assert(smartRange.includes("static float effectTarget("), "Missing full-range Music AI authority map");
+assert(smartRange.includes("static float freedom(") && smartRange.includes("return 0.0f;"),"Movie AI must preserve its original range");
+assert(controller.includes("CynSmartRange::effectTarget(") &&
+       controller.includes("CynSmartRange::eqAmount(") &&
+       controller.includes("CynSmartRange::scoreFollower(") &&
+       controller.includes("CynSmartRange::effectStep("),
+       "Live DSP actuator must use sensitivity-aware effect and EQ authority");
 
 const body = (source, start, end) => {
     const a = source.indexOf(start), b = source.indexOf(end, a + start.length);
