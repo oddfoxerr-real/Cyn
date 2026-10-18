@@ -595,8 +595,15 @@ void FxProView::paint(Graphics& g)
     // The only expensive drawing is bounded to existing scene/video widgets.
     auto& theme=dynamic_cast<FxTheme&>(getLookAndFeel());
     auto colour=[](FxColor c) { return Colour(FxTheme::getColor(c)).withAlpha(1.0f); };
-    const Colour base(0xff000000), panel(0xff030405),panel2(0xff06080b);
-    const Colour border(0xff18212b), cyan(0xff65b9ff);
+    const auto mode=FxTheme::getThemeMode();
+    const Colour base=mode==FxThemeMode::DarkMesh ? Colour(0xff000000) :
+        Colour(FxTheme::getColorForMode(mode,WindowBackground)).darker(.52f);
+    const Colour panel=mode==FxThemeMode::DarkMesh ? Colour(0xff030405) :
+        Colour(FxTheme::getColorForMode(mode,PanelBackground)).darker(.46f);
+    const Colour panel2=panel.brighter(.12f);
+    const Colour border(0xff18212b);
+    const Colour cyan=mode==FxThemeMode::DarkMesh ? Colour(0xff65b9ff) :
+        Colour(FxTheme::getColorForMode(mode,SliderTrack));
     const Colour white(0xffedf5ff),muted(0xff9aadc4);
     const bool reduced=FxTheme::isReducedMotion();
     const float playLevel=jlimit(0.0f,1.0f,theme_audio_level_);
@@ -607,7 +614,7 @@ void FxProView::paint(Graphics& g)
     {
         Graphics::ScopedSaveState scene(g);
         g.reduceClipRegion(juce::Rectangle<int>(229,0,getWidth()-229,getHeight()));
-        CynThemeAtmosphere::paint(g,FxThemeMode::DarkMesh,
+        CynThemeAtmosphere::paint(g,mode,
             reduced ? 0.0f : (float)(Time::getMillisecondCounterHiRes()*.001),
             playLevel,juce::Rectangle<float>(229.0f,0.0f,getWidth()-229.0f,205.0f));
         ColourGradient veil(Colour(0xff03070d).withAlpha(.40f),230.0f,10.0f,
@@ -633,8 +640,8 @@ void FxProView::paint(Graphics& g)
     g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,87.0f,203.0f,87.0f,.8f);
 
     const float navY=104.0f+49.0f*(float)page_;
-    ColourGradient navGlow(Colour(0xff074069),22.0f,navY,
-                            Colour(0xff27205c),218.0f,navY+42.0f,false);
+    ColourGradient navGlow(cyan.darker(.68f),22.0f,navY,
+                            cyan.darker(.81f).interpolatedWith(Colour(0xff27205c),.28f),218.0f,navY+42.0f,false);
     g.setGradientFill(navGlow);
     g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,15.0f);
     g.setColour(cyan.withAlpha(.78f));
