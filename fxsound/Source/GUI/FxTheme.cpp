@@ -597,10 +597,18 @@ void FxTheme::setThemeMode(FxThemeMode theme_mode)
 {
 	auto& theme = dynamic_cast<FxTheme&>(LookAndFeel::getDefaultLookAndFeel());
 
-	// The stable UI intentionally supports one canonical jet-black palette.
-	// Legacy modes remain defined internally only while old components migrate.
-    juce::ignoreUnused(theme_mode);
-	theme_mode_ = FxThemeMode::DarkMesh;
+	// Curated dark presets share the same native layout and DSP controls.
+    switch(theme_mode) {
+        case FxThemeMode::DarkMesh:
+        case FxThemeMode::Midnight:
+        case FxThemeMode::Obsidian:
+        case FxThemeMode::Emerald:
+        case FxThemeMode::DeepSea:
+        case FxThemeMode::NeonTokyo:
+        case FxThemeMode::CharcoalDesktop:
+            theme_mode_=theme_mode; break;
+        default: theme_mode_=FxThemeMode::DarkMesh; break;
+    }
 
 	theme.init();
 }
