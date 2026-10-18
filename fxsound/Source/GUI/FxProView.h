@@ -90,6 +90,7 @@ private:
     Image transition_image_;
     Image theme_from_image_, theme_to_image_;
     double theme_transition_start_=0.0;
+    int transition_direction_=1; // Old page glides toward the selected destination.
     double transition_start_=0, last_status_update_=0, last_neural_update_=0;
     FxAudioControls audio_controls_;
     FxEqualizer equalizer_;
