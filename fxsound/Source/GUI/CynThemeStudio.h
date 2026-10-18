@@ -125,8 +125,8 @@ public:
             buttonDemo_.repaint();
         };
         buttonDemo_.onClick=[this]{buttonDemo_.repaint();};
-        buttonMotionPicker_.setTooltip("Classic, Quick Pop, Soft Float, Ripple Press or Liquid Morph.");
-        buttonHighlightPicker_.setTooltip("Subtle, Neon Edge, Soft Glow, Liquid Edge or Glass Sweep.");
+        buttonMotionPicker_.setTooltip("Classic, Quick Pop, Soft Float, Ripple Press, Liquid Morph, Liquid Gel Press, or Flowing Ink.");
+        buttonHighlightPicker_.setTooltip("Subtle, Neon Edge, Soft Glow, Liquid Edge, Glass Sweep, Wet Gloss or Spray Paint.");
         buttonSpeedSlider_.setTooltip("Button hover/press response speed, independent from X-to-tray animation.");
         buttonIntensitySlider_.setTooltip("How strongly highlights and liquid edges appear.");
         customTouch_=CynDjTouch::readCustomImage();
@@ -138,7 +138,7 @@ public:
         closeSpeedSlider_.setRange(.55,1.60,.05);
         closeSpeedSlider_.setTextValueSuffix("x");
         closeSpeedSlider_.setValue(closeSpeedPercent_/100.0,juce::dontSendNotification);
-        closeStylePicker_.setTooltip("Choose a close-to-tray visual: Vortex, Gravity Melt, Liquid Ripple, Soft Fade or None.");
+        closeStylePicker_.setTooltip("Choose a close-to-tray visual including Liquid Ink, Spray Dissolve, Vortex, Gravity Melt and Liquid Curtain.");
         closeSpeedSlider_.setTooltip("Animation speed: 0.55x is slower; 1.60x is faster. Normal button reactions stay quick.");
         addAndMakeVisible(closeStylePicker_);
         addAndMakeVisible(closeSpeedSlider_);
