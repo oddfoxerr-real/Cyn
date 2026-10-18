@@ -5,6 +5,7 @@
 #include "FxTheme.h"
 #include "CynThemeAtmosphere.h"
 #include "CynUiMotion.h"
+#include "CynLiquidScreen.h"
 #include "FxSettingsDialog.h"
 #include "CynAiHubDialog.h"
 #include "CynThemeStudio.h"
@@ -200,16 +201,24 @@ FxProView::FxProView() : tool_tip_(this)
 
 void FxProView::beginThemeTransition()
 {
+    // Never stack a theme slide over an active tab transition.
+    transition_image_=Image();
+    transition_to_image_=Image();
     theme_from_image_=Image();
     theme_to_image_=Image();
-    if (isShowing() && !FxTheme::isReducedMotion())
+    if(isShowing() && !FxTheme::isReducedMotion()) {
+        capturing_liquid_=true;
         theme_from_image_=createComponentSnapshot(getLocalBounds());
+        capturing_liquid_=false;
+    }
 }
 void FxProView::finishThemeTransition()
 {
     if (!theme_from_image_.isValid() || FxTheme::isReducedMotion())
         return;
+    capturing_liquid_=true;
     theme_to_image_=createComponentSnapshot(getLocalBounds());
+    capturing_liquid_=false;
     theme_transition_start_=Time::getMillisecondCounterHiRes();
     repaint();
 }
@@ -229,19 +238,28 @@ void FxProView::selectSoundFocus(int focus)
     focus=juce::jlimit(0,2,focus);
     if(focus==sound_focus_) return;
     transition_image_=Image();
-    if(isShowing() && !FxTheme::isReducedMotion()) {
-        const juce::Rectangle<int> content(240,0,jmax(0,getWidth()-240),getHeight());
-        if(content.getWidth()>0 && content.getHeight()>0) {
-            transition_image_=createComponentSnapshot(content);
-            transition_direction_=focus>sound_focus_ ? 1 : -1;
-            transition_start_=Time::getMillisecondCounterHiRes();
-        }
+    transition_to_image_=Image();
+    theme_from_image_=Image();
+    theme_to_image_=Image();
+    const juce::Rectangle<int> content(240,0,jmax(0,getWidth()-240),getHeight());
+    const bool animate=isShowing() && !FxTheme::isReducedMotion() && !content.isEmpty();
+    if(animate) {
+        capturing_liquid_=true;
+        transition_image_=createComponentSnapshot(content);
+        capturing_liquid_=false;
+        transition_direction_=focus>sound_focus_ ? 1 : -1;
     }
     sound_focus_=focus;
     overview_tab_.setToggleState(sound_focus_==0,dontSendNotification);
     eq_focus_tab_.setToggleState(sound_focus_==1,dontSendNotification);
     effects_focus_tab_.setToggleState(sound_focus_==2,dontSendNotification);
     resized();
+    if(animate) {
+        capturing_liquid_=true;
+        transition_to_image_=createComponentSnapshot(content);
+        capturing_liquid_=false;
+        transition_start_=Time::getMillisecondCounterHiRes();
+    }
     repaint();
 }
 void FxProView::selectPage(int page)
@@ -249,14 +267,17 @@ void FxProView::selectPage(int page)
     if(page == page_ && isShowing()) return; // Initial page must still initialize child visibility.
     // Immediately select the destination. Snapshot ONLY the outgoing content,
     // so the sidebar stays live and responsive even on slower machines.
-    transition_image_ = Image(); // Never capture a previous transition overlay.
-    if(isShowing() && !FxTheme::isReducedMotion()) {
-        const juce::Rectangle<int> content(240, 0, jmax(0,getWidth()-240), getHeight());
-        if(content.getWidth() > 0 && content.getHeight() > 0) {
-            transition_image_ = createComponentSnapshot(content);
-            transition_direction_ = page > page_ ? 1 : -1;
-            transition_start_ = Time::getMillisecondCounterHiRes();
-        }
+    transition_image_=Image();
+    transition_to_image_=Image();
+    theme_from_image_=Image();
+    theme_to_image_=Image();
+    const juce::Rectangle<int> content(240,0,jmax(0,getWidth()-240),getHeight());
+    const bool animate=isShowing() && !FxTheme::isReducedMotion() && !content.isEmpty();
+    if(animate) {
+        capturing_liquid_=true;
+        transition_image_=createComponentSnapshot(content);
+        capturing_liquid_=false;
+        transition_direction_=page>page_ ? 1 : -1;
     }
     page_ = page;
     misc_nav_.setToggleState(page==4,dontSendNotification);
@@ -314,6 +335,12 @@ void FxProView::selectPage(int page)
     studio_nav_.toFront(false);
     ai_status_card_.toFront(false);
     power_curtain_.toFront(false);
+    if(animate) {
+        capturing_liquid_=true;
+        transition_to_image_=createComponentSnapshot(content);
+        capturing_liquid_=false;
+        transition_start_=Time::getMillisecondCounterHiRes();
+    }
     repaint();
 }
 void FxProView::update()
@@ -359,15 +386,18 @@ void FxProView::timerCallback()
         return;
     }
     const auto now=Time::getMillisecondCounterHiRes();
-    if(transition_image_.isValid()) {
+    if(transition_image_.isValid() && transition_to_image_.isValid()) {
         if(FxTheme::isReducedMotion() ||
-           now-transition_start_>=CynUiMotion::pageDurationMs) transition_image_=Image();
+           now-transition_start_>=CynUiMotion::pageDurationMs) {
+            transition_image_=Image();
+            transition_to_image_=Image();
+        }
         repaint();
     }
     if (theme_from_image_.isValid())
     {
         if (FxTheme::isReducedMotion() ||
-            now-theme_transition_start_>=430.0)
+            now-theme_transition_start_>=CynUiMotion::themeLiquidDurationMs)
         {
             theme_from_image_=Image();
             theme_to_image_=Image();
@@ -1091,62 +1121,31 @@ void FxProView::paintOverChildren(Graphics& g)
             }
         }
     }
-    if(theme_from_image_.isValid() && theme_to_image_.isValid() &&
-       !FxTheme::isReducedMotion())
-    {
-        Graphics::ScopedSaveState saved(g);
-        g.reduceClipRegion(getLocalBounds());
-        const float raw=jlimit(0.0f,1.0f,
-            (float)((Time::getMillisecondCounterHiRes()-theme_transition_start_)/420.0));
-        const float progress=raw*raw*(3.0f-2.0f*raw);
-        const int offset=roundToInt(getWidth()*progress);
-        g.drawImageAt(theme_from_image_,-offset,0);
-        g.drawImageAt(theme_to_image_,getWidth()-offset,0);
-        return;
+    if(!capturing_liquid_ &&
+       theme_from_image_.isValid() && theme_to_image_.isValid() &&
+       !FxTheme::isReducedMotion()) {
+        const float p=CynUiMotion::progress(
+            Time::getMillisecondCounterHiRes()-theme_transition_start_,
+            CynUiMotion::themeLiquidDurationMs);
+        if(p<1.0f) {
+            CynLiquidScreen::render(g,theme_from_image_,theme_to_image_,
+                getLocalBounds(),p,1,Colour(FXCOLOR(SliderTrack)));
+            return;
+        }
     }
-    if(transition_image_.isValid() && !FxTheme::isReducedMotion()) {
-        const auto content=juce::Rectangle<int>(240,0,jmax(0,getWidth()-240),getHeight());
-        Graphics::ScopedSaveState clipped(g);
-        g.reduceClipRegion(content); // No old-page pixels over the active sidebar.
-        const float t=CynUiMotion::progress(
+    if(!capturing_liquid_ &&
+       transition_image_.isValid() && transition_to_image_.isValid() &&
+       !FxTheme::isReducedMotion()) {
+        const auto content=juce::Rectangle<int>(240,0,
+            jmax(0,getWidth()-240),getHeight());
+        const float p=CynUiMotion::progress(
             Time::getMillisecondCounterHiRes()-transition_start_,
             CynUiMotion::pageDurationMs);
-        // New controls are already visible behind this overlay. An organic
-        // liquid-spray frontier reveals the destination DURING the switch.
-        // One clipped image draw is far cheaper than thousands of tile draws.
-        juce::Path remnants;
-        const int width=content.getWidth(),height=content.getHeight();
-        for(int y=0;y<height;y+=7) {
-            const float v=(float)y/(float)juce::jmax(1,height);
-            const float wav=.039f*std::sin(v*23.0f+t*13.0f)
-                           +.022f*std::sin(v*67.0f-t*19.0f);
-            const float progress=juce::jlimit(0.0f,1.0f,t*1.30f-.15f+wav);
-            const float front=width*progress;
-            if(transition_direction_>=0) {
-                if(front<width) remnants.addRectangle(front,(float)y,
-                    width-front,(float)juce::jmin(7,height-y));
-            } else {
-                if(front<width) remnants.addRectangle(0.0f,(float)y,
-                    width-front,(float)juce::jmin(7,height-y));
-            }
+        if(p<1.0f) {
+            CynLiquidScreen::render(g,transition_image_,transition_to_image_,
+                content,p,transition_direction_,Colour(FXCOLOR(SliderTrack)));
+            return;
         }
-        // Small stable aerosol droplets are leftover pieces of the old image;
-        // they disperse behind the wave without frame-to-frame random flicker.
-        for(int k=0;k<140;++k) {
-            const float u=(float)((k*47+11)%149)/149.0f;
-            const float v=(float)((k*73+19)%151)/151.0f;
-            const float drift=.14f*std::sin(k*1.9f+t*8.0f);
-            const float front=juce::jlimit(0.0f,1.0f,t*1.30f-.15f+drift);
-            const float x=width*u,y=height*v;
-            const bool oldSide=transition_direction_>=0 ? u>front : u<1.0f-front;
-            const float distance=transition_direction_>=0 ? front-u : u-(1.0f-front);
-            if(!oldSide && distance>0.0f && distance<.14f) {
-                const float r=(1.1f+(float)(k%5)*.88f)*(1.0f-t*.65f);
-                remnants.addEllipse(x-r,y-r,2.0f*r,2.0f*r);
-            }
-        }
-        g.reduceClipRegion(remnants);
-        g.drawImageAt(transition_image_,content.getX(),content.getY());
     }
     if(page_==0 && !FxTheme::isReducedMotion()) {
         const auto time=(float)(Time::getMillisecondCounterHiRes()*0.001);
@@ -1174,6 +1173,7 @@ void FxProView::paintOverChildren(Graphics& g)
 void FxProView::lookAndFeelChanged()
 {
     transition_image_=Image();
+    transition_to_image_=Image();
     if (FxTheme::isReducedMotion())
     {
         theme_from_image_=Image();

@@ -178,9 +178,9 @@ assert(studio.includes('controller.getSettings().setInt("cyn_dj_touch_style_effe
        studio.includes('controller.getSettings().setInt("cyn_button_motion_style",buttonMotion_)') &&
        studio.includes('controller.getSettings().setInt("cyn_close_motion_style",closeStyle_)'),
        "Studio Apply must persist AI Touch, button motion and close effects");
-assert(view.includes('theme_from_image_,-offset') &&
-       view.includes('theme_to_image_,getWidth()-offset'),
-       "Live application theme changes must slide between actual UI snapshots");
+assert(view.includes("CynLiquidScreen::render(g,theme_from_image_,theme_to_image_") &&
+       view.includes("theme_to_image_=createComponentSnapshot(getLocalBounds())"),
+       "Real new-theme pixels must appear through the liquid transition mask");
 assert(atmosphere.includes('Rectangle<float> bounds,bool preview=false'),
        "Theme art must be rendered across a real workspace or large preview");
 assert(!view.includes('g,theme_audio_level_);'),
