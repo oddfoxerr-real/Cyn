@@ -48,5 +48,6 @@ assert(eq.includes("const int compactBandHeight=juce::jlimit(65") &&
        eq.includes("Y_MARGIN, thumbWidth, compactBandHeight)") &&
        eq.includes("Y_MARGIN, thumbWidth, tunedBandHeight )"),
        "Native EQ sliders must fit their panel with working labels at all supported band counts");
-assert(view.includes("railOutline.cubicTo(") && !view.includes("Path railFill(spine)"), "Continuous rounded sidebar frame must not deform the rail boundary");
-console.log("PASS: clean native workspace, outlined sidebar, DJ controls and version metadata");
+assert(view.includes("railOutline.cubicTo(218.0f,658.0f") && !view.includes("Path railFill(spine)"), "Bottom sidebar accent must not deform the navigation rail");
+assert(view.includes("card(247,253,795,235)") && view.includes("card(1053,500,247,188)"), "Spectrum and AI status need their own aligned panels");
+console.log("PASS: clean black workspace, bottom sidebar sweep, aligned audio panels and version metadata");
