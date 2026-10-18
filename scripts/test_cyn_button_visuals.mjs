@@ -11,7 +11,9 @@ const close=read("fxsound/Source/GUI/CynCloseMotion.h");
 const overlay=read("fxsound/Source/GUI/CynLiquidCloseOverlay.h");
 for(const name of ["Classic","Quick Pop","Soft Float","Ripple Press","Liquid Morph",
                    "Subtle","Neon Edge","Soft Glow","Liquid Edge","Glass Sweep",
-                   "Liquid Gel Press","Flowing Ink","Wet Gloss","Spray Paint"])
+                   "Liquid Gel Press","Flowing Ink","Wet Gloss","Spray Paint",
+                   "Elastic Bounce","Viscous Slide","Ink Pulse","Aerosol Mist",
+                   "Liquid Chrome","Ink Marble","Electric Droplets"])
     assert(visuals.includes('return "'+name+'"'),"Missing native style: "+name);
 for(const prop of ["cyn_button_motion_style","cyn_button_highlight_style",
                    "cyn_button_motion_speed","cyn_button_highlight_intensity"])
