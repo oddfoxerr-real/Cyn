@@ -12,8 +12,10 @@ assert(!page.includes("transition_image_=createComponentSnapshot(getLocalBounds(
   "A whole-window navigation overlay would cover the active sidebar");
 assert(page.includes("if(page == page_ && isShowing()) return;"),
   "Repeated clicks must not restart animation; initial page still initializes");
-assert(page.includes("page_ = page;") && page.includes("misc_nav_.setToggleState(page==3"),
-  "The selected page and nav controls must update immediately");
+assert(page.includes("page_ = page;") &&
+       page.includes("misc_nav_.setToggleState(page==4") &&
+       page.includes("ai_hub_nav_.setToggleState(page==3"),
+  "The selected AI Hub/Misc pages and native navigation controls must update immediately");
 assert(page.includes("g.reduceClipRegion(content);") &&
        page.includes("CynUiMotion::outgoingOpacity(t)"),
   "Old-page fade should never obscure the live navigation controls");
