@@ -17,7 +17,10 @@ assert(neural.includes("if(influence < displayFloor && index%17 != 0) continue;"
 assert(neural.includes("const bool trained=id.contains("),"Trained model must have different graph styling");
 assert(view.includes("neural_activity_.setProfileId(selected);"),
   "Active AI dropdown must update neural graph identity");
-assert(view.includes("page_==1 ? 449"),"Smart Listening toggle must be below timeline cards");
+assert(view.includes("smart_toggle_.setBounds(1041,478,233,26)") &&
+       view.includes("neural_activity_.setBounds(993,246,291,194)") &&
+       view.includes("learning_timeline_.setBounds(left+13,246,722,194)"),
+       "Smart Listening switch must be below the timeline and separate from neural visualization");
 assert(view.includes('txt("LIVE NEURAL ACTIVITY",1011'),"Smart Listening must have an independently framed live neural inspector");
 console.log("PASS: dark Dark Theme theme, true live neural path weighting, model colors and header spacing");
 

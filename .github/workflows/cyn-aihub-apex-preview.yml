@@ -22,17 +22,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node scripts/test_ai_hub.mjs
+      - name: Validate release-stage Dark Theme and AI Hub UI contracts
+        run: |
+          node scripts/test_ai_hub.mjs
+          node scripts/test_theme_neural.mjs
+          node scripts/test_version_controls.mjs
       - name: Assert APEX release exists and links to actual downloadable assets
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           python - <<'PY'
-          import json,urllib.request
+          import json,os,urllib.request
           with open("ai-hub/community/index.json") as f:
             data=json.load(f)
           record=next((r for r in data["profiles"] if r.get("id")=="cyn-apex6m-flowsense"),None)
           assert record and record["kind"]=="onnx" and record["activation"]=="apex6m" and "file" not in record
           url="https://api.github.com/repos/oddfoxerr-real/Cyn/releases/tags/apex-6m-v1.0.0"
-          req=urllib.request.Request(url,headers={"User-Agent":"Cyn-AI-Hub-CI","Accept":"application/vnd.github+json"})
+          req=urllib.request.Request(url,headers={
+            "User-Agent":"Cyn-AI-Hub-CI",
+            "Accept":"application/vnd.github+json",
+            "Authorization":"Bearer "+os.environ["GH_TOKEN"]
+          })
           with urllib.request.urlopen(req,timeout=15) as response:
             release=json.load(response)
           assert not release["draft"]
