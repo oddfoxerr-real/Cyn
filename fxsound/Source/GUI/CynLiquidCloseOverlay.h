@@ -92,7 +92,7 @@ public:
             g.drawImageAt(snapshot_, 0, 0);
             const float e = easeOutQuint(t / phaseExpandEnd);
             const auto screen = getLocalBounds().toFloat();
-            const Rectangle<float> expanded(lerp(buttonBounds_.getX(), screen.getX(), e),
+            const juce::Rectangle<float> expanded(lerp(buttonBounds_.getX(), screen.getX(), e),
                                             lerp(buttonBounds_.getY(), screen.getY(), e),
                                             lerp(buttonBounds_.getWidth(), screen.getWidth(), e),
                                             lerp(buttonBounds_.getHeight(), screen.getHeight(), e));
