@@ -3,7 +3,8 @@
 #pragma once
 
 namespace CynUiMotion {
-constexpr double pageDurationMs = 165.0;
+constexpr double pageDurationMs = 405.0;
+constexpr double themeLiquidDurationMs = 450.0;
 constexpr double themeCarouselDurationMs = 240.0;
 constexpr float pageTravelPixels = 16.0f;
 

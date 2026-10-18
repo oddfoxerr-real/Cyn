@@ -35,10 +35,10 @@ assert(view.includes('g.drawText("WORKSPACES"') &&
 assert(view.includes('String("AI ACTIVE  /  ")') &&
        !view.includes('String("AI ACTIVE  •  ")'),
        "Avoid corrupting UTF-8 status separators in Windows build");
-assert(win.includes("FILEVERSION  2,0,69,0") &&
-       juce.includes('versionString  = "2.0.69.0"') &&
-       juce.includes('versionNumber  = 0x2004500') &&
-       jucer.includes('version="2.0.69.0"'),
+assert(win.includes("FILEVERSION  2,0,70,0") &&
+       juce.includes('versionString  = "2.0.70.0"') &&
+       juce.includes('versionNumber  = 0x2004600') &&
+       jucer.includes('version="2.0.70.0"'),
        "Installed CYN executable and runtime must report correct version, not 2.0.29");
 assert(shell.includes('g.drawRoundedRectangle(rim,radius-0.7f') &&
        shell.includes('g.strokePath(corner,PathStrokeType(1.6f))'),

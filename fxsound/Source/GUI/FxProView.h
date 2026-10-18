@@ -91,10 +91,11 @@ private:
     Label dj_status_,dj_recent_;
     double dj_progress_value_=0;
     ProgressBar dj_progress_{dj_progress_value_};
-    Image transition_image_;
+    Image transition_image_, transition_to_image_;
+    bool capturing_liquid_=false;
     Image theme_from_image_, theme_to_image_;
     double theme_transition_start_=0.0;
-    int transition_direction_=1; // Old page glides toward the selected destination.
+    int transition_direction_=1; // Native liquid-screen reveal direction.
     double transition_start_=0, last_status_update_=0, last_neural_update_=0;
     FxAudioControls audio_controls_;
     FxEqualizer equalizer_;
