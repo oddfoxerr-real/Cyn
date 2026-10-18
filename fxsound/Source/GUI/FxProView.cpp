@@ -595,7 +595,7 @@ void FxProView::paint(Graphics& g)
     // The only expensive drawing is bounded to existing scene/video widgets.
     auto& theme=dynamic_cast<FxTheme&>(getLookAndFeel());
     auto colour=[](FxColor c) { return Colour(FxTheme::getColor(c)).withAlpha(1.0f); };
-    const Colour base(0xff000000), panel(0xff050607),panel2(0xff080a0d);
+    const Colour base(0xff000000), panel(0xff030405),panel2(0xff06080b);
     const Colour border(0xff18212b), cyan(0xff65b9ff);
     const Colour white(0xffedf5ff),muted(0xff9aadc4);
     const bool reduced=FxTheme::isReducedMotion();
@@ -616,23 +616,23 @@ void FxProView::paint(Graphics& g)
     }
 
     // Solid continuous navigation rail, no second row of icon-only buttons.
-    ColourGradient side(Colour(0xff090c10),0.0f,0.0f,
-                         Colour(0xff050608),228.0f,700.0f,false);
+    ColourGradient side(Colour(0xff050609),0.0f,0.0f,
+                         Colour(0xff010203),228.0f,700.0f,false);
     g.setGradientFill(side);g.fillRect(0,0,228,getHeight());
     // Integrated rounded interior rail outline, following the requested large
     // continuous corner silhouette without displacing the content boundary.
     // Keep the workspace edge straight; this is an inset frame, never a fill.
     g.setColour(Colour(0xff1e303d).withAlpha(.85f));
     g.drawLine(228.0f,0.0f,228.0f,(float)getHeight(),.8f);
+    // Signature CYN corner flourish, entirely inside the sidebar.
+    // No large stroked frame or protrusion over workspace controls.
     Path railOutline;
-    railOutline.startNewSubPath(204.0f,20.0f);
-    railOutline.cubicTo(215.0f,20.0f,219.0f,27.0f,219.0f,40.0f);
-    railOutline.lineTo(219.0f,626.0f);
-    railOutline.cubicTo(219.0f,651.0f,212.0f,674.0f,191.0f,680.0f);
-    railOutline.lineTo(47.0f,680.0f);
-    railOutline.cubicTo(27.0f,680.0f,17.0f,668.0f,17.0f,649.0f);
-    g.setColour(cyan.withAlpha(.24f));
-    g.strokePath(railOutline,PathStrokeType(1.0f,PathStrokeType::curved,PathStrokeType::rounded));
+    railOutline.startNewSubPath(218.0f,546.0f);
+    railOutline.lineTo(218.0f,629.0f);
+    railOutline.cubicTo(218.0f,658.0f,201.0f,675.0f,172.0f,675.0f);
+    railOutline.lineTo(150.0f,675.0f);
+    g.setColour(cyan.withAlpha(.19f));
+    g.strokePath(railOutline,PathStrokeType(1.3f,PathStrokeType::curved,PathStrokeType::rounded));
     // Native title bar already displays the CYN wordmark. The sidebar
     // identifies the navigation instead of repeating the same logo.
     g.setColour(cyan);g.fillRoundedRectangle(26.0f,28.0f,3.0f,24.0f,1.5f);
@@ -644,14 +644,16 @@ void FxProView::paint(Graphics& g)
     g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,87.0f,203.0f,87.0f,.8f);
 
     const float navY=104.0f+49.0f*(float)page_;
-    g.setColour(Colour(0xff111923).withAlpha(.88f));
-    g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,12.0f);
+    ColourGradient navGlow(Colour(0xff074069),22.0f,navY,
+                            Colour(0xff27205c),218.0f,navY+42.0f,false);
+    g.setGradientFill(navGlow);
+    g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,15.0f);
     g.setColour(cyan.withAlpha(.78f));
-    g.drawRoundedRectangle(22.5f,navY+.5f,195.0f,41.0f,11.0f,1.05f);
+    g.drawRoundedRectangle(22.5f,navY+.5f,195.0f,41.0f,14.5f,1.05f);
     g.fillRoundedRectangle(22.0f,navY+11.0f,3.2f,20.0f,1.5f);
     g.setColour(border);g.drawLine(27.0f,590.0f,210.0f,590.0f,.8f);
-    g.setColour(panel);g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
-    g.setColour(border);g.drawRoundedRectangle(21.5f,524.5f,194.0f,55.0f,12.0f,1.0f);
+    g.setColour(Colour(0xff040709));g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
+    g.setColour(border.withAlpha(.38f));g.drawRoundedRectangle(21.5f,524.5f,194.0f,55.0f,12.0f,.8f);
     g.setColour(muted.withAlpha(.85f));
     g.setFont(theme.getNormalFont().withHeight(9.0f).boldened());
     g.drawText("ACTIVE ENGINE",34,528,155,15,Justification::centredLeft);
@@ -682,7 +684,7 @@ void FxProView::paint(Graphics& g)
         finish.addColour(.55,panel);
         g.setGradientFill(finish);
         g.fillRoundedRectangle(x,y,width,height,r);
-        g.setColour(border.withAlpha(.32f));
+        g.setColour(border.withAlpha(.23f));
         g.drawRoundedRectangle(x+.5f,y+.5f,width-1.0f,height-1.0f,r-.3f,.8f);
     };
     // Clear hierarchy: a large page title, meaningful status, then real
@@ -704,8 +706,11 @@ void FxProView::paint(Graphics& g)
     txt(FxModel::getModel().getPowerState()?"AUDIO ON":"PROCESSING OFF",
         1160,16,129,21,11.0f,false,true);
 
-    // Preset and device selectors float on one uninterrupted black workbench.
-    // AI is a compact status action rather than a third competing panel.
+    // Three quiet glass tiles, with the real live selectors above them.
+    // Paint before the child components; their hit targets remain unchanged.
+    card(247,108,333,78,19.0f);
+    card(587,108,361,78,19.0f);
+    card(955,108,345,78,19.0f);
     txt("PRESET",262,114,260,18,11.5f,true,true);
     txt("OUTPUT DEVICE",603,114,260,18,11.5f,true,true);
     txt("ACTIVE AI",972,114,230,18,11.5f,true,true);
@@ -721,8 +726,10 @@ void FxProView::paint(Graphics& g)
         g.drawRoundedRectangle(selX+.5f,202.5f,selW-1.0f,35.0f,10.5f,.9f);
         txt("31 / 35 / 39 BANDS",1110,208,180,23,11.6f,true);
         if(sound_focus_==0) {
-            card(247,253,1053,235);
-            card(247,500,1053,188);
+            card(247,253,795,235,23.0f);
+            card(1053,253,247,235,23.0f);
+            card(247,500,795,188,23.0f);
+            card(1053,500,247,188,23.0f);
             txt("31-BAND EQUALIZER",263,258,490,23,14.0f,false,true);
             txt("SPECTRUM",1066,258,210,23,11.5f,true,true);
             txt("SOUND ENHANCEMENTS",263,505,420,23,14.0f,false,true);
@@ -733,11 +740,11 @@ void FxProView::paint(Graphics& g)
                 1066,583,218,20,11.0f,true);
             
         } else if(sound_focus_==1) {
-            card(247,253,1053,435);
+            card(247,253,1053,435,23.0f);
             txt("EQUALIZER  /  PRECISION VIEW",265,262,650,25,15,false,true);
             txt("Drag the frequency controls to shape your sound.",265,649,730,21,12,true);
         } else {
-            card(247,253,1053,435);
+            card(247,253,1053,435,23.0f);
             txt("SOUND ENHANCEMENTS  /  STUDIO VIEW",265,262,800,25,15,false,true);
             txt("Tune clarity, ambience, surround, dynamics and bass.",265,644,900,22,12,true);
         }

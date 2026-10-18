@@ -13,7 +13,7 @@ const required=[
     'txt("PRESET",262,114,260,18',
     'txt("OUTPUT DEVICE",603,114,260,18',
     'txt("ACTIVE AI",972,114,230,18',
-    "// Preset and device selectors float",
+    "// Three quiet glass tiles",
     "// Tabs sit directly on the workbench",
     "overview_tab_.setBounds(left+12,203,126,34)",
     "const float navY=104.0f+49.0f*(float)page_",
@@ -35,10 +35,10 @@ assert(view.includes('g.drawText("WORKSPACES"') &&
 assert(view.includes('String("AI ACTIVE  /  ")') &&
        !view.includes('String("AI ACTIVE  •  ")'),
        "Avoid corrupting UTF-8 status separators in Windows build");
-assert(win.includes("FILEVERSION  2,0,66,0") &&
-       juce.includes('versionString  = "2.0.66.0"') &&
-       juce.includes('versionNumber  = 0x2004200') &&
-       jucer.includes('version="2.0.66.0"'),
+assert(win.includes("FILEVERSION  2,0,67,0") &&
+       juce.includes('versionString  = "2.0.67.0"') &&
+       juce.includes('versionNumber  = 0x2004300') &&
+       jucer.includes('version="2.0.67.0"'),
        "Installed CYN executable and runtime must report correct version, not 2.0.29");
 assert(shell.includes('g.drawRoundedRectangle(rim,radius-0.7f') &&
        shell.includes('g.strokePath(corner,PathStrokeType(1.6f))'),
@@ -48,5 +48,7 @@ assert(eq.includes("const int compactBandHeight=juce::jlimit(65") &&
        eq.includes("Y_MARGIN, thumbWidth, compactBandHeight)") &&
        eq.includes("Y_MARGIN, thumbWidth, tunedBandHeight )"),
        "Native EQ sliders must fit their panel with working labels at all supported band counts");
-assert(view.includes("railOutline.cubicTo(") && !view.includes("Path railFill(spine)"), "Continuous rounded sidebar frame must not deform the rail boundary");
-console.log("PASS: clean native workspace, outlined sidebar, DJ controls and version metadata");
+assert(view.includes("railOutline.cubicTo(218.0f,658.0f") && !view.includes("Path railFill(spine)"), "Bottom sidebar accent must not deform the navigation rail");
+assert(view.includes("card(247,253,795,235,23.0f)") && view.includes("card(1053,500,247,188,23.0f)"), "Spectrum and AI status need their own aligned panels");
+assert(view.includes("ColourGradient navGlow(") && view.includes("card(955,108,345,78,19.0f)"),"Gradient selection and native header tile geometry required");
+console.log("PASS: clean black workspace, bottom sidebar sweep, aligned audio panels and version metadata");
