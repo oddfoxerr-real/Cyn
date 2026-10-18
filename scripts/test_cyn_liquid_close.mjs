@@ -61,8 +61,10 @@ assert(!liquid.includes("setPowerState(") &&
        "Hiding the UI must never power off or mute the audio processor");
 assert(controller.includes('settings_.setBool("run_minimized", true)'),
        "Existing tray-minimized preference must be preserved");
-assert(theme.includes("smooth_animations_ ? .44f : .60f"),
-       "Shared button/toggle transitions must no longer use laggy 13% stepping");
+assert(theme.includes("frameMs/16.666667f") &&
+       theme.includes("std::pow(1.0f-rate") &&
+       theme.includes("it->value[i]+=delta*mix;"),
+       "Shared button/toggle transitions must be responsive and frame-rate independent");
 assert(power.includes("irisDurationMs = 410.0") &&
        power.includes("curtain.setUsingNonZeroWinding(false)") &&
        power.includes("curtain.addPath(iris)"),
