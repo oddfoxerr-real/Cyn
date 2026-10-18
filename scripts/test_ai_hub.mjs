@@ -57,13 +57,13 @@ const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
                   "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", "Version 2.0.54"]){
+                  "browse_ai_.setBounds(897, 545, 106, 35)", 'String("Version ") + JUCEApplication::getInstance()->getApplicationVersion()']){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
 assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
 assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
-console.log("PASS: visible native AI sidebar, profile actions and v2.0.54 version marker");
+console.log("PASS: visible native AI sidebar, profile actions and runtime version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
 assert(native.includes("componentToCentreAround = owner"),"AI Hub must be positioned over Cyn");
 assert(native.includes("dialogBackgroundColour = juce::Colour (FXCOLOR(WindowBackground)).withAlpha (1.0f)"),"Dialog background is transparent");
@@ -237,9 +237,12 @@ console.log('PASS: separate persistent neural model selector with reversible bac
 const project=readFileSync(path("fxsound/Project/FxSound_App.vcxproj"),"utf8");
 const installer=readFileSync(path("Installer/Cyn/Cyn.iss"),"utf8");
 const updater=readFileSync(path("CynUpdater.ps1"),"utf8");
-assert.equal((project.match(/JUCE_APP_VERSION=2\.0\.54\.0/g)||[]).length,4,
-  'All native build configs must expose actual version 2.0.54.0');
-assert.match(installer,/^AppVersion=2\.0\.54$/m);
+const installedVersion = installer.match(/^AppVersion=(\d+\.\d+\.\d+)\s*$/m)?.[1];
+assert(installedVersion, 'Installer must declare a valid semantic app version');
+assert.equal((project.split('JUCE_APP_VERSION=' + installedVersion + '.0').length - 1), 4,
+  'All native build configs must expose actual installer version ' + installedVersion);
+assert(view.includes('JUCEApplication::getInstance()->getApplicationVersion()'),
+  'Sidebar must show the runtime app version instead of a hard-coded label');
 assert(controllerSource.includes('const auto currentVersion=major+"."+minor+"."+patch'),
   'Use runtime version for updater, not old hard-coded version');
 assert(!controllerSource.includes('CurrentVersion 2.0.29'), 'Updater cannot repeatedly offer old v2.0.29');
