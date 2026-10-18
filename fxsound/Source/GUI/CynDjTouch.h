@@ -37,10 +37,12 @@ inline void paint(juce::Graphics& g,int style,juce::Point<float> hotspot,
     if(style<=None || style>CustomPng || opacity<=0.004f) return;
     opacity=jlimit(0.0f,0.86f,opacity);
     Graphics::ScopedSaveState scope(g);
-    g.addTransform(AffineTransform::translation(hotspot.x,hotspot.y));
-    // Second hand reaches in from the opposite side of the DJ mixer.
-    if(mirror && (style==DjHand || style==GhostHand))
-        g.addTransform(AffineTransform::scale(-1.0f,1.0f));
+    // Mirror around the local fingertip BEFORE placing it at the measured
+    // knob; translating before mirroring could send the second hand offscreen.
+    const auto horizontal=mirror && (style==DjHand || style==GhostHand)
+        ? -1.0f : 1.0f;
+    g.addTransform(AffineTransform::scale(horizontal,1.0f)
+        .translated(hotspot.x,hotspot.y));
     const auto accent=Colour(FXCOLOR(SliderTrack)).withAlpha(opacity);
     if(style==CustomPng) {
         if(!custom.isValid()) return;
