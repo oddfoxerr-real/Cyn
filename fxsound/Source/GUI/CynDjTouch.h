@@ -31,12 +31,16 @@ inline juce::Image readCustomImage() {
 }
 // The local-space origin is the finger tip / cursor hotspot.
 inline void paint(juce::Graphics& g,int style,juce::Point<float> hotspot,
-                  float opacity,const juce::Image& custom,float phase=0.0f) {
+                  float opacity,const juce::Image& custom,float phase=0.0f,
+                  bool mirror=false) {
     using namespace juce;
     if(style<=None || style>CustomPng || opacity<=0.004f) return;
     opacity=jlimit(0.0f,0.86f,opacity);
     Graphics::ScopedSaveState scope(g);
     g.addTransform(AffineTransform::translation(hotspot.x,hotspot.y));
+    // Second hand reaches in from the opposite side of the DJ mixer.
+    if(mirror && (style==DjHand || style==GhostHand))
+        g.addTransform(AffineTransform::scale(-1.0f,1.0f));
     const auto accent=Colour(FXCOLOR(SliderTrack)).withAlpha(opacity);
     if(style==CustomPng) {
         if(!custom.isValid()) return;
