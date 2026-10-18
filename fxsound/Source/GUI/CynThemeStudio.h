@@ -7,13 +7,15 @@
 #include "CynThemeAtmosphere.h"
 #include "CynDjTouch.h"
 #include "CynUiMotion.h"
+#include "CynCloseMotion.h"
 #include <cmath>
 
 class CynThemeStudioContent final : public juce::Component, private juce::Timer
 {
 public:
     CynThemeStudioContent()
-        : previous_("<"), next_(">"), apply_("Apply studio"), cancel_("Close"), importTouch_("Choose PNG...")
+        : previous_("<"), next_(">"), apply_("Apply studio"), cancel_("Close"), importTouch_("Choose PNG..."),
+          appearanceTab_("Appearance"), motionTab_("Animations"), replayMotion_("Replay")
     {
         setSize(900, 790);
         setOpaque(true);
@@ -29,7 +31,32 @@ public:
             settings.getInt("cyn_dj_touch_style_eq",legacyStyle));
         flowerCount_=juce::jlimit(2,4,
             settings.getInt("cyn_dj_touch_flower_count",4));
+        closeStyle_ = CynCloseMotion::clampStyle(settings.getInt(
+            "cyn_close_motion_style", CynCloseMotion::defaultStyle));
+        closeSpeedPercent_ = CynCloseMotion::clampSpeed(settings.getInt(
+            "cyn_close_motion_speed_pct", CynCloseMotion::defaultSpeedPercent));
         customTouch_=CynDjTouch::readCustomImage();
+        for (int i=0; i<CynCloseMotion::NumStyles; ++i)
+            closeStylePicker_.addItem(CynCloseMotion::styleName(i), i+1);
+        closeStylePicker_.setSelectedId(closeStyle_+1,juce::dontSendNotification);
+        closeSpeedSlider_.setSliderStyle(juce::Slider::LinearHorizontal);
+        closeSpeedSlider_.setTextBoxStyle(juce::Slider::TextBoxRight,false,93,28);
+        closeSpeedSlider_.setRange(.55,1.60,.05);
+        closeSpeedSlider_.setTextValueSuffix("x");
+        closeSpeedSlider_.setValue(closeSpeedPercent_/100.0,juce::dontSendNotification);
+        closeStylePicker_.setTooltip("Choose a close-to-tray visual: Vortex, Gravity Melt, Liquid Ripple, Soft Fade or None.");
+        closeSpeedSlider_.setTooltip("Animation speed: 0.55x is slower; 1.60x is faster. Normal button reactions stay quick.");
+        addAndMakeVisible(closeStylePicker_);
+        addAndMakeVisible(closeSpeedSlider_);
+        closeStylePicker_.onChange=[this] {
+            closeStyle_=CynCloseMotion::clampStyle(closeStylePicker_.getSelectedId()-1);
+            replayMotionPreview();
+        };
+        closeSpeedSlider_.onValueChange=[this] {
+            closeSpeedPercent_=CynCloseMotion::clampSpeed(juce::roundToInt(closeSpeedSlider_.getValue()*100.0));
+            replayMotionPreview();
+        };
+        motionPreviewStart_=juce::Time::getMillisecondCounterHiRes();
         for(int i=0;i<=5;++i) {
             effectsTouchPicker_.addItem(CynDjTouch::name(i),i+1);
             eqTouchPicker_.addItem(CynDjTouch::name(i),i+1);
@@ -59,7 +86,8 @@ public:
         importTouch_.onClick=[this] {chooseCustomTouch();};
 
         for (auto* control : std::initializer_list<juce::Button*> {
-                &previous_, &next_, &apply_, &cancel_ })
+                &previous_, &next_, &apply_, &cancel_,
+                &appearanceTab_, &motionTab_, &replayMotion_ })
         {
             addAndMakeVisible(*control);
             control->setMouseCursor(juce::MouseCursor::PointingHandCursor);
@@ -98,10 +126,20 @@ public:
             controller.getSettings().setInt("cyn_dj_touch_style_eq",eqTouchStyle_);
             controller.getSettings().setInt("cyn_dj_touch_flower_count",flowerCount_);
             controller.getSettings().setInt("cyn_dj_touch_style",effectsTouchStyle_);
+            // Save the visual motion choice with Apply, without changing playback.
+            controller.getSettings().setInt("cyn_close_motion_style",closeStyle_);
+            controller.getSettings().setInt("cyn_close_motion_speed_pct",closeSpeedPercent_);
             controller.setThemeMode(static_cast<FxThemeMode>(selected_));
             close();
         };
         cancel_.onClick = [this] { close(); };
+        appearanceTab_.onClick=[this] { showMotionPage(false); };
+        motionTab_.onClick=[this] { showMotionPage(true); };
+        replayMotion_.onClick=[this] { replayMotionPreview(); };
+        appearanceTab_.setTooltip("Choose colours and AI Touch styling.");
+        motionTab_.setTooltip("Choose the window-close animation style and speed.");
+        replayMotion_.setTooltip("Replay the selected close animation in this preview.");
+        showMotionPage(false);
 
         if (FxTheme::isReducedMotion()) startTimer(500);
         else startTimerHz(30);
@@ -112,6 +150,11 @@ public:
     void resized() override
     {
         const int w=getWidth(),h=getHeight();
+        appearanceTab_.setBounds(w-342,73,145,33);
+        motionTab_.setBounds(w-187,73,158,33);
+        closeStylePicker_.setBounds(218,574,370,33);
+        closeSpeedSlider_.setBounds(207,640,390,34);
+        replayMotion_.setBounds(w-225,537,125,33);
         previous_.setBounds(25,225,52,64);
         next_.setBounds(w-77,225,52,64);
         cancel_.setBounds(w-255,h-58,105,36);
@@ -157,6 +200,11 @@ public:
         g.setColour(muted);
         g.drawText("Explore your themes. Use the arrows to slide between live previews.",
                    26,56,getWidth()-52,24,Justification::centredLeft);
+
+        if(motionPage_) {
+            paintMotionPage(g);
+            return;
+        }
 
         const int total=(int)FxThemeMode::NumModes;
         const String counter=String(selected_+1).paddedLeft('0',2)+" / "+String(total);
@@ -278,6 +326,146 @@ private:
         g.drawRoundedRectangle(area.reduced(.8f),16,1.2f);
     }
 
+    void showMotionPage(bool show)
+    {
+        motionPage_=show;
+        appearanceTab_.setToggleState(!show,juce::dontSendNotification);
+        motionTab_.setToggleState(show,juce::dontSendNotification);
+        for(auto* c:std::initializer_list<juce::Component*> {
+            &previous_, &next_, &effectsTouchPicker_, &eqTouchPicker_,
+            &flowerPicker_, &importTouch_ })
+            c->setVisible(!show);
+        closeStylePicker_.setVisible(show);
+        closeSpeedSlider_.setVisible(show);
+        replayMotion_.setVisible(show);
+        if(show) replayMotionPreview();
+        repaint();
+    }
+
+    void replayMotionPreview()
+    {
+        motionPreviewStart_=juce::Time::getMillisecondCounterHiRes();
+        repaint();
+    }
+
+    void paintMotionPage(juce::Graphics& g)
+    {
+        using namespace juce;
+        const auto fg=Colour(FXCOLOR(DefaultText)).withAlpha(1.0f);
+        const auto muted=Colour(FXCOLOR(HintText)).withAlpha(1.0f);
+        const auto accent=Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f);
+        const auto backdrop=Colour(FXCOLOR(WindowBackground)).withAlpha(1.0f);
+        const Rectangle<float> area(92.0f,138.0f,(float)getWidth()-184.0f,367.0f);
+        const double duration=CynCloseMotion::durationForSpeed(closeSpeedPercent_);
+        const double elapsed=Time::getMillisecondCounterHiRes()-motionPreviewStart_;
+        // Pause between replays so even very fast styles are easy to assess.
+        const double cycle=duration+950.0;
+        const double time=std::fmod(juce::jmax(0.0,elapsed),cycle);
+        const float t=(float)juce::jlimit(0.0,1.0,time/duration);
+        const bool none=closeStyle_==CynCloseMotion::None;
+
+        g.setColour(fg);
+        g.setFont(Font(21.0f,Font::bold));
+        g.drawText("WINDOW ANIMATIONS",92,112,500,26,Justification::centredLeft);
+        g.setColour(muted);
+        g.setFont(Font(12.0f));
+        g.drawText("A live sample of the selected motion. Audio continues when the real app hides to tray.",
+                   92,515,getWidth()-184,22,Justification::centredLeft);
+        g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(.93f));
+        g.fillRoundedRectangle(area.expanded(1.0f),18.0f);
+        {
+            Graphics::ScopedSaveState outer(g);
+            g.reduceClipRegion(area.getSmallestIntegerContainer());
+            g.setColour(backdrop.darker(.14f));
+            g.fillRoundedRectangle(area,17.0f);
+            const auto inside=area.reduced(17.0f);
+            if (none || t<.28f)
+            {
+                // Mock native surface uses CYN palette; no extra screenshot,
+                // IO or desktop window is needed for the preview.
+                g.setColour(Colour(FXCOLOR(PanelBackground)).withAlpha(1.0f));
+                g.fillRoundedRectangle(inside,12.0f);
+                g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(.9f));
+                g.drawLine(inside.getX()+13,inside.getY()+43,
+                           inside.getRight()-13,inside.getY()+43,1.0f);
+                g.setColour(fg.withAlpha(.92f));
+                g.setFont(Font(15.0f,Font::bold));
+                g.drawText("CYN   /   SOUND STUDIO",(int)inside.getX()+22,
+                           (int)inside.getY()+10,400,25,Justification::centredLeft);
+                const auto button=Rectangle<float>(inside.getRight()-43,inside.getY()+13,21,21);
+                g.setColour(accent.withAlpha(.52f));
+                g.drawRoundedRectangle(button,5.0f,1.0f);
+                for(int i=0;i<8;++i)
+                {
+                    const float px=inside.getX()+42.0f+i*56.0f;
+                    const float y=inside.getY()+162.0f;
+                    const float height=35.0f+(i*19%72);
+                    g.setColour(accent.withAlpha(.18f+.06f*(i%4)));
+                    g.fillRoundedRectangle(px,y-height,19,height,5.0f);
+                }
+                g.setColour(muted);
+                g.setFont(Font(12.0f));
+                g.drawText("Close-button takeover preview", (int)inside.getX()+24,
+                    (int)inside.getBottom()-48,400,22,Justification::centredLeft);
+                if (!none)
+                {
+                    const float e=1.0f-std::pow(1.0f-juce::jlimit(0.0f,1.0f,t/.28f),5.0f);
+                    const auto expanded=Rectangle<float>(
+                        button.getX()+(area.getX()-button.getX())*e,
+                        button.getY()+(area.getY()-button.getY())*e,
+                        button.getWidth()+(area.getWidth()-button.getWidth())*e,
+                        button.getHeight()+(area.getHeight()-button.getHeight())*e);
+                    g.setColour(backdrop.interpolatedWith(accent,.15f));
+                    g.fillRoundedRectangle(expanded,juce::jmin(13.0f,expanded.getHeight()*.24f));
+                }
+            }
+            else if(t<.37f)
+            {
+                g.setColour(backdrop.interpolatedWith(accent,.15f));
+                g.fillRoundedRectangle(area,13.0f);
+            }
+            else
+            {
+                // Same 2D style coverage as the actual native X overlay.
+                // The 96 x 54 preview mask keeps redraw inexpensive.
+                constexpr int mw=96,mh=54;
+                Image mask(Image::ARGB,mw,mh,true);
+                Image::BitmapData bitmap(mask,Image::BitmapData::writeOnly);
+                const float melt=(t-.37f)/.63f;
+                for(int y=0;y<mh;++y)
+                    for(int x=0;x<mw;++x)
+                    {
+                        const float coverage=CynCloseMotion::coverage(closeStyle_,melt,
+                            ((float)x+.5f)/mw,((float)y+.5f)/mh);
+                        bitmap.setPixelColour(x,y,Colour::fromRGBA(255,255,255,
+                            (uint8)roundToInt(coverage*255.0f)));
+                    }
+                Graphics::ScopedSaveState fluid(g);
+                g.reduceClipRegion(mask,AffineTransform::scale(
+                    area.getWidth()/mw,area.getHeight()/mh)
+                    .translated(area.getX(),area.getY()));
+                g.setColour(backdrop.interpolatedWith(accent,.15f));
+                g.fillRoundedRectangle(area,13.0f);
+            }
+        }
+        g.setColour(fg);
+        g.setFont(Font(13.0f,Font::bold));
+        g.drawText("CLOSE STYLE",92,574,115,33,Justification::centredLeft);
+        g.drawText("SPEED",92,640,100,33,Justification::centredLeft);
+        g.setColour(muted);
+        g.setFont(Font(12.0f));
+        const auto speed=String(closeSpeedPercent_/100.0,2)+"x";
+        const auto ms=String(juce::roundToInt(duration))+" ms";
+        g.drawText(none ? "Instant hide - no effect" :
+                   ("Speed "+speed+"  /  Approximately "+ms+" total"),
+                   610,644,215,28,Justification::centredLeft);
+        g.drawText("Slower: move left    •    Faster: move right.  Apply studio saves the choice.",
+                   92,701,getWidth()-180,24,Justification::centredLeft);
+        if(FxTheme::isReducedMotion())
+            g.drawText("Reduce Motion is enabled: the actual close animation will be skipped.",
+                       92,677,getWidth()-180,20,Justification::centredLeft);
+    }
+
     void chooseCustomTouch()
     {
         juce::FileChooser chooser("Choose an AI Touch PNG", juce::File::getSpecialLocation(juce::File::userPicturesDirectory), "*.png");
@@ -332,10 +520,17 @@ private:
     }
 
     juce::TextButton previous_,next_,apply_,cancel_,importTouch_;
+    juce::TextButton appearanceTab_,motionTab_,replayMotion_;
     juce::ComboBox effectsTouchPicker_,eqTouchPicker_,flowerPicker_;
+    juce::ComboBox closeStylePicker_;
+    juce::Slider closeSpeedSlider_;
     juce::File customChoice_;
     juce::Image customTouch_;
     int effectsTouchStyle_=0,eqTouchStyle_=0,flowerCount_=4;
+    int closeStyle_=CynCloseMotion::defaultStyle;
+    int closeSpeedPercent_=CynCloseMotion::defaultSpeedPercent;
+    bool motionPage_=false;
+    double motionPreviewStart_=0.0;
     juce::Rectangle<float> preview_;
     int selected_=0,source_=0,slideDirection_=1;
     bool transitioning_=false;
