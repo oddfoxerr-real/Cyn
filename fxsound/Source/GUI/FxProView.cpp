@@ -508,17 +508,17 @@ void FxProView::resized()
     if(studio) {
         const int eqX=left+12,eqW=731;
         if(sound_focus_==0) {
-            equalizer_.setBounds(eqX,250,eqW,230);
-            visualizer_.setBounds(1002,250,282,230);
-            audio_controls_.setBounds(eqX,510,eqW,161);
+            equalizer_.setBounds(eqX,278,eqW,203);
+            visualizer_.setBounds(1002,278,282,203);
+            audio_controls_.setBounds(eqX,522,eqW,152);
         } else if(sound_focus_==1) {
-            equalizer_.setBounds(eqX,251,1036,417);
-            visualizer_.setBounds(1002,251,282,100);
-            audio_controls_.setBounds(eqX,507,731,161);
+            equalizer_.setBounds(eqX,286,1036,344);
+            visualizer_.setBounds(1002,286,282,100);
+            audio_controls_.setBounds(eqX,522,731,152);
         } else {
-            audio_controls_.setBounds(eqX,272,1036,331);
-            equalizer_.setBounds(eqX,251,731,230);
-            visualizer_.setBounds(1002,250,282,230);
+            audio_controls_.setBounds(eqX,306,1036,296);
+            equalizer_.setBounds(eqX,278,eqW,203);
+            visualizer_.setBounds(1002,278,282,203);
         }
         equalizer_.setVisible(sound_focus_!=2);
         visualizer_.setVisible(sound_focus_==0);
@@ -526,38 +526,38 @@ void FxProView::resized()
     }
     // Smart Listening gets a wide live training timeline and its own neural
     // inspector, while preserving all AI mode, training and export controls.
-    neural_activity_.setBounds(993,246,291,194);
-    learning_timeline_.setBounds(left+13,246,722,194);
-    listening_mode_.setBounds(left+22,490,216,32);
-    ai_profile_.setBounds(left+253,490,397,32);
-    learning_effect_.setBounds(left+22,538,179,35);
-    more_.setBounds(left+213,538,103,35);
-    less_.setBounds(left+327,538,103,35);
-    train_.setBounds(left+443,538,165,35);
-    resume_.setBounds(left+619,538,165,35);
-    sensitivity_.setBounds(left+150,591,265,25);
-    headroom_cap_.setBounds(left+542,591,259,25);
-    preset_cycling_.setBounds(left+20,618,208,24);
-    preset_cycling_status_.setBounds(left+234,618,210,24);
-    learning_status_.setBounds(left+20,644,393,31);
-    export_ai_.setBounds(left+456,643,92,32);
-    import_ai_.setBounds(left+556,643,92,32);
-    browse_ai_.setBounds(left+656,643,103,32);
-    starter_.setBounds(left+766,643,134,32);
+    neural_activity_.setBounds(1008,278,271,173);
+    learning_timeline_.setBounds(left+13,278,722,173);
+    listening_mode_.setBounds(left+22,510,216,32);
+    ai_profile_.setBounds(left+253,510,397,32);
+    learning_effect_.setBounds(left+22,548,179,32);
+    more_.setBounds(left+213,548,103,32);
+    less_.setBounds(left+327,548,103,32);
+    train_.setBounds(left+443,548,165,32);
+    resume_.setBounds(left+619,548,165,32);
+    sensitivity_.setBounds(left+150,603,265,24);
+    headroom_cap_.setBounds(left+542,603,259,24);
+    preset_cycling_.setBounds(left+20,629,208,24);
+    preset_cycling_status_.setBounds(left+234,629,210,24);
+    learning_status_.setBounds(left+20,657,393,27);
+    export_ai_.setBounds(left+456,657,92,27);
+    import_ai_.setBounds(left+556,657,92,27);
+    browse_ai_.setBounds(left+656,657,103,27);
+    starter_.setBounds(left+766,657,134,27);
 
     // Device selection uses the same header device selector.
-    pin_toggle_.setBounds(left+27,295,404,34);
-    refresh_.setBounds(left+27,390,191,37);
+    pin_toggle_.setBounds(left+27,315,404,34);
+    refresh_.setBounds(left+27,397,191,37);
     // The real Smart Listening switch must never sit over a DSP slider.
     if(page_==0) {
-        smart_toggle_.setBounds(1013,631,230,25);
-        smart_status_.setBounds(1008,654,277,25);
+        smart_toggle_.setBounds(1013,638,230,25);
+        smart_status_.setBounds(1008,658,277,25);
     } else if(page_==1) {
-        smart_toggle_.setBounds(1041,478,233,26);
-        smart_status_.setBounds(1008,609,281,29);
+        smart_toggle_.setBounds(1032,477,244,26);
+        smart_status_.setBounds(1008,627,281,24);
     } else {
-        smart_toggle_.setBounds(left+21,495,217,26);
-        smart_status_.setBounds(left+254,495,772,29);
+        smart_toggle_.setBounds(left+21,498,217,26);
+        smart_status_.setBounds(left+254,498,772,26);
     }
 
     // Two balanced AI DJ cards: actions to the left, truthful engine state
@@ -724,49 +724,48 @@ void FxProView::paint(Graphics& g)
         g.drawRoundedRectangle(selX+.5f,202.5f,selW-1.0f,35.0f,10.5f,.9f);
         txt("31 / 35 / 39 BAND EQ  /  LIVE DSP",964,208,321,23,11.6f,true);
         if(sound_focus_==0) {
-            card(247,226,743,258);
-            card(996,226,304,258);
-            card(247,494,743,189);
-            card(996,494,304,189);
-            txt("31-BAND EQUALIZER",263,230,490,24,13.4f,false,true);
-            txt("LIVE SPECTRUM",1013,230,250,23,13.4f,false,true);
-            txt("SOUND ENHANCEMENTS",263,497,420,22,13.4f,false,true);
-            txt("LISTENING STATUS",1013,497,250,22,13.4f,false,true);
-            txt("Actual DSP controls",263,460,560,17,10.3f,true);
-            txt("Applied AI model",1013,532,230,19,10.2f,true);
-            txt(modelText,1013,552,250,24,18.0f,false,true);
+            card(247,253,743,235);
+            card(996,253,304,235);
+            card(247,500,743,188);
+            card(996,500,304,188);
+            txt("31-BAND EQUALIZER",263,258,490,23,14.0f,false,true);
+            txt("LIVE SPECTRUM",1013,258,250,23,14.0f,false,true);
+            txt("SOUND ENHANCEMENTS",263,505,420,23,14.0f,false,true);
+            txt("LISTENING STATUS",1013,505,250,23,14.0f,false,true);
+            txt("Applied AI model",1013,539,230,19,11.5f,true);
+            txt(modelText,1013,562,250,25,19.0f,false,true);
             txt(aiOn?"Real-time adaptive processing":"Manual audio processing",
-                1013,581,265,20,11.0f,true);
-            txt("Change presets and output at the top.",1013,605,272,22,10.8f,true);
+                1013,593,265,20,12.0f,true);
+            txt("Change presets and output at the top.",1013,620,272,18,11.0f,true);
         } else if(sound_focus_==1) {
-            card(247,226,1053,457);
-            txt("EQUALIZER  /  PRECISION VIEW",265,233,650,24,14,false,true);
-            txt("Drag the actual frequency controls to shape audio.",265,627,730,21,11,true);
+            card(247,253,1053,435);
+            txt("EQUALIZER  /  PRECISION VIEW",265,262,650,25,15,false,true);
+            txt("Drag the frequency controls to shape your sound.",265,649,730,21,12,true);
         } else {
-            card(247,226,1053,457);
-            txt("SOUND ENHANCEMENTS  /  STUDIO VIEW",265,233,800,25,14,false,true);
-            txt("Tune clarity, ambience, surround, dynamics and bass.",265,613,900,22,11,true);
+            card(247,253,1053,435);
+            txt("SOUND ENHANCEMENTS  /  STUDIO VIEW",265,262,800,25,15,false,true);
+            txt("Tune clarity, ambience, surround, dynamics and bass.",265,644,900,22,12,true);
         }
     } else if(page_==1) {
         txt("REAL AI TELEMETRY  /  PERSONAL LEARNING",267,205,800,25,12,true,true);
-        card(247,225,743,231);
-        card(996,225,304,231);
-        card(247,468,1053,220);
-        txt("LEARNING TIMELINE",265,229,490,20,13.4f,false,true);
-        txt("LIVE NEURAL ACTIVITY",1011,229,274,20,13.4f,false,true);
-        txt("LISTENING CONTROLS",264,470,470,18,13.2f,false,true);
-        txt("SENSITIVITY",265,583,128,19,10.5f,true,true);
-        txt("HEADROOM CAP",663,583,150,19,10.5f,true,true);
+        card(247,253,743,210);
+        card(996,253,304,210);
+        card(247,472,1053,216);
+        txt("LEARNING TIMELINE",265,258,490,23,14,false,true);
+        txt("LIVE NEURAL ACTIVITY",1011,258,274,23,14,false,true);
+        txt("LISTENING CONTROLS",264,476,470,22,14,false,true);
+        txt("SENSITIVITY",265,603,128,20,11.5f,true,true);
+        txt("HEADROOM CAP",663,603,150,20,11.5f,true,true);
     } else if(page_==2) {
         txt("DEVICE ROUTING  /  OUTPUT PRIORITY",267,205,790,25,12,true,true);
-        card(247,225,1053,219);
-        card(247,454,1053,234);
-        txt("OUTPUT DEVICE MANAGEMENT",266,231,780,28,17,false,true);
-        txt("Keep your preferred output when available.",266,258,900,25,12.5f,true);
-        txt("DEVICE FALLBACK",266,458,500,27,15,false,true);
-        txt("Automatic recovery when a selected device disconnects.",266,550,920,28,13,true);
+        card(247,253,1053,200);
+        card(247,465,1053,223);
+        txt("OUTPUT DEVICE MANAGEMENT",266,259,780,27,17,false,true);
+        txt("Keep your preferred output when available.",266,284,900,23,12.5f,true);
+        txt("DEVICE FALLBACK",266,474,500,27,15,false,true);
+        txt("Automatic recovery when a selected device disconnects.",266,546,920,26,13,true);
         txt("Device-specific presets and priority are managed in Settings.",
-            266,587,920,24,12.3f,true);
+            266,581,920,24,12.3f,true);
     } else if(page_==3) {
         txt("NEURAL CATALOGUE  /  IMPORT  /  ACTIVATE",267,205,790,25,12,true,true);
     } else {
