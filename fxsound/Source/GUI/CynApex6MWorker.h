@@ -25,11 +25,18 @@ public:
             && dir.getChildFile("apex6m-225.onnx").getSize()>20000000
             && dir.getChildFile("onnxruntime.dll").existsAsFile();
     }
+    void setProcessingEnabled(bool active) noexcept {
+        processing_enabled_.store(active,std::memory_order_release);
+        if(!active) {
+            stamp_.store(0,std::memory_order_release);
+        }
+    }
     void startIfAvailable() {
         if(installed() && !isThreadRunning()) startThread(2);
     }
     bool ready() const noexcept { return ready_.load(std::memory_order_acquire); }
     bool latest(std::array<float,8>& bands) const noexcept {
+        if(!processing_enabled_.load(std::memory_order_acquire)) return false;
         const auto stamp=stamp_.load(std::memory_order_acquire);
         if(!ready() || !stamp || juce::Time::getMillisecondCounter()-stamp>2500)
             return false;
@@ -176,6 +183,10 @@ private:
             std::vector<float> features((size_t)bins*frames,0.0f);
             uint64_t lastWindow=0;
             while(!threadShouldExit()) {
+                if(!processing_enabled_.load(std::memory_order_acquire)) {
+                    wait(220);
+                    continue;
+                }
                 if(!source_.copyApexWindow(samples,lastWindow)) {
                     wait(170);continue;
                 }
@@ -233,6 +244,7 @@ private:
         if(opts)api->ReleaseSessionOptions(opts);
         if(env)api->ReleaseEnv(env);
     }
+    std::atomic<bool> processing_enabled_ {false};
     DfxDsp& source_;
     std::atomic<bool> ready_ {false};
     std::array<std::atomic<float>,8> eq_ {};
