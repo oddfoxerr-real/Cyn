@@ -2997,15 +2997,16 @@ FxThemeMode FxController::getThemeMode()
 
 void FxController::setThemeMode(FxThemeMode mode)
 {
-    // Only the seven reviewed dark presets are supported.
+    // Only the new CYN-native palettes are accepted; legacy theme IDs
+    // are migrated to a compatible near-black default without touching DSP.
     switch(mode) {
         case FxThemeMode::DarkMesh:
-        case FxThemeMode::Midnight:
-        case FxThemeMode::Obsidian:
-        case FxThemeMode::Emerald:
-        case FxThemeMode::DeepSea:
-        case FxThemeMode::NeonTokyo:
-        case FxThemeMode::CharcoalDesktop: break;
+        case FxThemeMode::AetherGlass:
+        case FxThemeMode::IonViolet:
+        case FxThemeMode::LiquidTitanium:
+        case FxThemeMode::JadeCircuit:
+        case FxThemeMode::SolarInk:
+        case FxThemeMode::PolarMist: break;
         default: mode=FxThemeMode::DarkMesh; break;
     }
     settings_.setInt("theme_mode",(int)mode);

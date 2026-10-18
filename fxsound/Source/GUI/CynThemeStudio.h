@@ -68,16 +68,26 @@ public:
         setOpaque(true);
         setWantsKeyboardFocus(true);
         setFocusContainerType(juce::Component::FocusContainerType::focusContainer);
-        // Curated dark palette selector (keeps existing layout).
+        // New near-black native compositions (not recycled legacy modes).
         themeMode_=FxTheme::getThemeMode();
+        switch(themeMode_) {
+            case FxThemeMode::DarkMesh:
+            case FxThemeMode::AetherGlass:
+            case FxThemeMode::IonViolet:
+            case FxThemeMode::LiquidTitanium:
+            case FxThemeMode::JadeCircuit:
+            case FxThemeMode::SolarInk:
+            case FxThemeMode::PolarMist: break;
+            default: themeMode_=FxThemeMode::DarkMesh; break;
+        }
         for(const auto& item : std::initializer_list<std::pair<FxThemeMode,const char*>>{
-            {FxThemeMode::DarkMesh,"Gemini Black"},
-            {FxThemeMode::Midnight,"Midnight"},
-            {FxThemeMode::Obsidian,"Liquid Obsidian"},
-            {FxThemeMode::Emerald,"Emerald"},
-            {FxThemeMode::DeepSea,"Deep Sea"},
-            {FxThemeMode::NeonTokyo,"Neon Tokyo"},
-            {FxThemeMode::CharcoalDesktop,"Graphite"}})
+            {FxThemeMode::DarkMesh,"CYN Black"},
+            {FxThemeMode::AetherGlass,"Aether Glass"},
+            {FxThemeMode::IonViolet,"Ion Violet"},
+            {FxThemeMode::LiquidTitanium,"Liquid Titanium"},
+            {FxThemeMode::JadeCircuit,"Jade Circuit"},
+            {FxThemeMode::SolarInk,"Solar Ink"},
+            {FxThemeMode::PolarMist,"Polar Mist"}})
             themePicker_.addItem(item.second,(int)item.first+1);
         themePicker_.setSelectedId((int)themeMode_+1,juce::dontSendNotification);
         themePicker_.onChange=[this] {
@@ -312,7 +322,7 @@ public:
         g.drawText("CYN Studio",25,17,getWidth()-50,37,Justification::centredLeft);
         g.setFont(Font(13.0f));
         g.setColour(muted);
-        g.drawText("Seven dark themes, fluid screen transitions and customizable effects.",
+        g.drawText("Original near-black materials designed for CYN's new workspace.",
                    26,56,getWidth()-52,24,Justification::centredLeft);
 
         if(buttonPage_) {
@@ -341,7 +351,7 @@ public:
                    Justification::centred);
         g.setFont(Font(12.0f));
         g.setColour(muted);
-        g.drawText("SLEEK DARK PRESETS  /  LIVE PREVIEW",
+        g.drawText("NEW CYN MATERIALS  /  LIVE PREVIEW",
                    92,508,getWidth()-184,20,Justification::centred);
 
         // Two real DJ hands/flower groups; styles are independent per panel.

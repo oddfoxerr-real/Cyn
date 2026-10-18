@@ -607,15 +607,14 @@ void FxProView::paint(Graphics& g)
     auto& theme=dynamic_cast<FxTheme&>(getLookAndFeel());
     auto colour=[](FxColor c) { return Colour(FxTheme::getColor(c)).withAlpha(1.0f); };
     const auto mode=FxTheme::getThemeMode();
-    const Colour base=mode==FxThemeMode::DarkMesh ? Colour(0xff000000) :
-        Colour(FxTheme::getColorForMode(mode,WindowBackground)).darker(.52f);
-    const Colour panel=mode==FxThemeMode::DarkMesh ? Colour(0xff030405) :
-        Colour(FxTheme::getColorForMode(mode,PanelBackground)).darker(.46f);
-    const Colour panel2=panel.brighter(.12f);
-    const Colour border(0xff18212b);
-    const Colour cyan=mode==FxThemeMode::DarkMesh ? Colour(0xff65b9ff) :
-        Colour(FxTheme::getColorForMode(mode,SliderTrack));
-    const Colour white(0xffedf5ff),muted(0xff9aadc4);
+    // Match the native JUCE controls AND the custom-drawn workspace.
+    // No palette gets re-darkened into black or recolored with fixed blue.
+    const Colour base=colour(WindowBackground);
+    const Colour panel=colour(PanelBackground);
+    const Colour panel2=colour(WidgetBackground);
+    const Colour border=colour(RowOutline);
+    const Colour cyan=colour(SliderTrack);
+    const Colour white=colour(DefaultText),muted=colour(HintText);
     const bool reduced=FxTheme::isReducedMotion();
     const float playLevel=jlimit(0.0f,1.0f,theme_audio_level_);
     g.fillAll(base);
@@ -628,17 +627,17 @@ void FxProView::paint(Graphics& g)
         CynThemeAtmosphere::paint(g,mode,
             reduced ? 0.0f : (float)(Time::getMillisecondCounterHiRes()*.001),
             playLevel,juce::Rectangle<float>(229.0f,0.0f,getWidth()-229.0f,205.0f));
-        ColourGradient veil(Colour(0xff03070d).withAlpha(.40f),230.0f,10.0f,
+        ColourGradient veil(panel.withAlpha(.32f),230.0f,10.0f,
                             base.withAlpha(.96f),740.0f,208.0f,false);
         g.setGradientFill(veil); g.fillRect(229,0,getWidth()-229,220);
     }
 
     // Solid continuous navigation rail, no second row of icon-only buttons.
-    ColourGradient side(Colour(0xff050609),0.0f,0.0f,
-                         Colour(0xff010203),228.0f,700.0f,false);
+    ColourGradient side(base.interpolatedWith(panel,.46f),0.0f,0.0f,
+                         base,228.0f,700.0f,false);
     g.setGradientFill(side);g.fillRect(0,0,228,getHeight());
     // Clean continuous sidebar edge: no decorative corner flourish.
-    g.setColour(Colour(0xff1e303d).withAlpha(.85f));
+    g.setColour(border.withAlpha(.85f));
     g.drawLine(228.0f,0.0f,228.0f,(float)getHeight(),.8f);
     // Native title bar already displays the CYN wordmark. The sidebar
     // identifies the navigation instead of repeating the same logo.
@@ -651,15 +650,16 @@ void FxProView::paint(Graphics& g)
     g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,87.0f,203.0f,87.0f,.8f);
 
     const float navY=104.0f+49.0f*(float)page_;
-    ColourGradient navGlow(cyan.darker(.68f),22.0f,navY,
-                            cyan.darker(.81f).interpolatedWith(Colour(0xff27205c),.28f),218.0f,navY+42.0f,false);
+    ColourGradient navGlow(colour(MenuHighlightBackground),22.0f,navY,
+                            cyan.withAlpha(1.0f).interpolatedWith(base,.77f),
+                            218.0f,navY+42.0f,false);
     g.setGradientFill(navGlow);
     g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,15.0f);
     g.setColour(cyan.withAlpha(.78f));
     g.drawRoundedRectangle(22.5f,navY+.5f,195.0f,41.0f,14.5f,1.05f);
     g.fillRoundedRectangle(22.0f,navY+11.0f,3.2f,20.0f,1.5f);
     g.setColour(border);g.drawLine(27.0f,590.0f,210.0f,590.0f,.8f);
-    g.setColour(Colour(0xff040709));g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
+    g.setColour(panel2);g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
     g.setColour(border.withAlpha(.38f));g.drawRoundedRectangle(21.5f,524.5f,194.0f,55.0f,12.0f,.8f);
     g.setColour(muted.withAlpha(.85f));
     g.setFont(theme.getNormalFont().withHeight(9.0f).boldened());
@@ -727,7 +727,7 @@ void FxProView::paint(Graphics& g)
     if(page_==0) {
         const float selX=sound_focus_==0 ? 258.0f : sound_focus_==1 ? 392.0f : 526.0f;
         const float selW=sound_focus_==2 ? 164.0f : 126.0f;
-        g.setColour(Colour(0xff142334));
+        g.setColour(colour(MenuHighlightBackground));
         g.fillRoundedRectangle(selX,202.0f,selW,36.0f,11.0f);
         g.setColour(cyan.withAlpha(.75f));
         g.drawRoundedRectangle(selX+.5f,202.5f,selW-1.0f,35.0f,10.5f,.9f);

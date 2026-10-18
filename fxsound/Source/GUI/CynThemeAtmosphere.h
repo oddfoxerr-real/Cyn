@@ -58,7 +58,10 @@ public:
         const float beat=1.0f+energy*.25f;
         const float breathe=std::sin(t*.41f);
         // Artwork belongs to the entire landscape, never a floating mini-widget.
-        if(mode!=FxThemeMode::DarkMesh)
+        if(mode!=FxThemeMode::DarkMesh &&
+           mode!=FxThemeMode::AetherGlass && mode!=FxThemeMode::IonViolet &&
+           mode!=FxThemeMode::LiquidTitanium && mode!=FxThemeMode::JadeCircuit &&
+           mode!=FxThemeMode::SolarInk && mode!=FxThemeMode::PolarMist)
             halo(795+60*breathe,246,390,.16f+energy*.14f);
         switch(mode)
         {
@@ -321,6 +324,84 @@ public:
                     }
                 }
                 break;
+            case FxThemeMode::AetherGlass: {
+                // Distinct liquid-glass ribbons intersect soft orbital arcs.
+                halo(825,240,325,.12f+energy*.08f);
+                for(int n=0;n<10;++n)
+                    ribbon(230+n*30,18+n*1.7f+energy*15,
+                           96+n*9,t*.24f+n*.43f,.15f,1.35f);
+                for(int n=0;n<5;++n) ring(780,268,82+n*46,.24f-n*.027f,1.15f);
+                break;
+            }
+            case FxThemeMode::IonViolet: {
+                // Layered violet filaments and sparse ion nodes.
+                halo(800,262,360,.15f+energy*.09f);
+                for(int n=0;n<24;++n) {
+                    const float x=n*44.0f;
+                    const float y=310+93*std::sin(n*.43f+t*.16f);
+                    if(n>0) stroke(x-44,310+93*std::sin((n-1)*.43f+t*.16f),
+                                  x,y,.19f+energy*.11f,1.35f);
+                    if(n%3==0)ring(x,y,4+energy*3,.47f,1.0f);
+                }
+                break;
+            }
+            case FxThemeMode::LiquidTitanium: {
+                // Brushed chrome arcs; silver sheen, never legacy charcoal tiles.
+                for(int n=0;n<9;++n) {
+                    const float y=160+n*39.0f;
+                    ribbon(y,10+energy*10,65+n*12,t*.12f+n*.17f,
+                           .26f-n*.018f,1.35f);
+                }
+                for(int n=0;n<4;++n)ring(846,286,109+n*58,.20f,1.6f);
+                break;
+            }
+            case FxThemeMode::JadeCircuit: {
+                // Fine PCB-like circuit lattice that joins real nodes.
+                for(int row=0;row<10;++row) {
+                    for(int col=0;col<18;++col) {
+                        const float x=28+col*55.0f, y=126+row*43.0f;
+                        const float drift=5.0f*std::sin(t*.18f+row*.43f+col*.31f);
+                        if(col<17)stroke(x,y+drift,x+55,y+drift,
+                                         .09f+energy*.06f,.85f);
+                        if(row<9 && (col+row)%3==0)
+                            stroke(x,y+drift,x,y+43+drift,.11f,.85f);
+                        if((col+row)%5==0)ring(x,y+drift,2.2f,.42f,1.0f);
+                    }
+                }
+                break;
+            }
+            case FxThemeMode::SolarInk: {
+                // Warm ink plumes with irregular hand-drawn capillary paths.
+                halo(820,300,335,.13f+energy*.1f);
+                for(int n=0;n<13;++n) {
+                    Path vein;
+                    const float y=180+n*32.0f;
+                    vein.startNewSubPath(0,y);
+                    for(int i=1;i<=45;++i) {
+                        const float x=i*23.0f;
+                        const float wave=std::sin(x*.014f+n*.73f+t*.24f)*16
+                                          +std::sin(x*.039f-n*.41f+t*.17f)*5;
+                        vein.lineTo(x,y+wave*(1.0f+energy*.25f));
+                    }
+                    g.setColour((n%2?soft:accent).withAlpha((.10f+n*.004f)*strength));
+                    g.strokePath(vein,PathStrokeType(1.3f));
+                }
+                break;
+            }
+            case FxThemeMode::PolarMist: {
+                // Wispy cyan haze and light condensation droplets.
+                for(int n=0;n<9;++n)
+                    ribbon(180+n*36,24+energy*9,114+n*14,
+                           t*.16f+n*.51f,.14f,1.7f);
+                for(int n=0;n<75;++n) {
+                    const float x=(n*149)%1000;
+                    const float y=(n*97)%600+8*std::sin(t*.17f+n*.71f);
+                    const float radius=1.1f+(n%4)*.45f;
+                    g.setColour(soft.withAlpha((.08f+energy*.06f)*strength));
+                    g.fillEllipse(x,y,radius*2,radius*2);
+                }
+                break;
+            }
             default: break;
         }
     }
@@ -348,7 +429,12 @@ inline void paint(Graphics& g,FxThemeMode theme,float timeSeconds,float audioLev
         g.setColour(Colour(0xff000000));
         g.fillRect(bounds);
     } else {
-        const float mix=preview?(light?.08f:.21f):(light?.027f:.073f);
+        const bool nativeCyn=theme==FxThemeMode::AetherGlass ||
+             theme==FxThemeMode::IonViolet || theme==FxThemeMode::LiquidTitanium ||
+             theme==FxThemeMode::JadeCircuit || theme==FxThemeMode::SolarInk ||
+             theme==FxThemeMode::PolarMist;
+        const float mix=nativeCyn ? (preview?.11f:.025f) :
+                        (preview?(light?.08f:.21f):(light?.027f:.073f));
         ColourGradient surface(background.interpolatedWith(accent,mix),bounds.getX(),bounds.getY(),
                                background.interpolatedWith(detail,mix*.7f),bounds.getRight(),bounds.getBottom(),false);
         surface.addColour(.52,background.interpolatedWith(accent,mix*.46f));
