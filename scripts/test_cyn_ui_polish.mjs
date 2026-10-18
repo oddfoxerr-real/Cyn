@@ -17,12 +17,12 @@ const required=[
     "card(247,252,686,205)",
     "card(944,252,356,205)",
     "card(247,468,1053,220)",
-    "dj_download_.setBounds(left+24,316,205,38)",
+    "dj_download_.setBounds(left+24,329,205,38)",
     "dj_intensity_.setBounds(left+209,522,565,31)",
     "dj_spacing_.setBounds(left+209,574,565,31)",
     "embedded_ai_hub_.setBounds(247,250,1053,435)",
-    "learning_timeline_.setBounds(left+13,278,722,173)",
-    "equalizer_.setBounds(eqX,278,eqW,203)"
+    "learning_timeline_.setBounds(left+13,288,722,164)",
+    "equalizer_.setBounds(eqX,288,eqW,193)"
 ];
 for(const anchor of required)assert(view.includes(anchor),"UI overlap/layout regression: "+anchor);
 assert(view.includes('g.drawText("WORKSPACES"') &&

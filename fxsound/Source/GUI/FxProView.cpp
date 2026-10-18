@@ -508,17 +508,17 @@ void FxProView::resized()
     if(studio) {
         const int eqX=left+12,eqW=731;
         if(sound_focus_==0) {
-            equalizer_.setBounds(eqX,278,eqW,203);
-            visualizer_.setBounds(1002,278,282,203);
-            audio_controls_.setBounds(eqX,522,eqW,152);
+            equalizer_.setBounds(eqX,288,eqW,193);
+            visualizer_.setBounds(1002,288,282,193);
+            audio_controls_.setBounds(eqX,536,eqW,136);
         } else if(sound_focus_==1) {
             equalizer_.setBounds(eqX,286,1036,344);
             visualizer_.setBounds(1002,286,282,100);
             audio_controls_.setBounds(eqX,522,731,152);
         } else {
             audio_controls_.setBounds(eqX,306,1036,296);
-            equalizer_.setBounds(eqX,278,eqW,203);
-            visualizer_.setBounds(1002,278,282,203);
+            equalizer_.setBounds(eqX,288,eqW,193);
+            visualizer_.setBounds(1002,288,282,193);
         }
         equalizer_.setVisible(sound_focus_!=2);
         visualizer_.setVisible(sound_focus_==0);
@@ -526,8 +526,8 @@ void FxProView::resized()
     }
     // Smart Listening gets a wide live training timeline and its own neural
     // inspector, while preserving all AI mode, training and export controls.
-    neural_activity_.setBounds(1008,278,271,173);
-    learning_timeline_.setBounds(left+13,278,722,173);
+    neural_activity_.setBounds(1008,288,271,164);
+    learning_timeline_.setBounds(left+13,288,722,164);
     listening_mode_.setBounds(left+22,510,216,32);
     ai_profile_.setBounds(left+253,510,397,32);
     learning_effect_.setBounds(left+22,548,179,32);
@@ -562,12 +562,12 @@ void FxProView::resized()
 
     // Two balanced AI DJ cards: actions to the left, truthful engine state
     // to the right; controls aligned underneath with room for labels.
-    dj_download_.setBounds(left+24,316,205,38);
-    dj_remove_.setBounds(left+24,316,205,38);
-    dj_cancel_.setBounds(left+24,316,205,38);
-    dj_progress_.setBounds(left+252,327,382,18);
-    dj_toggle_.setBounds(left+24,381,260,32);
-    dj_status_.setBounds(left+24,421,640,25);
+    dj_download_.setBounds(left+24,329,205,38);
+    dj_remove_.setBounds(left+24,329,205,38);
+    dj_cancel_.setBounds(left+24,329,205,38);
+    dj_progress_.setBounds(left+252,338,382,18);
+    dj_toggle_.setBounds(left+24,383,260,32);
+    dj_status_.setBounds(left+24,422,640,25);
     dj_intensity_.setBounds(left+209,522,565,31);
     dj_spacing_.setBounds(left+209,574,565,31);
     dj_stereo_.setBounds(left+24,623,480,27);

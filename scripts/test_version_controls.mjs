@@ -23,7 +23,7 @@ assert.equal((native.match(/JUCE_APP_VERSION=2\.0\.62\.0/g)||[]).length,4);
 assert.match(installer,/^AppVersion=2\.0\.62\s*$/m);
 assert.match(installer,/^VersionInfoVersion=2\.0\.62\.0\s*$/m);
 assert(winResource.includes("FILEVERSION  2,0,62,0") &&
-       (winResource.match(/2\\.0\\.62\\.0/g) || []).length === 2,
+       (winResource.match(/2\.0\.62\.0/g) || []).length === 2,
        "Windows executable resource version must match the updater/installer; old 2.0.29.0 appears in CYN sidebar");
 console.log("PASS: installed version UI, manual update, auto-update toggle and matching native version");
 
