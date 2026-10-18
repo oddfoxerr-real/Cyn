@@ -55,13 +55,18 @@ const build=readFileSync(path("BUILD_CYN.ps1"),"utf8");
 assert(build.includes("CynAiProfiles"),"Installer must bundle the offline community catalogue");
 const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
-for(const key of ["ai_hub_nav_.setBounds(68, 198, 152, 36)", "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
-                  "export_ai_.setBounds(685, 545, 96, 35)", "import_ai_.setBounds(791, 545, 96, 35)",
-                  "browse_ai_.setBounds(897, 545, 106, 35)", 'String("Version ") + JUCEApplication::getInstance()->getApplicationVersion()']){
+for(const key of ["ai_hub_nav_.setBounds(navX,275,navW,42)",
+                  "ai_hub_nav_.onClick = [this] { selectPage(3); };",
+                  "export_ai_.setBounds(left+456,643,92,32)",
+                  "import_ai_.setBounds(left+556,643,92,32)",
+                  "browse_ai_.setBounds(left+656,643,103,32)",
+                  'JUCEApplication::getInstance()->getApplicationVersion()']){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
-assert(view.includes("&ai_hub_nav_, &home_"),"AI Hub navigation missing from component registration");
-assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
+assert(view.includes("&ai_hub_nav_, &studio_nav_, &ai_status_card_"),"AI Hub navigation must be registered with the new native shell");
+assert(view.includes("ai_hub_nav_.setVisible(true)") &&
+       view.includes("embedded_ai_hub_.setVisible(page==3)"),
+       "AI Hub should be visible in navigation and display its real native catalogue in the workspace");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
 console.log("PASS: visible native AI sidebar, profile actions and runtime version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");
@@ -79,11 +84,18 @@ console.log("PASS: "+catalogue.profiles.length+" native AI profiles, offline cat
 const juceTooltip=readFileSync(path("third_party/JUCE/modules/juce_gui_basics/windows/juce_TooltipWindow.cpp"),"utf8");
 assert(juceTooltip.includes("setOpaque (true);"),"Review tooltip default opacity after JUCE changes");
 assert(view.includes("tool_tip_.setOpaque(false);"),"Tooltip should not show rectangular backing beyond rounded corners");
-for (const [button,palette] of [["ai_hub_nav_","MenuHighlightBackground"],["browse_ai_","MenuHighlightBackground"],["export_ai_","PanelBackground"],["import_ai_","PanelBackground"]]) {
+// In the stable shell, sidebar buttons are intentionally transparent: the
+// shared parent draws the selected glass/glow behind a real native TextButton.
+// AI Hub action buttons remain independently filled and contrast-checked.
+for (const [button,palette] of [["browse_ai_","MenuHighlightBackground"],["export_ai_","PanelBackground"],["import_ai_","PanelBackground"]]) {
   assert(view.includes(button+".setColour(TextButton::buttonColourId, Colour(FXCOLOR("+palette+")).withAlpha(1.0f));"),button+" fill is transparent");
 }
-for(const button of ["ai_hub_nav_","browse_ai_"])
-  assert(view.includes(button+".setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));"),button+" label invisible");
+assert(view.includes('g.fillRoundedRectangle(22.0f,navY') &&
+       view.includes('g.drawRoundedRectangle(22.5f,navY+.5f') &&
+       view.includes('button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));'),
+       "Native AI Hub sidebar must have readable text and a separate painted selection background");
+assert(view.includes('browse_ai_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));'),
+       "Browse AI action label invisible");
 assert(view.includes("button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));"),"AI profile actions lack opaque labels");
 for(const key of ["backgroundColourId","outlineColourId","textColourId"])
   assert(theme.includes("findColour(TooltipWindow::"+key+").withAlpha(1.0f)"),"Tooltip "+key+" not opaque");
@@ -94,7 +106,7 @@ const neural = readFileSync(path("fxsound/Source/GUI/CynNeuralActivity.h"), "utf
 assert(header.includes('#include "CynNeuralActivity.h"'), "Neural visualizer header missing");
 assert(header.includes("CynNeuralActivity neural_activity_"), "Missing visualizer instance");
 assert(neural.includes("std::array<Point<float>, 11> inputs") && neural.includes("std::array<Point<float>, 12> hidden") && neural.includes("std::array<Point<float>, 5> outputs"), "Must match real 11-12-5 model architecture");
-assert(view.includes("neural_activity_.setBounds(72, 286, 148, 187)"), "Must fit below Misc navigation without obstructing labeling controls");
+assert(view.includes("neural_activity_.setBounds(993,246,291,194)"), "Neural network belongs in the dedicated Smart Listening inspector");
 assert(view.includes("neural_activity_.setTrainingActive(controller.isSmartTraining())"), "Brain must reflect actual training state");
 assert(view.includes("neural_activity_.setAnimationEnabled(page==1)") &&
        view.includes("const bool wantGraph=page_==1;"),
@@ -123,12 +135,14 @@ console.log("PASS: live neural inference and supervised epoch animation");
 // YAMNet event classifications; no fabricated YAMNet weight-node activity.
 const themeHeader=readFileSync(path("fxsound/Source/GUI/FxTheme.h"),"utf8");
 assert(themeHeader.includes("CharcoalDesktop, NeuralCore, DarkMesh, NumModes"),"Neural Core must preserve existing saved theme IDs");
-assert(theme.includes('"Charcoal Desktop", "Neural Core"'),"Neural Core missing from Theme menu names");
+assert(theme.includes('return "Dark Theme";'),"Stable shell must offer only the Dark Theme while retaining legacy internal modes");
 assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Neural theme must use real personal model activations");
 assert(view.includes("brainController.getLiveYamNetScene(scene)"),"Neural theme must read real YAMNet classifications");
 assert(controllerHeader.includes("getLiveYamNetScene(CynAudioScene& out)"),"Missing native read-only scene telemetry API");
 assert(controllerSource.includes("return yamnet_worker_->latest(out)"),"Neural theme must use actual async ONNX scene data");
-assert(view.includes("neural_core_live_?neural_core_scene_"),"No fade-to-idle for stale YAMNet output");
+assert(view.includes("neural_core_live_=brainController.getLiveYamNetScene(scene) && hasAudio;") &&
+       view.includes("neural_core_scene_=neural_core_live_?scene:CynAudioScene {};"),
+       "Native AI telemetry must reject stale YAMNet output even with Dark Theme only");
 assert(view.includes("const double interval=FxTheme::isReducedMotion()?500.0:42.0;") &&
        view.includes("now-last_theme_repaint_>=interval"),"UI repaint must remain <=24Hz");
 assert(neural.includes("setProfileId(const juce::String& id)") && neural.includes("const Colour accent=trained"),"Neural Core must have its own network lighting");
@@ -141,7 +155,7 @@ const themeModes=[...themeHeader.matchAll(/enum FxThemeMode : int \{([^}]+)\}/g)
 assert.equal(themeModes.length,21,"All original twenty theme IDs plus Dark Theme are required");
 for(const mode of themeModes)
   assert(atmosphere.includes("case FxThemeMode::"+mode+":"),"No dynamic artwork for "+mode);
-assert(view.includes("CynThemeAtmosphere::paint(g,FxTheme::getThemeMode()"),
+assert(view.includes("CynThemeAtmosphere::paint(g,FxThemeMode::DarkMesh"),
        "Theme atmosphere must render in the workspace");
 assert(view.includes("snapshot.rms"),"Themes must respond to measured audio, not fake FFT values");
 assert(atmosphere.includes("FxTheme::isReducedMotion()"),
@@ -154,18 +168,16 @@ const studio=readFileSync(path("fxsound/Source/GUI/CynThemeStudio.h"),"utf8");
 const menu=readFileSync(path("fxsound/Source/GUI/FxMainWindow.cpp"),"utf8");
 assert(menu.includes('CynThemeStudioDialog::show(this)'),
        "Theme selection must open Theme Studio rather than a static submenu");
-assert(studio.includes('previous_.onClick = [this] { selectRelative(-1); };') &&
-       studio.includes('next_.onClick = [this] { selectRelative(1); };'),
-       "Theme Studio must support working left and right arrows");
-assert(studio.includes('const float stride=preview_.getWidth()+19.0f;') &&
-       studio.includes('CynUiMotion::easeOutCubic(') &&
-       studio.includes('CynUiMotion::themeCarouselDurationMs'),
-       "Theme transitions must be smooth horizontal slides");
-assert(studio.includes('controller.setThemeMode(static_cast<FxThemeMode>(selected_))') &&
-       studio.includes('controller.getSettings().setInt("cyn_dj_touch_style_effects",effectsTouchStyle_)') &&
+assert(!studio.includes('previous_.onClick =') &&
+       !studio.includes('next_.onClick =') &&
+       studio.includes('controller.setThemeMode(FxThemeMode::DarkMesh)'),
+       "Stable studio must support only canonical Dark Theme and remove carousel navigation");
+assert(studio.includes('controller.getSettings().setInt("cyn_dj_touch_style_effects",effectsTouchStyle_)') &&
        studio.includes('controller.getSettings().setInt("cyn_dj_touch_style_eq",eqTouchStyle_)') &&
-       studio.includes('controller.getSettings().setInt("cyn_dj_touch_flower_count",flowerCount_)'),
-       "Studio Apply must persist the theme and BOTH independent AI Touch panel styles and flowers");
+       studio.includes('controller.getSettings().setInt("cyn_dj_touch_flower_count",flowerCount_)') &&
+       studio.includes('controller.getSettings().setInt("cyn_button_motion_style",buttonMotion_)') &&
+       studio.includes('controller.getSettings().setInt("cyn_close_motion_style",closeStyle_)'),
+       "Studio Apply must persist AI Touch, button motion and close effects");
 assert(view.includes('theme_from_image_,-offset') &&
        view.includes('theme_to_image_,getWidth()-offset'),
        "Live application theme changes must slide between actual UI snapshots");
@@ -175,7 +187,7 @@ assert(!view.includes('g,theme_audio_level_);'),
        "Do not return to tiny decorative sidebar artwork");
 assert(view.includes('neural_activity_.setVisible(page==1)'),
        "Neural widget must not crowd Sound Studio sidebar");
-console.log("PASS: full-workspace native scenes, arrow carousel, actual UI transition");
+console.log("PASS: stable Dark Theme studio, retained live scenes and native UI transition");
 
 assert(controllerHeader.includes('class AutoUpdatePoller final : private juce::Timer') &&
        controllerSource.includes('auto_update_poller_.start();'),
@@ -222,7 +234,7 @@ assert(movieCtrl.includes('movie_model_=candidate;'), 'Default Movie AI needs ca
 console.log('PASS: tested Cinema AI profile seeds Movie AI, generic starter fallback preserved');
 
 // v2.0.54: mode and model are separate; switching keeps private model slots.
-assert(view.includes('ai_profile_.setBounds(540,386,425,33)'), 'A separate model selector must be visible');
+assert(view.includes('ai_profile_.setBounds(left+253,490,397,32)'), 'Model selection must stay visible in Smart Listening');
 assert(view.includes('ai_profile_.onChange=[this]'), 'The model dropdown must really switch neural models');
 assert(view.includes('refreshAIProfileChoices()'), 'Imported profiles must be discoverable without restarting');
 assert(controllerHeader.includes('selectAIProfile(const String& id'), 'Model switching controller API is missing');

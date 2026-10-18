@@ -92,7 +92,7 @@ const int FxTheme::theme_image_sizes_[2][FxImage::NumImages] =
     BinaryData::arrow_next_bw_svgSize, BinaryData::arrow_next_bw_svgSize, BinaryData::arrow_prev_bw_svgSize, BinaryData::arrow_prev_bw_svgSize, BinaryData::arrow_up_black_svgSize, BinaryData::arrow_up_black_svgSize, BinaryData::arrow_down_black_svgSize, BinaryData::arrow_down_black_svgSize, BinaryData::dropdown_arrow_bw_svgSize, BinaryData::dropdown_arrow_bw_svgSize,
     BinaryData::Slider_Thumb_bw_svgSize, BinaryData::Slider_Thumb_bw_svgSize } };
 
-FxThemeMode FxTheme::theme_mode_ = FxThemeMode::Dark;
+FxThemeMode FxTheme::theme_mode_ = FxThemeMode::DarkMesh;
 
 //==============================================================================
 FxTheme::FxTheme() : LookAndFeel_V4()
@@ -597,7 +597,10 @@ void FxTheme::setThemeMode(FxThemeMode theme_mode)
 {
 	auto& theme = dynamic_cast<FxTheme&>(LookAndFeel::getDefaultLookAndFeel());
 
-	theme_mode_ = static_cast<FxThemeMode>(jlimit(0, (int)FxThemeMode::NumModes-1, (int)theme_mode));
+	// The stable UI intentionally supports one canonical jet-black palette.
+	// Legacy modes remain defined internally only while old components migrate.
+    juce::ignoreUnused(theme_mode);
+	theme_mode_ = FxThemeMode::DarkMesh;
 
 	theme.init();
 }
@@ -842,8 +845,9 @@ void FxTheme::setButtonVisualSettings(int motion,int highlight,int speedPct,int 
 }
 const char* FxTheme::getThemeName(int i)
 {
-    static const char* names[] = { "Graphite", "Pearl", "Aurora", "Dusk", "Copper", "Midnight", "Sakura", "Arctic", "Sandstone", "Obsidian", "Emerald", "Deep Sea", "Neon Tokyo", "Synthwave", "Solar Flare", "Crimson", "Mocha", "Monochrome", "Charcoal Desktop", "Neural Core", "Dark Theme" };
-    return names[jlimit(0,(int)FxThemeMode::NumModes-1,i)];
+    juce::ignoreUnused(i);
+    // Only Dark Theme is exposed to users in the stable release candidate.
+    return "Dark Theme";
 }
 bool FxTheme::isLightTheme()
 {

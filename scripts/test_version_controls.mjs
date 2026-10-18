@@ -18,16 +18,16 @@ assert(ui.includes('version_button_.setBounds') && ui.includes('check_updates_bu
 assert(ui.includes('Installed: Cyn v'));
 assert(!ui.includes('Cyn identity-2 / DSP v'),"Ambiguous old version text returned");
 assert(controller.includes('const auto currentVersion=major+"."+minor+"."+patch'));
-assert.equal((native.match(/JUCE_APP_VERSION=2\.0\.60\.0/g)||[]).length,4);
-assert.match(installer,/^AppVersion=2\.0\.60\s*$/m);
-assert.match(installer,/^VersionInfoVersion=2\.0\.60\.0\s*$/m);
+assert.equal((native.match(/JUCE_APP_VERSION=2\.0\.61\.0/g)||[]).length,4);
+assert.match(installer,/^AppVersion=2\.0\.61\s*$/m);
+assert.match(installer,/^VersionInfoVersion=2\.0\.61\.0\s*$/m);
 console.log("PASS: installed version UI, manual update, auto-update toggle and matching native version");
 
 // Prevent installer publication from failing on every subsequent version bump.
 const buildInstaller=file("BUILD_INSTALLER.ps1");
 const outputNameMatch=installer.match(/^OutputBaseFilename=([A-Za-z0-9._-]+)\s*$/m);
 assert(outputNameMatch, "Inno Setup manifest must declare an output filename");
-assert.equal(outputNameMatch[1], "Cyn-Setup-2.0.60-x64");
+assert.equal(outputNameMatch[1], "Cyn-Setup-2.0.61-x64");
 assert(buildInstaller.includes('^OutputBaseFilename=') && buildInstaller.includes('Groups[1].Value'),
   "Installer build must compute the actual executable name from Cyn.iss");
 assert(!/\$installer\s*=\s*Join-Path\s+\$PSScriptRoot\s+'dist\\Cyn-Setup-\d/.test(buildInstaller),

@@ -7,6 +7,7 @@
 #include "CynUiMotion.h"
 #include "FxSettingsDialog.h"
 #include "CynAiHubDialog.h"
+#include "CynThemeStudio.h"
 #include <array>
 #include <cmath>
 
@@ -15,12 +16,19 @@ FxProView::FxProView() : tool_tip_(this)
     // JUCE TooltipWindow is opaque by default; our rounded corners require compositing.
     tool_tip_.setOpaque(false);
     for (auto* component : std::initializer_list<Component*> {
-        &audio_controls_, &equalizer_, &visualizer_, &sound_nav_, &smart_nav_,
-        &devices_nav_, &ai_hub_nav_, &home_, &smart_rail_, &devices_rail_, &settings_,
+        &audio_controls_, &equalizer_, &visualizer_, &embedded_ai_hub_, &sound_nav_, &smart_nav_,
+        &devices_nav_, &ai_hub_nav_, &studio_nav_, &ai_status_card_, &overview_tab_, &eq_focus_tab_, &effects_focus_tab_, &home_, &smart_rail_, &devices_rail_, &settings_,
         &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &headroom_cap_, &preset_cycling_, &preset_cycling_status_, &learning_timeline_, &neural_activity_, &learning_effect_, &listening_mode_, &ai_profile_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
         addAndMakeVisible(component);
     for(auto* c:std::initializer_list<Component*> {&misc_nav_,&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) addAndMakeVisible(c);
-    misc_nav_.onClick=[this]{selectPage(3);};
+    misc_nav_.onClick=[this]{selectPage(4);};
+    studio_nav_.onClick=[this]{CynThemeStudioDialog::show(this);};
+    ai_status_card_.onClick=[this]{selectPage(1);};
+    overview_tab_.onClick=[this]{selectSoundFocus(0);};
+    eq_focus_tab_.onClick=[this]{selectSoundFocus(1);};
+    effects_focus_tab_.onClick=[this]{selectSoundFocus(2);};
+    studio_nav_.setTooltip("Open native Dark Theme, AI Touch and animation personalization.");
+    ai_status_card_.setTooltip("Open Smart Listening and neural AI controls.");
     dj_download_.onClick=[]{if(auto* dj=FxController::getInstance().dj()) dj->download();};
     dj_cancel_.onClick=[]{if(auto* dj=FxController::getInstance().dj()) dj->cancelDownload();};
     dj_remove_.onClick=[]{if(auto* dj=FxController::getInstance().dj()) dj->remove();};
@@ -38,8 +46,9 @@ FxProView::FxProView() : tool_tip_(this)
     sound_nav_.onClick = home_.onClick = [this] { selectPage(0); };
     smart_nav_.onClick = smart_rail_.onClick = [this] { selectPage(1); };
     devices_nav_.onClick = devices_rail_.onClick = [this] { selectPage(2); };
-    ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };
-    ai_hub_nav_.setTooltip("Manage shared AI profiles in Cyn. No separate website.");
+    ai_hub_nav_.onClick = [this] { selectPage(3); };
+    ai_hub_nav_.setTooltip("Browse and activate offline/community AI models in the CYN workspace.");
+    embedded_ai_hub_.setEmbeddedMode(true);
     home_.setTooltip("Sound studio");
     smart_rail_.setTooltip("Smart listening");
     devices_rail_.setTooltip("Output devices");
@@ -208,6 +217,15 @@ void FxProView::openSettings()
     FxController::getInstance().refreshOutputList();
     update();
 }
+void FxProView::selectSoundFocus(int focus)
+{
+    sound_focus_=juce::jlimit(0,2,focus);
+    overview_tab_.setToggleState(sound_focus_==0,dontSendNotification);
+    eq_focus_tab_.setToggleState(sound_focus_==1,dontSendNotification);
+    effects_focus_tab_.setToggleState(sound_focus_==2,dontSendNotification);
+    resized();
+    repaint();
+}
 void FxProView::selectPage(int page)
 {
     if(page == page_ && isShowing()) return; // Initial page must still initialize child visibility.
@@ -223,16 +241,26 @@ void FxProView::selectPage(int page)
         }
     }
     page_ = page;
-    misc_nav_.setToggleState(page==3,dontSendNotification);
-    for(auto* c:std::initializer_list<Component*> {&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) c->setVisible(page==3);
-    smart_toggle_.setVisible(page!=3);smart_status_.setVisible(page!=3);
+    misc_nav_.setToggleState(page==4,dontSendNotification);
+    ai_hub_nav_.setToggleState(page==3,dontSendNotification);
+    embedded_ai_hub_.setVisible(page==3);
+    for(auto* b:std::initializer_list<TextButton*> {
+        &overview_tab_, &eq_focus_tab_, &effects_focus_tab_ })
+        b->setVisible(page==0);
+    ai_status_card_.setVisible(true);
+    for(auto* c:std::initializer_list<Component*> {&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) c->setVisible(page==4);
+    smart_toggle_.setVisible(page<=2);smart_status_.setVisible(page<=2);
     sound_nav_.setToggleState(page == 0, dontSendNotification);
     smart_nav_.setToggleState(page == 1, dontSendNotification);
     devices_nav_.setToggleState(page == 2, dontSendNotification);
     home_.setToggleState(page == 0, dontSendNotification);
+    // Legacy compact-rail glyphs are replaced by one legible labelled sidebar.
+    home_.setVisible(false);smart_rail_.setVisible(false);
+    devices_rail_.setVisible(false);settings_rail_.setVisible(false);
+    studio_nav_.setVisible(true);
     smart_rail_.setToggleState(page == 1, dontSendNotification);
     devices_rail_.setToggleState(page == 2, dontSendNotification);
-    for (auto* button : std::initializer_list<TextButton*> { &sound_nav_, &smart_nav_, &devices_nav_, &ai_hub_nav_, &misc_nav_, &home_, &smart_rail_, &devices_rail_ })
+    for (auto* button : std::initializer_list<TextButton*> { &sound_nav_, &smart_nav_, &devices_nav_, &ai_hub_nav_, &misc_nav_, &studio_nav_, &home_, &smart_rail_, &devices_rail_ })
     {
         button->setColour(TextButton::buttonColourId, Colours::transparentBlack);
         button->setColour(TextButton::buttonOnColourId, Colours::transparentBlack);
@@ -242,6 +270,7 @@ void FxProView::selectPage(int page)
     }
     // The AI Hub navigation is available on every main page.
     ai_hub_nav_.setVisible(true);
+    embedded_ai_hub_.setVisible(page==3);
     audio_controls_.setVisible(page == 0);
     equalizer_.setVisible(page == 0);
     visualizer_.setVisible(page == 0);
@@ -264,6 +293,8 @@ void FxProView::selectPage(int page)
             button->toFront(false);
     }
     ai_hub_nav_.toFront(false);
+    studio_nav_.toFront(false);
+    ai_status_card_.toFront(false);
     power_curtain_.toFront(false);
     repaint();
 }
@@ -390,10 +421,10 @@ void FxProView::timerCallback()
         dj_toggle_.setColour(ToggleButton::textColourId,Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
         dj_stereo_.setColour(ToggleButton::textColourId,Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
         dj_toggle_.setEnabled(dj->installed()&&!dj->busy());
-        dj_download_.setVisible(page_==3&&!dj->installed()&&!dj->busy());
-        dj_remove_.setVisible(page_==3&&dj->installed()&&!dj->busy());
-        dj_cancel_.setVisible(page_==3&&dj->busy());
-        dj_progress_.setVisible(page_==3&&dj->busy());dj_progress_value_=dj->progress();
+        dj_download_.setVisible(page_==4&&!dj->installed()&&!dj->busy());
+        dj_remove_.setVisible(page_==4&&dj->installed()&&!dj->busy());
+        dj_cancel_.setVisible(page_==4&&dj->busy());
+        dj_progress_.setVisible(page_==4&&dj->busy());dj_progress_value_=dj->progress();
         dj_recent_.setText(dj->lastEffect()+"  /  "+String((int)dj->effects())+" remixes this session",dontSendNotification);
     }
     auto& controller = FxController::getInstance();
@@ -429,6 +460,11 @@ void FxProView::timerCallback()
     smart_status_.setFont(theme.getNormalFont().withHeight(page_ == 1 ? 11.5f : 13.0f));
     smart_status_.setColour(Label::textColourId, Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     const bool power = FxModel::getModel().getPowerState();
+    const auto status=controller.isSmartListening()
+        ? String("AI ACTIVE  •  ")+controller.getActiveAIProfileId().toUpperCase()
+        : String("AI STANDBY  •  OPEN CONTROLS");
+    if(ai_status_card_.getButtonText()!=status)
+        ai_status_card_.setButtonText(status);
     live_status_.setFont(theme.getNormalFont().withHeight(12));
     live_status_.setColour(Label::textColourId, Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     live_status_.setText(!power ? "Processing off" : !controller.isPlaybackDeviceAvailable()
@@ -436,228 +472,305 @@ void FxProView::timerCallback()
 }
 void FxProView::resized()
 {
+    // The stable shell is based on a 1320 x 700 design canvas. Keep all
+    // functional JUCE widgets, not an image of controls.
     power_curtain_.setBounds(getLocalBounds());
-    power_curtain_.toFront(false);
-    misc_nav_.setBounds(68,240,152,36);
-    dj_toggle_.setBounds(280,270,230,32);
-    dj_download_.setBounds(280,215,200,38);dj_remove_.setBounds(280,215,200,38);dj_cancel_.setBounds(280,215,200,38);
-    dj_progress_.setBounds(505,224,665,22);
-    dj_status_.setBounds(280,310,900,35);
-    dj_intensity_.setBounds(530,376,645,30);dj_spacing_.setBounds(530,422,645,30);
-    dj_stereo_.setBounds(280,473,470,30);dj_recent_.setBounds(280,525,895,26);
-    home_.setBounds(10, 18, 32, 34);
-    smart_rail_.setBounds(10, 64, 32, 34);
-    devices_rail_.setBounds(10, 110, 32, 34);
-    settings_rail_.setBounds(10, 565, 32, 34);
-    // Reserve the empty sidebar area for the native neural-activity animation.
-    neural_activity_.setBounds(72, 286, 148, 187);
-    learning_timeline_.setBounds(256,164,952,156);
-    learning_effect_.setBounds(280,433,194,36);
-    listening_mode_.setBounds(280,386,235,33);
-    ai_profile_.setBounds(540,386,425,33);
-    more_.setBounds(490,433,136,36); less_.setBounds(638,433,136,36);
-    train_.setBounds(790,433,210,36); resume_.setBounds(1012,433,170,36);
-    sensitivity_.setBounds(403,491,323,28);
-    headroom_cap_.setBounds(879,491,303,28);
-    preset_cycling_.setBounds(280,520,225,24);
-    preset_cycling_status_.setBounds(500,520,172,24);
-    learning_status_.setBounds(280, 542, 390, 42);
-    export_ai_.setBounds(685, 545, 96, 35);
-    import_ai_.setBounds(791, 545, 96, 35);
-    browse_ai_.setBounds(897, 545, 106, 35);
-    starter_.setBounds(1012,545,170,35);
-    sound_nav_.setBounds(68, 72, 152, 36);
-    smart_nav_.setBounds(68, 114, 152, 36);
-    devices_nav_.setBounds(68, 156, 152, 36);
-    ai_hub_nav_.setBounds(68, 198, 152, 36);
-    settings_.setBounds(68, 554, 152, 36);
-    ai_hub_nav_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(MenuHighlightBackground)).withAlpha(1.0f));
-    ai_hub_nav_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
+    const int left=245, right=1301, usable=right-left;
+    const int navX=27,navW=186;
+    sound_nav_.setBounds(navX,128,navW,42);
+    smart_nav_.setBounds(navX,177,navW,42);
+    devices_nav_.setBounds(navX,226,navW,42);
+    ai_hub_nav_.setBounds(navX,275,navW,42);
+    misc_nav_.setBounds(navX,324,navW,42);
+    studio_nav_.setBounds(navX,373,navW,42);
+    settings_.setBounds(navX,615,navW,42);
+    // Header cards contain live, operable preset/device selectors.
+    preset_list_.setBounds(left+14,118,315,37);
+    endpoint_list_.setBounds(left+350,118,341,37);
+    ai_status_card_.setBounds(963,118,324,37);
+    embedded_ai_hub_.setBounds(247,222,1053,467);
+    live_status_.setBounds(1023,40,265,24);
+    overview_tab_.setBounds(left+12,172,126,34);
+    eq_focus_tab_.setBounds(left+146,172,126,34);
+    effects_focus_tab_.setBounds(left+280,172,163,34);
+    for(auto* b:std::initializer_list<TextButton*> {
+        &overview_tab_, &eq_focus_tab_, &effects_focus_tab_}) {
+        b->getProperties().set("ember_navigation",true);
+        b->setColour(TextButton::buttonColourId,Colours::transparentBlack);
+        b->setColour(TextButton::textColourOffId,Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
+        b->setColour(TextButton::textColourOnId,Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
+    }
+    const bool studio=page_==0;
+    if(studio) {
+        const int eqX=left+12,eqW=731;
+        if(sound_focus_==0) {
+            equalizer_.setBounds(eqX,250,eqW,230);
+            visualizer_.setBounds(1002,250,282,230);
+            audio_controls_.setBounds(eqX,510,eqW,161);
+        } else if(sound_focus_==1) {
+            equalizer_.setBounds(eqX,251,1036,417);
+            visualizer_.setBounds(1002,251,282,100);
+            audio_controls_.setBounds(eqX,507,731,161);
+        } else {
+            audio_controls_.setBounds(eqX,272,1036,331);
+            equalizer_.setBounds(eqX,251,731,230);
+            visualizer_.setBounds(1002,250,282,230);
+        }
+        equalizer_.setVisible(sound_focus_!=2);
+        visualizer_.setVisible(sound_focus_==0);
+        audio_controls_.setVisible(sound_focus_!=1);
+    }
+    // Smart Listening gets a wide live training timeline and its own neural
+    // inspector, while preserving all AI mode, training and export controls.
+    neural_activity_.setBounds(993,246,291,194);
+    learning_timeline_.setBounds(left+13,246,722,194);
+    listening_mode_.setBounds(left+22,490,216,32);
+    ai_profile_.setBounds(left+253,490,397,32);
+    learning_effect_.setBounds(left+22,538,179,35);
+    more_.setBounds(left+213,538,103,35);
+    less_.setBounds(left+327,538,103,35);
+    train_.setBounds(left+443,538,165,35);
+    resume_.setBounds(left+619,538,165,35);
+    sensitivity_.setBounds(left+150,591,265,25);
+    headroom_cap_.setBounds(left+542,591,259,25);
+    preset_cycling_.setBounds(left+20,618,208,24);
+    preset_cycling_status_.setBounds(left+234,618,210,24);
+    learning_status_.setBounds(left+20,644,393,31);
+    export_ai_.setBounds(left+456,643,92,32);
+    import_ai_.setBounds(left+556,643,92,32);
+    browse_ai_.setBounds(left+656,643,103,32);
+    starter_.setBounds(left+766,643,134,32);
+
+    // Device selection uses the same header device selector.
+    pin_toggle_.setBounds(left+27,295,404,34);
+    refresh_.setBounds(left+27,390,191,37);
+    // The real Smart Listening switch must never sit over a DSP slider.
+    if(page_==0) {
+        smart_toggle_.setBounds(1013,631,230,25);
+        smart_status_.setBounds(1008,654,277,25);
+    } else if(page_==1) {
+        smart_toggle_.setBounds(1041,478,233,26);
+        smart_status_.setBounds(1008,609,281,29);
+    } else {
+        smart_toggle_.setBounds(left+21,495,217,26);
+        smart_status_.setBounds(left+254,495,772,29);
+    }
+
+    dj_download_.setBounds(left+24,281,205,39);
+    dj_remove_.setBounds(left+24,281,205,39);
+    dj_cancel_.setBounds(left+24,281,205,39);
+    dj_progress_.setBounds(left+250,292,750,19);
+    dj_toggle_.setBounds(left+23,346,260,34);
+    dj_status_.setBounds(left+24,391,990,31);
+    dj_intensity_.setBounds(left+209,490,540,31);
+    dj_spacing_.setBounds(left+209,542,540,31);
+    dj_stereo_.setBounds(left+24,590,480,27);
+    dj_recent_.setBounds(left+24,630,920,28);
+    // Keep real AI Hub export/import/browse controls readable when moving
+    // from the old control grid into the new dark workbench.
+    ai_hub_nav_.setColour(TextButton::buttonColourId, Colours::transparentBlack);
+    ai_hub_nav_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
     browse_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(MenuHighlightBackground)).withAlpha(1.0f));
     browse_ai_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
+    browse_ai_.setColour(TextButton::textColourOnId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
     export_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(PanelBackground)).withAlpha(1.0f));
     import_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(PanelBackground)).withAlpha(1.0f));
-    for (auto* button : std::initializer_list<TextButton*> { &export_ai_, &import_ai_ })
-    {
+    for(auto* button:std::initializer_list<TextButton*> { &export_ai_, &import_ai_ }) {
         button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
         button->setColour(TextButton::textColourOnId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
     }
-    browse_ai_.setColour(TextButton::textColourOnId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
-    ai_hub_nav_.setColour(TextButton::textColourOnId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
-    live_status_.setBounds(1000, 23, 208, 24);
-    preset_list_.setBounds(256, 97, 465, 40);
-    endpoint_list_.setBounds(737, 97, 471, 40);
-    visualizer_.setBounds(256, 164, 952, 102);
-    audio_controls_.setBounds(256, 288, 168, 257);
-    equalizer_.setBounds(440, 288, 768, 257);
-    smart_toggle_.setBounds(272, page_ == 1 ? 339 : 565, 220, 25);
-    smart_status_.setBounds(508, page_ == 1 ? 340 : 566, 678, 23);
-    if (page_ == 2)
-    {
-        smart_toggle_.setBounds(276, 406, 220, 28);
-        smart_status_.setBounds(508, 407, 678, 26);
-    }
-    pin_toggle_.setBounds(276, 204, 410, 30);
-    refresh_.setBounds(276, 302, 168, 36);
+    power_curtain_.toFront(false);
 }
 void FxProView::paint(Graphics& g)
 {
-    auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
-    auto color = [](FxColor c) { return Colour(FxTheme::getColor(c)).withAlpha(1.0f); };
-    // Leave the outer rail transparent so the parent paints one continuous shell.
-    Path workspace;
-    workspace.addRoundedRectangle(52.0f, 0.0f, WIDTH - 60.0f, HEIGHT - 8.0f, 18.0f);
-    {
-        Graphics::ScopedSaveState save(g);
-        g.reduceClipRegion(workspace);
-        // Actual immersive artwork is clipped to the entire workspace,
-        // never placed as a decorative widget underneath sidebar controls.
-        CynThemeAtmosphere::paint(g,FxTheme::getThemeMode(),
-            FxTheme::isReducedMotion()?0.0f:
-                (float)(Time::getMillisecondCounterHiRes()*0.001),
-            theme_audio_level_,juce::Rectangle<float>(52.0f,0.0f,
-                                                WIDTH-52.0f,HEIGHT-8.0f));
-        const auto rail=color(PanelBackground);
-        // Let the full scene continue faintly beneath navigation, with a
-        // legible tinted overlay. No separate sidebar theme card or obstruction.
-        const bool webDark=FxTheme::getThemeMode()==FxThemeMode::DarkMesh;
-        ColourGradient sidebar((webDark?Colour(0xff000000):rail.brighter(0.045f)).withAlpha(webDark?0.90f:0.94f),
-                               52.0f,0.0f,
-                               (webDark?Colour(0xff000000):rail.darker(0.11f)).withAlpha(webDark?0.91f:0.82f),
-                               232.0f,(float)HEIGHT,false);
-        g.setGradientFill(sidebar);
-        g.fillRect(52,0,180,HEIGHT);
-        const float drift=FxTheme::isReducedMotion()?0.0f:
-            (float)Time::getMillisecondCounterHiRes()*0.00032f;
-        const float glowY=355.0f+112.0f*std::sin(drift);
-        ColourGradient railGlow(color(SliderTrack).withAlpha((webDark?0.075f+0.065f*theme_audio_level_:0.075f+0.085f*theme_audio_level_)),
-                                218.0f,glowY,
-                                Colours::transparentBlack,55.0f,glowY+185.0f,true);
-        g.setGradientFill(railGlow);
-        g.fillRect(52,0,180,HEIGHT);
-        if(FxTheme::getThemeMode()==FxThemeMode::NeuralCore) {
-            // The top-right telemetry is ACTUAL pretrained YAMNet event scores
-            // (not YAMNet internal activations or a synthetic music animation).
-            const auto cyan=Colour(0xff67edee), violet=Colour(0xffa18cff);
-            const auto glow=jlimit(0.0f,1.0f,theme_audio_level_);
-            ColourGradient aura(cyan.withAlpha(0.045f+glow*0.075f),
-                                985.0f,115.0f,
-                                Colours::transparentBlack,1140.0f,370.0f,true);
-            g.setGradientFill(aura);
-            g.fillEllipse(785.0f,-65.0f,410.0f,430.0f);
-            // Faint fixed-position lines only illuminate when personal
-            // inference is valid. Actual connection activity is drawn in
-            // the 11->12->5 neural graph on the sidebar.
-            for(int i=0;i<9;++i) {
-                const float x=275.0f+99.0f*i;
-                g.setColour((i%2?violet:cyan).withAlpha(0.018f+0.035f*glow));
-                g.drawLine(x,84.0f,x+55.0f,284.0f,0.7f);
-            }
-            const auto activity=neural_core_live_?neural_core_scene_:CynAudioScene {};
-            const float meters[3]={activity.music,activity.percussion,activity.speech};
-            const char* names[3]={"MUSIC","DRUMS","VOICE"};
-            for(int i=0;i<3;++i) {
-                const float x=968.0f+80.0f*i, y=59.0f;
-                g.setColour(color(HintText).withAlpha(0.84f));
-                g.setFont(Font(8.0f,Font::bold));
-                g.drawText(names[i],(int)x,46,72,11,Justification::centredLeft,false);
-                g.setColour(color(RowOutline).withAlpha(0.9f));
-                g.fillRoundedRectangle(x,y,65.0f,3.5f,1.75f);
-                g.setColour((i==2?violet:cyan).withAlpha(neural_core_live_?0.90f:0.20f));
-                g.fillRoundedRectangle(x,y,65.0f*jlimit(0.0f,1.0f,meters[i]),3.5f,1.75f);
-            }
-            g.setColour(cyan.withAlpha(neural_core_live_?0.85f:0.28f));
-            g.setFont(Font(9.0f,Font::bold));
-            g.drawText(neural_core_live_?"YAMNET / LIVE EVENTS":"YAMNET / WAITING",
-                       987,6,220,14,Justification::centredRight,false);
-        }
-        g.setColour(color(RowOutline).withAlpha(0.65f));
-        g.drawVerticalLine(232,0,HEIGHT-8.0f);
-    }
-    g.setColour(color(RowOutline).withAlpha(0.65f));
-    g.strokePath(workspace, PathStrokeType(1.0f));
-    auto text = [&](const String& value, int x, int y, int w, int h, float size, bool muted = false) {
-        g.setColour(color(muted ? HintText : DefaultText));
-        g.setFont(theme.getNormalFont().withHeight(size));
-        g.drawText(value, x, y, w, h, Justification::centredLeft, true);
-    };
-    auto card = [&](int x, int y, int w, int h) {
-        const auto panel=color(ControlBackground);
-        ColourGradient glass((FxTheme::getThemeMode()==FxThemeMode::DarkMesh ? Colour(0xff010102) : panel.brighter(0.095f)),(float)x,(float)y,
-                             (FxTheme::getThemeMode()==FxThemeMode::DarkMesh?Colour(0xff010102):panel.darker(0.055f)),(float)(x+w),(float)(y+h),false);
-        glass.addColour(0.42,panel);
-        g.setGradientFill(glass);
-        g.fillRoundedRectangle((float)x,(float)y,(float)w,(float)h,16.0f);
-        if (FxTheme::getThemeMode()==FxThemeMode::DarkMesh && w>=600 && h>=140) {
-            // Continue the page's dotted web faintly ON the large black card.
-            // Small controls and text remain unobstructed and readable.
-            Graphics::ScopedSaveState clip(g);
-            Path mask; mask.addRoundedRectangle((float)x,(float)y,(float)w,(float)h,16.0f);
-            g.reduceClipRegion(mask);
-            const int cols=23, rows=6;
-            auto dot=[&](int cx,int cy) -> Point<float> {
-                return {float(x+w-430+cx*21),float(y+h-122+cy*23)
-                     +4.0f*std::sin(cx*0.49f+cy*0.31f)};
-            };
-            for(int ry=0;ry<rows;++ry)
-                for(int col=0;col<cols;++col) {
-                    const auto p=dot(col,ry);
-                    const float opacity=0.009f+0.033f*(float)ry/(float)(rows-1);
-                    g.setColour(Colour(0xff9fc7ff).withAlpha(opacity));
-                    if(col+1<cols)g.drawLine(Line<float>(p,dot(col+1,ry)),0.6f);
-                    if(ry+1<rows)g.drawLine(Line<float>(p,dot(col,ry+1)),0.6f);
-                    g.setColour(Colour(0xffdeebff).withAlpha(opacity*1.7f));
-                    g.fillEllipse(p.x-0.85f,p.y-0.85f,1.7f,1.7f);
-                }
-        }
-        g.setColour(color(DefaultText).withAlpha(0.065f));
-        g.drawLine((float)x+17.0f,(float)y+1.0f,(float)(x+w)-17.0f,(float)y+1.0f,0.8f);
-        g.setColour(color(RowOutline).withAlpha(0.72f));
-        g.drawRoundedRectangle(x+0.5f,y+0.5f,w-1.0f,h-1.0f,16.0f,1.0f);
-    };
-    const float selected=theme.animate(*this,3,page_==3?4.0f:(float)page_);
-    g.setColour(color(MenuHighlightBackground));
-    g.fillRoundedRectangle(68.0f,72.0f+42.0f*selected,152.0f,36.0f,12.0f);
-    g.setColour(color(SliderTrack));
-    g.fillRoundedRectangle(68.0f,83.0f+42.0f*selected,3.0f,14.0f,1.5f);
-    text("Your workspace", 76, 25, 140, 20, 14);
-    text("AUDIO", 80, 52, 132, 16, 10, true);
-    text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
-    text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text(String("Version ") + JUCEApplication::getInstance()->getApplicationVersion(), 80, 529, 140, 16, 10, true);
-    text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
-    text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
-        ? "Choose a listening mode and the neural model that powers it." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
-    text("PRESET", 260, 78, 300, 16, 10, true);
-    text("OUTPUT DEVICE", 741, 78, 300, 16, 10, true);
-    if (page_ == 0) card(256, 556, 952, 48);
-    else if (page_ == 1)
-    {
-        card(256, 334, 952, 270);
-        text("LISTENING MODE",280,369,235,13,10,true);
-        text("ACTIVE AI MODEL",540,369,425,13,10,true);
-        text("Swap models anytime.",977,386,205,28,12,true);
-        text("AI PROFILES", 688, 521, 310, 18, 10, true);
-        text("Sensitivity",280,491,120,28,14);
-        text("Headroom Cap",747,491,134,28,13);
+    using namespace juce;
+    // Horizon x Depth — stable design candidate. This paints a real native
+    // JUCE shell around working DSP/AI widgets, not a screenshot or webview.
+    // The only expensive drawing is bounded to existing scene/video widgets.
+    auto& theme=dynamic_cast<FxTheme&>(getLookAndFeel());
+    auto colour=[](FxColor c) { return Colour(FxTheme::getColor(c)).withAlpha(1.0f); };
+    const Colour base(0xff03070d), panel(0xff091321),panel2(0xff0b1728);
+    const Colour border(0xff20354b), cyan(0xff45bffb);
+    const Colour white(0xffedf5ff),muted(0xff8097b0);
+    const bool reduced=FxTheme::isReducedMotion();
+    const float playLevel=jlimit(0.0f,1.0f,theme_audio_level_);
+    g.fillAll(base);
 
-    }
-    else if(page_==3)
+    // One atmospheric mesh, kept underneath everything and anchored to
+    // actual audio telemetry. True black still dominates the interface.
     {
-        card(256,164,952,188);card(256,365,952,207);
-        text("AI DJ / Live remix",280,172,850,30,21);
-        text("Intensity",280,376,220,30,15);
-        text("Minimum spacing",280,422,230,30,15);
-        text("Remixes the playing song: beat repeats, echoes and filter sweeps. Timing is approximate.",280,578,900,22,12,true);
+        Graphics::ScopedSaveState scene(g);
+        g.reduceClipRegion(juce::Rectangle<int>(229,0,getWidth()-229,getHeight()));
+        CynThemeAtmosphere::paint(g,FxThemeMode::DarkMesh,
+            reduced ? 0.0f : (float)(Time::getMillisecondCounterHiRes()*.001),
+            playLevel,juce::Rectangle<float>(229.0f,0.0f,getWidth()-229.0f,205.0f));
+        ColourGradient veil(Colour(0xff03070d).withAlpha(.40f),230.0f,10.0f,
+                            base.withAlpha(.96f),740.0f,208.0f,false);
+        g.setGradientFill(veil); g.fillRect(229,0,getWidth()-229,220);
     }
-    else
-    {
-        card(256, 171, 952, 190);
-        text("Stay with this device while it is available. If unplugged, use the next available output.", 280, 247, 880, 24, 13, true);
-        card(256, 388, 952, 168);
-        text("Sound shaping follows your selected output.", 280, 452, 860, 24, 16);
-        text("Device priorities and per-device presets are available in Settings.", 280, 490, 860, 24, 13, true);
+
+    // Solid continuous navigation rail, no second row of icon-only buttons.
+    ColourGradient side(Colour(0xff07121f),0.0f,0.0f,
+                         Colour(0xff03080f),228.0f,700.0f,false);
+    g.setGradientFill(side);g.fillRect(0,0,228,getHeight());
+    g.setColour(border.withAlpha(.68f));
+    g.drawLine(228.0f,0.0f,228.0f,(float)getHeight(),.8f);
+    g.setColour(white);g.setFont(theme.getNormalFont().withHeight(29.0f).boldened());
+    g.drawText("CYN",28,22,128,38,Justification::centredLeft);
+    g.setColour(cyan);g.fillEllipse(109.0f,50.0f,5.0f,5.0f);
+    g.setFont(theme.getNormalFont().withHeight(10.5f));
+    g.setColour(muted);g.drawText("PERSONAL AUDIO  /  STABLE UI",30,67,188,18,
+                                 Justification::centredLeft);
+    g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,105.0f,203.0f,105.0f,.8f);
+
+    const float navY=128.0f+49.0f*(float)page_;
+    g.setColour(Colour(0xff102b45).withAlpha(.94f));
+    g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,12.0f);
+    g.setColour(cyan.withAlpha(.78f));
+    g.drawRoundedRectangle(22.5f,navY+.5f,195.0f,41.0f,11.0f,1.05f);
+    g.fillRoundedRectangle(22.0f,navY+11.0f,3.2f,20.0f,1.5f);
+    // Small glyphs are purely decorative; the real labelled TextButtons
+    // provide keyboard focus, pointer targets, and accessibility names.
+    for(int i=0;i<6;++i) {
+        const float y=149.0f+49.0f*i;
+        const Colour col=i==page_?cyan:muted;
+        g.setColour(col.withAlpha(i==page_?.85f:.50f));
+        if(i==0) {
+            for(int k=0;k<5;++k)
+                g.drawLine(37.0f+k*4.0f,y-(2+(k*5)%11)*.5f,
+                           37.0f+k*4.0f,y+(2+(k*5)%11)*.5f,1.2f);
+        } else {
+            g.fillEllipse(40.0f,y-3.0f,5.0f,5.0f);
+            g.drawEllipse(36.5f,y-6.5f,12.0f,12.0f,.75f);
+        }
     }
+    g.setColour(border);g.drawLine(27.0f,590.0f,210.0f,590.0f,.8f);
+    g.setColour(Colour(0xff091829));g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
+    g.setColour(border);g.drawRoundedRectangle(21.5f,524.5f,194.0f,55.0f,12.0f,1.0f);
+    const auto model=FxController::getInstance().getActiveAIProfileId();
+    const String modelText=model=="apex6m" ? "APEX 6M" :
+            model=="yamnet" ? "YAMNet" : model.isNotEmpty() ? model.toUpperCase() : "No model";
+    const bool aiOn=FxController::getInstance().isSmartListening();
+    g.setColour(aiOn?Colour(0xff49dcb3):muted);
+    g.fillEllipse(35.0f,544.0f,8.0f,8.0f);
+    g.setColour(white);g.setFont(theme.getNormalFont().withHeight(13.0f).boldened());
+    g.drawText(modelText,54,533,148,20,Justification::centredLeft,true);
+    g.setColour(muted);g.setFont(theme.getNormalFont().withHeight(10.0f));
+    g.drawText(aiOn?"AI enabled":"AI standby",54,555,140,14,Justification::centredLeft);
+    g.drawText("CYN  "+JUCEApplication::getInstance()->getApplicationVersion(),
+               25,669,178,16,Justification::centredLeft);
+
+    auto txt=[&](String value,float x,float y,float width,float height,
+                 float size,bool mutedText=false,bool bold=false) {
+        g.setColour(mutedText?muted:white);
+        auto font=theme.getNormalFont().withHeight(size);
+        if(bold)font=font.boldened();
+        g.setFont(font);
+        g.drawText(value,roundToInt(x),roundToInt(y),roundToInt(width),roundToInt(height),
+                   Justification::centredLeft,true);
+    };
+    auto card=[&](float x,float y,float width,float height,float r=15.0f) {
+        ColourGradient finish(panel2,x,y,panel,x+width,y+height,false);
+        finish.addColour(.55,panel);
+        g.setGradientFill(finish);
+        g.fillRoundedRectangle(x,y,width,height,r);
+        g.setColour(border.withAlpha(.88f));
+        g.drawRoundedRectangle(x+.5f,y+.5f,width-1.0f,height-1.0f,r-.3f,1.0f);
+        g.setColour(Colours::white.withAlpha(.032f));
+        g.drawLine(x+13.0f,y+1.0f,x+width-13.0f,y+1.0f,.85f);
+    };
+    // Clear hierarchy: a large page title, meaningful status, then real
+    // selectors and page-specific content. No fictitious audio readouts.
+    const char* pageNames[]={"Sound Studio","Smart Listening","Output Devices","AI Hub","Misc / AI DJ"};
+    const char* subtitles[]={
+        "Fine-tune your sound with real-time processing.",
+        "Neural listening, personal learning, and live AI controls.",
+        "Your output hardware, connected devices and device priority.",
+        "Explore community and local AI models without leaving CYN.",
+        "Optional musical effects and stereo creative controls."
+    };
+    txt("CYN  /  "+String(pageNames[page_]).toUpperCase(),246,12,610,20,10.8f,true,true);
+    txt(pageNames[page_],246,34,650,45,29.0f,false,true);
+    txt(subtitles[page_],248,78,750,24,13.0f,true);
+    txt(FxModel::getModel().getPowerState()?"●  AUDIO ON":"○  PROCESSING OFF",
+        1115,19,174,21,11.0f,false,true);
+
+    card(247,108,333,58,12.0f);
+    card(587,108,361,58,12.0f);
+    card(956,108,344,58,12.0f);
+    txt("ACTIVE PROFILE",259,110,260,16,10,true,true);
+    txt("OUTPUT DEVICE",600,110,260,16,10,true,true);
+    txt("AI ENHANCEMENT",970,110,230,16,10,true,true);
+
+    // Clickable tabs over a restrained, visually unified toolbar.
+    card(247,170,1053,44,11.0f);
+    if(page_==0) {
+        const float selX=sound_focus_==0 ? 258.0f : sound_focus_==1 ? 392.0f : 526.0f;
+        const float selW=sound_focus_==2 ? 164.0f : 126.0f;
+        g.setColour(Colour(0xff103455));
+        g.fillRoundedRectangle(selX,172.0f,selW,34.0f,11.0f);
+        g.setColour(cyan.withAlpha(.75f));
+        g.drawRoundedRectangle(selX+.5f,172.5f,selW-1.0f,33.0f,10.5f,.9f);
+        txt("31 / 35 / 39 BAND EQ  •  LIVE DSP",966,180,315,23,11.3f,true);
+        if(sound_focus_==0) {
+            card(247,226,743,258);
+            card(996,226,304,258);
+            card(247,494,743,189);
+            card(996,494,304,189);
+            txt("31-BAND EQUALIZER",263,230,490,24,13.4f,false,true);
+            txt("LIVE SPECTRUM",1013,230,250,23,13.4f,false,true);
+            txt("SOUND ENHANCEMENTS",263,497,420,22,13.4f,false,true);
+            txt("LISTENING STATUS",1013,497,250,22,13.4f,false,true);
+            txt("Actual DSP controls",263,460,560,17,10.3f,true);
+            txt("Applied AI model",1013,532,230,19,10.2f,true);
+            txt(modelText,1013,552,250,24,18.0f,false,true);
+            txt(aiOn?"Real-time adaptive processing":"Manual audio processing",
+                1013,581,265,20,11.0f,true);
+            txt("Change presets and output at the top.",1013,605,272,22,10.8f,true);
+        } else if(sound_focus_==1) {
+            card(247,226,1053,457);
+            txt("EQUALIZER  /  PRECISION VIEW",265,233,650,24,14,false,true);
+            txt("Drag the actual frequency controls to shape audio.",265,627,730,21,11,true);
+        } else {
+            card(247,226,1053,457);
+            txt("SOUND ENHANCEMENTS  /  STUDIO VIEW",265,233,800,25,14,false,true);
+            txt("Tune clarity, ambience, surround, dynamics and bass.",265,613,900,22,11,true);
+        }
+    } else if(page_==1) {
+        txt("REAL AI TELEMETRY  •  PERSONAL LEARNING",267,180,800,25,12,true,true);
+        card(247,225,743,231);
+        card(996,225,304,231);
+        card(247,468,1053,220);
+        txt("LEARNING TIMELINE",265,229,490,20,13.4f,false,true);
+        txt("LIVE NEURAL ACTIVITY",1011,229,274,20,13.4f,false,true);
+        txt("LISTENING CONTROLS",264,470,470,18,13.2f,false,true);
+        txt("SENSITIVITY",265,583,128,19,10.5f,true,true);
+        txt("HEADROOM CAP",663,583,150,19,10.5f,true,true);
+    } else if(page_==2) {
+        txt("DEVICE ROUTING  •  OUTPUT PRIORITY",267,180,790,25,12,true,true);
+        card(247,225,1053,219);
+        card(247,454,1053,234);
+        txt("OUTPUT DEVICE MANAGEMENT",266,231,780,28,17,false,true);
+        txt("Keep your preferred output when available.",266,258,900,25,12.5f,true);
+        txt("DEVICE FALLBACK",266,458,500,27,15,false,true);
+        txt("Automatic recovery when a selected device disconnects.",266,550,920,28,13,true);
+        txt("Device-specific presets and priority are managed in Settings.",
+            266,587,920,24,12.3f,true);
+    } else if(page_==3) {
+        txt("NEURAL CATALOGUE  •  IMPORT  •  ACTIVATE",267,180,790,25,12,true,true);
+    } else {
+        txt("AI DJ  •  OPTIONAL CREATIVE EFFECTS",267,180,790,25,12,true,true);
+        card(247,225,1053,216);
+        card(247,453,1053,235);
+        txt("AI DJ  /  LIVE REMIX",266,233,720,30,18,false,true);
+        txt("Enable creative processing only when you want it.",266,328,920,22,12,true);
+        txt("EFFECT BEHAVIOUR",266,458,730,24,15,false,true);
+        txt("Intensity",266,492,120,23,12.5f,true);
+        txt("Minimum spacing",266,545,155,23,12.5f,true);
+    }
+    // Footer is a real engine-status report, not a fabricated media player.
+    g.setColour(border.withAlpha(.50f));
+    g.drawLine(245.0f,693.0f,1299.0f,693.0f,.8f);
 }
 void FxProView::refreshAIProfileChoices()
 {
