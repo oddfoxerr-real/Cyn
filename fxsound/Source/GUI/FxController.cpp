@@ -252,6 +252,12 @@ FxController::FxController() : message_window_(L"CynHotkeys", (WNDPROC)eventCall
 	hide_help_tooltips_ = settings_.getBool("hide_help_tooltips");
 	hide_notifications_ = settings_.getBool("hide_notifications");
 	auto_updates_ = settings_.getBool("cyn_automatic_updates", true);
+    // Load persistent visual preferences before normal native controls paint.
+    FxTheme::setButtonVisualSettings(
+        settings_.getInt("cyn_button_motion_style",0),
+        settings_.getInt("cyn_button_highlight_style",0),
+        settings_.getInt("cyn_button_motion_speed",100),
+        settings_.getInt("cyn_button_highlight_intensity",55));
 	max_user_presets_ = settings_.getInt("max_user_presets");
 	if (max_user_presets_ < 10 || max_user_presets_ > 120)
 	{

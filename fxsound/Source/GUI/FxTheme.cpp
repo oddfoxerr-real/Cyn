@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <JuceHeader.h>
 #include "FxTheme.h"
+#include "CynButtonVisuals.h"
 #include "CynIcons.h"
 
 const uint32 FxTheme::theme_colors_[FxThemeMode::NumModes][FxColor::NumColors] =
@@ -521,30 +522,15 @@ Font FxTheme::getTextButtonFont(TextButton&, int button_height)
 void FxTheme::drawButtonBackground(Graphics& g, Button& button, const Colour& backgroundColour,
                                    bool highlighted, bool down)
 {
-    const float hover = animate(button,0,highlighted ? 1.0f : 0.0f);
-    const float press = animate(button,1,down ? 1.0f : 0.0f);
-    auto bounds = button.getLocalBounds().toFloat().reduced(0.5f + press);
-    auto fill = backgroundColour.interpolatedWith(Colour(FXCOLOR(MenuHighlightBackground)).withAlpha(1.0f),hover);
-    fill = fill.interpolatedWith(Colour(FXCOLOR(SliderTrack)).withAlpha(.25f),press);
-    const float radius=jmin(12.0f,bounds.getHeight()*0.36f);
-    if (button.getProperties().getWithDefault("ember_navigation",false)) {
-        g.setColour(fill); g.fillRoundedRectangle(bounds,radius);
-        return;
-    }
-    ColourGradient material((getThemeMode()==FxThemeMode::DarkMesh?fill:fill.brighter(0.105f)),bounds.getX(),bounds.getY(),
-                            (getThemeMode()==FxThemeMode::DarkMesh?fill:fill.darker(0.065f)),bounds.getRight(),bounds.getBottom(),false);
-    g.setGradientFill(material); g.fillRoundedRectangle(bounds,radius);
-    g.setColour(Colour(FXCOLOR(DefaultText)).withAlpha(0.09f+hover*0.07f));
-    g.drawLine(bounds.getX()+10.0f,bounds.getY()+1.0f,
-               bounds.getRight()-10.0f,bounds.getY()+1.0f,0.8f);
-    g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(.74f).interpolatedWith(Colour(FXCOLOR(SliderTrack)).withAlpha(.6f),hover));
-    g.drawRoundedRectangle(bounds,jmin(12.0f,bounds.getHeight()*.36f),1);
-    // Immediate, bounded feedback: no independent looping ripple.
-    if(press>0.001f) {
-        g.setColour(Colour(FXCOLOR(SliderTrack)).withAlpha(0.26f*press));
-        g.drawRoundedRectangle(bounds.reduced(1.0f),radius,1.5f);
-    }
-
+    const float hover=animate(button,0,button.isEnabled() && highlighted ? 1.0f : 0.0f);
+    const float press=animate(button,1,button.isEnabled() && down ? 1.0f : 0.0f);
+    const auto bounds=button.getLocalBounds().toFloat();
+    CynButtonVisuals::paint(g,bounds,backgroundColour,
+                           Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f),
+                           Colour(FXCOLOR(RowOutline)).withAlpha(1.0f),
+                           button_motion_,button_highlight_,hover,press,
+                           button_intensity_,reduced_motion_,
+                           button.getProperties().getWithDefault("ember_navigation",false));
 }
 
 void FxTheme::drawToggleButton(Graphics& g, ToggleButton& button, bool highlighted, bool down)
@@ -559,10 +545,19 @@ void FxTheme::drawToggleButton(Graphics& g, ToggleButton& button, bool highlight
 
     auto track = Colour(FXCOLOR(RowOutline)).withAlpha(.95f).interpolatedWith(Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f),position);
     track = track.brighter(hover*.08f);
+    if (!reduced_motion_ && button_highlight_!=CynButtonVisuals::Subtle) {
+        const float strength=button_intensity_/100.0f;
+        track=track.interpolatedWith(Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f),
+            jlimit(0.0f,1.0f,hover*.26f*strength));
+    }
     if (down) track = track.darker(0.08f);
 
     g.setColour(track);
     g.fillRoundedRectangle(sw, switchH * 0.5f);
+    if(!reduced_motion_ && button_highlight_!=CynButtonVisuals::Subtle && hover>.02f) {
+        g.setColour(Colour(FXCOLOR(SliderTrack)).withAlpha(.40f*hover*button_intensity_/100.0f));
+        g.drawRoundedRectangle(sw.reduced(1.35f),switchH*.44f,1.1f);
+    }
     const float knob = 14.0f;
     const float knobX = sw.getX()+3.0f + position*(switchW-knob-6.0f);
     g.setColour(on ? Colour(FXCOLOR(WindowBackground)).withAlpha(1.0f) : Colour(FXCOLOR(DefaultText)).withAlpha(0.92f));
@@ -831,6 +826,20 @@ Typeface::Ptr FxTheme::loadTypeface(String fileName)
 
 bool FxTheme::reduced_motion_ = false;
 bool FxTheme::smooth_animations_ = false;
+int FxTheme::button_motion_=CynButtonVisuals::defaultMotion;
+int FxTheme::button_highlight_=CynButtonVisuals::defaultHighlight;
+int FxTheme::button_speed_=CynButtonVisuals::defaultSpeed;
+int FxTheme::button_intensity_=CynButtonVisuals::defaultIntensity;
+void FxTheme::setButtonVisualSettings(int motion,int highlight,int speedPct,int intensityPct)
+{
+    button_motion_=CynButtonVisuals::motionIndex(motion);
+    button_highlight_=CynButtonVisuals::highlightIndex(highlight);
+    button_speed_=CynButtonVisuals::speed(speedPct);
+    button_intensity_=CynButtonVisuals::intensity(intensityPct);
+    if (auto* theme=dynamic_cast<FxTheme*>(&LookAndFeel::getDefaultLookAndFeel()))
+        for (auto& state:theme->motions_)
+            if (state.component) state.component->repaint();
+}
 const char* FxTheme::getThemeName(int i)
 {
     static const char* names[] = { "Graphite", "Pearl", "Aurora", "Dusk", "Copper", "Midnight", "Sakura", "Arctic", "Sandstone", "Obsidian", "Emerald", "Deep Sea", "Neon Tokyo", "Synthwave", "Solar Flare", "Crimson", "Mocha", "Monochrome", "Charcoal Desktop", "Neural Core", "Dark Theme" };
@@ -895,13 +904,18 @@ void FxTheme::timerCallback()
     lastMotionTickMs_ = now;
     const float rate = smooth_animations_ ? .44f : .60f;
     const float mix = 1.0f - std::pow(1.0f-rate, frameMs/16.666667f);
+    // Personalization affects button/toggle channels only, not 31-band EQ
+    // sliders, neural animations, menu opening or DSP updates.
+    const float buttonFrameMs=frameMs*(float)button_speed_/100.0f;
+    const float buttonMix=1.0f-std::pow(1.0f-rate,buttonFrameMs/16.666667f);
     bool active=false;
     for(auto it=motions_.begin();it!=motions_.end();) {
         if(!it->component) { it=motions_.erase(it); continue; }
         bool changed=false;
         for(int i=0;i<4;++i) {
             const float delta=it->target[i]-it->value[i];
-            if(std::abs(delta)>.001f) { it->value[i]+=delta*mix; active=changed=true; }
+            if(std::abs(delta)>.001f) { it->value[i]+=delta*((i<=1 && dynamic_cast<Button*>(it->component.getComponent())!=nullptr)
+                                        ? buttonMix : mix); active=changed=true; }
             else it->value[i]=it->target[i];
         }
         if(changed) it->component->repaint();

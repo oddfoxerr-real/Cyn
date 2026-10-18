@@ -8,14 +8,60 @@
 #include "CynDjTouch.h"
 #include "CynUiMotion.h"
 #include "CynCloseMotion.h"
+#include "CynButtonVisuals.h"
 #include <cmath>
 
 class CynThemeStudioContent final : public juce::Component, private juce::Timer
 {
+    // Dedicated native preview; unsaved choices do not alter the rest of CYN.
+    class ButtonSample final : public juce::Button, private juce::Timer
+    {
+    public:
+        explicit ButtonSample(CynThemeStudioContent& owner)
+            : juce::Button("Studio button demonstration"),owner_(owner) {
+            setButtonText("TRY MY BUTTON");
+            setMouseCursor(juce::MouseCursor::PointingHandCursor);
+        }
+        ~ButtonSample() override { stopTimer(); }
+        void paintButton(juce::Graphics& g,bool over,bool down) override {
+            const auto now=juce::Time::getMillisecondCounterHiRes();
+            const float elapsed=lastFrame_==0.0 ? 16.666667f :
+                juce::jlimit(1.0f,80.0f,(float)(now-lastFrame_));
+            lastFrame_=now;
+            const float rate=1.0f-std::pow(.56f,
+                 elapsed*owner_.buttonSpeed_/1600.0f);
+            const float targetHover=over?1.0f:0.0f, targetPress=down?1.0f:0.0f;
+            if(FxTheme::isReducedMotion()) { hover_=targetHover;press_=targetPress; }
+            else {
+                hover_+=(targetHover-hover_)*rate;
+                press_+=(targetPress-press_)*rate;
+            }
+            if(!FxTheme::isReducedMotion() &&
+               (std::abs(targetHover-hover_)>.002f ||std::abs(targetPress-press_)>.002f))
+                startTimerHz(60);
+            else stopTimer();
+
+            CynButtonVisuals::paint(g,getLocalBounds().toFloat(),
+                juce::Colour(FXCOLOR(TextButtonBackground)).withAlpha(1.0f),
+                juce::Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f),
+                juce::Colour(FXCOLOR(RowOutline)).withAlpha(1.0f),
+                owner_.buttonMotion_,owner_.buttonHighlight_,hover_,press_,
+                owner_.buttonIntensity_,FxTheme::isReducedMotion());
+            g.setColour(juce::Colour(FXCOLOR(HighlightedText)).withAlpha(1.0f));
+            g.setFont(juce::Font(17.0f,juce::Font::bold));
+            g.drawText(getButtonText(),getLocalBounds(),juce::Justification::centred);
+        }
+    private:
+        void timerCallback() override { repaint(); }
+        CynThemeStudioContent& owner_;
+        float hover_=0.0f,press_=0.0f;
+        double lastFrame_=0.0;
+    };
 public:
     CynThemeStudioContent()
         : previous_("<"), next_(">"), apply_("Apply studio"), cancel_("Close"), importTouch_("Choose PNG..."),
-          appearanceTab_("Appearance"), motionTab_("Animations"), replayMotion_("Replay")
+          appearanceTab_("Appearance"), motionTab_("Animations"),
+          buttonTab_("Buttons"), replayMotion_("Replay"), buttonDemo_(*this)
     {
         setSize(900, 790);
         setOpaque(true);
@@ -35,6 +81,54 @@ public:
             "cyn_close_motion_style", CynCloseMotion::defaultStyle));
         closeSpeedPercent_ = CynCloseMotion::clampSpeed(settings.getInt(
             "cyn_close_motion_speed_pct", CynCloseMotion::defaultSpeedPercent));
+        buttonMotion_=CynButtonVisuals::motionIndex(settings.getInt(
+            "cyn_button_motion_style",CynButtonVisuals::defaultMotion));
+        buttonHighlight_=CynButtonVisuals::highlightIndex(settings.getInt(
+            "cyn_button_highlight_style",CynButtonVisuals::defaultHighlight));
+        buttonSpeed_=CynButtonVisuals::speed(settings.getInt(
+            "cyn_button_motion_speed",CynButtonVisuals::defaultSpeed));
+        buttonIntensity_=CynButtonVisuals::intensity(settings.getInt(
+            "cyn_button_highlight_intensity",CynButtonVisuals::defaultIntensity));
+        for(int i=0;i<CynButtonVisuals::MotionCount;++i)
+            buttonMotionPicker_.addItem(CynButtonVisuals::motionName(i),i+1);
+        for(int i=0;i<CynButtonVisuals::HighlightCount;++i)
+            buttonHighlightPicker_.addItem(CynButtonVisuals::highlightName(i),i+1);
+        buttonMotionPicker_.setSelectedId(buttonMotion_+1,juce::dontSendNotification);
+        buttonHighlightPicker_.setSelectedId(buttonHighlight_+1,juce::dontSendNotification);
+        buttonSpeedSlider_.setSliderStyle(juce::Slider::LinearHorizontal);
+        buttonSpeedSlider_.setTextBoxStyle(juce::Slider::TextBoxRight,false,82,27);
+        buttonSpeedSlider_.setRange(.60,1.60,.05);
+        buttonSpeedSlider_.setTextValueSuffix("x");
+        buttonSpeedSlider_.setValue(buttonSpeed_/100.0,juce::dontSendNotification);
+        buttonIntensitySlider_.setSliderStyle(juce::Slider::LinearHorizontal);
+        buttonIntensitySlider_.setTextBoxStyle(juce::Slider::TextBoxRight,false,82,27);
+        buttonIntensitySlider_.setRange(0,100,5);
+        buttonIntensitySlider_.setTextValueSuffix("%");
+        buttonIntensitySlider_.setValue(buttonIntensity_,juce::dontSendNotification);
+        for(auto* ctl:std::initializer_list<juce::Component*>{
+            &buttonMotionPicker_,&buttonHighlightPicker_,&buttonSpeedSlider_,
+            &buttonIntensitySlider_,&buttonDemo_}) addAndMakeVisible(*ctl);
+        buttonMotionPicker_.onChange=[this]{
+            buttonMotion_=CynButtonVisuals::motionIndex(buttonMotionPicker_.getSelectedId()-1);
+            buttonDemo_.repaint();
+        };
+        buttonHighlightPicker_.onChange=[this]{
+            buttonHighlight_=CynButtonVisuals::highlightIndex(buttonHighlightPicker_.getSelectedId()-1);
+            buttonDemo_.repaint();
+        };
+        buttonSpeedSlider_.onValueChange=[this]{
+            buttonSpeed_=CynButtonVisuals::speed(juce::roundToInt(buttonSpeedSlider_.getValue()*100));
+            buttonDemo_.repaint();
+        };
+        buttonIntensitySlider_.onValueChange=[this]{
+            buttonIntensity_=CynButtonVisuals::intensity(juce::roundToInt(buttonIntensitySlider_.getValue()));
+            buttonDemo_.repaint();
+        };
+        buttonDemo_.onClick=[this]{buttonDemo_.repaint();};
+        buttonMotionPicker_.setTooltip("Classic, Quick Pop, Soft Float, Ripple Press or Liquid Morph.");
+        buttonHighlightPicker_.setTooltip("Subtle, Neon Edge, Soft Glow, Liquid Edge or Glass Sweep.");
+        buttonSpeedSlider_.setTooltip("Button hover/press response speed, independent from X-to-tray animation.");
+        buttonIntensitySlider_.setTooltip("How strongly highlights and liquid edges appear.");
         customTouch_=CynDjTouch::readCustomImage();
         for (int i=0; i<CynCloseMotion::NumStyles; ++i)
             closeStylePicker_.addItem(CynCloseMotion::styleName(i), i+1);
@@ -87,7 +181,7 @@ public:
 
         for (auto* control : std::initializer_list<juce::Button*> {
                 &previous_, &next_, &apply_, &cancel_,
-                &appearanceTab_, &motionTab_, &replayMotion_ })
+                &appearanceTab_, &motionTab_, &buttonTab_, &replayMotion_ })
         {
             addAndMakeVisible(*control);
             control->setMouseCursor(juce::MouseCursor::PointingHandCursor);
@@ -129,15 +223,22 @@ public:
             // Save the visual motion choice with Apply, without changing playback.
             controller.getSettings().setInt("cyn_close_motion_style",closeStyle_);
             controller.getSettings().setInt("cyn_close_motion_speed_pct",closeSpeedPercent_);
+            controller.getSettings().setInt("cyn_button_motion_style",buttonMotion_);
+            controller.getSettings().setInt("cyn_button_highlight_style",buttonHighlight_);
+            controller.getSettings().setInt("cyn_button_motion_speed",buttonSpeed_);
+            controller.getSettings().setInt("cyn_button_highlight_intensity",buttonIntensity_);
+            FxTheme::setButtonVisualSettings(buttonMotion_,buttonHighlight_,buttonSpeed_,buttonIntensity_);
             controller.setThemeMode(static_cast<FxThemeMode>(selected_));
             close();
         };
         cancel_.onClick = [this] { close(); };
         appearanceTab_.onClick=[this] { showMotionPage(false); };
         motionTab_.onClick=[this] { showMotionPage(true); };
+        buttonTab_.onClick=[this] { showButtonPage(); };
         replayMotion_.onClick=[this] { replayMotionPreview(); };
         appearanceTab_.setTooltip("Choose colours and AI Touch styling.");
         motionTab_.setTooltip("Choose the window-close animation style and speed.");
+        buttonTab_.setTooltip("Personalize native buttons and toggles with animated liquid materials.");
         replayMotion_.setTooltip("Replay the selected close animation in this preview.");
         showMotionPage(false);
 
@@ -150,8 +251,14 @@ public:
     void resized() override
     {
         const int w=getWidth(),h=getHeight();
-        appearanceTab_.setBounds(w-342,73,145,33);
-        motionTab_.setBounds(w-187,73,158,33);
+        appearanceTab_.setBounds(w-465,73,140,33);
+        motionTab_.setBounds(w-317,73,140,33);
+        buttonTab_.setBounds(w-169,73,140,33);
+        buttonDemo_.setBounds(282,215,336,76);
+        buttonMotionPicker_.setBounds(282,452,345,34);
+        buttonHighlightPicker_.setBounds(282,510,345,34);
+        buttonSpeedSlider_.setBounds(272,574,365,34);
+        buttonIntensitySlider_.setBounds(272,638,365,34);
         closeStylePicker_.setBounds(218,574,370,33);
         closeSpeedSlider_.setBounds(207,640,390,34);
         replayMotion_.setBounds(w-225,537,125,33);
@@ -201,6 +308,10 @@ public:
         g.drawText("Explore your themes. Use the arrows to slide between live previews.",
                    26,56,getWidth()-52,24,Justification::centredLeft);
 
+        if(buttonPage_) {
+            paintButtonPage(g);
+            return;
+        }
         if(motionPage_) {
             paintMotionPage(g);
             return;
@@ -329,6 +440,11 @@ private:
     void showMotionPage(bool show)
     {
         motionPage_=show;
+        buttonPage_=false;
+        buttonTab_.setToggleState(false,juce::dontSendNotification);
+        for(auto* ctl:std::initializer_list<juce::Component*>{
+            &buttonMotionPicker_,&buttonHighlightPicker_,&buttonSpeedSlider_,
+            &buttonIntensitySlider_,&buttonDemo_}) ctl->setVisible(false);
         appearanceTab_.setToggleState(!show,juce::dontSendNotification);
         motionTab_.setToggleState(show,juce::dontSendNotification);
         for(auto* c:std::initializer_list<juce::Component*> {
@@ -340,6 +456,62 @@ private:
         replayMotion_.setVisible(show);
         if(show) replayMotionPreview();
         repaint();
+    }
+
+    void showButtonPage()
+    {
+        buttonPage_=true;
+        motionPage_=false;
+        appearanceTab_.setToggleState(false,juce::dontSendNotification);
+        motionTab_.setToggleState(false,juce::dontSendNotification);
+        buttonTab_.setToggleState(true,juce::dontSendNotification);
+        for(auto* ctl:std::initializer_list<juce::Component*>{
+            &previous_,&next_,&effectsTouchPicker_,&eqTouchPicker_,
+            &flowerPicker_,&importTouch_,&closeStylePicker_,
+            &closeSpeedSlider_,&replayMotion_}) ctl->setVisible(false);
+        for(auto* ctl:std::initializer_list<juce::Component*>{
+            &buttonMotionPicker_,&buttonHighlightPicker_,&buttonSpeedSlider_,
+            &buttonIntensitySlider_,&buttonDemo_}) ctl->setVisible(true);
+        buttonDemo_.repaint();
+        repaint();
+    }
+
+    void paintButtonPage(juce::Graphics& g)
+    {
+        using namespace juce;
+        const auto text=Colour(FXCOLOR(DefaultText)).withAlpha(1.0f);
+        const auto hint=Colour(FXCOLOR(HintText)).withAlpha(1.0f);
+        const auto accent=Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f);
+        g.setColour(text);
+        g.setFont(Font(21.0f,Font::bold));
+        g.drawText("BUTTON MOTION STUDIO",92,115,610,35,Justification::centredLeft);
+        g.setColour(hint);
+        g.setFont(Font(13.0f));
+        g.drawText("Mix animation with a highlight material. Hover and press the real button preview.",
+                   92,155,690,26,Justification::centredLeft);
+        const juce::Rectangle<float> panel(92.0f,193.0f,getWidth()-184.0f,216.0f);
+        g.setColour(Colour(FXCOLOR(PanelBackground)).withAlpha(1.0f));
+        g.fillRoundedRectangle(panel,17.0f);
+        g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(.85f));
+        g.drawRoundedRectangle(panel,17.0f,1.0f);
+        g.setColour(accent.withAlpha(.86f));
+        g.drawText("INTERACTIVE LIVE PREVIEW",115,319,360,25,Justification::centredLeft);
+        g.setColour(hint);
+        g.drawText("Appearance is previewed before applying; CYN stays unchanged until Apply studio.",
+                   115,348,660,25,Justification::centredLeft);
+        g.setFont(Font(13.0f,Font::bold));
+        g.setColour(text);
+        g.drawText("BUTTON ANIMATION",93,451,177,34,Justification::centredLeft);
+        g.drawText("HIGHLIGHT MATERIAL",93,509,185,34,Justification::centredLeft);
+        g.drawText("RESPONSE SPEED",93,574,164,34,Justification::centredLeft);
+        g.drawText("EFFECT INTENSITY",93,638,168,34,Justification::centredLeft);
+        g.setFont(Font(12.0f));
+        g.setColour(hint);
+        g.drawText("Effects use inexpensive native JUCE drawing; no live fluid simulation or audio-thread work.",
+                   92,704,718,26,Justification::centredLeft);
+        if(FxTheme::isReducedMotion())
+            g.drawText("Reduce Motion is on: motion and decorative highlights are disabled.",
+                92,681,710,19,Justification::centredLeft);
     }
 
     void replayMotionPreview()
@@ -379,7 +551,7 @@ private:
             g.setColour(backdrop.darker(.14f));
             g.fillRoundedRectangle(area,17.0f);
             const auto inside=area.reduced(17.0f);
-            if (none || t<.28f)
+            if (none || t<CynCloseMotion::phaseExpandEnd)
             {
                 // Mock native surface uses CYN palette; no extra screenshot,
                 // IO or desktop window is needed for the preview.
@@ -409,7 +581,7 @@ private:
                     (int)inside.getBottom()-48,400,22,Justification::centredLeft);
                 if (!none)
                 {
-                    const float e=1.0f-std::pow(1.0f-juce::jlimit(0.0f,1.0f,t/.28f),5.0f);
+                    const float e=CynCloseMotion::expandEase(t/CynCloseMotion::phaseExpandEnd);
                     const auto expanded=juce::Rectangle<float>(
                         button.getX()+(area.getX()-button.getX())*e,
                         button.getY()+(area.getY()-button.getY())*e,
@@ -419,7 +591,7 @@ private:
                     g.fillRoundedRectangle(expanded,juce::jmin(13.0f,expanded.getHeight()*.24f));
                 }
             }
-            else if(t<.37f)
+            else if(t<CynCloseMotion::phaseHoldEnd)
             {
                 g.setColour(backdrop.interpolatedWith(accent,.15f));
                 g.fillRoundedRectangle(area,13.0f);
@@ -430,7 +602,7 @@ private:
                 // The 96 x 54 preview mask keeps redraw inexpensive.
                 constexpr int mw=96,mh=54;
                 Image mask(Image::ARGB,mw,mh,true);
-                const float melt=(t-.37f)/.63f;
+                const float melt=(t-CynCloseMotion::phaseHoldEnd)/(1.0f-CynCloseMotion::phaseHoldEnd);
                 {
                     Image::BitmapData bitmap(mask,Image::BitmapData::writeOnly);
                     for(int y=0;y<mh;++y)
@@ -522,7 +694,10 @@ private:
     }
 
     juce::TextButton previous_,next_,apply_,cancel_,importTouch_;
-    juce::TextButton appearanceTab_,motionTab_,replayMotion_;
+    juce::TextButton appearanceTab_,motionTab_,buttonTab_,replayMotion_;
+    ButtonSample buttonDemo_;
+    juce::ComboBox buttonMotionPicker_,buttonHighlightPicker_;
+    juce::Slider buttonSpeedSlider_,buttonIntensitySlider_;
     juce::ComboBox effectsTouchPicker_,eqTouchPicker_,flowerPicker_;
     juce::ComboBox closeStylePicker_;
     juce::Slider closeSpeedSlider_;
@@ -531,7 +706,11 @@ private:
     int effectsTouchStyle_=0,eqTouchStyle_=0,flowerCount_=4;
     int closeStyle_=CynCloseMotion::defaultStyle;
     int closeSpeedPercent_=CynCloseMotion::defaultSpeedPercent;
-    bool motionPage_=false;
+    bool motionPage_=false,buttonPage_=false;
+    int buttonMotion_=CynButtonVisuals::defaultMotion;
+    int buttonHighlight_=CynButtonVisuals::defaultHighlight;
+    int buttonSpeed_=CynButtonVisuals::defaultSpeed;
+    int buttonIntensity_=CynButtonVisuals::defaultIntensity;
     double motionPreviewStart_=0.0;
     juce::Rectangle<float> preview_;
     int selected_=0,source_=0,slideDirection_=1;
