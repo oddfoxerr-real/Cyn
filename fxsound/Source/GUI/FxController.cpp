@@ -302,9 +302,7 @@ void FxController::initConfig(const String& commandline)
         ? jlimit(0.0f,100.0f,headroom_value):50.0f;
     smart_preset_cycling_=settings_.getBool("cyn_auto_preset_cycling",false);
 	auto arg_list = ArgumentList(File::getSpecialLocation(File::SpecialLocationType::invokedExecutableFile).getFileName(), commandline);
-    auto requested_theme=arg_list.getValueForOption("--theme").unquoted();
-    for(int i=0;i<(int)FxThemeMode::NumModes;++i)
-        if(requested_theme.equalsIgnoreCase(FxTheme::getThemeName(i))) setThemeMode(static_cast<FxThemeMode>(i));
+    // Legacy --theme values are ignored: stable CYN has one Dark Theme.
     auto reduced=arg_list.getValueForOption("--reduce_motion");
     if(reduced=="0" || reduced=="1") setReducedMotion(reduced=="1");
     auto sensitivity = arg_list.getValueForOption("--smart_sensitivity");
@@ -449,9 +447,7 @@ void FxController::applyConfig(const String& commandline)
 		return;
 	}
 
-    auto requested_theme=arg_list.getValueForOption("--theme").unquoted();
-    for(int i=0;i<(int)FxThemeMode::NumModes;++i)
-        if(requested_theme.equalsIgnoreCase(FxTheme::getThemeName(i))) setThemeMode(static_cast<FxThemeMode>(i));
+    // Legacy --theme values are ignored: stable CYN has one Dark Theme.
     auto reduced=arg_list.getValueForOption("--reduce_motion");
     if(reduced=="0" || reduced=="1") setReducedMotion(reduced=="1");
     auto sensitivity = arg_list.getValueForOption("--smart_sensitivity");
@@ -902,22 +898,19 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 
 		FxTheme::setReducedMotion(settings_.getBool("cyn_reduce_motion",false));
         FxTheme::setSmoothAnimations(settings_.getBool("cyn_smooth_animations", true));
-        auto theme_mode = settings_.getInt("theme_mode", 0);
-		if (theme_mode < 0 || theme_mode >= static_cast<int>(FxThemeMode::NumModes))
-		{
-			theme_mode = 0;
-		}
-		if (FxTheme::getThemeMode() != static_cast<FxThemeMode>(theme_mode))
-		{
-			FxTheme::setThemeMode(static_cast<FxThemeMode>(theme_mode));
-			main_window_->sendLookAndFeelChange();
-
-			auto* theme = dynamic_cast<FxTheme*>(&LookAndFeel::getDefaultLookAndFeel());
-			if (theme != nullptr)
-			{
-				theme->loadFont(language_);
-			}
-		}
+        // Migrate old colour themes to the single supported Dark Theme.
+        // Keep the previous selection as a harmless local backup, without
+        // overwriting models, presets, UI motion or audio-device preferences.
+        const int previousTheme=settings_.getInt("theme_mode",(int)FxThemeMode::DarkMesh);
+        if(previousTheme!=(int)FxThemeMode::DarkMesh &&
+           settings_.getInt("cyn_previous_theme_mode",-1)==-1)
+            settings_.setInt("cyn_previous_theme_mode",previousTheme);
+        settings_.setInt("theme_mode",(int)FxThemeMode::DarkMesh);
+        if(FxTheme::getThemeMode()!=FxThemeMode::DarkMesh)
+            FxTheme::setThemeMode(FxThemeMode::DarkMesh);
+        main_window_->sendLookAndFeelChange();
+        if(auto* theme=dynamic_cast<FxTheme*>(&LookAndFeel::getDefaultLookAndFeel()))
+            theme->loadFont(language_);
 
 		survey_tip_ = false; // Upstream survey does not apply to Cyn.
 
@@ -3010,6 +3003,9 @@ FxThemeMode FxController::getThemeMode()
 
 void FxController::setThemeMode(FxThemeMode mode)
 {
+    // Disallow legacy colours even if an older script invokes this method.
+    mode=FxThemeMode::DarkMesh;
+    settings_.setInt("theme_mode",(int)mode);
 	if (mode == getThemeMode())
 	{
 		return;

@@ -59,7 +59,7 @@ class CynThemeStudioContent final : public juce::Component, private juce::Timer
     };
 public:
     CynThemeStudioContent()
-        : previous_("<"), next_(">"), apply_("Apply studio"), cancel_("Close"), importTouch_("Choose PNG..."),
+        : apply_("Apply studio"), cancel_("Close"), importTouch_("Choose PNG..."),
           appearanceTab_("Appearance"), motionTab_("Animations"),
           buttonTab_("Buttons"), replayMotion_("Replay"), buttonDemo_(*this)
     {
@@ -67,8 +67,7 @@ public:
         setOpaque(true);
         setWantsKeyboardFocus(true);
         setFocusContainerType(juce::Component::FocusContainerType::focusContainer);
-        selected_ = (int)FxTheme::getThemeMode();
-        source_ = selected_;
+        // Dark Theme is the only stable visual identity.
         auto& settings=FxController::getInstance().getSettings();
         const int legacyStyle=settings.getInt("cyn_dj_touch_style",0);
         effectsTouchStyle_=juce::jlimit(0,5,
@@ -180,7 +179,7 @@ public:
         importTouch_.onClick=[this] {chooseCustomTouch();};
 
         for (auto* control : std::initializer_list<juce::Button*> {
-                &previous_, &next_, &apply_, &cancel_,
+                &apply_, &cancel_,
                 &appearanceTab_, &motionTab_, &buttonTab_, &replayMotion_ })
         {
             addAndMakeVisible(*control);
@@ -188,15 +187,9 @@ public:
             control->setWantsKeyboardFocus(true);
         }
 
-        previous_.setName("Previous theme");
-        next_.setName("Next theme");
-        previous_.setTooltip("Previous theme (Left arrow)");
-        next_.setTooltip("Next theme (Right arrow)");
-        apply_.setTooltip("Apply the selected theme throughout Cyn");
+        apply_.setTooltip("Save AI Touch and motion customization in Dark Theme");
         cancel_.setTooltip("Close without changing the current theme");
 
-        previous_.onClick = [this] { selectRelative(-1); };
-        next_.onClick = [this] { selectRelative(1); };
         apply_.onClick = [this] {
             if((effectsTouchStyle_==CynDjTouch::CustomPng ||
                 eqTouchStyle_==CynDjTouch::CustomPng) && !customTouch_.isValid()) {
@@ -228,7 +221,7 @@ public:
             controller.getSettings().setInt("cyn_button_motion_speed",buttonSpeed_);
             controller.getSettings().setInt("cyn_button_highlight_intensity",buttonIntensity_);
             FxTheme::setButtonVisualSettings(buttonMotion_,buttonHighlight_,buttonSpeed_,buttonIntensity_);
-            controller.setThemeMode(static_cast<FxThemeMode>(selected_));
+            controller.setThemeMode(FxThemeMode::DarkMesh);
             close();
         };
         cancel_.onClick = [this] { close(); };
@@ -262,8 +255,6 @@ public:
         closeStylePicker_.setBounds(218,574,370,33);
         closeSpeedSlider_.setBounds(207,640,390,34);
         replayMotion_.setBounds(w-225,537,125,33);
-        previous_.setBounds(25,225,52,64);
-        next_.setBounds(w-77,225,52,64);
         cancel_.setBounds(w-255,h-58,105,36);
         apply_.setBounds(w-148,h-58,123,36);
         effectsTouchPicker_.setBounds(165,565,255,32);
@@ -276,8 +267,6 @@ public:
 
     bool keyPressed(const juce::KeyPress& key) override
     {
-        if(key.getKeyCode()==juce::KeyPress::leftKey) { selectRelative(-1); return true; }
-        if(key.getKeyCode()==juce::KeyPress::rightKey){ selectRelative(1); return true; }
         if(key.getKeyCode()==juce::KeyPress::returnKey){ apply_.triggerClick(); return true; }
         return juce::Component::keyPressed(key);
     }
@@ -302,10 +291,10 @@ public:
 
         g.setColour(text);
         g.setFont(Font(26.0f,Font::bold));
-        g.drawText("Theme Studio",25,17,getWidth()-50,37,Justification::centredLeft);
+        g.drawText("CYN Studio",25,17,getWidth()-50,37,Justification::centredLeft);
         g.setFont(Font(13.0f));
         g.setColour(muted);
-        g.drawText("Explore your themes. Use the arrows to slide between live previews.",
+        g.drawText("One dark identity. Your animations, AI Touch, and liquid-button styles.",
                    26,56,getWidth()-52,24,Justification::centredLeft);
 
         if(buttonPage_) {
@@ -317,44 +306,24 @@ public:
             return;
         }
 
-        const int total=(int)FxThemeMode::NumModes;
-        const String counter=String(selected_+1).paddedLeft('0',2)+" / "+String(total);
-        g.setColour(accent);
-        g.setFont(Font(11.0f,Font::bold));
-        g.drawText(counter,getWidth()-132,25,107,20,Justification::centredRight);
-
+        // Stable visual identity: one true-black theme, no carousel or
+        // misleading inactive colour choices. The preview remains live.
         g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(1.0f));
         g.fillRoundedRectangle(preview_.expanded(1.0f),18.0f);
         {
             Graphics::ScopedSaveState clip(g);
             g.reduceClipRegion(preview_.getSmallestIntegerContainer());
-
-            float progress=1.0f;
-            if(transitioning_ && !FxTheme::isReducedMotion())
-            {
-                const float elapsed=(float)(Time::getMillisecondCounterHiRes()-transitionStart_);
-                progress=CynUiMotion::easeOutCubic(
-                    CynUiMotion::progress(elapsed,CynUiMotion::themeCarouselDurationMs));
-            }
-            const float stride=preview_.getWidth()+19.0f;
-            const float direction=(float)slideDirection_;
-            const double time=FxTheme::isReducedMotion()?0.0:Time::getMillisecondCounterHiRes()*.001;
-            if(progress<1.0f)
-                paintPreview(g,static_cast<FxThemeMode>(source_),
-                    preview_.translated(-direction*stride*progress,0.0f),(float)time);
-            paintPreview(g,static_cast<FxThemeMode>(selected_),
-                preview_.translated(direction*stride*(1.0f-progress),0.0f),(float)time);
+            const float time=FxTheme::isReducedMotion()?0.0f:
+                (float)(Time::getMillisecondCounterHiRes()*.001);
+            paintPreview(g,FxThemeMode::DarkMesh,preview_,time);
         }
-
         g.setColour(text);
         g.setFont(Font(20.0f,Font::bold));
-        g.drawText(FxTheme::getThemeName(selected_),92,444,getWidth()-184,28,
+        g.drawText("Dark Theme",92,444,getWidth()-184,28,
                    Justification::centred);
         g.setFont(Font(12.0f));
         g.setColour(muted);
-        g.drawText(selected_==(int)FxTheme::getThemeMode() ?
-                   "CURRENT THEME  /  CHOOSE ANOTHER TO PREVIEW" :
-                   "PREVIEW ONLY  /  APPLY TO SAVE THIS THEME",
+        g.drawText("CYN STANDARD  /  TRUE BLACK + LIQUID BLUE MESH",
                    92,474,getWidth()-184,20,Justification::centred);
 
         // Two real DJ hands/flower groups; styles are independent per panel.
@@ -384,15 +353,7 @@ public:
         };
         sample(effectsTouchStyle_,585.0f,false);
         sample(eqTouchStyle_,786.0f,true);
-        // Progress markers are deliberately subtle and scale to all 20 presets.
-        const float dotW=9.5f,space=19.0f;
-        const float start=(getWidth()-((total-1)*space+dotW))*.5f;
-        for(int i=0;i<total;++i)
-        {
-            g.setColour((i==selected_?accent:muted).withAlpha(i==selected_?1.0f:.33f));
-            g.fillEllipse(start+i*space,509.0f,i==selected_?dotW:5.5f,
-                          i==selected_?dotW:5.5f);
-        }
+
     }
 
 private:
@@ -448,7 +409,7 @@ private:
         appearanceTab_.setToggleState(!show,juce::dontSendNotification);
         motionTab_.setToggleState(show,juce::dontSendNotification);
         for(auto* c:std::initializer_list<juce::Component*> {
-            &previous_, &next_, &effectsTouchPicker_, &eqTouchPicker_,
+            &effectsTouchPicker_, &eqTouchPicker_,
             &flowerPicker_, &importTouch_ })
             c->setVisible(!show);
         closeStylePicker_.setVisible(show);
@@ -466,7 +427,7 @@ private:
         motionTab_.setToggleState(false,juce::dontSendNotification);
         buttonTab_.setToggleState(true,juce::dontSendNotification);
         for(auto* ctl:std::initializer_list<juce::Component*>{
-            &previous_,&next_,&effectsTouchPicker_,&eqTouchPicker_,
+            &effectsTouchPicker_,&eqTouchPicker_,
             &flowerPicker_,&importTouch_,&closeStylePicker_,
             &closeSpeedSlider_,&replayMotion_}) ctl->setVisible(false);
         for(auto* ctl:std::initializer_list<juce::Component*>{
@@ -663,27 +624,9 @@ private:
         repaint();
     }
 
-    void selectRelative(int direction)
-    {
-        if(direction==0)return;
-        const int size=(int)FxThemeMode::NumModes;
-        source_=selected_;
-        selected_=(selected_+direction+size)%size;
-        slideDirection_=direction;
-        transitioning_=!FxTheme::isReducedMotion();
-        transitionStart_=juce::Time::getMillisecondCounterHiRes();
-        repaint();
-    }
-
     void timerCallback() override
     {
         if(!isShowing())return;
-        if(transitioning_ &&
-           juce::Time::getMillisecondCounterHiRes()-transitionStart_>=CynUiMotion::themeCarouselDurationMs)
-        {
-            transitioning_=false;
-            source_=selected_;
-        }
         repaint();
     }
 
@@ -693,7 +636,7 @@ private:
             dialog->exitModalState(0);
     }
 
-    juce::TextButton previous_,next_,apply_,cancel_,importTouch_;
+    juce::TextButton apply_,cancel_,importTouch_;
     juce::TextButton appearanceTab_,motionTab_,buttonTab_,replayMotion_;
     ButtonSample buttonDemo_;
     juce::ComboBox buttonMotionPicker_,buttonHighlightPicker_;
@@ -713,9 +656,6 @@ private:
     int buttonIntensity_=CynButtonVisuals::defaultIntensity;
     double motionPreviewStart_=0.0;
     juce::Rectangle<float> preview_;
-    int selected_=0,source_=0,slideDirection_=1;
-    bool transitioning_=false;
-    double transitionStart_=0.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CynThemeStudioContent)
 };
@@ -726,7 +666,7 @@ struct CynThemeStudioDialog
     {
         juce::DialogWindow::LaunchOptions options;
         options.content.setOwned(new CynThemeStudioContent());
-        options.dialogTitle="Cyn Theme Studio";
+        options.dialogTitle="CYN Studio";
         options.componentToCentreAround=owner;
         options.dialogBackgroundColour=juce::Colour(FXCOLOR(WindowBackground)).withAlpha(1.0f);
         options.escapeKeyTriggersCloseButton=true;
