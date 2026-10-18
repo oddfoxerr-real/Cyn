@@ -619,15 +619,20 @@ void FxProView::paint(Graphics& g)
     ColourGradient side(Colour(0xff090c10),0.0f,0.0f,
                          Colour(0xff050608),228.0f,700.0f,false);
     g.setGradientFill(side);g.fillRect(0,0,228,getHeight());
-    // A stable straight rail with a restrained, non-filled corner flourish.
-    // The prior filled cubic path created an unwanted bulge into the content.
-    g.setColour(Colour(0xff172431).withAlpha(.80f));
+    // Integrated rounded interior rail outline, following the requested large
+    // continuous corner silhouette without displacing the content boundary.
+    // Keep the workspace edge straight; this is an inset frame, never a fill.
+    g.setColour(Colour(0xff1e303d).withAlpha(.85f));
     g.drawLine(228.0f,0.0f,228.0f,(float)getHeight(),.8f);
-    Path cornerAccent;
-    cornerAccent.startNewSubPath(228.0f,64.0f);
-    cornerAccent.cubicTo(228.0f,75.0f,224.0f,81.0f,216.0f,89.0f);
-    g.setColour(cyan.withAlpha(.42f));
-    g.strokePath(cornerAccent,PathStrokeType(1.5f));
+    Path railOutline;
+    railOutline.startNewSubPath(204.0f,20.0f);
+    railOutline.cubicTo(215.0f,20.0f,219.0f,27.0f,219.0f,40.0f);
+    railOutline.lineTo(219.0f,626.0f);
+    railOutline.cubicTo(219.0f,651.0f,212.0f,674.0f,191.0f,680.0f);
+    railOutline.lineTo(47.0f,680.0f);
+    railOutline.cubicTo(27.0f,680.0f,17.0f,668.0f,17.0f,649.0f);
+    g.setColour(cyan.withAlpha(.24f));
+    g.strokePath(railOutline,PathStrokeType(1.0f,PathStrokeType::curved,PathStrokeType::rounded));
     // Native title bar already displays the CYN wordmark. The sidebar
     // identifies the navigation instead of repeating the same logo.
     g.setColour(cyan);g.fillRoundedRectangle(26.0f,28.0f,3.0f,24.0f,1.5f);
@@ -639,7 +644,7 @@ void FxProView::paint(Graphics& g)
     g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,87.0f,203.0f,87.0f,.8f);
 
     const float navY=104.0f+49.0f*(float)page_;
-    g.setColour(Colour(0xff111923).withAlpha(.96f));
+    g.setColour(Colour(0xff111923).withAlpha(.88f));
     g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,12.0f);
     g.setColour(cyan.withAlpha(.78f));
     g.drawRoundedRectangle(22.5f,navY+.5f,195.0f,41.0f,11.0f,1.05f);
@@ -677,7 +682,7 @@ void FxProView::paint(Graphics& g)
         finish.addColour(.55,panel);
         g.setGradientFill(finish);
         g.fillRoundedRectangle(x,y,width,height,r);
-        g.setColour(border.withAlpha(.46f));
+        g.setColour(border.withAlpha(.32f));
         g.drawRoundedRectangle(x+.5f,y+.5f,width-1.0f,height-1.0f,r-.3f,.8f);
     };
     // Clear hierarchy: a large page title, meaningful status, then real
@@ -699,12 +704,11 @@ void FxProView::paint(Graphics& g)
     txt(FxModel::getModel().getPowerState()?"AUDIO ON":"PROCESSING OFF",
         1160,16,129,21,11.0f,false,true);
 
-    card(247,108,333,78,12.0f);
-    card(587,108,361,78,12.0f);
+    // Preset and device selectors float on one uninterrupted black workbench.
     // AI is a compact status action rather than a third competing panel.
-    txt("ACTIVE PROFILE",262,114,260,18,11.5f,true,true);
+    txt("PRESET",262,114,260,18,11.5f,true,true);
     txt("OUTPUT DEVICE",603,114,260,18,11.5f,true,true);
-    txt("AI ENHANCEMENT",972,114,230,18,11.5f,true,true);
+    txt("ACTIVE AI",972,114,230,18,11.5f,true,true);
 
     // Dedicated workspace band sits BELOW the taller selector cards.
     // Tabs sit directly on the workbench; no surrounding button bar.
