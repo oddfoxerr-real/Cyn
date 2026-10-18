@@ -1337,8 +1337,9 @@ void FxController::setOutput(const String output_device_id, bool notify)
         // Mute the missing route until it is found again; setOutput() unmutes
         // once a valid output is successfully selected.
 		audio_passthru_->mute(true);
+        if (playback_device_available_)
+            logMessage("Audio output temporarily unavailable; waiting for endpoint recovery.");
         playback_device_available_ = false;
-        logMessage("Audio output temporarily unavailable; waiting for endpoint recovery.");
 		FxModel::getModel().pushMessage(TRANS("Output temporarily disconnected — waiting for device"));
 	}
 	else
