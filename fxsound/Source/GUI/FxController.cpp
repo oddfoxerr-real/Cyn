@@ -3464,6 +3464,13 @@ void FxController::setSmartHeadroomCap(float percent)
 }
 void FxController::updateSmartListening()
 {
+    // The actual native DSP power switch is authoritative. No hidden model
+    // predictions, history collection or control adjustments while Off.
+    if(!FxModel::getModel().getPowerState()) {
+        apex_hybrid_active_=false;
+        apex6m_active_=false;
+        return;
+    }
     const auto input=dfx_dsp_.getInputAudioFeatures();
     const auto now=Time::currentTimeMillis();
     const bool fresh=input.sequence!=0 && input.sequence!=smart_last_sequence_;
