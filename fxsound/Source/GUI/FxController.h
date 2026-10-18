@@ -137,6 +137,13 @@ public:
     String getActiveAIProfileId();
     bool apex6MInstalled() const { return apex_worker_ && apex_worker_->installed(); }
     bool apex6MReady() const { return apex_worker_ && apex_worker_->ready(); }
+    bool apex6MFailed() const { return apex_worker_ && apex_worker_->failed(); }
+    String apex6MDiagnostic() const {
+        return apex_worker_ ? apex_worker_->diagnostic() : "APEX worker is not initialized.";
+    }
+    void startApex6MIfAvailable() {
+        if(apex_worker_) apex_worker_->startIfAvailable();
+    }
     bool selectAIProfile(const String& id, String& error);
     bool restorePreviousApexMusicAI(String& error);
     String getLearningStatus() const;
