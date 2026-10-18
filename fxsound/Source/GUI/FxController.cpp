@@ -1329,13 +1329,25 @@ void FxController::setOutput(const String output_device_id, bool notify)
 
 	if (!output_found)
 	{
+        // A game/store client may transiently remove or replace the Windows
+        // multimedia endpoint. Keep the user's requested POWER state and our
+        // 100-ms processing/recovery timer intact; powerOn(false) stops it and
+        // restores the default endpoint, permanently silencing CYN until a
+        // manual restart. The audio backend already retries on device changes.
+        // Mute the missing route until it is found again; setOutput() unmutes
+        // once a valid output is successfully selected.
 		audio_passthru_->mute(true);
-		powerOn(false);
-
-		FxModel::getModel().pushMessage(TRANS("Output Disconnected"));
+        playback_device_available_ = false;
+        logMessage("Audio output temporarily unavailable; waiting for endpoint recovery.");
+		FxModel::getModel().pushMessage(TRANS("Output temporarily disconnected — waiting for device"));
 	}
 	else
 	{
+        if (!playback_device_available_)
+        {
+            playback_device_available_ = true;
+            logMessage("Audio output returned; CYN can resume processing.");
+        }
 		if (FxModel::getModel().getPowerState())
 		{
 			powerOn(true);
