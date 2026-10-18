@@ -7,7 +7,7 @@ const motion=read("fxsound/Source/GUI/CynCloseMotion.h");
 const overlay=read("fxsound/Source/GUI/CynLiquidCloseOverlay.h");
 const window=read("fxsound/Source/GUI/FxMainWindow.cpp");
 
-for (const label of ["Vortex","Gravity Melt","Liquid Ripple","Soft Fade","None (instant)","Stardust","Liquid Curtain"])
+for (const label of ["Vortex","Gravity Melt","Liquid Ripple","Soft Fade","None (instant)","Stardust","Liquid Curtain","Liquid Ink","Spray Dissolve"])
     assert(motion.includes('return "'+label+'"'),"Missing native close effect: "+label);
 assert(motion.includes("defaultSpeedPercent = 85") &&
        motion.includes("minSpeedPercent = 55") &&
@@ -23,7 +23,9 @@ assert(motion.includes("inline float coverage(") &&
        motion.includes("if(style==LiquidRipple)") &&
        motion.includes("if(style==SoftFade)") &&
        motion.includes("if(style==StarDust)") &&
-       motion.includes("if(style==Curtain)"),
+       motion.includes("if(style==Curtain)") &&
+       motion.includes("if(style==LiquidInk)") &&
+       motion.includes("if(style==SprayDissolve)"),
        "Each style must be backed by a distinct material coverage algorithm");
 assert(overlay.includes("CynCloseMotion::coverage(style_,progress") &&
        studio.includes("CynCloseMotion::coverage(closeStyle_,melt"),
