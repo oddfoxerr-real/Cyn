@@ -55,11 +55,11 @@ const build=readFileSync(path("BUILD_CYN.ps1"),"utf8");
 assert(build.includes("CynAiProfiles"),"Installer must bundle the offline community catalogue");
 const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
-for(const key of ["ai_hub_nav_.setBounds(navX,275,navW,42)",
+for(const key of ["ai_hub_nav_.setBounds(navX,251,navW,42)",
                   "ai_hub_nav_.onClick = [this] { selectPage(3); };",
-                  "export_ai_.setBounds(left+456,643,92,32)",
-                  "import_ai_.setBounds(left+556,643,92,32)",
-                  "browse_ai_.setBounds(left+656,643,103,32)",
+                  "export_ai_.setBounds(left+456,657,92,27)",
+                  "import_ai_.setBounds(left+556,657,92,27)",
+                  "browse_ai_.setBounds(left+656,657,103,27)",
                   'JUCEApplication::getInstance()->getApplicationVersion()']){
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
@@ -106,7 +106,7 @@ const neural = readFileSync(path("fxsound/Source/GUI/CynNeuralActivity.h"), "utf
 assert(header.includes('#include "CynNeuralActivity.h"'), "Neural visualizer header missing");
 assert(header.includes("CynNeuralActivity neural_activity_"), "Missing visualizer instance");
 assert(neural.includes("std::array<Point<float>, 11> inputs") && neural.includes("std::array<Point<float>, 12> hidden") && neural.includes("std::array<Point<float>, 5> outputs"), "Must match real 11-12-5 model architecture");
-assert(view.includes("neural_activity_.setBounds(993,246,291,194)"), "Neural network belongs in the dedicated Smart Listening inspector");
+assert(view.includes("neural_activity_.setBounds(1008,288,271,164)"), "Neural network belongs in the dedicated Smart Listening inspector");
 assert(view.includes("neural_activity_.setTrainingActive(controller.isSmartTraining())"), "Brain must reflect actual training state");
 assert(view.includes("neural_activity_.setAnimationEnabled(page==1)") &&
        view.includes("const bool wantGraph=page_==1;"),
@@ -234,7 +234,7 @@ assert(movieCtrl.includes('movie_model_=candidate;'), 'Default Movie AI needs ca
 console.log('PASS: tested Cinema AI profile seeds Movie AI, generic starter fallback preserved');
 
 // v2.0.54: mode and model are separate; switching keeps private model slots.
-assert(view.includes('ai_profile_.setBounds(left+253,490,397,32)'), 'Model selection must stay visible in Smart Listening');
+assert(view.includes('ai_profile_.setBounds(left+253,510,397,32)'), 'Model selection must stay visible in Smart Listening');
 assert(view.includes('ai_profile_.onChange=[this]'), 'The model dropdown must really switch neural models');
 assert(view.includes('refreshAIProfileChoices()'), 'Imported profiles must be discoverable without restarting');
 assert(controllerHeader.includes('selectAIProfile(const String& id'), 'Model switching controller API is missing');

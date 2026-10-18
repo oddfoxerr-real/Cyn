@@ -461,8 +461,8 @@ void FxProView::timerCallback()
     smart_status_.setColour(Label::textColourId, Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     const bool power = FxModel::getModel().getPowerState();
     const auto status=controller.isSmartListening()
-        ? String("AI ACTIVE  •  ")+controller.getActiveAIProfileId().toUpperCase()
-        : String("AI STANDBY  •  OPEN CONTROLS");
+        ? String("AI ACTIVE  /  ")+controller.getActiveAIProfileId().toUpperCase()
+        : String("AI STANDBY  /  OPEN CONTROLS");
     if(ai_status_card_.getButtonText()!=status)
         ai_status_card_.setButtonText(status);
     live_status_.setFont(theme.getNormalFont().withHeight(12));
@@ -477,22 +477,26 @@ void FxProView::resized()
     power_curtain_.setBounds(getLocalBounds());
     const int left=245, right=1301, usable=right-left;
     const int navX=27,navW=186;
-    sound_nav_.setBounds(navX,128,navW,42);
-    smart_nav_.setBounds(navX,177,navW,42);
-    devices_nav_.setBounds(navX,226,navW,42);
-    ai_hub_nav_.setBounds(navX,275,navW,42);
-    misc_nav_.setBounds(navX,324,navW,42);
-    studio_nav_.setBounds(navX,373,navW,42);
+    // Match the actual sidebar selection geometry and free the top-left
+    // from the duplicate title-bar branding.
+    sound_nav_.setBounds(navX,104,navW,42);
+    smart_nav_.setBounds(navX,153,navW,42);
+    devices_nav_.setBounds(navX,202,navW,42);
+    ai_hub_nav_.setBounds(navX,251,navW,42);
+    misc_nav_.setBounds(navX,300,navW,42);
+    studio_nav_.setBounds(navX,349,navW,42);
     settings_.setBounds(navX,615,navW,42);
     // Header cards contain live, operable preset/device selectors.
-    preset_list_.setBounds(left+14,118,315,37);
-    endpoint_list_.setBounds(left+350,118,341,37);
-    ai_status_card_.setBounds(963,118,324,37);
-    embedded_ai_hub_.setBounds(247,222,1053,467);
-    live_status_.setBounds(1023,40,265,24);
-    overview_tab_.setBounds(left+12,172,126,34);
-    eq_focus_tab_.setBounds(left+146,172,126,34);
-    effects_focus_tab_.setBounds(left+280,172,163,34);
+    // Labels occupy a dedicated line above the selectors. Never overlap
+    // live JUCE ComboBoxes (the old cards positioned both at y=118).
+    preset_list_.setBounds(left+14,139,315,36);
+    endpoint_list_.setBounds(left+350,139,341,36);
+    ai_status_card_.setBounds(968,139,314,36);
+    embedded_ai_hub_.setBounds(247,250,1053,435);
+    live_status_.setBounds(1023,43,265,23);
+    overview_tab_.setBounds(left+12,203,126,34);
+    eq_focus_tab_.setBounds(left+146,203,126,34);
+    effects_focus_tab_.setBounds(left+280,203,163,34);
     for(auto* b:std::initializer_list<TextButton*> {
         &overview_tab_, &eq_focus_tab_, &effects_focus_tab_}) {
         b->getProperties().set("ember_navigation",true);
@@ -504,17 +508,17 @@ void FxProView::resized()
     if(studio) {
         const int eqX=left+12,eqW=731;
         if(sound_focus_==0) {
-            equalizer_.setBounds(eqX,250,eqW,230);
-            visualizer_.setBounds(1002,250,282,230);
-            audio_controls_.setBounds(eqX,510,eqW,161);
+            equalizer_.setBounds(eqX,288,eqW,193);
+            visualizer_.setBounds(1002,288,282,193);
+            audio_controls_.setBounds(eqX,536,eqW,136);
         } else if(sound_focus_==1) {
-            equalizer_.setBounds(eqX,251,1036,417);
-            visualizer_.setBounds(1002,251,282,100);
-            audio_controls_.setBounds(eqX,507,731,161);
+            equalizer_.setBounds(eqX,286,1036,344);
+            visualizer_.setBounds(1002,286,282,100);
+            audio_controls_.setBounds(eqX,522,731,152);
         } else {
-            audio_controls_.setBounds(eqX,272,1036,331);
-            equalizer_.setBounds(eqX,251,731,230);
-            visualizer_.setBounds(1002,250,282,230);
+            audio_controls_.setBounds(eqX,306,1036,296);
+            equalizer_.setBounds(eqX,288,eqW,193);
+            visualizer_.setBounds(1002,288,282,193);
         }
         equalizer_.setVisible(sound_focus_!=2);
         visualizer_.setVisible(sound_focus_==0);
@@ -522,50 +526,52 @@ void FxProView::resized()
     }
     // Smart Listening gets a wide live training timeline and its own neural
     // inspector, while preserving all AI mode, training and export controls.
-    neural_activity_.setBounds(993,246,291,194);
-    learning_timeline_.setBounds(left+13,246,722,194);
-    listening_mode_.setBounds(left+22,490,216,32);
-    ai_profile_.setBounds(left+253,490,397,32);
-    learning_effect_.setBounds(left+22,538,179,35);
-    more_.setBounds(left+213,538,103,35);
-    less_.setBounds(left+327,538,103,35);
-    train_.setBounds(left+443,538,165,35);
-    resume_.setBounds(left+619,538,165,35);
-    sensitivity_.setBounds(left+150,591,265,25);
-    headroom_cap_.setBounds(left+542,591,259,25);
-    preset_cycling_.setBounds(left+20,618,208,24);
-    preset_cycling_status_.setBounds(left+234,618,210,24);
-    learning_status_.setBounds(left+20,644,393,31);
-    export_ai_.setBounds(left+456,643,92,32);
-    import_ai_.setBounds(left+556,643,92,32);
-    browse_ai_.setBounds(left+656,643,103,32);
-    starter_.setBounds(left+766,643,134,32);
+    neural_activity_.setBounds(1008,288,271,164);
+    learning_timeline_.setBounds(left+13,288,722,164);
+    listening_mode_.setBounds(left+22,510,216,32);
+    ai_profile_.setBounds(left+253,510,397,32);
+    learning_effect_.setBounds(left+22,548,179,32);
+    more_.setBounds(left+213,548,103,32);
+    less_.setBounds(left+327,548,103,32);
+    train_.setBounds(left+443,548,165,32);
+    resume_.setBounds(left+619,548,165,32);
+    sensitivity_.setBounds(left+150,603,265,24);
+    headroom_cap_.setBounds(left+542,603,259,24);
+    preset_cycling_.setBounds(left+20,629,208,24);
+    preset_cycling_status_.setBounds(left+234,629,210,24);
+    learning_status_.setBounds(left+20,657,393,27);
+    export_ai_.setBounds(left+456,657,92,27);
+    import_ai_.setBounds(left+556,657,92,27);
+    browse_ai_.setBounds(left+656,657,103,27);
+    starter_.setBounds(left+766,657,134,27);
 
     // Device selection uses the same header device selector.
-    pin_toggle_.setBounds(left+27,295,404,34);
-    refresh_.setBounds(left+27,390,191,37);
+    pin_toggle_.setBounds(left+27,315,404,34);
+    refresh_.setBounds(left+27,397,191,37);
     // The real Smart Listening switch must never sit over a DSP slider.
     if(page_==0) {
-        smart_toggle_.setBounds(1013,631,230,25);
-        smart_status_.setBounds(1008,654,277,25);
+        smart_toggle_.setBounds(1013,638,230,25);
+        smart_status_.setBounds(1008,658,277,25);
     } else if(page_==1) {
-        smart_toggle_.setBounds(1041,478,233,26);
-        smart_status_.setBounds(1008,609,281,29);
+        smart_toggle_.setBounds(1032,477,244,26);
+        smart_status_.setBounds(1008,627,281,24);
     } else {
-        smart_toggle_.setBounds(left+21,495,217,26);
-        smart_status_.setBounds(left+254,495,772,29);
+        smart_toggle_.setBounds(left+21,498,217,26);
+        smart_status_.setBounds(left+254,498,772,26);
     }
 
-    dj_download_.setBounds(left+24,281,205,39);
-    dj_remove_.setBounds(left+24,281,205,39);
-    dj_cancel_.setBounds(left+24,281,205,39);
-    dj_progress_.setBounds(left+250,292,750,19);
-    dj_toggle_.setBounds(left+23,346,260,34);
-    dj_status_.setBounds(left+24,391,990,31);
-    dj_intensity_.setBounds(left+209,490,540,31);
-    dj_spacing_.setBounds(left+209,542,540,31);
-    dj_stereo_.setBounds(left+24,590,480,27);
-    dj_recent_.setBounds(left+24,630,920,28);
+    // Two balanced AI DJ cards: actions to the left, truthful engine state
+    // to the right; controls aligned underneath with room for labels.
+    dj_download_.setBounds(left+24,329,205,38);
+    dj_remove_.setBounds(left+24,329,205,38);
+    dj_cancel_.setBounds(left+24,329,205,38);
+    dj_progress_.setBounds(left+252,338,382,18);
+    dj_toggle_.setBounds(left+24,383,260,32);
+    dj_status_.setBounds(left+24,422,640,25);
+    dj_intensity_.setBounds(left+209,522,565,31);
+    dj_spacing_.setBounds(left+209,574,565,31);
+    dj_stereo_.setBounds(left+24,623,480,27);
+    dj_recent_.setBounds(left+24,655,920,24);
     // Keep real AI Hub export/import/browse controls readable when moving
     // from the old control grid into the new dark workbench.
     ai_hub_nav_.setColour(TextButton::buttonColourId, Colours::transparentBlack);
@@ -591,7 +597,7 @@ void FxProView::paint(Graphics& g)
     auto colour=[](FxColor c) { return Colour(FxTheme::getColor(c)).withAlpha(1.0f); };
     const Colour base(0xff03070d), panel(0xff091321),panel2(0xff0b1728);
     const Colour border(0xff20354b), cyan(0xff45bffb);
-    const Colour white(0xffedf5ff),muted(0xff8097b0);
+    const Colour white(0xffedf5ff),muted(0xff9aadc4);
     const bool reduced=FxTheme::isReducedMotion();
     const float playLevel=jlimit(0.0f,1.0f,theme_audio_level_);
     g.fillAll(base);
@@ -615,15 +621,17 @@ void FxProView::paint(Graphics& g)
     g.setGradientFill(side);g.fillRect(0,0,228,getHeight());
     g.setColour(border.withAlpha(.68f));
     g.drawLine(228.0f,0.0f,228.0f,(float)getHeight(),.8f);
-    g.setColour(white);g.setFont(theme.getNormalFont().withHeight(29.0f).boldened());
-    g.drawText("CYN",28,22,128,38,Justification::centredLeft);
-    g.setColour(cyan);g.fillEllipse(109.0f,50.0f,5.0f,5.0f);
-    g.setFont(theme.getNormalFont().withHeight(10.5f));
-    g.setColour(muted);g.drawText("PERSONAL AUDIO  /  STABLE UI",30,67,188,18,
+    // Native title bar already displays the CYN wordmark. The sidebar
+    // identifies the navigation instead of repeating the same logo.
+    g.setColour(cyan);g.fillRoundedRectangle(26.0f,28.0f,3.0f,24.0f,1.5f);
+    g.setFont(theme.getNormalFont().withHeight(16.0f).boldened());
+    g.setColour(white);g.drawText("WORKSPACES",39,26,165,27,Justification::centredLeft);
+    g.setFont(theme.getNormalFont().withHeight(11.5f));
+    g.setColour(muted);g.drawText("AUDIO CONTROL CENTRE",28,60,179,19,
                                  Justification::centredLeft);
-    g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,105.0f,203.0f,105.0f,.8f);
+    g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,87.0f,203.0f,87.0f,.8f);
 
-    const float navY=128.0f+49.0f*(float)page_;
+    const float navY=104.0f+49.0f*(float)page_;
     g.setColour(Colour(0xff102b45).withAlpha(.94f));
     g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,12.0f);
     g.setColour(cyan.withAlpha(.78f));
@@ -632,7 +640,7 @@ void FxProView::paint(Graphics& g)
     // Small glyphs are purely decorative; the real labelled TextButtons
     // provide keyboard focus, pointer targets, and accessibility names.
     for(int i=0;i<6;++i) {
-        const float y=149.0f+49.0f*i;
+        const float y=125.0f+49.0f*i;
         const Colour col=i==page_?cyan:muted;
         g.setColour(col.withAlpha(i==page_?.85f:.50f));
         if(i==0) {
@@ -657,8 +665,8 @@ void FxProView::paint(Graphics& g)
     g.drawText(modelText,54,533,148,20,Justification::centredLeft,true);
     g.setColour(muted);g.setFont(theme.getNormalFont().withHeight(10.0f));
     g.drawText(aiOn?"AI enabled":"AI standby",54,555,140,14,Justification::centredLeft);
-    g.drawText("CYN  "+JUCEApplication::getInstance()->getApplicationVersion(),
-               25,669,178,16,Justification::centredLeft);
+    g.drawText("CYN  v"+JUCEApplication::getInstance()->getApplicationVersion(),
+               25,669,178,17,Justification::centredLeft);
 
     auto txt=[&](String value,float x,float y,float width,float height,
                  float size,bool mutedText=false,bool bold=false) {
@@ -692,81 +700,93 @@ void FxProView::paint(Graphics& g)
     txt("CYN  /  "+String(pageNames[page_]).toUpperCase(),246,12,610,20,10.8f,true,true);
     txt(pageNames[page_],246,34,650,45,29.0f,false,true);
     txt(subtitles[page_],248,78,750,24,13.0f,true);
-    txt(FxModel::getModel().getPowerState()?"●  AUDIO ON":"○  PROCESSING OFF",
-        1115,19,174,21,11.0f,false,true);
+    g.setColour(FxModel::getModel().getPowerState()
+        ? Colour(0xff4bdcaa) : muted);
+    g.fillEllipse(1147.0f,22.0f,7.0f,7.0f);
+    txt(FxModel::getModel().getPowerState()?"AUDIO ON":"PROCESSING OFF",
+        1160,16,129,21,11.0f,false,true);
 
-    card(247,108,333,58,12.0f);
-    card(587,108,361,58,12.0f);
-    card(956,108,344,58,12.0f);
-    txt("ACTIVE PROFILE",259,110,260,16,10,true,true);
-    txt("OUTPUT DEVICE",600,110,260,16,10,true,true);
-    txt("AI ENHANCEMENT",970,110,230,16,10,true,true);
+    card(247,108,333,78,12.0f);
+    card(587,108,361,78,12.0f);
+    card(956,108,344,78,12.0f);
+    txt("ACTIVE PROFILE",262,114,260,18,11.5f,true,true);
+    txt("OUTPUT DEVICE",603,114,260,18,11.5f,true,true);
+    txt("AI ENHANCEMENT",972,114,230,18,11.5f,true,true);
 
-    // Clickable tabs over a restrained, visually unified toolbar.
-    card(247,170,1053,44,11.0f);
+    // Dedicated workspace band sits BELOW the taller selector cards.
+    card(247,198,1053,44,11.0f);
     if(page_==0) {
         const float selX=sound_focus_==0 ? 258.0f : sound_focus_==1 ? 392.0f : 526.0f;
         const float selW=sound_focus_==2 ? 164.0f : 126.0f;
         g.setColour(Colour(0xff103455));
-        g.fillRoundedRectangle(selX,172.0f,selW,34.0f,11.0f);
+        g.fillRoundedRectangle(selX,202.0f,selW,36.0f,11.0f);
         g.setColour(cyan.withAlpha(.75f));
-        g.drawRoundedRectangle(selX+.5f,172.5f,selW-1.0f,33.0f,10.5f,.9f);
-        txt("31 / 35 / 39 BAND EQ  •  LIVE DSP",966,180,315,23,11.3f,true);
+        g.drawRoundedRectangle(selX+.5f,202.5f,selW-1.0f,35.0f,10.5f,.9f);
+        txt("31 / 35 / 39 BAND EQ  /  LIVE DSP",964,208,321,23,11.6f,true);
         if(sound_focus_==0) {
-            card(247,226,743,258);
-            card(996,226,304,258);
-            card(247,494,743,189);
-            card(996,494,304,189);
-            txt("31-BAND EQUALIZER",263,230,490,24,13.4f,false,true);
-            txt("LIVE SPECTRUM",1013,230,250,23,13.4f,false,true);
-            txt("SOUND ENHANCEMENTS",263,497,420,22,13.4f,false,true);
-            txt("LISTENING STATUS",1013,497,250,22,13.4f,false,true);
-            txt("Actual DSP controls",263,460,560,17,10.3f,true);
-            txt("Applied AI model",1013,532,230,19,10.2f,true);
-            txt(modelText,1013,552,250,24,18.0f,false,true);
+            card(247,253,743,235);
+            card(996,253,304,235);
+            card(247,500,743,188);
+            card(996,500,304,188);
+            txt("31-BAND EQUALIZER",263,258,490,23,14.0f,false,true);
+            txt("LIVE SPECTRUM",1013,258,250,23,14.0f,false,true);
+            txt("SOUND ENHANCEMENTS",263,505,420,23,14.0f,false,true);
+            txt("LISTENING STATUS",1013,505,250,23,14.0f,false,true);
+            txt("Applied AI model",1013,539,230,19,11.5f,true);
+            txt(modelText,1013,562,250,25,19.0f,false,true);
             txt(aiOn?"Real-time adaptive processing":"Manual audio processing",
-                1013,581,265,20,11.0f,true);
-            txt("Change presets and output at the top.",1013,605,272,22,10.8f,true);
+                1013,593,265,20,12.0f,true);
+            txt("Change presets and output at the top.",1013,620,272,18,11.0f,true);
         } else if(sound_focus_==1) {
-            card(247,226,1053,457);
-            txt("EQUALIZER  /  PRECISION VIEW",265,233,650,24,14,false,true);
-            txt("Drag the actual frequency controls to shape audio.",265,627,730,21,11,true);
+            card(247,253,1053,435);
+            txt("EQUALIZER  /  PRECISION VIEW",265,262,650,25,15,false,true);
+            txt("Drag the frequency controls to shape your sound.",265,649,730,21,12,true);
         } else {
-            card(247,226,1053,457);
-            txt("SOUND ENHANCEMENTS  /  STUDIO VIEW",265,233,800,25,14,false,true);
-            txt("Tune clarity, ambience, surround, dynamics and bass.",265,613,900,22,11,true);
+            card(247,253,1053,435);
+            txt("SOUND ENHANCEMENTS  /  STUDIO VIEW",265,262,800,25,15,false,true);
+            txt("Tune clarity, ambience, surround, dynamics and bass.",265,644,900,22,12,true);
         }
     } else if(page_==1) {
-        txt("REAL AI TELEMETRY  •  PERSONAL LEARNING",267,180,800,25,12,true,true);
-        card(247,225,743,231);
-        card(996,225,304,231);
-        card(247,468,1053,220);
-        txt("LEARNING TIMELINE",265,229,490,20,13.4f,false,true);
-        txt("LIVE NEURAL ACTIVITY",1011,229,274,20,13.4f,false,true);
-        txt("LISTENING CONTROLS",264,470,470,18,13.2f,false,true);
-        txt("SENSITIVITY",265,583,128,19,10.5f,true,true);
-        txt("HEADROOM CAP",663,583,150,19,10.5f,true,true);
+        txt("REAL AI TELEMETRY  /  PERSONAL LEARNING",267,205,800,25,12,true,true);
+        card(247,253,743,210);
+        card(996,253,304,210);
+        card(247,472,1053,216);
+        txt("LEARNING TIMELINE",265,258,490,23,14,false,true);
+        txt("LIVE NEURAL ACTIVITY",1011,258,274,23,14,false,true);
+        txt("LISTENING CONTROLS",264,476,470,22,14,false,true);
+        txt("SENSITIVITY",265,603,128,20,11.5f,true,true);
+        txt("HEADROOM CAP",663,603,150,20,11.5f,true,true);
     } else if(page_==2) {
-        txt("DEVICE ROUTING  •  OUTPUT PRIORITY",267,180,790,25,12,true,true);
-        card(247,225,1053,219);
-        card(247,454,1053,234);
-        txt("OUTPUT DEVICE MANAGEMENT",266,231,780,28,17,false,true);
-        txt("Keep your preferred output when available.",266,258,900,25,12.5f,true);
-        txt("DEVICE FALLBACK",266,458,500,27,15,false,true);
-        txt("Automatic recovery when a selected device disconnects.",266,550,920,28,13,true);
+        txt("DEVICE ROUTING  /  OUTPUT PRIORITY",267,205,790,25,12,true,true);
+        card(247,253,1053,200);
+        card(247,465,1053,223);
+        txt("OUTPUT DEVICE MANAGEMENT",266,259,780,27,17,false,true);
+        txt("Keep your preferred output when available.",266,284,900,23,12.5f,true);
+        txt("DEVICE FALLBACK",266,474,500,27,15,false,true);
+        txt("Automatic recovery when a selected device disconnects.",266,546,920,26,13,true);
         txt("Device-specific presets and priority are managed in Settings.",
-            266,587,920,24,12.3f,true);
+            266,581,920,24,12.3f,true);
     } else if(page_==3) {
-        txt("NEURAL CATALOGUE  •  IMPORT  •  ACTIVATE",267,180,790,25,12,true,true);
+        txt("NEURAL CATALOGUE  /  IMPORT  /  ACTIVATE",267,205,790,25,12,true,true);
     } else {
-        txt("AI DJ  •  OPTIONAL CREATIVE EFFECTS",267,180,790,25,12,true,true);
-        card(247,225,1053,216);
-        card(247,453,1053,235);
-        txt("AI DJ  /  LIVE REMIX",266,233,720,30,18,false,true);
-        txt("Enable creative processing only when you want it.",266,328,920,22,12,true);
-        txt("EFFECT BEHAVIOUR",266,458,730,24,15,false,true);
-        txt("Intensity",266,492,120,23,12.5f,true);
-        txt("Minimum spacing",266,545,155,23,12.5f,true);
+        txt("AI DJ  /  OPTIONAL CREATIVE EFFECTS",267,205,790,25,12,true,true);
+        card(247,252,686,205);
+        card(944,252,356,205);
+        card(247,468,1053,220);
+        txt("AI DJ  /  LIVE REMIX",266,265,600,29,18,false,true);
+        txt("Optional effects running locally, only when enabled.",266,295,635,21,12.4f,true);
+        txt("MODEL STATUS",961,264,318,20,12,true,true);
+        if (auto* dj=FxController::getInstance().dj()) {
+            txt(dj->busy()?"PREPARING DOWNLOAD":
+                dj->installed()?(dj->enabled()?"DJ ENABLED":"DJ READY"):"NOT INSTALLED",
+                961,293,305,34,18,false,true);
+            txt(dj->installed()?"Local installation is available":
+                "Download required to activate",961,335,311,22,12,true);
+        }
+        txt("DJ effects are separate from your main AI.",961,399,315,27,11.5f,true);
+        txt("EFFECT BEHAVIOUR",266,482,730,24,15,false,true);
+        txt("Intensity",266,522,148,23,12.5f,true);
+        txt("Minimum spacing",266,574,166,23,12.5f,true);
     }
     // Footer is a real engine-status report, not a fabricated media player.
     g.setColour(border.withAlpha(.50f));

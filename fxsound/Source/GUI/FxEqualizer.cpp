@@ -273,6 +273,14 @@ void FxEqualizer::resized()
     int x = X_MARGIN;
     int width = (bounds.getWidth() - X_MARGIN*2) / labels_.size();
     int rotary_width = jmin(ROTARY_SLIDER_HEIGHT, width);
+    // Adapt the actual slider's height to the native Horizon x Depth panel.
+    // The legacy 198px high band slider would otherwise overflow a compact
+    // 193px high Sound Studio card, hiding the frequency labels and hit zones.
+    // No DSP band, value, mouse behavior or saved preset is changed.
+    const int compactBandHeight=juce::jlimit(65,SLIDER_HEIGHT+ROTARY_SLIDER_HEIGHT,
+        bounds.getHeight()-Y_MARGIN-LABEL_HEIGHT*2-16);
+    const int tunedBandHeight=juce::jlimit(55,SLIDER_HEIGHT,
+        bounds.getHeight()-Y_MARGIN-LABEL_HEIGHT-rotary_width-22);
     // 39 genuine filter controls must fit without mouse-hit areas overlapping.
     const int thumbWidth = jmin(FxTheme::SLIDER_THUMB_RADIUS * 4, width);
 
@@ -294,14 +302,14 @@ void FxEqualizer::resized()
         if (show_center_frequencies)
         {
             labels_[i]->setFont(theme.getNormalFont().withHeight(LABEL_HEIGHT));
-            band_boosts_[i]->setBounds(x + (width - thumbWidth) / 2, Y_MARGIN, thumbWidth, SLIDER_HEIGHT );
+            band_boosts_[i]->setBounds(x + (width - thumbWidth) / 2, Y_MARGIN, thumbWidth, tunedBandHeight );
             labels_[i]->setBounds(x, band_boosts_[i]->getBottom() + 6, width, LABEL_HEIGHT);
             center_frequencies_[i]->setBounds(x + (width - rotary_width) / 2, labels_[i]->getBottom() + 4, rotary_width, rotary_width);
         }
         else
         {
             labels_[i]->setFont(theme.getNormalFont().withHeight(SMALL_FONT));
-            band_boosts_[i]->setBounds(x + (width - thumbWidth) / 2, Y_MARGIN, thumbWidth, SLIDER_HEIGHT + ROTARY_SLIDER_HEIGHT);
+            band_boosts_[i]->setBounds(x + (width - thumbWidth) / 2, Y_MARGIN, thumbWidth, compactBandHeight);
             labels_[i]->setBounds(x, band_boosts_[i]->getBottom() + 6, width, LABEL_HEIGHT*2);
         }
 

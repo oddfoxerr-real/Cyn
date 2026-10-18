@@ -157,7 +157,7 @@ private:
         g.drawText (item.name, 12, 6, width - 24, 23, juce::Justification::centredLeft);
         g.setColour (juce::Colour (FXCOLOR(HintText)).withAlpha (1.0f));
         g.setFont (12.0f);
-        g.drawText (item.author + "  •  " + item.category, 12, 29,
+        g.drawText (item.author + "  /  " + item.category, 12, 29,
                     width - 24, 17, juce::Justification::centredLeft);
     }
 
@@ -190,7 +190,7 @@ private:
                              : (failed ? juce::String("NEURAL ENGINE FAILED:\n") + diagnostic + "\n\n"
                                 : (installed ? juce::String("LOADING NEURAL ENGINE...\n") + diagnostic + "\n\n"
                                              : juce::String("MODEL FILES MISSING:\n") + diagnostic + "\n\n")))
-                    + (activeAI ? (ready ? juce::String("ACTIVE — Music AI selected.\n\n")
+                    + (activeAI ? (ready ? juce::String("ACTIVE / Music AI selected.\n\n")
                                                : juce::String("APEX selected but inference is not ready.\n\n"))
                                 : juce::String("Select this AI to use it for live music.\n\n"))
                     + "Training: original 225 synthetic steps. The model's full spectral "
