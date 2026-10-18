@@ -24,7 +24,7 @@ assert(controller.includes('const auto currentVersion=major+"."+minor+"."+patch'
 assert.equal((native.match(/JUCE_APP_VERSION=2\.0\.68\.0/g)||[]).length,4);
 assert.match(installer,/^AppVersion=2\.0\.68\s*$/m);
 assert.match(installer,/^VersionInfoVersion=2\.0\.68\.0\s*$/m);
-assert(winResource.includes("FILEVERSION  2,0,67,0") &&
+assert(winResource.includes("FILEVERSION  2,0,68,0") &&
        (winResource.match(/2\.0\.68\.0/g) || []).length === 2 &&
        juceHeader.includes('versionString  = "2.0.68.0"') &&
        juceHeader.includes("versionNumber  = 0x2004400") &&
