@@ -14,7 +14,7 @@ const required=[
     'txt("OUTPUT DEVICE",603,114,260,18',
     'txt("AI ENHANCEMENT",972,114,230,18',
     "card(247,108,333,78",
-    "card(247,198,1053,44",
+    "// Tabs sit directly on the workbench",
     "overview_tab_.setBounds(left+12,203,126,34)",
     "const float navY=104.0f+49.0f*(float)page_",
     "sound_nav_.setBounds(navX,104,navW,42)",
@@ -35,10 +35,10 @@ assert(view.includes('g.drawText("WORKSPACES"') &&
 assert(view.includes('String("AI ACTIVE  /  ")') &&
        !view.includes('String("AI ACTIVE  •  ")'),
        "Avoid corrupting UTF-8 status separators in Windows build");
-assert(win.includes("FILEVERSION  2,0,63,0") &&
-       juce.includes('versionString  = "2.0.63.0"') &&
-       juce.includes('versionNumber  = 0x2003f00') &&
-       jucer.includes('version="2.0.63.0"'),
+assert(win.includes("FILEVERSION  2,0,64,0") &&
+       juce.includes('versionString  = "2.0.64.0"') &&
+       juce.includes('versionNumber  = 0x2004000') &&
+       jucer.includes('version="2.0.64.0"'),
        "Installed CYN executable and runtime must report correct version, not 2.0.29");
 assert(shell.includes('g.drawRoundedRectangle(rim,radius-0.7f') &&
        shell.includes('g.strokePath(corner,PathStrokeType(1.6f))'),
