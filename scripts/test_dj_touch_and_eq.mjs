@@ -39,26 +39,55 @@ assert(controller.includes('settings_.setInt("num_bands", dfx_dsp_.getNumEqBands
 
 for(const x of ["None=0","Cursor=1","DjHand=2","GhostHand=3","Flowers=4","CustomPng=5"])
   assert(touch.includes(x),"Missing AI Touch option: "+x);
-assert(studio.includes('setInt("cyn_dj_touch_style",touchStyle_)') &&
-       studio.includes('touchPicker_.onChange=') &&
-       studio.includes('chooseCustomTouch()'),
-       "Theme Studio must offer separately saved AI touch styles");
+for(const [key,value] of [
+    ["cyn_dj_touch_style_effects","effectsTouchStyle_"],
+    ["cyn_dj_touch_style_eq","eqTouchStyle_"],
+    ["cyn_dj_touch_flower_count","flowerCount_"]
+]) {
+    assert(studio.includes('setInt("'+key+'",'+value+')'),
+       "Theme Studio must independently save "+key);
+}
+assert(studio.includes("effectsTouchPicker_.onChange=") &&
+       studio.includes("eqTouchPicker_.onChange=") &&
+       studio.includes("flowerPicker_.onChange=") &&
+       studio.includes("sample(effectsTouchStyle_") &&
+       studio.includes("sample(eqTouchStyle_"),
+       "Theme Studio must expose two hands and more flowers, with distinct previews");
 assert(studio.includes("file.getSize()>2*1024*1024") &&
        studio.includes("image.getWidth()>1024") &&
        studio.includes('customChoice_.copyFileTo(target)'),
        "Custom PNG must be size-bounded and copied to a private local asset");
 assert(view.includes('controller.getSettings().getInt("cyn_dj_touch_style",0)') &&
-       view.includes('CynDjTouch::paint(g,dj_touch_style_'),
-       "Selected touch style must actually render over real CYN controls");
+       view.includes('"cyn_dj_touch_style_effects"') &&
+       view.includes('"cyn_dj_touch_style_eq"') &&
+       view.includes('"cyn_dj_touch_flower_count"') &&
+       view.includes('CynDjTouch::paint(g,style,agent.pos,agent.opacity'),
+       "Both panel styles must be loaded and actually rendered over real controls");
 assert(view.includes("controller.getAppliedEffectValue(") &&
        view.includes("controller.getAppliedEqBandBoostCut(") &&
        view.includes("std::abs(value-preset)>0.08f") &&
        view.includes("std::abs(value-preset)>0.09f"),
-       "DJ Touch must follow measured AI DSP changes, not meaningless looping animation");
-assert(view.includes("if(chosen==CynDjTouch::None || FxTheme::isReducedMotion()") &&
-       view.includes("dj_touch_seeded_=false;"),
-       "Touch off and reduced motion must not animate");
+       "Independent DJ performers must follow actual EFFECT and EQ changes");
+assert(view.includes("dj_touch_seeded_={{false,false}}") &&
+       view.includes("FxTheme::isReducedMotion()") &&
+       view.includes("style!=CynDjTouch::None"),
+       "Touch off/reduced motion must not animate");
+assert(viewHeader.includes("std::array<DjTouchAgent,8> dj_touch_agents_") &&
+       view.includes("for(int panel=0;panel<2;++panel)") &&
+       view.includes("panel*4+slot") &&
+       view.includes("audio_controls_.isEffectsShown()") &&
+       view.includes("equalizer_.getBounds()") &&
+       view.includes("audio_controls_.getBounds()"),
+       "Effects and EQ must get SEPARATE agents, independent state, panel limits");
+assert(view.includes("choices[(size_t)i]=choices[(size_t)(i-1)]") &&
+       view.includes("const int agents=style==CynDjTouch::Flowers ? dj_touch_flower_count_:1") &&
+       view.includes("const int count=style==CynDjTouch::Flowers ? dj_touch_flower_count_:1") &&
+       view.includes("dj_touch_agents_[(size_t)(panel*4+slot)]"),
+       "Flowers must track distinct live knob/EQ targets rather than replicate one cursor");
+assert(touch.includes("bool mirror=false") &&
+       touch.includes("style==DjHand || style==GhostHand"),
+       "Second DJ hand must reach from the opposite side of the mixing desk");
 assert(!touch.includes("std::thread") && !touch.includes("dfx_dsp_.set"),
        "DJ touch is visual only. Preserve APEX and the native DSP.");
 assert(viewHeader.includes("updateDjTouch(double now)"));
-console.log("PASS: full DSP 31/35/39 EQ, safe remapping, AI DJ touch selector and truthful native animation");
+console.log("PASS: 31/35/39 DSP and two independent panel DJ hands with multiple signal-driven flowers");
