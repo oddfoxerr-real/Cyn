@@ -35,7 +35,7 @@ assert(view.includes('g.drawText("WORKSPACES"') &&
 assert(view.includes('String("AI ACTIVE  /  ")') &&
        !view.includes('String("AI ACTIVE  •  ")'),
        "Avoid corrupting UTF-8 status separators in Windows build");
-assert(win.includes("FILEVERSION  2,0,67,0") &&
+assert(win.includes("FILEVERSION  2,0,68,0") &&
        juce.includes('versionString  = "2.0.68.0"') &&
        juce.includes('versionNumber  = 0x2004400') &&
        jucer.includes('version="2.0.68.0"'),
