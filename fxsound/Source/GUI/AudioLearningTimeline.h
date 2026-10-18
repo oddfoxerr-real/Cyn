@@ -77,7 +77,7 @@ public:
         };
         {
             Graphics::ScopedSaveState clipped(g);
-            g.reduceClipRegion(Rectangle<int>(18,34,
+            g.reduceClipRegion(juce::Rectangle<int>(18,34,
                 juce::jmax(1,getWidth()-36),95));
             // Labeled ranges stay marked with the respective training
             // category. Multiple categories have distinct, stable hues.
@@ -91,7 +91,7 @@ public:
                 g.fillRoundedRectangle(start,36,juce::jmax(2.0f,finish-start),
                                        92,4.0f);
                 g.setColour(color.withAlpha(.69f));
-                g.fillRect(start,36,juce::jmax(2.0f,finish-start),2.0f);
+                g.fillRect(start,36.0f,juce::jmax(2.0f,finish-start),2.0f);
             }
             if(selected_) {
                 const float x1=jlimit(left,right,xpos(juce::jmin(from_,to_)));
