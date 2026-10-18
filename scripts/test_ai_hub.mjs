@@ -82,11 +82,18 @@ console.log("PASS: "+catalogue.profiles.length+" native AI profiles, offline cat
 const juceTooltip=readFileSync(path("third_party/JUCE/modules/juce_gui_basics/windows/juce_TooltipWindow.cpp"),"utf8");
 assert(juceTooltip.includes("setOpaque (true);"),"Review tooltip default opacity after JUCE changes");
 assert(view.includes("tool_tip_.setOpaque(false);"),"Tooltip should not show rectangular backing beyond rounded corners");
-for (const [button,palette] of [["ai_hub_nav_","MenuHighlightBackground"],["browse_ai_","MenuHighlightBackground"],["export_ai_","PanelBackground"],["import_ai_","PanelBackground"]]) {
+// In the stable shell, sidebar buttons are intentionally transparent: the
+// shared parent draws the selected glass/glow behind a real native TextButton.
+// AI Hub action buttons remain independently filled and contrast-checked.
+for (const [button,palette] of [["browse_ai_","MenuHighlightBackground"],["export_ai_","PanelBackground"],["import_ai_","PanelBackground"]]) {
   assert(view.includes(button+".setColour(TextButton::buttonColourId, Colour(FXCOLOR("+palette+")).withAlpha(1.0f));"),button+" fill is transparent");
 }
-for(const button of ["ai_hub_nav_","browse_ai_"])
-  assert(view.includes(button+".setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));"),button+" label invisible");
+assert(view.includes('g.fillRoundedRectangle(22.0f,navY') &&
+       view.includes('g.drawRoundedRectangle(22.5f,navY+.5f') &&
+       view.includes('button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));'),
+       "Native AI Hub sidebar must have readable text and a separate painted selection background");
+assert(view.includes('browse_ai_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));'),
+       "Browse AI action label invisible");
 assert(view.includes("button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));"),"AI profile actions lack opaque labels");
 for(const key of ["backgroundColourId","outlineColourId","textColourId"])
   assert(theme.includes("findColour(TooltipWindow::"+key+").withAlpha(1.0f)"),"Tooltip "+key+" not opaque");
