@@ -355,7 +355,7 @@ private:
         const auto muted=Colour(FXCOLOR(HintText)).withAlpha(1.0f);
         const auto accent=Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f);
         const auto backdrop=Colour(FXCOLOR(WindowBackground)).withAlpha(1.0f);
-        const Rectangle<float> area(92.0f,138.0f,(float)getWidth()-184.0f,367.0f);
+        const juce::Rectangle<float> area(92.0f,138.0f,(float)getWidth()-184.0f,367.0f);
         const double duration=CynCloseMotion::durationForSpeed(closeSpeedPercent_);
         const double elapsed=Time::getMillisecondCounterHiRes()-motionPreviewStart_;
         // Pause between replays so even very fast styles are easy to assess.
@@ -392,7 +392,7 @@ private:
                 g.setFont(Font(15.0f,Font::bold));
                 g.drawText("CYN   /   SOUND STUDIO",(int)inside.getX()+22,
                            (int)inside.getY()+10,400,25,Justification::centredLeft);
-                const auto button=Rectangle<float>(inside.getRight()-43,inside.getY()+13,21,21);
+                const auto button=juce::Rectangle<float>(inside.getRight()-43,inside.getY()+13,21,21);
                 g.setColour(accent.withAlpha(.52f));
                 g.drawRoundedRectangle(button,5.0f,1.0f);
                 for(int i=0;i<8;++i)
@@ -410,7 +410,7 @@ private:
                 if (!none)
                 {
                     const float e=1.0f-std::pow(1.0f-juce::jlimit(0.0f,1.0f,t/.28f),5.0f);
-                    const auto expanded=Rectangle<float>(
+                    const auto expanded=juce::Rectangle<float>(
                         button.getX()+(area.getX()-button.getX())*e,
                         button.getY()+(area.getY()-button.getY())*e,
                         button.getWidth()+(area.getWidth()-button.getWidth())*e,
