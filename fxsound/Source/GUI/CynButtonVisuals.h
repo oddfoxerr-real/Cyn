@@ -6,8 +6,8 @@
 
 namespace CynButtonVisuals
 {
-    enum Motion : int { Classic=0, QuickPop=1, Float=2, Ripple=3, Liquid=4, GelPress=5, InkFlow=6, MotionCount=7 };
-    enum Highlight : int { Subtle=0, NeonEdge=1, SoftGlow=2, LiquidEdge=3, GlassSweep=4, WetGloss=5, SprayPaint=6, HighlightCount=7 };
+    enum Motion : int { Classic=0, QuickPop=1, Float=2, Ripple=3, Liquid=4, GelPress=5, InkFlow=6, ElasticBounce=7, ViscousSlide=8, InkPulse=9, MotionCount=10 };
+    enum Highlight : int { Subtle=0, NeonEdge=1, SoftGlow=2, LiquidEdge=3, GlassSweep=4, WetGloss=5, SprayPaint=6, AerosolMist=7, ChromeLiquid=8, InkMarble=9, ElectricDroplets=10, HighlightCount=11 };
     constexpr int defaultMotion=Classic;
     constexpr int defaultHighlight=Subtle;
     constexpr int defaultSpeed=100;
@@ -24,6 +24,9 @@ namespace CynButtonVisuals
             case Liquid: return "Liquid Morph";
             case GelPress: return "Liquid Gel Press";
             case InkFlow: return "Flowing Ink";
+            case ElasticBounce: return "Elastic Bounce";
+            case ViscousSlide: return "Viscous Slide";
+            case InkPulse: return "Ink Pulse";
             default: return "Classic";
         }
     }
@@ -35,6 +38,10 @@ namespace CynButtonVisuals
             case GlassSweep: return "Glass Sweep";
             case WetGloss: return "Wet Gloss";
             case SprayPaint: return "Spray Paint";
+            case AerosolMist: return "Aerosol Mist";
+            case ChromeLiquid: return "Liquid Chrome";
+            case InkMarble: return "Ink Marble";
+            case ElectricDroplets: return "Electric Droplets";
             default: return "Subtle";
         }
     }
@@ -53,7 +60,7 @@ namespace CynButtonVisuals
         const float over=jlimit(0.0f,1.0f,hover), pushed=jlimit(0.0f,1.0f,press);
         const float feedback=reducedMotion ? 0.0f : strength;
         const float radius=jmin(12.0f,rect.getHeight()*.36f);
-        const float inset=(m==QuickPop?2.15f:m==Liquid?1.35f:m==GelPress?2.1f:m==InkFlow?1.7f:1.0f)*pushed*feedback;
+        const float inset=(m==QuickPop?2.15f:m==Liquid?1.35f:m==GelPress?2.1f:m==InkFlow?1.7f:m==ElasticBounce?2.8f:m==ViscousSlide?1.9f:m==InkPulse?1.6f:1.0f)*pushed*feedback;
         rect=rect.reduced(inset+.5f);
         if(rect.isEmpty()) return;
         const float corner=radius+((m==Liquid || m==GelPress || m==InkFlow) ? (2.8f*over-1.7f*pushed)*feedback : 0.0f);
@@ -62,6 +69,9 @@ namespace CynButtonVisuals
         fill=fill.interpolatedWith(accent.withAlpha(1.0f),(.07f+.19f*pushed)*feedback);
         if(m==Float) fill=fill.brighter(over*.11f*feedback);
         if(m==Liquid || m==InkFlow) fill=fill.interpolatedWith(accent,.13f*over*feedback);
+        if(m==ViscousSlide) fill=fill.interpolatedWith(accent,.21f*over*feedback);
+        if(m==InkPulse) fill=fill.interpolatedWith(accent,.22f*pushed*feedback);
+        if(m==ElasticBounce) fill=fill.brighter(.12f*over*feedback);
         if(m==GelPress) fill=fill.interpolatedWith(accent,(.10f*over+.19f*pushed)*feedback);
         if(navigation) {
             g.setColour(fill);g.fillRoundedRectangle(rect,corner);
@@ -114,6 +124,24 @@ namespace CynButtonVisuals
             g.strokePath(film,PathStrokeType(1.15f));
         }
 
+        if(!reducedMotion && strength>.01f && (over>.01f || pushed>.01f)) {
+            Graphics::ScopedSaveState clipped(g);
+            Path mask; mask.addRoundedRectangle(rect,corner);
+            g.reduceClipRegion(mask);
+            if(m==ElasticBounce) {
+                const float bulge=(over*.45f+pushed*.55f)*strength;
+                g.setColour(accent.withAlpha(.19f*bulge));
+                g.fillEllipse(rect.getCentreX()-rect.getWidth()*.35f,
+                    rect.getCentreY()-rect.getHeight()*(.34f+bulge*.2f),
+                    rect.getWidth()*.7f,rect.getHeight()*(.68f+bulge*.4f));
+            } else if(m==ViscousSlide || m==InkPulse) {
+                const float v=jlimit(0.0f,1.0f,over*.65f+pushed*.65f);
+                const float x=rect.getX()+(m==InkPulse ? .5f : (.16f+.68f*v))*rect.getWidth();
+                g.setColour(accent.withAlpha(.26f*v*strength));
+                g.fillEllipse(x-rect.getWidth()*.17f,rect.getCentreY()-rect.getHeight()*.45f,
+                    rect.getWidth()*.34f,rect.getHeight()*.9f);
+            }
+        }
         if(reducedMotion || strength<.01f || (over<.01f && pushed<.01f)) return;
         switch(h) {
         case NeonEdge:
@@ -197,6 +225,57 @@ namespace CynButtonVisuals
                 g.setColour(accent.withAlpha(jlimit(0.0f,.36f,
                     (.07f+.23f*central)*strength*plume)));
                 g.fillEllipse(x-r,y-r,r*2.0f,r*2.0f);
+            }
+            break;
+        }
+        case AerosolMist:
+        case ElectricDroplets: {
+            Graphics::ScopedSaveState clipped(g);
+            Path mask; mask.addRoundedRectangle(rect,corner);
+            g.reduceClipRegion(mask);
+            const float opacity=jlimit(0.0f,1.0f,over*.58f+pushed*.68f);
+            for(int i=0;i<96;++i) {
+                const float u=(float)((i*41+13)%103)/103.0f;
+                const float v=(float)((i*61+7)%107)/107.0f;
+                const float spread=(h==AerosolMist?.92f:.66f)*opacity;
+                const float x=rect.getCentreX()+(u-.5f)*rect.getWidth()*spread;
+                const float y=rect.getCentreY()+(v-.5f)*rect.getHeight()*spread;
+                const float radius=(h==AerosolMist?.42f:.80f)+(float)(i%4)*.19f;
+                g.setColour(accent.withAlpha((h==AerosolMist?.13f:.32f)*opacity*strength));
+                g.fillEllipse(x-radius,y-radius,radius*2.0f,radius*2.0f);
+            }
+            break;
+        }
+        case ChromeLiquid: {
+            Graphics::ScopedSaveState clipped(g);
+            Path mask; mask.addRoundedRectangle(rect,corner);
+            g.reduceClipRegion(mask);
+            const float gloss=jlimit(0.0f,1.0f,over*.8f+pushed*.55f)*strength;
+            ColourGradient shine(Colours::white.withAlpha(.0f),rect.getX(),rect.getY(),
+                                 Colours::white.withAlpha(.38f*gloss),rect.getRight(),rect.getBottom(),false);
+            shine.addColour(.40,Colours::white.withAlpha(.26f*gloss));
+            shine.addColour(.67,accent.withAlpha(.07f*gloss));
+            g.setGradientFill(shine);
+            g.fillRoundedRectangle(rect.reduced(2.0f),corner);
+            break;
+        }
+        case InkMarble: {
+            Graphics::ScopedSaveState clipped(g);
+            Path mask; mask.addRoundedRectangle(rect,corner);
+            g.reduceClipRegion(mask);
+            const float amount=jlimit(0.0f,1.0f,over*.8f+pushed*.55f)*strength;
+            for(int k=0;k<3;++k) {
+                Path vein;
+                const float center=rect.getY()+rect.getHeight()*(.25f+.23f*k);
+                vein.startNewSubPath(rect.getX(),center);
+                for(int i=1;i<=24;++i) {
+                    const float p=(float)i/24.0f;
+                    const float wave=std::sin(p*10.0f+over*4.0f+k*1.7f)
+                        *rect.getHeight()*.13f*amount;
+                    vein.lineTo(rect.getX()+p*rect.getWidth(),center+wave);
+                }
+                g.setColour(accent.withAlpha((.12f+.09f*k)*amount));
+                g.strokePath(vein,PathStrokeType(1.1f));
             }
             break;
         }
