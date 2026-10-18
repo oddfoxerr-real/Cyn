@@ -104,11 +104,18 @@ FxProView::FxProView() : tool_tip_(this)
     };
     learning_effect_.addItemList({"Clarity", "Ambience", "Surround", "Dynamic Boost", "Bass"},1);
     learning_effect_.setSelectedId(1,dontSendNotification);
+    learning_timeline_.setActiveEffect(0);
+    learning_effect_.onChange=[this] {
+        learning_timeline_.setActiveEffect(
+            juce::jlimit(0,4,learning_effect_.getSelectedId()-1));
+    };
     learning_effect_.setTooltip("Choose the effect to teach for the selected time range.");
     auto label=[this](bool more) {
         auto selected=learning_timeline_.selection();
         if(selected.size()<5) return;
         FxController::getInstance().labelAudio(selected,learning_effect_.getSelectedId()-1,more);
+        learning_timeline_.recordLabeledSelection(
+            juce::jlimit(0,4,learning_effect_.getSelectedId()-1),more);
         learning_timeline_.clearSelection(); timerCallback();
     };
     more_.onClick=[label]{label(true);}; less_.onClick=[label]{label(false);};
@@ -927,9 +934,21 @@ void FxProView::updateDjTouch(double now)
         if(!dj_touch_seeded_[0] || !audio_controls_.isEffectsShown())continue;
         const float score=(std::min)(movement,1.0f)*
                           (std::min)(std::abs(value-preset),2.0f);
-        if(movement>0.022f && std::abs(value-preset)>0.08f)
-            offer(0,i,score,{audio_controls_.getX()+22.0f+value*12.5f,
-                              audio_controls_.getY()+52.0f+i*43.0f});
+        if(movement>0.022f && std::abs(value-preset)>0.08f) {
+            const float panelWidth=(float)audio_controls_.getWidth();
+            if(panelWidth>=540.0f) {
+                // Native FX rack: five horizontal columns, one live knob each.
+                const float cell=(panelWidth-28.0f-44.0f)/5.0f;
+                const float slideWidth=cell-8.0f;
+                const float x=audio_controls_.getX()+18.0f+
+                      i*(cell+11.0f)+9.0f+(slideWidth-18.0f)*
+                      juce::jlimit(0.0f,1.0f,value/10.0f);
+                offer(0,i,score,{x,audio_controls_.getY()+105.0f});
+            } else {
+                offer(0,i,score,{audio_controls_.getX()+18.0f+14.0f*value,
+                                  audio_controls_.getY()+52.0f+i*43.0f});
+            }
+        }
     }
     const int n=juce::jmin(39,controller.getNumEqBands());
     for(int i=0;i<n;++i) {
@@ -942,11 +961,14 @@ void FxProView::updateDjTouch(double now)
         const float score=(std::min)(movement,0.6f)*
                           (std::min)(std::abs(value-preset),2.0f);
         if(movement>0.028f && std::abs(value-preset)>0.09f) {
-            const float stride=(float)(equalizer_.getWidth()-22)/(float)(std::max)(1,n);
+            const float stride=(float)(equalizer_.getWidth()-32)/(float)(std::max)(1,n);
+            const float sliderHeight=juce::jmax(65.0f,
+                (float)equalizer_.getHeight()-28.0f-24.0f-16.0f);
             offer(1,i,score,{
-                equalizer_.getX()+11.0f+stride*(i+0.5f),
+                equalizer_.getX()+16.0f+stride*(i+0.5f),
                 equalizer_.getY()+40.0f+
-                juce::jlimit(0.0f,1.0f,(12.0f-value)/24.0f)*166.0f});
+                juce::jlimit(0.0f,1.0f,(12.0f-value)/24.0f)*
+                juce::jmax(12.0f,sliderHeight-24.0f)});
         }
     }
     dj_touch_seeded_={{true,true}};
@@ -955,24 +977,46 @@ void FxProView::updateDjTouch(double now)
         const bool shown=(panel==1 || audio_controls_.isEffectsShown());
         const int agents=style==CynDjTouch::Flowers ? dj_touch_flower_count_:1;
         auto& choices=ranked[(size_t)panel];
+        std::array<bool,4> used{{false,false,false,false}};
+        std::array<juce::Point<float>,4> claimed{};
+        int claimedCount=0;
         for(int slot=0;slot<4;++slot) {
             auto& agent=dj_touch_agents_[(size_t)(panel*4+slot)];
-            // Only one hand or one cursor per panel. Flowers can occupy
-            // several distinct ACTIVE knobs/bands simultaneously.
-            if(style!=CynDjTouch::None && shown && slot<agents &&
-               choices[(size_t)slot].score>0.0017f) {
-                // Avoid overlapping flowers on adjacent very narrow EQ bands:
-                // retain the highest-ranked distinct targets for this frame.
-                const auto point=choices[(size_t)slot].position;
+            const auto available=[&](int candidate) {
+                if(candidate<0 || candidate>=4 || used[(size_t)candidate] ||
+                   choices[(size_t)candidate].score<=0.0017f) return false;
+                const auto position=choices[(size_t)candidate].position;
+                for(int k=0;k<claimedCount;++k)
+                    if(position.getDistanceFrom(claimed[(size_t)k])<39.0f)
+                        return false;
+                return true;
+            };
+            int picked=-1;
+            if(style!=CynDjTouch::None && shown && slot<agents) {
+                // Hold a flower on its own actively changing target whenever
+                // possible. Never send two flowers to an occupied control.
+                for(int c=0;c<4;++c)
+                    if(choices[(size_t)c].index==agent.targetId &&
+                       available(c)) { picked=c; break; }
+                if(picked<0)
+                    for(int c=0;c<4;++c)
+                        if(available(c)) { picked=c; break; }
+            }
+            if(picked>=0) {
+                const auto point=choices[(size_t)picked].position;
+                used[(size_t)picked]=true;
+                claimed[(size_t)claimedCount++]=point;
                 if(agent.opacity<=0.004f) agent.pos=point;
                 agent.target=point;
+                agent.targetId=choices[(size_t)picked].index;
                 agent.lastActivity=now;
+            } else {
+                agent.lastActivity=0.0;
+                agent.targetId=-1;
             }
-            const float goal=style!=CynDjTouch::None && shown &&
-                slot<agents && now-agent.lastActivity<=900.0 &&
-                agent.lastActivity>0.0 ? 0.80f : 0.0f;
-            agent.pos+=(agent.target-agent.pos)*0.20f;
-            agent.opacity+=(goal-agent.opacity)*0.17f;
+            const float goal=picked>=0 ? .80f : 0.0f;
+            agent.pos+=(agent.target-agent.pos)*.20f;
+            agent.opacity+=(goal-agent.opacity)*.17f;
         }
     }
 }

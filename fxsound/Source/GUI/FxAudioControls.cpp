@@ -86,10 +86,8 @@ void FxAudioControls::setLookAndFeel()
 void FxAudioControls::resized()
 {
 	effects_.setBounds(0, 0, getWidth(), getHeight());
-    // Output-tuning internals retain their legacy 168px layout until a later
-    // redesign; centre it inside the wide Sound Studio enhancement region.
-    equalizer_control_.setBounds(getWidth()>480 ? (getWidth()-168)/2 : 0,0,
-                                getWidth()>480 ? 168 : getWidth(),getHeight());
+    // Output tuning fills the entire workbench rather than a tiny 168px column.
+    equalizer_control_.setBounds(0,0,getWidth(),getHeight());
 
 	flip_button_.setBounds(getWidth() - BUTTON_WIDTH - 5, 5, BUTTON_WIDTH, BUTTON_HEIGHT);
 }
@@ -97,9 +95,9 @@ void FxAudioControls::resized()
 void FxAudioControls::paint(Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
-    g.setColour(Colour(0xff050607).withAlpha(0.94f));
+    g.setColour(Colour(FXCOLOR(PanelBackground)).withAlpha(0.96f));
     g.fillRoundedRectangle(bounds, 18.0f);
-    g.setColour(Colour(0xff18212b).withAlpha(0.82f));
+    g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(0.82f));
     g.drawRoundedRectangle(bounds.reduced(0.5f), 18.0f, 1.0f);
 
     auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
@@ -502,6 +500,26 @@ void FxEqualizerControl::setLookAndFeel(FxTheme& theme)
 
 void FxEqualizerControl::resized()
 {
+    if(getWidth()>=540) {
+        const int margin=20,gap=19;
+        const int cell=(getWidth()-2*margin-3*gap)/4;
+        const int top=getHeight()<200 ? 27 : 56;
+        auto place=[&](Label& title,Slider& slider,int column,int y) {
+            const int x=margin+column*(cell+gap);
+            title.setBounds(x+4,y,cell-8,18);
+            slider.setBounds(x,y+21,cell,26);
+        };
+        equalizer_.setBounds(margin,top+18,cell,30);
+        place(master_gain_title_,master_gain_slider_,1,top);
+        place(volume_leveling_title_,volume_leveling_slider_,2,top);
+        place(filter_q_title_,filter_q_slider_,3,top);
+        const int lower=top+(getHeight()<200?58:87);
+        place(balance_title_,balance_slider_,1,lower);
+        left_label_.setBounds(margin+cell+5,lower+46,cell/2-5,14);
+        right_label_.setBounds(margin+cell+cell/2,lower+46,cell/2-5,14);
+        restore_defaults_button_.setBounds(margin+cell-20,top-14,BUTTON_WIDTH,BUTTON_HEIGHT);
+        return;
+    }
 	auto width = getWidth() - (X_MARGIN * 2);
 
 	int y = Y_MARGIN;
