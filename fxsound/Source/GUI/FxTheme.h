@@ -113,6 +113,7 @@ private:
     void timerCallback() override;
     struct Motion { Component::SafePointer<Component> component; std::array<float,4> value{}, target{}; };
     std::vector<Motion> motions_;
+    double lastMotionTickMs_ = 0.0;
     static bool reduced_motion_;
     static bool smooth_animations_;
 

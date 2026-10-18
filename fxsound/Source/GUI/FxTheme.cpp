@@ -874,7 +874,10 @@ float FxTheme::animate(Component& component,int channel,float target)
     for(auto& motion:motions_) if(motion.component.getComponent()==&component) {
         motion.target[channel]=target;
         if(reduced_motion_) motion.value[channel]=target;
-        else if(std::abs(motion.value[channel]-target)>.001f) startTimerHz(60);
+        else if(std::abs(motion.value[channel]-target)>.001f) {
+            if(!isTimerRunning()) lastMotionTickMs_=Time::getMillisecondCounterHiRes();
+            startTimerHz(60);
+        }
         return motion.value[channel];
     }
     Motion motion; motion.component=&component;
@@ -884,13 +887,21 @@ float FxTheme::animate(Component& component,int channel,float target)
 }
 void FxTheme::timerCallback()
 {
+    // Scale interpolation by elapsed time. A 30Hz laptop should settle
+    // controls in the same wall-clock duration as a 60Hz desktop.
+    const double now = Time::getMillisecondCounterHiRes();
+    const float frameMs = jlimit(1.0f, 100.0f,
+        (float)(now-lastMotionTickMs_));
+    lastMotionTickMs_ = now;
+    const float rate = smooth_animations_ ? .44f : .60f;
+    const float mix = 1.0f - std::pow(1.0f-rate, frameMs/16.666667f);
     bool active=false;
     for(auto it=motions_.begin();it!=motions_.end();) {
         if(!it->component) { it=motions_.erase(it); continue; }
         bool changed=false;
         for(int i=0;i<4;++i) {
             const float delta=it->target[i]-it->value[i];
-            if(std::abs(delta)>.001f) { it->value[i]+=delta*(smooth_animations_ ? .44f : .60f); active=changed=true; }
+            if(std::abs(delta)>.001f) { it->value[i]+=delta*mix; active=changed=true; }
             else it->value[i]=it->target[i];
         }
         if(changed) it->component->repaint();

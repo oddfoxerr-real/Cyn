@@ -1,6 +1,6 @@
-// CYN window-to-tray liquid collapse.
-// Captures the already-rendered JUCE window once and distorts that image.
-// No fluid solver, audio capture, DSP access, GPU shaders or background work.
+// CYN close-to-tray motion: X control expands, fills the window, then vortex-liquefies.
+// Art direction informed by the offline 2D vortex simulation. No runtime fluid solver,
+// audio processing, DSP calls, background threads, or full-resolution pixel warping.
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #pragma once
 
@@ -11,11 +11,16 @@
 class CynLiquidCloseOverlay final : public juce::Component, private juce::Timer
 {
 public:
-    static constexpr double durationMs = 390.0;
+    // Quick and decisive like a native desktop interaction, not a delayed shrink.
+    static constexpr double durationMs = 460.0;
+    static constexpr float phaseExpandEnd = 0.28f; // 129 ms
+    static constexpr float phaseHoldEnd = 0.37f;   // 41 ms
+    static constexpr int maskWidth = 192;
+    static constexpr int maskHeight = 108;
 
     CynLiquidCloseOverlay()
     {
-        setName("CYN liquid close animation");
+        setName("CYN vortex close-to-tray");
         setOpaque(false);
         setInterceptsMouseClicks(false, false);
         setVisible(false);
@@ -25,27 +30,32 @@ public:
 
     bool begin(const juce::Image& frame,
                juce::Rectangle<int> screenBounds,
-               juce::Point<float> closeButtonCentre)
+               juce::Rectangle<float> closeButtonBounds)
     {
         cancel();
-        if (!frame.isValid() || screenBounds.isEmpty() ||
-            FxTheme::isReducedMotion())
+        if (!frame.isValid() || screenBounds.isEmpty()
+            || closeButtonBounds.isEmpty() || FxTheme::isReducedMotion())
             return false;
 
         snapshot_ = frame;
-        origin_ = {
-            juce::jlimit(0.0f, (float)screenBounds.getWidth(), closeButtonCentre.x),
-            juce::jlimit(0.0f, (float)screenBounds.getHeight(), closeButtonCentre.y)
-        };
-        setBounds(screenBounds);
+        // The source is the actual X control, not a guessed corner or a
+        // centre point that would cause the window to shrink into the X.
+        buttonBounds_ = closeButtonBounds.getIntersection(
+            juce::Rectangle<float>(0.0f, 0.0f,
+                                   (float)screenBounds.getWidth(),
+                                   (float)screenBounds.getHeight()));
+        if (buttonBounds_.isEmpty())
+        {
+            snapshot_ = juce::Image();
+            return false;
+        }
 
-        // The main window can now be removed from the desktop. This separate,
-        // click-through layered peer continues rendering above the desktop.
-        // No black background rectangle is left behind during the collapse.
+        vortexMask_ = juce::Image(juce::Image::ARGB, maskWidth, maskHeight, true);
+        setBounds(screenBounds);
         addToDesktop(juce::ComponentPeer::windowIsTemporary
-                     | juce::ComponentPeer::windowIgnoresMouseClicks
-                     | juce::ComponentPeer::windowIgnoresKeyPresses
-                     | juce::ComponentPeer::windowIsSemiTransparent);
+                   | juce::ComponentPeer::windowIgnoresMouseClicks
+                   | juce::ComponentPeer::windowIgnoresKeyPresses
+                   | juce::ComponentPeer::windowIsSemiTransparent);
         startedAt_ = juce::Time::getMillisecondCounterHiRes();
         running_ = true;
         setVisible(true);
@@ -63,84 +73,188 @@ public:
         running_ = false;
         setVisible(false);
         if (isOnDesktop()) removeFromDesktop();
+        vortexMask_ = juce::Image();
         snapshot_ = juce::Image();
     }
 
     void paint(juce::Graphics& g) override
     {
         using namespace juce;
-        if (!running_ || !snapshot_.isValid())
-            return;
+        if (!running_ || !snapshot_.isValid()) return;
 
-        const float raw = jlimit(0.0f, 1.0f,
-            (float)((Time::getMillisecondCounterHiRes() - startedAt_) / durationMs));
-        const float eased = raw * raw * (3.0f - 2.0f * raw);
-        const float scale = jmax(0.002f, 1.0f - eased * 0.998f);
-        const float rippleEnvelope = std::sin(MathConstants<float>::pi * raw);
-        const float w = (float)getWidth(), h = (float)getHeight();
+        const auto elapsed = Time::getMillisecondCounterHiRes() - startedAt_;
+        const float t = jlimit(0.0f, 1.0f, (float)(elapsed / durationMs));
 
-        // Warp a cached frame into the actual X-button position using thin
-        // horizontal ribbons. Adjacent ribbons have a phase-shifted fluid
-        // displacement; the final collapse contracts to one point.
-        constexpr int ribbonCount = 64;
-        g.setImageResamplingQuality(Graphics::lowResamplingQuality);
-        g.setOpacity(jlimit(0.0f, 1.0f, (1.0f - raw * raw) * 1.1f));
-        for (int ribbon = 0; ribbon < ribbonCount; ++ribbon)
+        if (t < phaseExpandEnd)
         {
-            const int fromY = snapshot_.getHeight() * ribbon / ribbonCount;
-            const int nextY = snapshot_.getHeight() * (ribbon + 1) / ribbonCount;
-            const int sourceHeight = nextY - fromY;
-            if (sourceHeight <= 0) continue;
-
-            const float fraction = ((float)ribbon + 0.5f) / ribbonCount;
-            const float y = fraction * h;
-            const float displacement =
-                20.0f * rippleEnvelope * std::sin(fraction * 19.0f - raw * 11.0f)
-                * (0.55f + 0.45f * std::abs((y - origin_.y) / jmax(1.0f, h)));
-            const float left = origin_.x * (1.0f - scale) + displacement;
-            const float top = origin_.y + (y - origin_.y) * scale
-                + 9.0f * rippleEnvelope * std::sin(fraction * 12.0f + raw * 8.0f);
-            const int destWidth = jmax(1, roundToInt(w * scale));
-            const int destHeight = jmax(1, roundToInt(h * scale / ribbonCount) + 2);
-
-            g.drawImage(snapshot_, roundToInt(left), roundToInt(top - destHeight * 0.5f),
-                        destWidth, destHeight, 0, fromY,
-                        snapshot_.getWidth(), sourceHeight);
+            // Preserve the genuine CYN UI while its real X button takes over.
+            // The capture disappears only after the button covers EVERY pixel.
+            g.drawImageAt(snapshot_, 0, 0);
+            const float e = easeOutQuint(t / phaseExpandEnd);
+            const auto screen = getLocalBounds().toFloat();
+            const juce::Rectangle<float> expanded(lerp(buttonBounds_.getX(), screen.getX(), e),
+                                            lerp(buttonBounds_.getY(), screen.getY(), e),
+                                            lerp(buttonBounds_.getWidth(), screen.getWidth(), e),
+                                            lerp(buttonBounds_.getHeight(), screen.getHeight(), e));
+            drawSurface(g, expanded, 0.0f);
+            g.setColour(Colour(FXCOLOR(SliderTrack)).withAlpha((1.0f-e)*0.80f));
+            g.drawRoundedRectangle(expanded.reduced(0.5f), lerp(5.0f, 14.0f, e),
+                                   lerp(1.7f, 0.8f, e));
+            if (e < 0.40f)
+            {
+                // At the start the expanding surface still visibly belongs to X.
+                g.setColour(Colours::white.withAlpha((0.4f-e)*2.0f));
+                const auto centre = buttonBounds_.getCentre();
+                const float r = 3.5f + e*2.0f;
+                g.drawLine(centre.x-r, centre.y-r, centre.x+r, centre.y+r, 1.5f);
+                g.drawLine(centre.x+r, centre.y-r, centre.x-r, centre.y+r, 1.5f);
+            }
+            return;
         }
 
-        // A handful of short-lived droplets gives the edge a fluid breakup
-        // without allocating particles or running an actual physical solver.
-        if (raw > 0.18f && raw < 0.88f)
+        if (t < phaseHoldEnd)
         {
-            const float dropletFade =
-                rippleEnvelope * jlimit(0.0f, 1.0f, (0.88f - raw) * 5.0f);
-            g.setOpacity(1.0f);
-            g.setColour(Colour(FXCOLOR(SliderTrack)).withAlpha(0.25f * dropletFade));
-            for (int i = 0; i < 6; ++i)
+            // Short visual punctuation: button is now the entire app surface.
+            drawSurface(g, getLocalBounds().toFloat(), (t-phaseExpandEnd)/
+                         (phaseHoldEnd-phaseExpandEnd));
+            return;
+        }
+
+        // Vortex study: the full-sized surface becomes fluid. Use a tiny
+        // 192x108 alpha/velocity-inspired field, not a costly 1200px+ solver.
+        // The underlying screenshot is NOT repainted here, preventing the UI
+        // from flashing back as liquid becomes transparent.
+        const float melt = jlimit(0.0f, 1.0f,
+            (t-phaseHoldEnd)/(1.0f-phaseHoldEnd));
+        renderVortexMask(melt);
+        {
+            Graphics::ScopedSaveState clipped(g);
+            g.reduceClipRegion(vortexMask_,
+                AffineTransform::scale((float)getWidth()/maskWidth,
+                                       (float)getHeight()/maskHeight));
+            drawSurface(g, getLocalBounds().toFloat(), melt);
+            drawVortexHighlights(g, melt);
+        }
+        // Fine, short-lived detached particles, with no random allocations.
+        if (melt > .08f && melt < .88f)
+        {
+            const float fade = std::sin(MathConstants<float>::pi*melt);
+            const auto accent = Colour(FXCOLOR(SliderTrack)).withAlpha(.36f*fade);
+            g.setColour(accent);
+            const float cx = getWidth()*.56f, cy = getHeight()*.48f;
+            for (int i=0; i<12; ++i)
             {
-                const float t = (float)i / 6.0f;
-                const float swirl = raw * MathConstants<float>::twoPi * 1.35f + t * 7.0f;
-                const float radius = (1.0f - eased) * (16.0f + i * 14.0f);
-                const float x = origin_.x + radius * std::cos(swirl);
-                const float y = origin_.y + radius * std::sin(swirl) * 0.58f;
-                const float dot = 1.5f + (float)(i % 3);
-                g.fillEllipse(x - dot, y - dot, dot * 2.0f, dot * 2.0f);
+                const float a = i*2.399963f + melt*10.5f;
+                const float r = (1.0f-melt)*(.12f + .045f*(i%5))*getWidth();
+                const float x = cx + std::cos(a)*r;
+                const float y = cy + std::sin(a)*r*.52f;
+                const float size = 1.0f+(i%3)*.75f;
+                g.fillEllipse(x-size,y-size,size*2.0f,size*2.0f);
             }
         }
     }
 
 private:
+    static float lerp(float a,float b,float t) noexcept { return a+(b-a)*t; }
+    static float easeOutQuint(float t) noexcept
+    {
+        t=juce::jlimit(0.0f,1.0f,t);
+        const float q=1.0f-t;
+        return 1.0f-q*q*q*q*q;
+    }
+    static float smoothstep(float lo,float hi,float value) noexcept
+    {
+        const float t=juce::jlimit(0.0f,1.0f,(value-lo)/(hi-lo));
+        return t*t*(3.0f-2.0f*t);
+    }
+
+    void drawSurface(juce::Graphics& g, juce::Rectangle<float> bounds,
+                     float pulse) const
+    {
+        using namespace juce;
+        // Solid, opaque window-cover colour first; gradient adds controlled
+        // depth, never the gray or overwhelming neon-blue flash.
+        const auto base = Colour(FXCOLOR(WindowBackground)).withAlpha(1.0f);
+        const auto accent = Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f);
+        const auto mid = base.interpolatedWith(accent, .12f+.045f*pulse);
+        ColourGradient finish(base.interpolatedWith(accent,.18f),bounds.getX(),
+                              bounds.getY(),base,bounds.getRight(),
+                              bounds.getBottom(),false);
+        finish.addColour(.44,mid);
+        g.setGradientFill(finish);
+        g.fillRoundedRectangle(bounds, juce::jmin(14.0f,bounds.getHeight()*.23f));
+
+        g.setColour(accent.withAlpha(.10f+.09f*pulse));
+        g.drawRoundedRectangle(bounds.reduced(.5f),
+            juce::jmin(14.0f,bounds.getHeight()*.23f),.8f);
+    }
+
+    void renderVortexMask(float progress)
+    {
+        using namespace juce;
+        const float pi=MathConstants<float>::pi;
+        const float radius=1.20f*(1.0f-std::pow(progress,.86f))+.005f;
+        const float swirlGain=.085f*std::sin(pi*progress);
+        const float finishFade=1.0f-smoothstep(.87f,1.0f,progress);
+        Image::BitmapData bitmap(vortexMask_,Image::BitmapData::writeOnly);
+        for (int y=0; y<maskHeight; ++y)
+        {
+            const float dy=((float)y+.5f)/maskHeight-.48f;
+            for (int x=0; x<maskWidth; ++x)
+            {
+                const float dx=(((float)x+.5f)/maskWidth-.56f)*1.6f;
+                const float r=std::sqrt(dx*dx+dy*dy);
+                const float theta=std::atan2(dy,dx);
+                // Curling front derived from the selected offline vortex
+                // look: rotating lobes and finer eddies, never scale-to-X.
+                const float curl=swirlGain*(
+                    std::sin(theta*6.0f+r*14.0f-progress*15.0f)*.74f
+                    +std::sin(theta*11.0f-r*22.0f+progress*21.0f)*.26f);
+                const float edge=.015f+.026f*progress;
+                const float coverage=(1.0f-smoothstep(radius-edge,
+                    radius+edge,r+curl))*finishFade;
+                bitmap.setPixelColour(x,y,Colour::fromRGBA(255,255,255,
+                    (uint8)roundToInt(jlimit(0.0f,1.0f,coverage)*255.0f)));
+            }
+        }
+    }
+
+    void drawVortexHighlights(juce::Graphics& g,float melt) const
+    {
+        using namespace juce;
+        const float fade=std::sin(MathConstants<float>::pi*melt);
+        if(fade<=.01f) return;
+        g.setColour(Colour(FXCOLOR(SliderTrack)).withAlpha(.10f*fade));
+        const auto cx=getWidth()*.56f,cy=getHeight()*.48f;
+        for(int strand=0;strand<4;++strand)
+        {
+            Path path;
+            for(int step=0;step<50;++step)
+            {
+                const float p=(float)step/49.0f;
+                const float r=(.10f+.65f*p)*(1.0f-melt)*getHeight();
+                const float a=p*9.5f+melt*10.0f+strand*1.570796f;
+                const float x=cx+std::cos(a)*r*1.35f;
+                const float y=cy+std::sin(a)*r*.68f;
+                if(step==0)path.startNewSubPath(x,y);
+                else path.lineTo(x,y);
+            }
+            g.strokePath(path,PathStrokeType(.8f));
+        }
+    }
+
     void timerCallback() override
     {
-        if (juce::Time::getMillisecondCounterHiRes() - startedAt_ >= durationMs)
+        if (juce::Time::getMillisecondCounterHiRes()-startedAt_ >= durationMs)
             cancel();
         else
             repaint();
     }
 
     juce::Image snapshot_;
-    juce::Point<float> origin_;
-    double startedAt_ = 0.0;
-    bool running_ = false;
+    juce::Image vortexMask_;
+    juce::Rectangle<float> buttonBounds_;
+    double startedAt_=0.0;
+    bool running_=false;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CynLiquidCloseOverlay)
 };
