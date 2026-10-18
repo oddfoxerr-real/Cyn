@@ -10,6 +10,7 @@ on:
       - "fxsound/Source/GUI/FxController.*"
       - "fxsound/Source/GUI/CynAiHubDialog.h"
       - "scripts/test_apex6m_activation.mjs"
+      - "scripts/test_apex6m_windows_recovery.mjs"
       - "BUILD_CYN.ps1"
       - "PREPARE_CYN_APEX6M.ps1"
       - "tests/cyn_apex6m_onnx_smoke.cpp"
@@ -30,6 +31,7 @@ jobs:
           node-version: "22"
       - run: |
           node scripts/test_apex6m_activation.mjs
+          node scripts/test_apex6m_windows_recovery.mjs
           node scripts/test_ai_hub.mjs
           node scripts/test_version_controls.mjs
   real-native:

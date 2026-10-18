@@ -8,7 +8,7 @@
 #include "FxController.h"
 #include "CynAiHubCataloguePolicy.h"
 
-class CynAiHubContent final : public juce::Component, private juce::ListBoxModel
+class CynAiHubContent final : public juce::Component, private juce::ListBoxModel, private juce::Timer
 {
 public:
     CynAiHubContent()
@@ -71,9 +71,10 @@ public:
                 window->exitModalState (0);
         };
         readBundledCatalogue();
+        startTimer(400); // Live status: do not leave slow PCs stuck at "loading".
     }
 
-    ~CynAiHubContent() override { list_.setModel (nullptr); }
+    ~CynAiHubContent() override { stopTimer(); list_.setModel (nullptr); }
 
     void resized() override
     {
@@ -105,6 +106,8 @@ private:
         bool researchOnly = false, nativeApex = false;
     };
 
+    bool pendingApexActivation_=false;
+    juce::String lastApexDiagnostic_;
     static constexpr int maxCatalogueBytes = 256 * 1024;
     static constexpr int maxModelBytes = 2 * 1024 * 1024;
     const juce::String rawBase_ =
@@ -119,7 +122,12 @@ private:
     bool busy_ = false;
 
     int getNumRows() override { return static_cast<int> (profiles_.size()); }
-    void selectedRowsChanged (int) override { updateSelection(); }
+    void selectedRowsChanged (int) override {
+        // Changing selection cancels a pending user-approved activation.
+        const auto* item=selected();
+        if(!item || !item->nativeApex) pendingApexActivation_=false;
+        updateSelection();
+    }
 
     void paintListBoxItem (int row, juce::Graphics& g, int width, int height,
                            bool selectedRow) override
@@ -157,6 +165,8 @@ private:
                 auto& ctrl = FxController::getInstance();
                 const bool installed = ctrl.apex6MInstalled();
                 const bool ready = ctrl.apex6MReady();
+                const bool failed = ctrl.apex6MFailed();
+                const auto diagnostic = ctrl.apex6MDiagnostic();
                 const bool activeAI = ctrl.getActiveAIProfileId() == "apex6m"
                     && ctrl.getSmartListeningMode() == 0;
                 description_.setText (
@@ -164,10 +174,12 @@ private:
                     "6,307,477 actual trained ONNX parameters, built into Cyn. "
                     "Combines neural spectral analysis with adaptive EQ, Bass, "
                     "Dynamics, music passage tracking and Smart Listening.\n\n"
-                    + (installed ? (ready ? juce::String("MODEL READY\n\n")
-                                           : juce::String("LOADING NEURAL ENGINE...\n\n"))
-                                 : juce::String("MODEL FILE MISSING — reinstall Cyn to repair.\n\n"))
-                    + (activeAI ? juce::String("ACTIVE — Music AI selected.\n\n")
+                    + (ready ? juce::String("MODEL READY\n\n")
+                             : (failed ? juce::String("NEURAL ENGINE FAILED:\n") + diagnostic + "\n\n"
+                                : (installed ? juce::String("LOADING NEURAL ENGINE...\n") + diagnostic + "\n\n"
+                                             : juce::String("MODEL FILES MISSING:\n") + diagnostic + "\n\n")))
+                    + (activeAI ? (ready ? juce::String("ACTIVE — Music AI selected.\n\n")
+                                               : juce::String("APEX selected but inference is not ready.\n\n"))
                                 : juce::String("Select this AI to use it for live music.\n\n"))
                     + "Training: original 225 synthetic steps. The model's full spectral "
                       "output currently steers real DSP controls; it does not "
@@ -175,7 +187,9 @@ private:
                       "Listening-quality improvement has not yet been proven.\n\n"
                     + "Creator: " + p->author,
                     juce::dontSendNotification);
-                import_.setButtonText (activeAI ? "Switch to previous AI"
+                import_.setButtonText (pendingApexActivation_ ? "Starting neural engine..."
+                    : (activeAI && ready) ? "Switch to previous AI"
+                    : failed ? "Retry APEX engine"
                     : installed ? "Activate selected AI" : "View model files");
             }
             else if (p->researchOnly)
@@ -351,6 +365,45 @@ private:
         });
     }
 
+    void activateReadyApex()
+    {
+        auto& ctrl=FxController::getInstance();
+        juce::String error;
+        const bool success=ctrl.selectAIProfile ("apex6m", error);
+        if(success) ctrl.setSmartListening(true);
+        status_.setText(success ?
+            "CYN APEX 6M active. Play music to start neural inference." :
+            "APEX activation failed: "+error,juce::dontSendNotification);
+        updateSelection();
+    }
+
+    void timerCallback() override
+    {
+        auto* item=selected();
+        if(!item || !item->nativeApex) return;
+        auto& ctrl=FxController::getInstance();
+        const auto message=ctrl.apex6MDiagnostic();
+        if(pendingApexActivation_)
+        {
+            if(ctrl.apex6MReady())
+            {
+                pendingApexActivation_=false;
+                activateReadyApex();
+            }
+            else if(ctrl.apex6MFailed() || !ctrl.apex6MInstalled())
+            {
+                pendingApexActivation_=false;
+                status_.setText("APEX could not start: "+message,
+                                juce::dontSendNotification);
+                updateSelection();
+            }
+        }
+        if(message!=lastApexDiagnostic_) {
+            lastApexDiagnostic_=message;
+            updateSelection();
+        }
+    }
+
     void importSelected()
     {
         if (busy_) return;
@@ -359,15 +412,20 @@ private:
         if (item->nativeApex)
         {
             auto& ctrl = FxController::getInstance();
-            if (!ctrl.apex6MInstalled())
-            {
-                juce::URL (item->researchUrl).launchInDefaultBrowser();
-                status_.setText ("APEX ONNX model missing. Reinstall Cyn 2.0.51+ to activate.",
+            if(pendingApexActivation_) {
+                status_.setText("APEX engine is initializing; activation will continue automatically.",
                     juce::dontSendNotification);
                 return;
             }
+            if (!ctrl.apex6MInstalled())
+            {
+                status_.setText ("APEX model unavailable: " + ctrl.apex6MDiagnostic(),
+                    juce::dontSendNotification);
+                updateSelection();
+                return;
+            }
             if (ctrl.getSmartListeningMode() == 0 &&
-                ctrl.getActiveAIProfileId() == "apex6m")
+                ctrl.getActiveAIProfileId() == "apex6m" && ctrl.apex6MReady())
             {
                 juce::String error;
                 const bool success = ctrl.restorePreviousApexMusicAI(error);
@@ -390,12 +448,18 @@ private:
                     juce::dontSendNotification);
                 return;
             }
-            juce::String error;
-            const bool success = ctrl.selectAIProfile ("apex6m", error);
-            if (success) ctrl.setSmartListening(true);
-            status_.setText (success ? "CYN APEX 6M active. Play music to start neural inference."
-                : "APEX activation failed: " + error, juce::dontSendNotification);
-            updateSelection();
+            if(!ctrl.apex6MReady()) {
+                // Slow Windows PCs may still be creating the ONNX session.
+                // User-approved activation waits for a REAL ready engine;
+                // never falsely claim neural processing while it is absent.
+                ctrl.startApex6MIfAvailable();
+                pendingApexActivation_=true;
+                status_.setText("Starting APEX 6M neural engine; it will activate when ready.",
+                                juce::dontSendNotification);
+                updateSelection();
+                return;
+            }
+            activateReadyApex();
             return;
         }
         if (item->researchOnly)

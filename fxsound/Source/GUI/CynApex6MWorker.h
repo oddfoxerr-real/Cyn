@@ -32,9 +32,39 @@ public:
         }
     }
     void startIfAvailable() {
-        if(installed() && !isThreadRunning()) startThread(2);
+        // May be called again after a failed initialization. JUCE owns the
+        // thread lifecycle; never start a second worker while one is running.
+        if(!installed() || isThreadRunning()) return;
+        {
+            const juce::ScopedLock lock(diagnosticLock_);
+            failureDetail_.clear();
+        }
+        loadState_.store(1,std::memory_order_release);
+        startThread(2);
     }
     bool ready() const noexcept { return ready_.load(std::memory_order_acquire); }
+    bool failed() const noexcept { return loadState_.load(std::memory_order_acquire)==3; }
+    juce::String diagnostic() const {
+        const auto dir=juce::File::getSpecialLocation(
+            juce::File::currentExecutableFile).getParentDirectory();
+        const auto model=dir.getChildFile("apex6m-225.onnx");
+        if(!model.existsAsFile())
+            return "APEX model is missing from " + dir.getFullPathName()
+                 + ". Reinstall the complete CYN release.";
+        if(model.getSize()<=20000000)
+            return "APEX model file is incomplete or damaged. Reinstall CYN.";
+        if(!dir.getChildFile("onnxruntime.dll").existsAsFile())
+            return "ONNX Runtime DLL is missing beside Cyn.exe. Reinstall CYN.";
+        const int state=loadState_.load(std::memory_order_acquire);
+        if(state==2) return "Neural engine ready.";
+        if(state==1) return "Initializing APEX neural engine...";
+        if(state==3) {
+            const juce::ScopedLock lock(diagnosticLock_);
+            return failureDetail_.isEmpty() ? "APEX engine initialization failed."
+                                            : failureDetail_;
+        }
+        return "Neural engine not started. Select APEX to start it.";
+    }
     bool latest(std::array<float,8>& bands) const noexcept {
         if(!processing_enabled_.load(std::memory_order_acquire)) return false;
         const auto stamp=stamp_.load(std::memory_order_acquire);
@@ -57,6 +87,13 @@ public:
         return bands[7];
     }
 private:
+    void recordFailure(const juce::String& message) {
+        {
+            const juce::ScopedLock lock(diagnosticLock_);
+            failureDetail_=message;
+        }
+        loadState_.store(3,std::memory_order_release);
+    }
     using Complex=std::complex<float>;
     static constexpr int fftSize=1024, hop=256, bins=513;
     static constexpr int frames=189; // windows centered every 256 samples, with reflected boundary
@@ -145,17 +182,40 @@ private:
         const auto dir=juce::File::getSpecialLocation(
             juce::File::currentExecutableFile).getParentDirectory();
         juce::DynamicLibrary library;
-        if(!library.open(dir.getChildFile("onnxruntime.dll").getFullPathName())) return;
+        if(!library.open(dir.getChildFile("onnxruntime.dll").getFullPathName())) {
+           #if JUCE_WINDOWS
+            const auto winError=juce::String((int)::GetLastError());
+            recordFailure("Cannot load onnxruntime.dll (Windows error "+winError+
+                "). Check the Microsoft Visual C++ x64 runtime; if missing, install it from Microsoft.");
+           #else
+            recordFailure("Cannot load onnxruntime.dll. Check required native dependencies.");
+           #endif
+            return;
+        }
         using ApiFunction=const OrtApiBase*(ORT_API_CALL*)();
         auto* function=library.getFunction("OrtGetApiBase");
-        if(!function) return;
+        if(!function) {
+            recordFailure("onnxruntime.dll does not export OrtGetApiBase. Reinstall CYN.");
+            return;
+        }
         const auto* base=reinterpret_cast<ApiFunction>(function)();
-        if(!base) return;
+        if(!base) {
+            recordFailure("ONNX Runtime returned an invalid API base.");
+            return;
+        }
         const auto* api=base->GetApi(ORT_API_VERSION);
-        if(!api) return;
-        const auto ok=[api](OrtStatus* status) {
+        if(!api) {
+            recordFailure("ONNX Runtime API version is incompatible with this CYN build.");
+            return;
+        }
+        const auto ok=[api,this](OrtStatus* status) {
             if(!status) return true;
-            api->ReleaseStatus(status);return false;
+            const auto* text=api->GetErrorMessage(status);
+            const juce::String detail=text ? juce::String::fromUTF8(text)
+                                           : "unspecified ONNX Runtime error";
+            recordFailure("APEX ONNX initialization/inference failed: "+detail);
+            api->ReleaseStatus(status);
+            return false;
         };
         OrtEnv* env=nullptr;OrtSessionOptions* opts=nullptr;
         OrtSession* session=nullptr;OrtMemoryInfo* memory=nullptr;
@@ -175,6 +235,7 @@ private:
             if(!ok(api->SessionGetOutputName(session,0,allocator,&maskName)))break;
             if(!ok(api->SessionGetOutputName(session,1,allocator,&sceneName)))break;
             ready_.store(true,std::memory_order_release);
+            loadState_.store(2,std::memory_order_release);
             const char* const inputs[]={inputName};
             const char* const outputs[]={maskName,sceneName};
             const int64_t shape[]={1,bins,frames};
@@ -210,15 +271,23 @@ private:
                             int64_t d[3] {};
                             valid=ok(api->GetDimensions(info,d,3));
                             valid=valid && d[0]==1 && d[1]==bins && d[2]==frames;
+                            if(!valid) recordFailure("APEX model output shape does not match this CYN version.");
                             if(valid) {
                                 void* data=nullptr;
                                 valid=ok(api->GetTensorMutableData(result[0],&data));
                                 if(valid) mask=static_cast<float*>(data);
                             }
-                        } else valid=false;
+                        } else {
+                            valid=false;
+                            recordFailure("APEX model has unexpected output tensor dimensions.");
+                        }
                         api->ReleaseTensorTypeAndShapeInfo(info);
                     }
-                } else valid=false;
+                } else {
+                    valid=false;
+                    if(loadState_.load(std::memory_order_acquire)!=3)
+                        recordFailure("APEX inference did not return a valid output tensor.");
+                }
                 if(valid && mask) {
                     auto values=bandGoals(mask,magnitude);
                     for(int b=0;b<8;++b)
@@ -234,6 +303,8 @@ private:
         } while(false);
         stamp_.store(0,std::memory_order_release);
         ready_.store(false,std::memory_order_release);
+        if(!threadShouldExit() && !failed())
+            recordFailure("APEX neural engine stopped unexpectedly; retry initialization.");
         if(allocator) {
             if(inputName)api->AllocatorFree(allocator,inputName);
             if(maskName)api->AllocatorFree(allocator,maskName);
@@ -247,6 +318,10 @@ private:
     std::atomic<bool> processing_enabled_ {false};
     DfxDsp& source_;
     std::atomic<bool> ready_ {false};
+    // 0: not started, 1: loading, 2: ready, 3: failed.
+    std::atomic<int> loadState_ {0};
+    mutable juce::CriticalSection diagnosticLock_;
+    juce::String failureDetail_;
     std::array<std::atomic<float>,8> eq_ {};
     std::atomic<uint32_t> stamp_ {0};
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CynApex6MWorker)
