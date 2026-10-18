@@ -31,6 +31,13 @@ assert(curtain.includes("FxTheme::isReducedMotion()") &&
 assert(ui.includes("power_curtain_.toFront(false)") &&
        ui.includes("if(power_curtain_.isVisible()) return;"),
        "Standby must obscure user controls and other DJ touch overlays");
+assert(ui.includes('if(!FxModel::getModel().getPowerState())') &&
+       ui.includes('live_status_.setText("Processing off"'),
+       "Invisible AI graphs and effect polling must stop in standby");
+assert(dsp.includes("void FxController::updateSmartListening()") &&
+       dsp.includes("No hidden model") &&
+       dsp.includes("apex6m_active_=false;"),
+       "Off must skip Smart Listening predictions, not just hide them");
 assert(dsp.includes("powerOn(power_state)") &&
        dsp.includes("if(!power_state)") &&
        dsp.includes('getActiveAIProfileId()=="apex6m"'),
