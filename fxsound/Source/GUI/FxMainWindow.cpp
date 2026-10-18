@@ -272,6 +272,8 @@ FxMainWindow::~FxMainWindow()
 
 void FxMainWindow::show()
 {
+    // Reopening from the tray cancels a close animation immediately.
+    liquid_close_overlay_.cancel();
 	if (!isVisible())
 	{
 		setVisible(true);
@@ -655,14 +657,29 @@ void FxMainWindow::modelChanged(FxModel::Event)
 	power_button_.setPowerState(FxModel::getModel().getPowerState());
 }
 
+void FxMainWindow::closeToTrayWithLiquid()
+{
+    if (liquid_close_overlay_.isAnimating()) return;
+
+    // UI-only animation: capture once, hand it to a separate transparent,
+    // click-through window, then hide the real app immediately. The native
+    // audio engine and tray icon are untouched.
+    if (isOnDesktop() && isShowing() && !FxTheme::isReducedMotion())
+    {
+        liquid_close_overlay_.begin(createComponentSnapshot(getLocalBounds()),
+                                    getScreenBounds(), getCloseButtonCentre());
+    }
+    FxController::getInstance().hideMainWindow();
+}
+
 void FxMainWindow::userTriedToCloseWindow()
 {
-	FxController::getInstance().hideMainWindow();
+    closeToTrayWithLiquid();
 }
 
 void FxMainWindow::closeButtonPressed()
 {
-	FxController::getInstance().hideMainWindow();
+    closeToTrayWithLiquid();
 }
 
 void FxMainWindow::moved()

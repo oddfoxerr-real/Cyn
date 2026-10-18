@@ -9,6 +9,7 @@
 
 class CynPowerCurtain final : public juce::Component, private juce::Timer
 {
+    static constexpr double irisDurationMs = 410.0;
     class PowerButton final : public juce::Button
     {
     public:
@@ -87,7 +88,7 @@ public:
         const auto center=full.getCentre();
         const auto accent=Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f);
         const float progress=phase_==Phase::Idle?1.0f:
-             jlimit(0.0f,1.0f,(float)((Time::getMillisecondCounterHiRes()-phaseBegin_)/620.0));
+             jlimit(0.0f,1.0f,(float)((Time::getMillisecondCounterHiRes()-phaseBegin_)/irisDurationMs));
         const float eased=progress*progress*(3.0f-2.0f*progress);
         const float maxRadius=std::hypot((float)getWidth(),(float)getHeight())*0.65f;
         if(phase_==Phase::Idle) {
@@ -101,14 +102,26 @@ public:
             Path curtain;
             curtain.setUsingNonZeroWinding(false);
             curtain.addRectangle(full);
-            curtain.addEllipse(center.x-radius,center.y-radius,
-                               radius*2.0f,radius*2.0f);
+            Path iris;
+            // Organic surface tension instead of an unnaturally rigid circle.
+            const float amplitude=0.028f*std::sin(MathConstants<float>::pi*progress);
+            for(int i=0;i<=96;++i) {
+                const float angle=MathConstants<float>::twoPi*(float)i/96.0f;
+                const float wobble=1.0f + amplitude *
+                    (0.66f*std::sin(angle*7.0f+progress*12.0f) +
+                     0.34f*std::sin(angle*11.0f-progress*9.0f));
+                const float x=center.x+std::cos(angle)*radius*wobble;
+                const float y=center.y+std::sin(angle)*radius*wobble;
+                if(i==0) iris.startNewSubPath(x,y);
+                else iris.lineTo(x,y);
+            }
+            iris.closeSubPath();
+            curtain.addPath(iris);
             g.setColour(Colours::black.withAlpha(0.90f));
             g.fillPath(curtain);
             if(radius<maxRadius*0.98f) {
                 g.setColour(accent.withAlpha(0.55f*(1.0f-progress)));
-                g.drawEllipse(center.x-radius,center.y-radius,
-                              radius*2.0f,radius*2.0f,3.0f);
+                g.strokePath(iris,PathStrokeType(2.25f));
             }
         }
         if(!powered_ && phase_==Phase::Idle) {
@@ -143,7 +156,7 @@ private:
     }
     void timerCallback() override {
         if(phase_==Phase::Idle) {stopTimer();return;}
-        if(juce::Time::getMillisecondCounterHiRes()-phaseBegin_>=620.0) {
+        if(juce::Time::getMillisecondCounterHiRes()-phaseBegin_>=irisDurationMs) {
             phase_=Phase::Idle;
             settle();
         } else repaint();

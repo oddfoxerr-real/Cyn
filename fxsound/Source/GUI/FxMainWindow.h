@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "FxLiteView.h"
 #include "FxProView.h"
 #include "FxPowerButton.h"
+#include "CynLiquidCloseOverlay.h"
 
 //==============================================================================
 /*
@@ -61,6 +62,7 @@ private:
     void modelChanged(FxModel::Event model_event) override;
 	void userTriedToCloseWindow() override;
 	void closeButtonPressed() override;
+    void closeToTrayWithLiquid();
     void moved() override;
     void resized() override;
     void updateWindowShape();
@@ -74,6 +76,7 @@ private:
     DrawableButton minimize_button_;
     DrawableButton donate_button_;
     BubbleMessageComponent help_bubble_;
+    CynLiquidCloseOverlay liquid_close_overlay_;
 
     std::unique_ptr<Drawable> menu_image_;
     std::unique_ptr<Drawable> menu_hover_image_;
