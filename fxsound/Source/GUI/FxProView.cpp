@@ -974,7 +974,9 @@ void FxProView::updateDjTouch(double now)
     dj_touch_seeded_={{true,true}};
     for(int panel=0;panel<2;++panel) {
         const int style=chosen[(size_t)panel];
-        const bool shown=(panel==1 || audio_controls_.isEffectsShown());
+        const bool shown=(panel==0 ?
+            (audio_controls_.isVisible() && audio_controls_.isEffectsShown()) :
+            equalizer_.isVisible());
         const int agents=style==CynDjTouch::Flowers ? dj_touch_flower_count_:1;
         auto& choices=ranked[(size_t)panel];
         std::array<bool,39> used{};
@@ -1150,7 +1152,10 @@ void FxProView::paintOverChildren(Graphics& g)
         const auto time=(float)(Time::getMillisecondCounterHiRes()*0.001);
         for(int panel=0;panel<2;++panel) {
             const int style=dj_touch_styles_[(size_t)panel];
-            if(style==CynDjTouch::None)continue;
+            if(style==CynDjTouch::None ||
+               (panel==0 && (!audio_controls_.isVisible() ||
+                             !audio_controls_.isEffectsShown())) ||
+               (panel==1 && !equalizer_.isVisible())) continue;
             Graphics::ScopedSaveState panelClip(g);
             // Neither hand/cursor nor flower may wander over another panel.
             const auto area=(panel==0?audio_controls_.getBounds():
