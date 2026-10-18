@@ -646,20 +646,31 @@ void FxProView::modelChanged(FxModel::Event event)
     else { timerCallback(); repaint(); }
 }
 
-// Visual AI Touch follows ONLY verified changes in actual applied DSP gains.
-// No audio thread work, random movements, input interception, or model calls.
+// Two independent visual DJ performers: Effects on the left, EQ on the right.
+// Each follows REAL applied DSP differences and its own preset, not random
+// animations. Up to four individually aimed flowers per panel, with no DSP writes.
 void FxProView::updateDjTouch(double now)
 {
     auto& controller=FxController::getInstance();
-    const int chosen=juce::jlimit(0,5,
-        controller.getSettings().getInt("cyn_dj_touch_style",0));
-    if(chosen!=dj_touch_style_) {
-        dj_touch_style_=chosen;
-        dj_touch_seeded_=false;
-        dj_touch_opacity_=0;
-        dj_touch_last_activity_=0;
+    const int previousStyle=controller.getSettings().getInt("cyn_dj_touch_style",0);
+    const std::array<int,2> chosen {{
+        juce::jlimit(0,5,controller.getSettings().getInt(
+            "cyn_dj_touch_style_effects",previousStyle)),
+        juce::jlimit(0,5,controller.getSettings().getInt(
+            "cyn_dj_touch_style_eq",previousStyle))
+    }};
+    dj_touch_flower_count_=juce::jlimit(2,4,
+        controller.getSettings().getInt("cyn_dj_touch_flower_count",4));
+    for(int panel=0;panel<2;++panel) {
+        if(chosen[(size_t)panel]!=dj_touch_styles_[(size_t)panel]) {
+            dj_touch_styles_[(size_t)panel]=chosen[(size_t)panel];
+            dj_touch_seeded_[(size_t)panel]=false;
+            for(int slot=0;slot<4;++slot)
+                dj_touch_agents_[(size_t)(panel*4+slot)]={};
+        }
     }
-    if(chosen==CynDjTouch::CustomPng) {
+    if(chosen[0]==CynDjTouch::CustomPng ||
+       chosen[1]==CynDjTouch::CustomPng) {
         const auto asset=CynDjTouch::customImageFile();
         const auto stamp=asset.getLastModificationTime();
         if(dj_touch_image_stamp_!=stamp) {
@@ -667,63 +678,88 @@ void FxProView::updateDjTouch(double now)
             dj_touch_image_=CynDjTouch::readCustomImage();
         }
     }
-    if(chosen==CynDjTouch::None || FxTheme::isReducedMotion() ||
-       page_!=0 || !controller.isSmartListening() ||
-       !controller.isAudioProcessing()) {
-        dj_touch_opacity_=0;
-        dj_touch_seeded_=false;
+    if(FxTheme::isReducedMotion() || page_!=0 ||
+       !controller.isSmartListening() || !controller.isAudioProcessing()) {
+        dj_touch_seeded_={{false,false}};
+        for(auto& agent:dj_touch_agents_) agent.opacity=0.0f;
         return;
     }
-    // Save a small UI-thread snapshot. Only changes relative to the user's
-    // original preset AND the previous measured DSP state count as AI motion.
-    float best=0;
-    juce::Point<float> target=dj_touch_pos_;
-    const int n=juce::jmin(39,controller.getNumEqBands());
+    struct Candidate {
+        float score=0.0f;
+        juce::Point<float> position {};
+        int index=-1;
+    };
+    std::array<std::array<Candidate,4>,2> ranked {};
+    const auto offer=[&](int panel,int index,float score,
+                         juce::Point<float> position) {
+        if(score<=0.0017f) return;
+        auto& choices=ranked[(size_t)panel];
+        // An agent never duplicates another flower's EQ band/knob.
+        int insert=0;
+        while(insert<4 && score<=choices[(size_t)insert].score) ++insert;
+        if(insert==4) return;
+        for(int i=3;i>insert;--i)
+            choices[(size_t)i]=choices[(size_t)(i-1)];
+        choices[(size_t)insert]={score,position,index};
+    };
     for(int i=0;i<5;++i) {
-        const auto value=controller.getAppliedEffectValue(
-            static_cast<FxEffects::EffectType>(i))*10.0f;
-        const auto preset=controller.getEffectValue(
-            static_cast<FxEffects::EffectType>(i))*10.0f;
+        const auto effect=static_cast<FxEffects::EffectType>(i);
+        const float value=controller.getAppliedEffectValue(effect)*10.0f;
+        const float preset=controller.getEffectValue(effect)*10.0f;
         if(!std::isfinite(value) || !std::isfinite(preset))continue;
         const float movement=std::abs(value-dj_touch_last_effect_[(size_t)i]);
         dj_touch_last_effect_[(size_t)i]=value;
-        if(!dj_touch_seeded_ || !audio_controls_.isEffectsShown())continue;
+        if(!dj_touch_seeded_[0] || !audio_controls_.isEffectsShown())continue;
         const float score=(std::min)(movement,1.0f)*
                           (std::min)(std::abs(value-preset),2.0f);
-        if(movement>0.022f && std::abs(value-preset)>0.08f && score>best) {
-            best=score;
-            target={audio_controls_.getX()+22.0f+value*12.5f,
-                    audio_controls_.getY()+52.0f+i*43.0f};
-        }
+        if(movement>0.022f && std::abs(value-preset)>0.08f)
+            offer(0,i,score,{audio_controls_.getX()+22.0f+value*12.5f,
+                              audio_controls_.getY()+52.0f+i*43.0f});
     }
+    const int n=juce::jmin(39,controller.getNumEqBands());
     for(int i=0;i<n;++i) {
         const float value=controller.getAppliedEqBandBoostCut(i);
         const float preset=controller.getEqBandBoostCut(i);
         if(!std::isfinite(value) || !std::isfinite(preset))continue;
         const float movement=std::abs(value-dj_touch_last_eq_[(size_t)i]);
         dj_touch_last_eq_[(size_t)i]=value;
-        if(!dj_touch_seeded_)continue;
+        if(!dj_touch_seeded_[1])continue;
         const float score=(std::min)(movement,0.6f)*
                           (std::min)(std::abs(value-preset),2.0f);
-        if(movement>0.028f && std::abs(value-preset)>0.09f &&
-           score>best) {
-            best=score;
-            const float stride=(float)(equalizer_.getWidth()-22)/n;
-            target={equalizer_.getX()+11.0f+stride*(i+0.5f),
-                    equalizer_.getY()+40.0f+
-                       juce::jlimit(0.0f,1.0f,(12.0f-value)/24.0f)*166.0f};
+        if(movement>0.028f && std::abs(value-preset)>0.09f) {
+            const float stride=(float)(equalizer_.getWidth()-22)/(float)(std::max)(1,n);
+            offer(1,i,score,{
+                equalizer_.getX()+11.0f+stride*(i+0.5f),
+                equalizer_.getY()+40.0f+
+                juce::jlimit(0.0f,1.0f,(12.0f-value)/24.0f)*166.0f});
         }
     }
-    dj_touch_seeded_=true;
-    if(best>0.0017f) {
-        dj_touch_target_=target;
-        dj_touch_last_activity_=now;
+    dj_touch_seeded_={{true,true}};
+    for(int panel=0;panel<2;++panel) {
+        const int style=chosen[(size_t)panel];
+        const bool shown=(panel==1 || audio_controls_.isEffectsShown());
+        const int agents=style==CynDjTouch::Flowers ? dj_touch_flower_count_:1;
+        auto& choices=ranked[(size_t)panel];
+        for(int slot=0;slot<4;++slot) {
+            auto& agent=dj_touch_agents_[(size_t)(panel*4+slot)];
+            // Only one hand or one cursor per panel. Flowers can occupy
+            // several distinct ACTIVE knobs/bands simultaneously.
+            if(style!=CynDjTouch::None && shown && slot<agents &&
+               choices[(size_t)slot].score>0.0017f) {
+                // Avoid overlapping flowers on adjacent very narrow EQ bands:
+                // retain the highest-ranked distinct targets for this frame.
+                const auto point=choices[(size_t)slot].position;
+                if(agent.opacity<=0.004f) agent.pos=point;
+                agent.target=point;
+                agent.lastActivity=now;
+            }
+            const float goal=style!=CynDjTouch::None && shown &&
+                slot<agents && now-agent.lastActivity<=900.0 &&
+                agent.lastActivity>0.0 ? 0.80f : 0.0f;
+            agent.pos+=(agent.target-agent.pos)*0.20f;
+            agent.opacity+=(goal-agent.opacity)*0.17f;
+        }
     }
-    const float goal=now-dj_touch_last_activity_<=900 ? 0.8f:0.0f;
-    const float ease=juce::jlimit(0.03f,0.35f,
-        (float)((now-last_ai_controls_update_)*.006f)+.13f);
-    dj_touch_pos_+= (dj_touch_target_-dj_touch_pos_)*ease;
-    dj_touch_opacity_+=(goal-dj_touch_opacity_)*0.15f;
 }
 
 void FxProView::paintOverChildren(Graphics& g)
@@ -746,11 +782,24 @@ void FxProView::paintOverChildren(Graphics& g)
         g.setOpacity((1-progress)*(1-progress));
         g.drawImageAt(transition_image_,0,0);
     }
-    if(page_==0 && dj_touch_style_!=CynDjTouch::None &&
-       dj_touch_opacity_>0.004f && !FxTheme::isReducedMotion()) {
-        CynDjTouch::paint(g,dj_touch_style_,dj_touch_pos_,
-                         dj_touch_opacity_,dj_touch_image_,
-                         (float)(Time::getMillisecondCounterHiRes()*0.001));
+    if(page_==0 && !FxTheme::isReducedMotion()) {
+        const auto time=(float)(Time::getMillisecondCounterHiRes()*0.001);
+        for(int panel=0;panel<2;++panel) {
+            const int style=dj_touch_styles_[(size_t)panel];
+            if(style==CynDjTouch::None)continue;
+            Graphics::ScopedSaveState panelClip(g);
+            // Neither hand/cursor nor flower may wander over another panel.
+            const auto area=(panel==0?audio_controls_.getBounds():
+                             equalizer_.getBounds()).expanded(25,43);
+            g.reduceClipRegion(area);
+            const int count=style==CynDjTouch::Flowers ? dj_touch_flower_count_:1;
+            for(int slot=0;slot<count;++slot) {
+                const auto& agent=dj_touch_agents_[(size_t)(panel*4+slot)];
+                if(agent.opacity<=0.004f)continue;
+                CynDjTouch::paint(g,style,agent.pos,agent.opacity,
+                    dj_touch_image_,time+slot*0.45f,panel==1);
+            }
+        }
     }
 }
 void FxProView::lookAndFeelChanged()
