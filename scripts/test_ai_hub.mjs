@@ -56,7 +56,7 @@ assert(build.includes("CynAiProfiles"),"Installer must bundle the offline commun
 const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
 assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
 for(const key of ["ai_hub_nav_.setBounds(navX,275,navW,42)",
-                  "ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };",
+                  "ai_hub_nav_.onClick = [this] { selectPage(3); };",
                   "export_ai_.setBounds(left+456,643,92,32)",
                   "import_ai_.setBounds(left+556,643,92,32)",
                   "browse_ai_.setBounds(left+656,643,103,32)",
@@ -64,7 +64,9 @@ for(const key of ["ai_hub_nav_.setBounds(navX,275,navW,42)",
   assert(view.includes(key),"AI Hub discoverability regression: "+key);
 }
 assert(view.includes("&ai_hub_nav_, &studio_nav_, &ai_status_card_"),"AI Hub navigation must be registered with the new native shell");
-assert(view.includes("ai_hub_nav_.setVisible(true)"),"AI Hub navigation should be visible on every page");
+assert(view.includes("ai_hub_nav_.setVisible(true)") &&
+       view.includes("embedded_ai_hub_.setVisible(page==3)"),
+       "AI Hub should be visible in navigation and display its real native catalogue in the workspace");
 assert(view.includes("button->toFront(false)"),"AI profile actions need explicit z-order");
 console.log("PASS: visible native AI sidebar, profile actions and runtime version marker");
 assert(native.includes("setOpaque (true)"),"AI Hub must paint an opaque content surface");

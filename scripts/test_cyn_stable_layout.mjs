@@ -7,7 +7,8 @@ const fx=load("fxsound/Source/GUI/FxAudioControls.cpp");
 const studio=load("fxsound/Source/GUI/CynThemeStudio.h");
 
 assert(header.includes("WIDTH = 1320, HEIGHT = 700"),"Stable workbench must have room for all native controls");
-assert(header.includes('studio_nav_ { "CYN Studio" }') &&
+assert(header.includes('CynAiHubContent embedded_ai_hub_') &&
+       header.includes('studio_nav_ { "CYN Studio" }') &&
        header.includes('ai_status_card_ { "AI status" }') &&
        header.includes("void selectSoundFocus(int focus);"),"Navigational controls must exist as real JUCE Buttons");
 for(const s of ["sound_nav_.onClick","smart_nav_.onClick","devices_nav_.onClick",
@@ -29,6 +30,10 @@ assert(view.includes('equalizer_.setBounds(eqX,250,eqW,230)') &&
 assert(fx.includes("getWidth() >= 540") &&
        fx.includes("const int cell=(getWidth()-margin*2-gap*4)/5"),
        "The five real DSP effect sliders must adapt to a wide horizontal rack");
+assert(view.includes('embedded_ai_hub_.setBounds(247,222,1053,467)') &&
+       view.includes('ai_hub_nav_.onClick = [this] { selectPage(3); };') &&
+       view.includes('embedded_ai_hub_.setVisible(page==3)'),
+       "AI Hub should be an actual full CYN workspace page, not a navigation-only popup");
 assert(view.includes('learning_timeline_.setBounds(left+13,246,722,194)') &&
        view.includes('neural_activity_.setBounds(993,246,291,194)') &&
        view.includes('learning_effect_.setBounds(left+22,538,179,35)'),

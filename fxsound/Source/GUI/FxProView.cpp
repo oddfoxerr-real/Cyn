@@ -16,12 +16,12 @@ FxProView::FxProView() : tool_tip_(this)
     // JUCE TooltipWindow is opaque by default; our rounded corners require compositing.
     tool_tip_.setOpaque(false);
     for (auto* component : std::initializer_list<Component*> {
-        &audio_controls_, &equalizer_, &visualizer_, &sound_nav_, &smart_nav_,
+        &audio_controls_, &equalizer_, &visualizer_, &embedded_ai_hub_, &sound_nav_, &smart_nav_,
         &devices_nav_, &ai_hub_nav_, &studio_nav_, &ai_status_card_, &overview_tab_, &eq_focus_tab_, &effects_focus_tab_, &home_, &smart_rail_, &devices_rail_, &settings_,
         &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &headroom_cap_, &preset_cycling_, &preset_cycling_status_, &learning_timeline_, &neural_activity_, &learning_effect_, &listening_mode_, &ai_profile_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
         addAndMakeVisible(component);
     for(auto* c:std::initializer_list<Component*> {&misc_nav_,&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) addAndMakeVisible(c);
-    misc_nav_.onClick=[this]{selectPage(3);};
+    misc_nav_.onClick=[this]{selectPage(4);};
     studio_nav_.onClick=[this]{CynThemeStudioDialog::show(this);};
     ai_status_card_.onClick=[this]{selectPage(1);};
     overview_tab_.onClick=[this]{selectSoundFocus(0);};
@@ -46,8 +46,9 @@ FxProView::FxProView() : tool_tip_(this)
     sound_nav_.onClick = home_.onClick = [this] { selectPage(0); };
     smart_nav_.onClick = smart_rail_.onClick = [this] { selectPage(1); };
     devices_nav_.onClick = devices_rail_.onClick = [this] { selectPage(2); };
-    ai_hub_nav_.onClick = [this] { CynAiHubDialog::show(this); };
-    ai_hub_nav_.setTooltip("Manage shared AI profiles in Cyn. No separate website.");
+    ai_hub_nav_.onClick = [this] { selectPage(3); };
+    ai_hub_nav_.setTooltip("Browse and activate offline/community AI models in the CYN workspace.");
+    embedded_ai_hub_.setEmbeddedMode(true);
     home_.setTooltip("Sound studio");
     smart_rail_.setTooltip("Smart listening");
     devices_rail_.setTooltip("Output devices");
@@ -240,13 +241,15 @@ void FxProView::selectPage(int page)
         }
     }
     page_ = page;
-    misc_nav_.setToggleState(page==3,dontSendNotification);
+    misc_nav_.setToggleState(page==4,dontSendNotification);
+    ai_hub_nav_.setToggleState(page==3,dontSendNotification);
+    embedded_ai_hub_.setVisible(page==3);
     for(auto* b:std::initializer_list<TextButton*> {
         &overview_tab_, &eq_focus_tab_, &effects_focus_tab_ })
         b->setVisible(page==0);
     ai_status_card_.setVisible(true);
-    for(auto* c:std::initializer_list<Component*> {&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) c->setVisible(page==3);
-    smart_toggle_.setVisible(page!=3);smart_status_.setVisible(page!=3);
+    for(auto* c:std::initializer_list<Component*> {&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) c->setVisible(page==4);
+    smart_toggle_.setVisible(page<=2);smart_status_.setVisible(page<=2);
     sound_nav_.setToggleState(page == 0, dontSendNotification);
     smart_nav_.setToggleState(page == 1, dontSendNotification);
     devices_nav_.setToggleState(page == 2, dontSendNotification);
@@ -267,6 +270,7 @@ void FxProView::selectPage(int page)
     }
     // The AI Hub navigation is available on every main page.
     ai_hub_nav_.setVisible(true);
+    embedded_ai_hub_.setVisible(page==3);
     audio_controls_.setVisible(page == 0);
     equalizer_.setVisible(page == 0);
     visualizer_.setVisible(page == 0);
@@ -417,10 +421,10 @@ void FxProView::timerCallback()
         dj_toggle_.setColour(ToggleButton::textColourId,Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
         dj_stereo_.setColour(ToggleButton::textColourId,Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
         dj_toggle_.setEnabled(dj->installed()&&!dj->busy());
-        dj_download_.setVisible(page_==3&&!dj->installed()&&!dj->busy());
-        dj_remove_.setVisible(page_==3&&dj->installed()&&!dj->busy());
-        dj_cancel_.setVisible(page_==3&&dj->busy());
-        dj_progress_.setVisible(page_==3&&dj->busy());dj_progress_value_=dj->progress();
+        dj_download_.setVisible(page_==4&&!dj->installed()&&!dj->busy());
+        dj_remove_.setVisible(page_==4&&dj->installed()&&!dj->busy());
+        dj_cancel_.setVisible(page_==4&&dj->busy());
+        dj_progress_.setVisible(page_==4&&dj->busy());dj_progress_value_=dj->progress();
         dj_recent_.setText(dj->lastEffect()+"  /  "+String((int)dj->effects())+" remixes this session",dontSendNotification);
     }
     auto& controller = FxController::getInstance();
@@ -484,6 +488,7 @@ void FxProView::resized()
     preset_list_.setBounds(left+14,118,315,37);
     endpoint_list_.setBounds(left+350,118,341,37);
     ai_status_card_.setBounds(963,118,324,37);
+    embedded_ai_hub_.setBounds(247,222,1053,467);
     live_status_.setBounds(1023,40,265,24);
     overview_tab_.setBounds(left+12,172,126,34);
     eq_focus_tab_.setBounds(left+146,172,126,34);
@@ -667,11 +672,12 @@ void FxProView::paint(Graphics& g)
     };
     // Clear hierarchy: a large page title, meaningful status, then real
     // selectors and page-specific content. No fictitious audio readouts.
-    const char* pageNames[]={"Sound Studio","Smart Listening","Output Devices","Misc / AI DJ"};
+    const char* pageNames[]={"Sound Studio","Smart Listening","Output Devices","AI Hub","Misc / AI DJ"};
     const char* subtitles[]={
         "Fine-tune your sound with real-time processing.",
         "Neural listening, personal learning, and live AI controls.",
         "Your output hardware, connected devices and device priority.",
+        "Explore community and local AI models without leaving CYN.",
         "Optional musical effects and stereo creative controls."
     };
     txt("CYN  /  "+String(pageNames[page_]).toUpperCase(),246,12,610,20,10.8f,true,true);
@@ -741,6 +747,8 @@ void FxProView::paint(Graphics& g)
         txt("Automatic recovery when a selected device disconnects.",266,550,920,28,13,true);
         txt("Device-specific presets and priority are managed in Settings.",
             266,587,920,24,12.3f,true);
+    } else if(page_==3) {
+        txt("NEURAL CATALOGUE  •  IMPORT  •  ACTIVATE",267,180,790,25,12,true,true);
     } else {
         txt("AI DJ  •  OPTIONAL CREATIVE EFFECTS",267,180,790,25,12,true,true);
         card(247,225,1053,216);

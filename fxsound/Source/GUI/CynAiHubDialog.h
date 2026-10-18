@@ -76,6 +76,18 @@ public:
 
     ~CynAiHubContent() override { stopTimer(); list_.setModel (nullptr); }
 
+    void setEmbeddedMode(bool embedded)
+    {
+        // Same trusted ONNX/profile workflow, but hosted by Sound Studio shell.
+        // The dialog-only Close control must not be displayed as a dead button.
+        close_.setVisible(!embedded);
+        if(embedded) {
+            subtitle_.setText("Community models, local imports and APEX 6M — native and private.",
+                              juce::dontSendNotification);
+        }
+        resized();
+    }
+
     void resized() override
     {
         const int w = getWidth(), h = getHeight();
