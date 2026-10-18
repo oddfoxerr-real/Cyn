@@ -63,7 +63,8 @@ public:
           appearanceTab_("Appearance"), motionTab_("Animations"),
           buttonTab_("Buttons"), replayMotion_("Replay"), buttonDemo_(*this)
     {
-        setSize(900, 790);
+        // Avoid a modal taller than common 768p Windows laptop displays.
+        setSize(900, 720);
         setOpaque(true);
         setWantsKeyboardFocus(true);
         setFocusContainerType(juce::Component::FocusContainerType::focusContainer);
@@ -468,8 +469,8 @@ private:
         g.drawText("EFFECT INTENSITY",93,638,168,34,Justification::centredLeft);
         g.setFont(Font(12.0f));
         g.setColour(hint);
-        g.drawText("Effects use inexpensive native JUCE drawing; no live fluid simulation or audio-thread work.",
-                   92,704,718,26,Justification::centredLeft);
+        g.drawText("Native JUCE effects; no fluid simulation or audio-thread work.",
+                   92,691,718,21,Justification::centredLeft);
         if(FxTheme::isReducedMotion())
             g.drawText("Reduce Motion is on: motion and decorative highlights are disabled.",
                 92,681,710,19,Justification::centredLeft);

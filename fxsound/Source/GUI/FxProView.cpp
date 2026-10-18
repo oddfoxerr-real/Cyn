@@ -544,8 +544,17 @@ void FxProView::resized()
     // Device selection uses the same header device selector.
     pin_toggle_.setBounds(left+27,295,404,34);
     refresh_.setBounds(left+27,390,191,37);
-    smart_toggle_.setBounds(left+21, page_==1 ? 449 : page_==2 ? 495 : 661,217,26);
-    smart_status_.setBounds(left+254,page_==1 ? 449 : page_==2 ? 495 : 663, 772,29);
+    // The real Smart Listening switch must never sit over a DSP slider.
+    if(page_==0) {
+        smart_toggle_.setBounds(1013,631,230,25);
+        smart_status_.setBounds(1008,654,277,25);
+    } else if(page_==1) {
+        smart_toggle_.setBounds(1041,478,233,26);
+        smart_status_.setBounds(1008,609,281,29);
+    } else {
+        smart_toggle_.setBounds(left+21,495,217,26);
+        smart_status_.setBounds(left+254,495,772,29);
+    }
 
     dj_download_.setBounds(left+24,281,205,39);
     dj_remove_.setBounds(left+24,281,205,39);
@@ -717,7 +726,7 @@ void FxProView::paint(Graphics& g)
             txt(modelText,1013,552,250,24,18.0f,false,true);
             txt(aiOn?"Real-time adaptive processing":"Manual audio processing",
                 1013,581,265,20,11.0f,true);
-            txt("Select a profile above to change the sound.",1013,628,272,34,11.0f,true);
+            txt("Change presets and output at the top.",1013,605,272,22,10.8f,true);
         } else if(sound_focus_==1) {
             card(247,226,1053,457);
             txt("EQUALIZER  /  PRECISION VIEW",265,233,650,24,14,false,true);
