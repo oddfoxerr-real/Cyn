@@ -619,20 +619,9 @@ void FxProView::paint(Graphics& g)
     ColourGradient side(Colour(0xff050609),0.0f,0.0f,
                          Colour(0xff010203),228.0f,700.0f,false);
     g.setGradientFill(side);g.fillRect(0,0,228,getHeight());
-    // Integrated rounded interior rail outline, following the requested large
-    // continuous corner silhouette without displacing the content boundary.
-    // Keep the workspace edge straight; this is an inset frame, never a fill.
+    // Clean continuous sidebar edge: no decorative corner flourish.
     g.setColour(Colour(0xff1e303d).withAlpha(.85f));
     g.drawLine(228.0f,0.0f,228.0f,(float)getHeight(),.8f);
-    // Signature CYN corner flourish, entirely inside the sidebar.
-    // No large stroked frame or protrusion over workspace controls.
-    Path railOutline;
-    railOutline.startNewSubPath(218.0f,546.0f);
-    railOutline.lineTo(218.0f,629.0f);
-    railOutline.cubicTo(218.0f,658.0f,201.0f,675.0f,172.0f,675.0f);
-    railOutline.lineTo(150.0f,675.0f);
-    g.setColour(cyan.withAlpha(.19f));
-    g.strokePath(railOutline,PathStrokeType(1.3f,PathStrokeType::curved,PathStrokeType::rounded));
     // Native title bar already displays the CYN wordmark. The sidebar
     // identifies the navigation instead of repeating the same logo.
     g.setColour(cyan);g.fillRoundedRectangle(26.0f,28.0f,3.0f,24.0f,1.5f);
@@ -1058,10 +1047,27 @@ void FxProView::paintOverChildren(Graphics& g)
         const float t=CynUiMotion::progress(
             Time::getMillisecondCounterHiRes()-transition_start_,
             CynUiMotion::pageDurationMs);
-        g.setOpacity(CynUiMotion::outgoingOpacity(t));
-        g.drawImageAt(transition_image_,
-            content.getX()+roundToInt(CynUiMotion::outgoingX(t,transition_direction_)),
-            content.getY());
+        // The destination page is already live underneath. Reveal it THROUGH
+        // an advancing stippled liquid mask rather than waiting for a wipe.
+        // Draw only surviving outgoing-image tiles. The deterministic noise
+        // makes droplets merge naturally as the new page replaces the old.
+        const int tile=12;
+        for(int y=0;y<content.getHeight();y+=tile) {
+            for(int x=0;x<content.getWidth();x+=tile) {
+                const float u=(float)x/(float)juce::jmax(1,content.getWidth());
+                const float v=(float)y/(float)juce::jmax(1,content.getHeight());
+                const float grain=.5f+.27f*std::sin(u*89.0f+v*47.0f)
+                                     *.75f+.13f*std::sin(u*191.0f-v*133.0f);
+                const float liquid=.12f*std::sin(v*15.0f+t*10.0f);
+                const float threshold=juce::jlimit(0.0f,1.0f,t*1.38f-.18f+liquid);
+                if(grain<=threshold) continue;
+                const int w=juce::jmin(tile,content.getWidth()-x);
+                const int h=juce::jmin(tile,content.getHeight()-y);
+                g.drawImage(transition_image_,
+                    content.getX()+x,content.getY()+y,w,h,
+                    x,y,w,h);
+            }
+        }
     }
     if(page_==0 && !FxTheme::isReducedMotion()) {
         const auto time=(float)(Time::getMillisecondCounterHiRes()*0.001);
