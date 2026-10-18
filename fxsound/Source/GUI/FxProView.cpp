@@ -637,34 +637,83 @@ void FxProView::paint(Graphics& g)
     g.setColour(cyan.withAlpha(.78f));
     g.drawRoundedRectangle(22.5f,navY+.5f,195.0f,41.0f,11.0f,1.05f);
     g.fillRoundedRectangle(22.0f,navY+11.0f,3.2f,20.0f,1.5f);
-    // Small glyphs are purely decorative; the real labelled TextButtons
-    // provide keyboard focus, pointer targets, and accessibility names.
+    // Fixed-size JUCE vector navigation icons. Distinct silhouettes make
+    // pages recognisable without requiring new textures or per-frame assets.
     for(int i=0;i<6;++i) {
         const float y=125.0f+49.0f*i;
-        const Colour col=i==page_?cyan:muted;
-        g.setColour(col.withAlpha(i==page_?.85f:.50f));
-        if(i==0) {
-            for(int k=0;k<5;++k)
-                g.drawLine(37.0f+k*4.0f,y-(2+(k*5)%11)*.5f,
-                           37.0f+k*4.0f,y+(2+(k*5)%11)*.5f,1.2f);
-        } else {
-            g.fillEllipse(40.0f,y-3.0f,5.0f,5.0f);
-            g.drawEllipse(36.5f,y-6.5f,12.0f,12.0f,.75f);
+        const Colour iconColour=(i==page_?cyan:muted).withAlpha(i==page_?.92f:.67f);
+        g.setColour(iconColour);
+        switch(i) {
+            case 0: { // Sound Studio: live EQ bars
+                const float heights[]={7.0f,14.0f,10.0f,19.0f,9.0f};
+                for(int b=0;b<5;++b) {
+                    const float x=36.0f+b*4.5f;
+                    g.drawLine(x,y-heights[b]*.5f,x,y+heights[b]*.5f,1.6f);
+                }
+                break;
+            }
+            case 1: { // Neural activity network
+                g.drawLine(38,y+5,44,y-5,1.4f);
+                g.drawLine(44,y-5,51,y+4,1.4f);
+                g.drawLine(38,y+5,51,y+4,1.0f);
+                g.fillEllipse(35.0f,y+2.0f,5.5f,5.5f);
+                g.fillEllipse(41.5f,y-8.0f,5.5f,5.5f);
+                g.fillEllipse(48.5f,y+1.0f,5.5f,5.5f);
+                break;
+            }
+            case 2: { // Output devices / headphones
+                juce::Path cans;
+                cans.addCentredArc(44.0f,y,8.5f,8.5f,0.0f,
+                                   -juce::MathConstants<float>::pi*.85f,
+                                   juce::MathConstants<float>::pi*.85f,true);
+                g.strokePath(cans,juce::PathStrokeType(1.5f));
+                g.fillRoundedRectangle(34.3f,y+.4f,3.6f,8.0f,1.4f);
+                g.fillRoundedRectangle(50.1f,y+.4f,3.6f,8.0f,1.4f);
+                break;
+            }
+            case 3: { // AI Hub: connected model nodes
+                g.drawLine(37.5f,y-4.5f,50.0f,y-4.5f,1.2f);
+                g.drawLine(37.5f,y-4.5f,44.0f,y+7.0f,1.2f);
+                g.drawLine(50.0f,y-4.5f,44.0f,y+7.0f,1.2f);
+                g.fillEllipse(34.5f,y-7.5f,6.0f,6.0f);
+                g.fillEllipse(47.0f,y-7.5f,6.0f,6.0f);
+                g.fillEllipse(41.0f,y+4.0f,6.0f,6.0f);
+                break;
+            }
+            case 4: { // AI DJ: cross-fader and 2 decks
+                g.drawEllipse(34.0f,y-7.0f,10.0f,10.0f,1.4f);
+                g.drawEllipse(47.0f,y-7.0f,10.0f,10.0f,1.4f);
+                g.drawLine(38.0f,y+7.0f,53.0f,y+7.0f,1.3f);
+                g.fillEllipse(44.0f,y+5.0f,4.0f,4.0f);
+                break;
+            }
+            case 5: { // Studio: sliders and material adjustments
+                for(int j=0;j<3;++j) {
+                    const float lineY=y-7.0f+7.0f*j;
+                    g.drawLine(35.0f,lineY,54.0f,lineY,1.1f);
+                    const float knobX=j==0?41.0f:j==1?50.0f:45.0f;
+                    g.fillEllipse(knobX-2.7f,lineY-2.7f,5.4f,5.4f);
+                }
+                break;
+            }
         }
     }
     g.setColour(border);g.drawLine(27.0f,590.0f,210.0f,590.0f,.8f);
     g.setColour(Colour(0xff091829));g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
     g.setColour(border);g.drawRoundedRectangle(21.5f,524.5f,194.0f,55.0f,12.0f,1.0f);
+    g.setColour(muted.withAlpha(.85f));
+    g.setFont(theme.getNormalFont().withHeight(9.0f).boldened());
+    g.drawText("ACTIVE ENGINE",34,528,155,15,Justification::centredLeft);
     const auto model=FxController::getInstance().getActiveAIProfileId();
     const String modelText=model=="apex6m" ? "APEX 6M" :
             model=="yamnet" ? "YAMNet" : model.isNotEmpty() ? model.toUpperCase() : "No model";
     const bool aiOn=FxController::getInstance().isSmartListening();
     g.setColour(aiOn?Colour(0xff49dcb3):muted);
-    g.fillEllipse(35.0f,544.0f,8.0f,8.0f);
+    g.fillEllipse(35.0f,548.0f,8.0f,8.0f);
     g.setColour(white);g.setFont(theme.getNormalFont().withHeight(13.0f).boldened());
-    g.drawText(modelText,54,533,148,20,Justification::centredLeft,true);
+    g.drawText(modelText,54,542,148,21,Justification::centredLeft,true);
     g.setColour(muted);g.setFont(theme.getNormalFont().withHeight(10.0f));
-    g.drawText(aiOn?"AI enabled":"AI standby",54,555,140,14,Justification::centredLeft);
+    g.drawText(aiOn?"Processing enabled":"AI standby",54,564,140,13,Justification::centredLeft);
     g.drawText("CYN  v"+JUCEApplication::getInstance()->getApplicationVersion(),
                25,669,178,17,Justification::centredLeft);
 
@@ -761,9 +810,26 @@ void FxProView::paint(Graphics& g)
         card(247,253,1053,200);
         card(247,465,1053,223);
         txt("OUTPUT DEVICE MANAGEMENT",266,259,780,27,17,false,true);
-        txt("Keep your preferred output when available.",266,284,900,23,12.5f,true);
+        txt("Keep your preferred output when available.",266,284,570,23,12.5f,true);
+        // Device facts come from the active selector and routing controller;
+        // never show invented connection counts or hardware capabilities.
+        g.setColour(border.withAlpha(.67f));
+        g.drawLine(807.0f,306.0f,807.0f,432.0f,.85f);
+        txt("CURRENT OUTPUT",831,313,414,21,11.5f,true,true);
+        txt(endpoint_list_.getText().isNotEmpty()
+                ? endpoint_list_.getText() : String("Select an output device"),
+            831,342,438,33,17.0f,false,true);
+        txt("PRIORITY",831,391,340,18,11.0f,true,true);
+        txt(FxController::getInstance().isOutputPinned()
+                ? "Keep this device when connected"
+                : "Automatically follow available devices",
+            831,413,438,19,12.0f,true);
         txt("DEVICE FALLBACK",266,474,500,27,15,false,true);
-        txt("Automatic recovery when a selected device disconnects.",266,546,920,26,13,true);
+        txt("Automatic recovery when a selected device disconnects.",266,546,680,26,13,true);
+        txt("ROUTING STATUS",968,485,281,20,11.0f,true,true);
+        txt(FxController::getInstance().isPlaybackDeviceAvailable()
+                ? "Output available" : "Output unavailable",
+            968,511,285,28,15.0f,false,true);
         txt("Device-specific presets and priority are managed in Settings.",
             266,581,920,24,12.3f,true);
     } else if(page_==3) {
@@ -783,7 +849,26 @@ void FxProView::paint(Graphics& g)
             txt(dj->installed()?"Local installation is available":
                 "Download required to activate",961,335,311,22,12,true);
         }
-        txt("DJ effects are separate from your main AI.",961,399,315,27,11.5f,true);
+        // Honest, compact readout of the actual configured DJ intensity.
+        if(auto* dj=FxController::getInstance().dj()) {
+            const float ratio=juce::jlimit(0.0f,1.0f,dj->intensity());
+            const float start=-juce::MathConstants<float>::pi*.77f;
+            const float sweep=juce::MathConstants<float>::pi*1.54f;
+            juce::Path track,fill;
+            track.addCentredArc(1195.0f,398.0f,31.0f,31.0f,0.0f,start,start+sweep,true);
+            fill.addCentredArc(1195.0f,398.0f,31.0f,31.0f,0.0f,
+                               start,start+sweep*ratio,true);
+            g.setColour(border.brighter(.22f));
+            g.strokePath(track,juce::PathStrokeType(4.0f,juce::PathStrokeType::curved,
+                                                  juce::PathStrokeType::rounded));
+            g.setColour(cyan.withAlpha(.91f));
+            g.strokePath(fill,juce::PathStrokeType(4.0f,juce::PathStrokeType::curved,
+                                                 juce::PathStrokeType::rounded));
+            txt(String(juce::roundToInt(ratio*100.0f))+"%",1164,388,62,19,
+                12.8f,false,true);
+            txt("INTENSITY",967,391,194,18,11.0f,true,true);
+            txt("Optional independent effects",967,418,204,20,11.0f,true);
+        }
         txt("EFFECT BEHAVIOUR",266,482,730,24,15,false,true);
         txt("Intensity",266,522,148,23,12.5f,true);
         txt("Minimum spacing",266,574,166,23,12.5f,true);
