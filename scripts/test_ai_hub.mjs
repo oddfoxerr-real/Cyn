@@ -158,7 +158,8 @@ assert(studio.includes('previous_.onClick = [this] { selectRelative(-1); };') &&
        studio.includes('next_.onClick = [this] { selectRelative(1); };'),
        "Theme Studio must support working left and right arrows");
 assert(studio.includes('const float stride=preview_.getWidth()+19.0f;') &&
-       studio.includes('progress=linear*linear*(3.0f-2.0f*linear)'),
+       studio.includes('CynUiMotion::easeOutCubic(') &&
+       studio.includes('CynUiMotion::themeCarouselDurationMs'),
        "Theme transitions must be smooth horizontal slides");
 assert(studio.includes('controller.setThemeMode(static_cast<FxThemeMode>(selected_))') &&
        studio.includes('controller.getSettings().setInt("cyn_dj_touch_style_effects",effectsTouchStyle_)') &&
