@@ -197,7 +197,7 @@ void FxProView::openSettings()
 }
 void FxProView::selectPage(int page)
 {
-    if(page == page_) return; // Repeated clicks must not restart the animation.
+    if(page == page_ && isShowing()) return; // Initial page must still initialize child visibility.
     // Immediately select the destination. Snapshot ONLY the outgoing content,
     // so the sidebar stays live and responsive even on slower machines.
     transition_image_ = Image(); // Never capture a previous transition overlay.
