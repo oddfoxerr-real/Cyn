@@ -14,22 +14,47 @@ public:
     CynThemeStudioContent()
         : previous_("<"), next_(">"), apply_("Apply studio"), cancel_("Close"), importTouch_("Choose PNG...")
     {
-        setSize(900, 700);
+        setSize(900, 790);
         setOpaque(true);
         setWantsKeyboardFocus(true);
         setFocusContainerType(juce::Component::FocusContainerType::focusContainer);
         selected_ = (int)FxTheme::getThemeMode();
         source_ = selected_;
         auto& settings=FxController::getInstance().getSettings();
-        touchStyle_=juce::jlimit(0,5,settings.getInt("cyn_dj_touch_style",0));
+        const int legacyStyle=settings.getInt("cyn_dj_touch_style",0);
+        effectsTouchStyle_=juce::jlimit(0,5,
+            settings.getInt("cyn_dj_touch_style_effects",legacyStyle));
+        eqTouchStyle_=juce::jlimit(0,5,
+            settings.getInt("cyn_dj_touch_style_eq",legacyStyle));
+        flowerCount_=juce::jlimit(2,4,
+            settings.getInt("cyn_dj_touch_flower_count",4));
         customTouch_=CynDjTouch::readCustomImage();
-        for(int i=0;i<=5;++i) touchPicker_.addItem(CynDjTouch::name(i),i+1);
-        touchPicker_.setSelectedId(touchStyle_+1,juce::dontSendNotification);
-        addAndMakeVisible(touchPicker_);
+        for(int i=0;i<=5;++i) {
+            effectsTouchPicker_.addItem(CynDjTouch::name(i),i+1);
+            eqTouchPicker_.addItem(CynDjTouch::name(i),i+1);
+        }
+        for(int i=2;i<=4;++i)
+            flowerPicker_.addItem(juce::String(i)+" flowers per panel",i-1);
+        effectsTouchPicker_.setSelectedId(effectsTouchStyle_+1,juce::dontSendNotification);
+        eqTouchPicker_.setSelectedId(eqTouchStyle_+1,juce::dontSendNotification);
+        flowerPicker_.setSelectedId(flowerCount_-1,juce::dontSendNotification);
+        addAndMakeVisible(effectsTouchPicker_);
+        addAndMakeVisible(eqTouchPicker_);
+        addAndMakeVisible(flowerPicker_);
         addAndMakeVisible(importTouch_);
-        touchPicker_.setTooltip("Choose how AI adjustments touch real controls. None uses no extra drawing.");
-        importTouch_.setTooltip("Choose transparent PNG (max 2 MB and 1024 x 1024). Stored locally.");
-        touchPicker_.onChange=[this] {touchStyle_=touchPicker_.getSelectedId()-1;repaint();};
+        effectsTouchPicker_.setTooltip("The left DJ hand/cursor reacts to real bass, clarity, ambience, surround and dynamics.");
+        eqTouchPicker_.setTooltip("The right DJ hand/cursor reacts independently to real EQ-band corrections.");
+        flowerPicker_.setTooltip("Maximum independently positioned flowers in EACH panel; only actually changing controls light up.");
+        importTouch_.setTooltip("Choose a transparent PNG (max 2 MB; 1024 x 1024). Shared asset, independent panel movement.");
+        effectsTouchPicker_.onChange=[this] {
+            effectsTouchStyle_=effectsTouchPicker_.getSelectedId()-1;repaint();
+        };
+        eqTouchPicker_.onChange=[this] {
+            eqTouchStyle_=eqTouchPicker_.getSelectedId()-1;repaint();
+        };
+        flowerPicker_.onChange=[this] {
+            flowerCount_=juce::jlimit(2,4,flowerPicker_.getSelectedId()+1);repaint();
+        };
         importTouch_.onClick=[this] {chooseCustomTouch();};
 
         for (auto* control : std::initializer_list<juce::Button*> {
@@ -50,7 +75,8 @@ public:
         previous_.onClick = [this] { selectRelative(-1); };
         next_.onClick = [this] { selectRelative(1); };
         apply_.onClick = [this] {
-            if(touchStyle_==CynDjTouch::CustomPng && !customTouch_.isValid()) {
+            if((effectsTouchStyle_==CynDjTouch::CustomPng ||
+                eqTouchStyle_==CynDjTouch::CustomPng) && !customTouch_.isValid()) {
                 juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
                     "Custom PNG needed","Choose a PNG or select another AI Touch style.");
                 return;
@@ -66,7 +92,11 @@ public:
                 }
             }
             auto& controller=FxController::getInstance();
-            controller.getSettings().setInt("cyn_dj_touch_style",touchStyle_);
+            // Two persisted visual layers, independent of color themes.
+            controller.getSettings().setInt("cyn_dj_touch_style_effects",effectsTouchStyle_);
+            controller.getSettings().setInt("cyn_dj_touch_style_eq",eqTouchStyle_);
+            controller.getSettings().setInt("cyn_dj_touch_flower_count",flowerCount_);
+            controller.getSettings().setInt("cyn_dj_touch_style",effectsTouchStyle_);
             controller.setThemeMode(static_cast<FxThemeMode>(selected_));
             close();
         };
@@ -85,8 +115,10 @@ public:
         next_.setBounds(w-77,225,52,64);
         cancel_.setBounds(w-255,h-58,105,36);
         apply_.setBounds(w-148,h-58,123,36);
-        touchPicker_.setBounds(250,555,247,32);
-        importTouch_.setBounds(515,555,142,32);
+        effectsTouchPicker_.setBounds(165,565,255,32);
+        eqTouchPicker_.setBounds(554,565,270,32);
+        flowerPicker_.setBounds(165,616,206,32);
+        importTouch_.setBounds(390,616,144,32);
         preview_ = juce::Rectangle<float>(92.0f,116.0f,(float)w-184.0f,315.0f);
         repaint();
     }
@@ -165,18 +197,33 @@ public:
                    "PREVIEW ONLY  /  APPLY TO SAVE THIS THEME",
                    92,474,getWidth()-184,20,Justification::centred);
 
-        // Independent AI gesture selector; no sound processing is changed here.
+        // Two real DJ hands/flower groups; styles are independent per panel.
         g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(.65f));
         g.drawHorizontalLine(540,25.0f,(float)getWidth()-25.0f);
         g.setColour(text);
         g.setFont(Font(14.0f,Font::bold));
-        g.drawText("AI TOUCH / DJ HAND",35,555,210,25,Justification::centredLeft);
+        g.drawText("AI TOUCH / DJ PERFORMERS",35,542,485,19,Justification::centredLeft);
+        g.setFont(Font(12.0f,Font::bold));
+        g.drawText("EFFECTS",35,569,124,24,Justification::centredLeft);
+        g.drawText("EQ PANEL",452,569,98,24,Justification::centredLeft);
+        g.drawText("FLOWERS",35,620,124,24,Justification::centredLeft);
         g.setColour(muted);
         g.setFont(Font(11.0f));
-        g.drawText("Reacts only to measured live EQ and effect changes.",35,603,590,24,
+        g.drawText("Two independent hands: left handles effects, right handles EQ.",35,675,730,22,
                    Justification::centredLeft);
-        CynDjTouch::paint(g,touchStyle_,{734.0f,569.0f},0.75f,customTouch_,
-                          (float)(Time::getMillisecondCounterHiRes()*0.001));
+        g.drawText("Each flower follows a different REAL changing knob or band; None adds no visuals.",35,700,780,22,
+                   Justification::centredLeft);
+        const float touchPhase=(float)(Time::getMillisecondCounterHiRes()*0.001);
+        const auto sample=[&](int style,float x,bool right) {
+            const int number=style==CynDjTouch::Flowers ? flowerCount_:1;
+            for(int i=0;i<number;++i)
+                CynDjTouch::paint(g,style,
+                    {x+(style==CynDjTouch::Flowers ? (i-1.5f)*27.0f:0.0f),
+                     620.0f+(style==CynDjTouch::Flowers ? (i%2)*15.0f:0.0f)},
+                    0.78f,customTouch_,touchPhase+i*0.4f,right);
+        };
+        sample(effectsTouchStyle_,585.0f,false);
+        sample(eqTouchStyle_,786.0f,true);
         // Progress markers are deliberately subtle and scale to all 20 presets.
         const float dotW=9.5f,space=19.0f;
         const float start=(getWidth()-((total-1)*space+dotW))*.5f;
@@ -246,8 +293,10 @@ private:
         }
         customChoice_=file;
         customTouch_=image;
-        touchStyle_=CynDjTouch::CustomPng;
-        touchPicker_.setSelectedId(touchStyle_+1,juce::dontSendNotification);
+        effectsTouchStyle_=CynDjTouch::CustomPng;
+        eqTouchStyle_=CynDjTouch::CustomPng;
+        effectsTouchPicker_.setSelectedId(effectsTouchStyle_+1,juce::dontSendNotification);
+        eqTouchPicker_.setSelectedId(eqTouchStyle_+1,juce::dontSendNotification);
         repaint();
     }
 
@@ -282,10 +331,10 @@ private:
     }
 
     juce::TextButton previous_,next_,apply_,cancel_,importTouch_;
-    juce::ComboBox touchPicker_;
+    juce::ComboBox effectsTouchPicker_,eqTouchPicker_,flowerPicker_;
     juce::File customChoice_;
     juce::Image customTouch_;
-    int touchStyle_=0;
+    int effectsTouchStyle_=0,eqTouchStyle_=0,flowerCount_=4;
     juce::Rectangle<float> preview_;
     int selected_=0,source_=0,slideDirection_=1;
     bool transitioning_=false;
