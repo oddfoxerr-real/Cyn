@@ -42,7 +42,7 @@ FxEqualizer::FxEqualizer()
         band_boosts_[i].reset(new FxEqSlider(i, MAX_GAIN));
         center_frequencies_[i].reset(new FxBandCenterFreqSlider(i, *labels_[i]));
 
-        labels_[i]->setJustificationType(Justification::centredTop);
+        labels_[i]->setJustificationType(Justification::centred);
         addAndMakeVisible(labels_[i].get());
 
         band_boosts_[i]->setSliderStyle(Slider::LinearVertical);
@@ -297,8 +297,11 @@ void FxEqualizer::resized()
         center_frequencies_[i]->setVisible(show_center_frequencies);
         // On high-density layouts, every second label is visually hidden,
         // but ALL real filter controls remain accessible and live.
-        labels_[i]->setVisible(labels_.size() < 35 || i == 0 ||
-                                i == labels_.size()-1 || i%2 == 0);
+        const bool denseLabels = width < 27 && labels_.size() > 20;
+        labels_[i]->setVisible(!denseLabels || i == 0 ||
+                               i == labels_.size()-1 || (i % 2) == 0);
+        // Dense 31–39 band layouts keep every slider operable while giving
+        // readable frequency labels adequate horizontal space.
         if (show_center_frequencies)
         {
             labels_[i]->setFont(theme.getNormalFont().withHeight(LABEL_HEIGHT));
@@ -308,9 +311,13 @@ void FxEqualizer::resized()
         }
         else
         {
-            labels_[i]->setFont(theme.getNormalFont().withHeight(SMALL_FONT));
+            labels_[i]->setFont(theme.getNormalFont().withHeight(denseLabels ? 10.0f : SMALL_FONT));
             band_boosts_[i]->setBounds(x + (width - thumbWidth) / 2, Y_MARGIN, thumbWidth, compactBandHeight);
-            labels_[i]->setBounds(x, band_boosts_[i]->getBottom() + 6, width, LABEL_HEIGHT*2);
+            const int labelWidth = denseLabels && i != 0 && i != labels_.size()-1
+                ? width * 2 : width;
+            labels_[i]->setBounds(x - (labelWidth-width)/2,
+                                  band_boosts_[i]->getBottom() + 5,
+                                  labelWidth, LABEL_HEIGHT*2);
         }
 
         x += width;
