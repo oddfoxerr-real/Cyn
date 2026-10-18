@@ -51,7 +51,7 @@ jobs:
             (Resolve-Path 'DIAGNOSE_CYN_APEX.ps1'),[ref]$tokens,[ref]$errors) | Out-Null
           if ($errors.Count -ne 0) { throw 'APEX diagnostic PowerShell syntax error.' }
           & (Join-Path (Resolve-Path 'dist/Cyn') 'DIAGNOSE_CYN_APEX.ps1') -CynFolder (Resolve-Path 'dist/Cyn')
-          if ($LASTEXITCODE -ne 0) { throw 'APEX local diagnostic probe failed.' }
+          if (-not $?) { throw 'APEX local diagnostic probe failed.' }
       - name: Run native full ONNX session with exact shipped model
         shell: pwsh
         run: |
