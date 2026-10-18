@@ -122,7 +122,12 @@ private:
     bool busy_ = false;
 
     int getNumRows() override { return static_cast<int> (profiles_.size()); }
-    void selectedRowsChanged (int) override { updateSelection(); }
+    void selectedRowsChanged (int) override {
+        // Changing selection cancels a pending user-approved activation.
+        const auto* item=selected();
+        if(!item || !item->nativeApex) pendingApexActivation_=false;
+        updateSelection();
+    }
 
     void paintListBoxItem (int row, juce::Graphics& g, int width, int height,
                            bool selectedRow) override
@@ -364,7 +369,7 @@ private:
     {
         auto& ctrl=FxController::getInstance();
         juce::String error;
-        const bool success=ctrl.selectAIProfile("apex6m",error);
+        const bool success=ctrl.selectAIProfile ("apex6m", error);
         if(success) ctrl.setSmartListening(true);
         status_.setText(success ?
             "CYN APEX 6M active. Play music to start neural inference." :
