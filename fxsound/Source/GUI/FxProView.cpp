@@ -586,10 +586,10 @@ void FxProView::paint(Graphics& g)
     // actual audio telemetry. True black still dominates the interface.
     {
         Graphics::ScopedSaveState scene(g);
-        g.reduceClipRegion(Rectangle<int>(229,0,getWidth()-229,getHeight()));
+        g.reduceClipRegion(juce::Rectangle<int>(229,0,getWidth()-229,getHeight()));
         CynThemeAtmosphere::paint(g,FxThemeMode::DarkMesh,
             reduced ? 0.0f : (float)(Time::getMillisecondCounterHiRes()*.001),
-            playLevel,Rectangle<float>(229.0f,0.0f,getWidth()-229.0f,205.0f));
+            playLevel,juce::Rectangle<float>(229.0f,0.0f,getWidth()-229.0f,205.0f));
         ColourGradient veil(Colour(0xff03070d).withAlpha(.40f),230.0f,10.0f,
                             base.withAlpha(.96f),740.0f,208.0f,false);
         g.setGradientFill(veil); g.fillRect(229,0,getWidth()-229,220);
