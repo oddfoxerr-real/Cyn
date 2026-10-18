@@ -1,0 +1,30 @@
+name: Cyn Power Swallow UI Regression
+
+on:
+  pull_request:
+    paths:
+      - "fxsound/Source/GUI/CynPowerCurtain.h"
+      - "fxsound/Source/GUI/FxProView.*"
+      - "fxsound/Source/GUI/FxController.cpp"
+      - "fxsound/Source/GUI/CynYamNetWorker.h"
+      - "fxsound/Source/GUI/CynApex6MWorker.h"
+      - "scripts/test_cyn_power_swallow.mjs"
+      - ".github/workflows/cyn-power-swallow.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  power-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          node scripts/test_cyn_power_swallow.mjs
+          node scripts/test_version_controls.mjs
+          node scripts/test_apex6m_activation.mjs

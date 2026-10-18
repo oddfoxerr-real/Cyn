@@ -10,6 +10,7 @@
 #include "AudioLearningTimeline.h"
 #include "CynNeuralActivity.h"
 #include "CynDjTouch.h"
+#include "CynPowerCurtain.h"
 #include <array>
 
 class CynRailButton : public TextButton
@@ -96,6 +97,7 @@ private:
     FxEqualizer equalizer_;
     FxVisualizer visualizer_;
     TooltipWindow tool_tip_;
+    CynPowerCurtain power_curtain_;
     TextButton sound_nav_ { "Sound studio" }, smart_nav_ { "Smart listening" }, devices_nav_ { "Output devices" }, ai_hub_nav_ { "AI Hub" };
     CynRailButton home_ { "Sound studio", 0 }, smart_rail_ { "Smart listening", 1 }, devices_rail_ { "Output devices", 2 };
     CynRailButton settings_rail_ { "Settings", 3 };
