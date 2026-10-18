@@ -16,9 +16,11 @@ assert(page.includes("page_ = page;") &&
        page.includes("misc_nav_.setToggleState(page==4") &&
        page.includes("ai_hub_nav_.setToggleState(page==3"),
   "The selected AI Hub/Misc pages and native navigation controls must update immediately");
-assert(page.includes("g.reduceClipRegion(content);") &&
+const liquid=read("fxsound/Source/GUI/CynLiquidScreen.h");
+assert(liquid.includes("g.reduceClipRegion(bounds)") &&
+       page.includes("juce::Rectangle<int>(240,0") &&
        page.includes("CynLiquidScreen::render(g,transition_image_,transition_to_image_"),
-  "Animated liquid-spray mask should never obscure live navigation");
+  "Liquid compositing must clip workspace content without obscuring navigation");
 assert(page.includes("transition_to_image_=createComponentSnapshot(content)") &&
        page.includes("capturing_liquid_=true"),
        "Actual destination pixels must be captured after controls switch");
