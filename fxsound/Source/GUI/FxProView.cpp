@@ -168,6 +168,11 @@ FxProView::FxProView() : tool_tip_(this)
     addAndMakeVisible(power_curtain_);
     power_curtain_.onPowerRequested=[] {
         FxController::getInstance().setPowerState(true);
+        if(!FxModel::getModel().getPowerState())
+            AlertWindow::showMessageBoxAsync(AlertWindow::WarningIcon,
+                "CYN cannot start",
+                "Audio processing is unavailable. Check your output device "
+                "and make sure CYN is not running in a Remote Desktop session.");
     };
     setSize(WIDTH, HEIGHT);
     selectPage(0);
