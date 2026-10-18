@@ -24,7 +24,7 @@ assert(controllers.includes("setSmartPresetCycling(bool enabled)") &&
        controller.includes("cycling_eq_[(size_t)b]"),
        "Auto cycling must be persisted and control actual DSP effect/EQ baselines");
 assert(view.includes("preset_cycling_.onClick=") &&
-       view.includes("preset_cycling_.setBounds(280,520,225,24)") &&
+       view.includes("preset_cycling_.setBounds(left+20,618,208,24)") &&
        view.includes("getSmartCyclingPreset()"),
        "Smart Listening must contain a wired toggle and live preset status");
 const headroomPolicy=read("fxsound/Source/GUI/CynSmartRange.h");
@@ -39,8 +39,8 @@ assert(controller.includes('settings_.setDouble("cyn_music_headroom_cap"') &&
        controller.includes("CynSmartRange::expressiveScore("),
        "Native Music AI DSP must actually use the adjustable cap and score mapping");
 assert(view.includes('headroom_cap_.onValueChange=') &&
-       view.includes('headroom_cap_.setBounds(879,491,303,28)') &&
-       view.includes('text("Headroom Cap"') &&
+       view.includes('headroom_cap_.setBounds(left+542,591,259,25)') &&
+       view.includes('txt("HEADROOM CAP"') &&
        view.includes("controller.getSmartListeningMode()==0"),
        "Headroom Cap slider must be visible, wired and restricted to Music AI");
 const smartRange = read("fxsound/Source/GUI/CynSmartRange.h");
