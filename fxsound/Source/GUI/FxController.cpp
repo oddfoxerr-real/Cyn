@@ -3321,7 +3321,15 @@ String FxController::getActiveAIProfileId() {
 }
 bool FxController::selectAIProfile(const String& id,String& error) {
     if(smart_training_) { error="Wait for your model training to finish.";return false; }
-    if(id==getActiveAIProfileId()) { error.clear();return true; }
+    if(id==getActiveAIProfileId()) {
+        // A saved choice is not evidence that the ONNX worker is actually live.
+        if(id=="apex6m" && !apex6MReady()) {
+            startApex6MIfAvailable();
+            error=apex6MDiagnostic();
+            return false;
+        }
+        error.clear();return true;
+    }
     // The full APEX ONNX model is a distinct runtime, NOT a 209-weight .cynai.
     // Leave private learning and the previous model untouched.
     if(id=="apex6m") {
@@ -3737,6 +3745,8 @@ String FxController::getSmartSummary() const
     if(smart_stale_ticks_>=4) return mode+" / waiting for audio";
     CynAudioScene scene;
     if(smart_mode_==0 && apex6m_active_) {
+        if(apex_worker_ && apex_worker_->failed())
+            return "Music AI / CYN APEX 6M / engine failed: " + apex6MDiagnostic();
         std::array<float,8> response {};
         return apex_worker_ && apex_worker_->latest(response)
             ? "Music AI / CYN APEX 6M / Neural inference ACTIVE + adaptive sound"
