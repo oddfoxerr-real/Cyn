@@ -10,7 +10,8 @@ const controller=read("fxsound/Source/GUI/FxController.cpp");
 const close=read("fxsound/Source/GUI/CynCloseMotion.h");
 const overlay=read("fxsound/Source/GUI/CynLiquidCloseOverlay.h");
 for(const name of ["Classic","Quick Pop","Soft Float","Ripple Press","Liquid Morph",
-                   "Subtle","Neon Edge","Soft Glow","Liquid Edge","Glass Sweep"])
+                   "Subtle","Neon Edge","Soft Glow","Liquid Edge","Glass Sweep",
+                   "Liquid Gel Press","Flowing Ink","Wet Gloss","Spray Paint"])
     assert(visuals.includes('return "'+name+'"'),"Missing native style: "+name);
 for(const prop of ["cyn_button_motion_style","cyn_button_highlight_style",
                    "cyn_button_motion_speed","cyn_button_highlight_intensity"])
@@ -29,7 +30,7 @@ assert(studio.includes('buttonTab_("Buttons")') &&
        studio.includes("buttonSpeedSlider_.onValueChange") &&
        studio.includes("buttonIntensitySlider_.onValueChange"),
        "Studio must have functional Buttons tab, live preview and controls");
-assert(visuals.includes("if(reducedMotion || strength<.01f || over<.01f) return;") &&
+assert(visuals.includes("if(reducedMotion || strength<.01f || (over<.01f && pushed<.01f)) return;") &&
        theme.includes("buttonMix : mix);") &&
        theme.includes("button_speed_"),
        "Effects must honor reduced motion and adjust button response without changing DSP");
@@ -40,6 +41,11 @@ assert(close.includes("phaseExpandEnd = 0.43f") &&
        overlay.includes("CynCloseMotion::expandEase(t / phaseExpandEnd)") &&
        !overlay.includes("easeOutQuint"),
        "The full-window X expansion must be visibly paced before liquid dissolve");
+assert(visuals.includes("case SprayPaint:") &&
+       visuals.includes("for(int i=0;i<84;++i)") &&
+       visuals.includes("g.reduceClipRegion(mask)") &&
+       visuals.includes("case WetGloss:"),
+       "Spray particles and liquid gloss must render natively inside the button");
 assert(!visuals.includes("AudioProcessor") &&
        !studio.includes("setPowerState("),
        "UI styles must not touch audio processing");
