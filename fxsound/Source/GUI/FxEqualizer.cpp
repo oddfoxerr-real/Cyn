@@ -352,9 +352,9 @@ void FxEqualizer::paint(Graphics& g)
     }
 
     auto panelBounds = getLocalBounds().toFloat();
-    g.setColour(Colour(0xff080d13).withAlpha(0.94f));
+    g.setColour(Colour(0xff050607).withAlpha(0.94f));
     g.fillRoundedRectangle(panelBounds, 18.0f);
-    g.setColour(Colour(0xff192735).withAlpha(0.82f));
+    g.setColour(Colour(0xff18212b).withAlpha(0.82f));
     g.drawRoundedRectangle(panelBounds.reduced(0.5f), 18.0f, 1.0f);
 
     auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
