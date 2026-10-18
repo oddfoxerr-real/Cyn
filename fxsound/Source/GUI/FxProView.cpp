@@ -911,16 +911,16 @@ void FxProView::updateDjTouch(double now)
         juce::Point<float> position {};
         int index=-1;
     };
-    std::array<std::array<Candidate,4>,2> ranked {};
+    std::array<std::array<Candidate,39>,2> ranked {};
     const auto offer=[&](int panel,int index,float score,
                          juce::Point<float> position) {
         if(score<=0.0017f) return;
         auto& choices=ranked[(size_t)panel];
         // An agent never duplicates another flower's EQ band/knob.
         int insert=0;
-        while(insert<4 && score<=choices[(size_t)insert].score) ++insert;
-        if(insert==4) return;
-        for(int i=3;i>insert;--i)
+        while(insert<39 && score<=choices[(size_t)insert].score) ++insert;
+        if(insert==39) return;
+        for(int i=38;i>insert;--i)
             choices[(size_t)i]=choices[(size_t)(i-1)];
         choices[(size_t)insert]={score,position,index};
     };
@@ -977,13 +977,13 @@ void FxProView::updateDjTouch(double now)
         const bool shown=(panel==1 || audio_controls_.isEffectsShown());
         const int agents=style==CynDjTouch::Flowers ? dj_touch_flower_count_:1;
         auto& choices=ranked[(size_t)panel];
-        std::array<bool,4> used{{false,false,false,false}};
+        std::array<bool,39> used{};
         std::array<juce::Point<float>,4> claimed{};
         int claimedCount=0;
         for(int slot=0;slot<4;++slot) {
             auto& agent=dj_touch_agents_[(size_t)(panel*4+slot)];
             const auto available=[&](int candidate) {
-                if(candidate<0 || candidate>=4 || used[(size_t)candidate] ||
+                if(candidate<0 || candidate>=39 || used[(size_t)candidate] ||
                    choices[(size_t)candidate].score<=0.0017f) return false;
                 const auto position=choices[(size_t)candidate].position;
                 for(int k=0;k<claimedCount;++k)
@@ -995,11 +995,11 @@ void FxProView::updateDjTouch(double now)
             if(style!=CynDjTouch::None && shown && slot<agents) {
                 // Hold a flower on its own actively changing target whenever
                 // possible. Never send two flowers to an occupied control.
-                for(int c=0;c<4;++c)
+                for(int c=0;c<39;++c)
                     if(choices[(size_t)c].index==agent.targetId &&
                        available(c)) { picked=c; break; }
                 if(picked<0)
-                    for(int c=0;c<4;++c)
+                    for(int c=0;c<39;++c)
                         if(available(c)) { picked=c; break; }
             }
             if(picked>=0) {

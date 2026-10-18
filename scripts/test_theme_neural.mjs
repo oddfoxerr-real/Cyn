@@ -6,7 +6,7 @@ const theme=file("fxsound/Source/GUI/FxTheme.cpp");
 const atmosphere=file("fxsound/Source/GUI/CynThemeAtmosphere.h");
 const neural=file("fxsound/Source/GUI/CynNeuralActivity.h");
 const view=file("fxsound/Source/GUI/FxProView.cpp");
-assert(themeH.includes("NeuralCore, DarkMesh, NumModes"),"Legacy theme enum retained for compatibility while canonical theme is DarkMesh");
+assert(themeH.includes("NeuralCore, DarkMesh, AetherGlass, IonViolet, LiquidTitanium, JadeCircuit, SolarInk, PolarMist, NumModes"),"Legacy theme enum retained for compatibility while canonical theme is DarkMesh");
 assert(theme.includes('"Dark Theme"'),"Missing user-visible theme name");
 assert(atmosphere.includes("case FxThemeMode::DarkMesh:"),"Theme needs a real animated backdrop");
 assert(neural.includes("setProfileId(const juce::String& id)"),"Neural visualization must accept selected model ID");
@@ -37,7 +37,7 @@ assert(atmosphere.includes("constexpr int columns=33, rows=9") &&
 assert(atmosphere.includes("if(theme==FxThemeMode::DarkMesh)") &&
        atmosphere.includes("g.setColour(Colour(0xff000000))"),
        "Dark Theme must fill near-black with no opaque blue-gray gradient");
-assert(view.includes("ColourGradient side(Colour(0xff050609)") &&
+assert(view.includes("ColourGradient side(base.interpolatedWith(panel,.46f)") &&
        view.includes('g.fillRect(0,0,228,getHeight())'),
        "Dark navigation must be one continuous native black-blue sidebar");
 console.log("PASS: pure-black palette, fluid retained mesh, model colors and controls");
@@ -53,21 +53,21 @@ assert(atmosphere.includes('const float liquid=.68f+.32f*std::sin') &&
        "Keep low-speed flowing connected neural mesh lines and dots");
 assert(theme.includes('getThemeMode()==FxThemeMode::DarkMesh?base:base.brighter(0.035f)'),
        "Black dropdowns must not be brightened into gray");
-assert(view.includes("const Colour base=mode==FxThemeMode::DarkMesh") &&
-       view.includes("ColourGradient side(Colour(0xff050609)"),
+assert(view.includes("const Colour base=colour(WindowBackground)") &&
+       view.includes("ColourGradient side(base.interpolatedWith(panel,.46f)"),
        "Stable shell must remain near-black instead of gray");
-assert(view.includes("const Colour border(0xff18212b)") &&
+assert(view.includes("const Colour border=colour(RowOutline)") &&
        view.includes('g.fillRoundedRectangle(x,y,width,height,r)'),
        "Cards must share the subtle dark Depth hierarchy");
 console.log("PASS: mesh retained and flowing, surfaces pure black, no gray bloom");
 
 const studio=file("fxsound/Source/GUI/CynThemeStudio.h");
 const fxController=file("fxsound/Source/GUI/FxController.cpp");
-assert(theme.includes('case FxThemeMode::Obsidian:') &&
-       theme.includes('case FxThemeMode::Emerald:') &&
+assert(theme.includes('case FxThemeMode::AetherGlass:') &&
+       theme.includes('case FxThemeMode::IonViolet:') &&
        fxController.includes('settings_.getInt("theme_mode"') &&
        fxController.includes('FxTheme::setThemeMode(mode);') &&
-       fxController.includes("case FxThemeMode::Obsidian:"),
+       fxController.includes("case FxThemeMode::AetherGlass:"),
        "Selected dark themes must persist instead of being reset at startup");
 assert(studio.includes('themePicker_.onChange=') &&
        studio.includes('controller.setThemeMode(themeMode_)') &&
