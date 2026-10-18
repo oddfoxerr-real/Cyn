@@ -430,16 +430,18 @@ private:
                 // The 96 x 54 preview mask keeps redraw inexpensive.
                 constexpr int mw=96,mh=54;
                 Image mask(Image::ARGB,mw,mh,true);
-                Image::BitmapData bitmap(mask,Image::BitmapData::writeOnly);
                 const float melt=(t-.37f)/.63f;
-                for(int y=0;y<mh;++y)
-                    for(int x=0;x<mw;++x)
-                    {
-                        const float coverage=CynCloseMotion::coverage(closeStyle_,melt,
-                            ((float)x+.5f)/mw,((float)y+.5f)/mh);
-                        bitmap.setPixelColour(x,y,Colour::fromRGBA(255,255,255,
-                            (uint8)roundToInt(coverage*255.0f)));
-                    }
+                {
+                    Image::BitmapData bitmap(mask,Image::BitmapData::writeOnly);
+                    for(int y=0;y<mh;++y)
+                        for(int x=0;x<mw;++x)
+                        {
+                            const float coverage=CynCloseMotion::coverage(closeStyle_,melt,
+                                ((float)x+.5f)/mw,((float)y+.5f)/mh);
+                            bitmap.setPixelColour(x,y,Colour::fromRGBA(255,255,255,
+                                (uint8)roundToInt(coverage*255.0f)));
+                        }
+                }
                 Graphics::ScopedSaveState fluid(g);
                 g.reduceClipRegion(mask,AffineTransform::scale(
                     area.getWidth()/mw,area.getHeight()/mh)
