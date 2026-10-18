@@ -2997,8 +2997,17 @@ FxThemeMode FxController::getThemeMode()
 
 void FxController::setThemeMode(FxThemeMode mode)
 {
-    // Disallow legacy colours even if an older script invokes this method.
-    mode=FxThemeMode::DarkMesh;
+    // Only the seven reviewed dark presets are supported.
+    switch(mode) {
+        case FxThemeMode::DarkMesh:
+        case FxThemeMode::Midnight:
+        case FxThemeMode::Obsidian:
+        case FxThemeMode::Emerald:
+        case FxThemeMode::DeepSea:
+        case FxThemeMode::NeonTokyo:
+        case FxThemeMode::CharcoalDesktop: break;
+        default: mode=FxThemeMode::DarkMesh; break;
+    }
     settings_.setInt("theme_mode",(int)mode);
 	if (mode == getThemeMode())
 	{

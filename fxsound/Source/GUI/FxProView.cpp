@@ -219,7 +219,18 @@ void FxProView::openSettings()
 }
 void FxProView::selectSoundFocus(int focus)
 {
-    sound_focus_=juce::jlimit(0,2,focus);
+    focus=juce::jlimit(0,2,focus);
+    if(focus==sound_focus_) return;
+    transition_image_=Image();
+    if(isShowing() && !FxTheme::isReducedMotion()) {
+        const juce::Rectangle<int> content(240,0,jmax(0,getWidth()-240),getHeight());
+        if(content.getWidth()>0 && content.getHeight()>0) {
+            transition_image_=createComponentSnapshot(content);
+            transition_direction_=focus>sound_focus_ ? 1 : -1;
+            transition_start_=Time::getMillisecondCounterHiRes();
+        }
+    }
+    sound_focus_=focus;
     overview_tab_.setToggleState(sound_focus_==0,dontSendNotification);
     eq_focus_tab_.setToggleState(sound_focus_==1,dontSendNotification);
     effects_focus_tab_.setToggleState(sound_focus_==2,dontSendNotification);
@@ -1054,27 +1065,42 @@ void FxProView::paintOverChildren(Graphics& g)
         const float t=CynUiMotion::progress(
             Time::getMillisecondCounterHiRes()-transition_start_,
             CynUiMotion::pageDurationMs);
-        // The destination page is already live underneath. Reveal it THROUGH
-        // an advancing stippled liquid mask rather than waiting for a wipe.
-        // Draw only surviving outgoing-image tiles. The deterministic noise
-        // makes droplets merge naturally as the new page replaces the old.
-        const int tile=12;
-        for(int y=0;y<content.getHeight();y+=tile) {
-            for(int x=0;x<content.getWidth();x+=tile) {
-                const float u=(float)x/(float)juce::jmax(1,content.getWidth());
-                const float v=(float)y/(float)juce::jmax(1,content.getHeight());
-                const float grain=.5f+.27f*std::sin(u*89.0f+v*47.0f)
-                                     *.75f+.13f*std::sin(u*191.0f-v*133.0f);
-                const float liquid=.12f*std::sin(v*15.0f+t*10.0f);
-                const float threshold=juce::jlimit(0.0f,1.0f,t*1.38f-.18f+liquid);
-                if(grain<=threshold) continue;
-                const int w=juce::jmin(tile,content.getWidth()-x);
-                const int h=juce::jmin(tile,content.getHeight()-y);
-                g.drawImage(transition_image_,
-                    content.getX()+x,content.getY()+y,w,h,
-                    x,y,w,h);
+        // New controls are already visible behind this overlay. An organic
+        // liquid-spray frontier reveals the destination DURING the switch.
+        // One clipped image draw is far cheaper than thousands of tile draws.
+        juce::Path remnants;
+        const int width=content.getWidth(),height=content.getHeight();
+        for(int y=0;y<height;y+=7) {
+            const float v=(float)y/(float)juce::jmax(1,height);
+            const float wav=.039f*std::sin(v*23.0f+t*13.0f)
+                           +.022f*std::sin(v*67.0f-t*19.0f);
+            const float progress=juce::jlimit(0.0f,1.0f,t*1.30f-.15f+wav);
+            const float front=width*progress;
+            if(transition_direction_>=0) {
+                if(front<width) remnants.addRectangle(front,(float)y,
+                    width-front,(float)juce::jmin(7,height-y));
+            } else {
+                if(front<width) remnants.addRectangle(0.0f,(float)y,
+                    width-front,(float)juce::jmin(7,height-y));
             }
         }
+        // Small stable aerosol droplets are leftover pieces of the old image;
+        // they disperse behind the wave without frame-to-frame random flicker.
+        for(int k=0;k<140;++k) {
+            const float u=(float)((k*47+11)%149)/149.0f;
+            const float v=(float)((k*73+19)%151)/151.0f;
+            const float drift=.14f*std::sin(k*1.9f+t*8.0f);
+            const float front=juce::jlimit(0.0f,1.0f,t*1.30f-.15f+drift);
+            const float x=width*u,y=height*v;
+            const bool oldSide=transition_direction_>=0 ? u>front : u<1.0f-front;
+            const float distance=transition_direction_>=0 ? front-u : u-(1.0f-front);
+            if(!oldSide && distance>0.0f && distance<.14f) {
+                const float r=(1.1f+(float)(k%5)*.88f)*(1.0f-t*.65f);
+                remnants.addEllipse(x-r,y-r,2.0f*r,2.0f*r);
+            }
+        }
+        g.reduceClipRegion(remnants);
+        g.drawImageAt(transition_image_,content.getX(),content.getY());
     }
     if(page_==0 && !FxTheme::isReducedMotion()) {
         const auto time=(float)(Time::getMillisecondCounterHiRes()*0.001);

@@ -853,9 +853,15 @@ void FxTheme::setButtonVisualSettings(int motion,int highlight,int speedPct,int 
 }
 const char* FxTheme::getThemeName(int i)
 {
-    juce::ignoreUnused(i);
-    // Only Dark Theme is exposed to users in the stable release candidate.
-    return "Dark Theme";
+    switch(static_cast<FxThemeMode>(i)) {
+        case FxThemeMode::Midnight: return "Midnight";
+        case FxThemeMode::Obsidian: return "Liquid Obsidian";
+        case FxThemeMode::Emerald: return "Emerald";
+        case FxThemeMode::DeepSea: return "Deep Sea";
+        case FxThemeMode::NeonTokyo: return "Neon Tokyo";
+        case FxThemeMode::CharcoalDesktop: return "Graphite";
+        default: return "Dark Theme";
+    }
 }
 bool FxTheme::isLightTheme()
 {

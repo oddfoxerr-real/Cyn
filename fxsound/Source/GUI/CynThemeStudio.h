@@ -141,8 +141,8 @@ public:
             buttonDemo_.repaint();
         };
         buttonDemo_.onClick=[this]{buttonDemo_.repaint();};
-        buttonMotionPicker_.setTooltip("Classic, Quick Pop, Soft Float, Ripple Press, Liquid Morph, Liquid Gel Press, or Flowing Ink.");
-        buttonHighlightPicker_.setTooltip("Subtle, Neon Edge, Soft Glow, Liquid Edge, Glass Sweep, Wet Gloss or Spray Paint.");
+        buttonMotionPicker_.setTooltip("Liquid Gel, Flowing Ink, Elastic Bounce, Viscous Slide, Ink Pulse and more.");
+        buttonHighlightPicker_.setTooltip("Spray Paint, Aerosol Mist, Liquid Chrome, Ink Marble, Electric Droplets and more.");
         buttonSpeedSlider_.setTooltip("Button hover/press response speed, independent from X-to-tray animation.");
         buttonIntensitySlider_.setTooltip("How strongly highlights and liquid edges appear.");
         customTouch_=CynDjTouch::readCustomImage();
@@ -154,7 +154,7 @@ public:
         closeSpeedSlider_.setRange(.55,1.60,.05);
         closeSpeedSlider_.setTextValueSuffix("x");
         closeSpeedSlider_.setValue(closeSpeedPercent_/100.0,juce::dontSendNotification);
-        closeStylePicker_.setTooltip("Choose a close-to-tray visual including Liquid Ink, Spray Dissolve, Vortex, Gravity Melt and Liquid Curtain.");
+        closeStylePicker_.setTooltip("Liquid Ink, Spray Dissolve, Mercury Drop, Paint Wash, Bubble Burst and more.");
         closeSpeedSlider_.setTooltip("Animation speed: 0.55x is slower; 1.60x is faster. Normal button reactions stay quick.");
         addAndMakeVisible(closeStylePicker_);
         addAndMakeVisible(closeSpeedSlider_);
@@ -312,7 +312,7 @@ public:
         g.drawText("CYN Studio",25,17,getWidth()-50,37,Justification::centredLeft);
         g.setFont(Font(13.0f));
         g.setColour(muted);
-        g.drawText("One dark identity. Your animations, AI Touch, and liquid-button styles.",
+        g.drawText("Seven dark themes, fluid screen transitions and customizable effects.",
                    26,56,getWidth()-52,24,Justification::centredLeft);
 
         if(buttonPage_) {
