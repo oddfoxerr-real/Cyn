@@ -36,6 +36,9 @@ public:
 	void startLogoAnimation();
 	void stopLogoAnimation();
 	void addToolbarButton(Button* toolbarButton, bool right_aligned = true);
+    juce::Point<float> getCloseButtonCentre() const noexcept {
+        return title_bar_.getPosition().toFloat() + title_bar_.getCloseButtonCentre();
+    }
 
     void enableShadow(bool enable);
     bool isShadowEnabled();
@@ -66,6 +69,9 @@ protected:
 		void startLogoAnimation();
 		void stopLogoAnimation();
 		void addToolbarButton(Button* toolbarButton, bool right_aligned=true);
+        juce::Point<float> getCloseButtonCentre() const noexcept {
+            return close_button_.getBounds().getCentre().toFloat();
+        }
 
 	private:
 		static constexpr int ICON_WIDTH = 106;
