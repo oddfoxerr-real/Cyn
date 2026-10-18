@@ -54,7 +54,7 @@ assert(atmosphere.includes('const float liquid=.68f+.32f*std::sin') &&
 assert(theme.includes('getThemeMode()==FxThemeMode::DarkMesh?base:base.brighter(0.035f)'),
        "Black dropdowns must not be brightened into gray");
 assert(view.includes("const Colour base(0xff000000)") &&
-       view.includes("Colour(0xff090c10)"),
+       view.includes("ColourGradient side(Colour(0xff050609)"),
        "Stable shell must remain near-black instead of gray");
 assert(view.includes("const Colour border(0xff18212b)") &&
        view.includes('g.fillRoundedRectangle(x,y,width,height,r)'),
