@@ -539,6 +539,11 @@ void FxTheme::drawButtonBackground(Graphics& g, Button& button, const Colour& ba
                bounds.getRight()-10.0f,bounds.getY()+1.0f,0.8f);
     g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(.74f).interpolatedWith(Colour(FXCOLOR(SliderTrack)).withAlpha(.6f),hover));
     g.drawRoundedRectangle(bounds,jmin(12.0f,bounds.getHeight()*.36f),1);
+    // Immediate, bounded feedback: no independent looping ripple.
+    if(press>0.001f) {
+        g.setColour(Colour(FXCOLOR(SliderTrack)).withAlpha(0.26f*press));
+        g.drawRoundedRectangle(bounds.reduced(1.0f),radius,1.5f);
+    }
 
 }
 
@@ -885,7 +890,7 @@ void FxTheme::timerCallback()
         bool changed=false;
         for(int i=0;i<4;++i) {
             const float delta=it->target[i]-it->value[i];
-            if(std::abs(delta)>.001f) { it->value[i]+=delta*(smooth_animations_ ? .13f : .22f); active=changed=true; }
+            if(std::abs(delta)>.001f) { it->value[i]+=delta*(smooth_animations_ ? .44f : .60f); active=changed=true; }
             else it->value[i]=it->target[i];
         }
         if(changed) it->component->repaint();
