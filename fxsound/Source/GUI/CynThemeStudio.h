@@ -68,7 +68,23 @@ public:
         setOpaque(true);
         setWantsKeyboardFocus(true);
         setFocusContainerType(juce::Component::FocusContainerType::focusContainer);
-        // Dark Theme is the only stable visual identity.
+        // Curated dark palette selector (keeps existing layout).
+        themeMode_=FxTheme::getThemeMode();
+        for(const auto& item : std::initializer_list<std::pair<FxThemeMode,const char*>>{
+            {FxThemeMode::DarkMesh,"Gemini Black"},
+            {FxThemeMode::Midnight,"Midnight"},
+            {FxThemeMode::Obsidian,"Liquid Obsidian"},
+            {FxThemeMode::Emerald,"Emerald"},
+            {FxThemeMode::DeepSea,"Deep Sea"},
+            {FxThemeMode::NeonTokyo,"Neon Tokyo"},
+            {FxThemeMode::CharcoalDesktop,"Graphite"}})
+            themePicker_.addItem(item.second,(int)item.first+1);
+        themePicker_.setSelectedId((int)themeMode_+1,juce::dontSendNotification);
+        themePicker_.onChange=[this] {
+            themeMode_=(FxThemeMode)(themePicker_.getSelectedId()-1);
+            repaint();
+        };
+        addAndMakeVisible(themePicker_);
         auto& settings=FxController::getInstance().getSettings();
         const int legacyStyle=settings.getInt("cyn_dj_touch_style",0);
         effectsTouchStyle_=juce::jlimit(0,5,
@@ -222,7 +238,7 @@ public:
             controller.getSettings().setInt("cyn_button_motion_speed",buttonSpeed_);
             controller.getSettings().setInt("cyn_button_highlight_intensity",buttonIntensity_);
             FxTheme::setButtonVisualSettings(buttonMotion_,buttonHighlight_,buttonSpeed_,buttonIntensity_);
-            controller.setThemeMode(FxThemeMode::DarkMesh);
+            controller.setThemeMode(themeMode_);
             close();
         };
         cancel_.onClick = [this] { close(); };
@@ -248,6 +264,7 @@ public:
         appearanceTab_.setBounds(w-465,73,140,33);
         motionTab_.setBounds(w-317,73,140,33);
         buttonTab_.setBounds(w-169,73,140,33);
+        themePicker_.setBounds(295,450,310,34);
         buttonDemo_.setBounds(282,215,336,76);
         buttonMotionPicker_.setBounds(282,452,345,34);
         buttonHighlightPicker_.setBounds(282,510,345,34);
@@ -316,16 +333,16 @@ public:
             g.reduceClipRegion(preview_.getSmallestIntegerContainer());
             const float time=FxTheme::isReducedMotion()?0.0f:
                 (float)(Time::getMillisecondCounterHiRes()*.001);
-            paintPreview(g,FxThemeMode::DarkMesh,preview_,time);
+            paintPreview(g,themeMode_,preview_,time);
         }
         g.setColour(text);
         g.setFont(Font(20.0f,Font::bold));
-        g.drawText("Dark Theme",92,444,getWidth()-184,28,
+        g.drawText("SELECT DARK THEME",92,480,getWidth()-184,25,
                    Justification::centred);
         g.setFont(Font(12.0f));
         g.setColour(muted);
-        g.drawText("CYN STANDARD  /  TRUE BLACK + LIQUID BLUE MESH",
-                   92,474,getWidth()-184,20,Justification::centred);
+        g.drawText("SLEEK DARK PRESETS  /  LIVE PREVIEW",
+                   92,508,getWidth()-184,20,Justification::centred);
 
         // Two real DJ hands/flower groups; styles are independent per panel.
         g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(.65f));
@@ -413,6 +430,7 @@ private:
             &effectsTouchPicker_, &eqTouchPicker_,
             &flowerPicker_, &importTouch_ })
             c->setVisible(!show);
+        themePicker_.setVisible(!show);
         closeStylePicker_.setVisible(show);
         closeSpeedSlider_.setVisible(show);
         replayMotion_.setVisible(show);
@@ -424,6 +442,7 @@ private:
     {
         buttonPage_=true;
         motionPage_=false;
+        themePicker_.setVisible(false);
         appearanceTab_.setToggleState(false,juce::dontSendNotification);
         motionTab_.setToggleState(false,juce::dontSendNotification);
         buttonTab_.setToggleState(true,juce::dontSendNotification);
@@ -644,7 +663,8 @@ private:
     juce::ComboBox buttonMotionPicker_,buttonHighlightPicker_;
     juce::Slider buttonSpeedSlider_,buttonIntensitySlider_;
     juce::ComboBox effectsTouchPicker_,eqTouchPicker_,flowerPicker_;
-    juce::ComboBox closeStylePicker_;
+    juce::ComboBox closeStylePicker_,themePicker_;
+    FxThemeMode themeMode_=FxThemeMode::DarkMesh;
     juce::Slider closeSpeedSlider_;
     juce::File customChoice_;
     juce::Image customTouch_;
