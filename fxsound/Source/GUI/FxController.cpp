@@ -1166,12 +1166,20 @@ bool FxController::exit()
 
 void FxController::setPowerState(bool power_state)
 {
+    // Suspend neural work immediately on Off. Only the existing power
+    // state machine controls device routing and DSP; UI never impersonates it.
+    if(!power_state) {
+        if(apex_worker_) apex_worker_->setProcessingEnabled(false);
+        if(yamnet_worker_) yamnet_worker_->setProcessingEnabled(false);
+    }
     restoreSmartBaseline();
 	if (!dfx_enabled_ || SysInfo::isRemoteSession())
 	{
 		main_window_->enablePowerButton(false);
 
 		FxModel::getModel().setPowerState(false);
+        if(apex_worker_) apex_worker_->setProcessingEnabled(false);
+        if(yamnet_worker_) yamnet_worker_->setProcessingEnabled(false);
 		powerOn(false);
 
 		system_tray_view_->setStatus(false, false);
@@ -3462,6 +3470,12 @@ void FxController::updateSmartListening()
     smart_stale_ticks_=fresh?0:jmin(100,smart_stale_ticks_+1);
     smart_last_sequence_=input.sequence;
     const bool active=audio_process_on_ && playback_device_available_ && FxModel::getModel().getPowerState();
+    // No AI cycles when Off. APEX also sleeps when it isn't the selected
+    // model, preserving CPU headroom on entry-level Windows machines.
+    if(yamnet_worker_) yamnet_worker_->setProcessingEnabled(active);
+    if(apex_worker_) apex_worker_->setProcessingEnabled(
+        active && smart_enabled_ && smart_mode_==0 &&
+        getActiveAIProfileId()=="apex6m");
     CynAudioScene scene;
     const bool yamnetLive=yamnet_worker_ && yamnet_worker_->latest(scene);
     if(fresh && active && input.rms>0.0001f) smart_history_.push_back({input,now,scene});
