@@ -1,0 +1,50 @@
+name: CYN Responsive UI Motion
+
+on:
+  pull_request:
+    paths:
+      - "fxsound/Source/GUI/CynUiMotion.h"
+      - "fxsound/Source/GUI/FxProView.cpp"
+      - "fxsound/Source/GUI/FxProView.h"
+      - "fxsound/Source/GUI/CynThemeStudio.h"
+      - "scripts/test_fast_ui_motion.mjs"
+      - "tests/cyn_ui_motion_test.cpp"
+      - ".github/workflows/cyn-responsive-ui.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  motion-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          node scripts/test_fast_ui_motion.mjs
+          node scripts/test_version_controls.mjs
+          node scripts/test_ai_hub.mjs
+      - run: |
+          g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/cyn_ui_motion_test.cpp -o /tmp/cyn-ui-motion
+          /tmp/cyn-ui-motion
+
+  windows-native:
+    runs-on: windows-2022
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile actual Cyn JUCE Windows x64
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          if (!(Test-Path $vswhere)) { throw 'Visual Studio 2022 missing' }
+          $root = & $vswhere -latest -version '[17.0,18.0)' -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1
+          if (!$root) { throw 'MSVC x64 tools missing' }
+          $msbuild = Join-Path $root 'MSBuild\Current\Bin\MSBuild.exe'
+          & $msbuild 'fxsound\Project\FxSound.sln' /m:2 /nr:false /t:Build /p:Configuration=Release /p:Platform=x64 /nologo
+          if ($LASTEXITCODE -ne 0) { throw 'CYN native UI build failed' }

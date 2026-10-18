@@ -4,6 +4,7 @@
 #include "FxController.h"
 #include "FxTheme.h"
 #include "CynThemeAtmosphere.h"
+#include "CynUiMotion.h"
 #include "FxSettingsDialog.h"
 #include "CynAiHubDialog.h"
 #include <array>
@@ -196,8 +197,17 @@ void FxProView::openSettings()
 }
 void FxProView::selectPage(int page)
 {
-    if(page!=page_ && isShowing() && !FxTheme::isReducedMotion()) {
-        transition_image_=createComponentSnapshot(getLocalBounds()); transition_start_=Time::getMillisecondCounterHiRes();
+    if(page == page_ && isShowing()) return; // Initial page must still initialize child visibility.
+    // Immediately select the destination. Snapshot ONLY the outgoing content,
+    // so the sidebar stays live and responsive even on slower machines.
+    transition_image_ = Image(); // Never capture a previous transition overlay.
+    if(isShowing() && !FxTheme::isReducedMotion()) {
+        const juce::Rectangle<int> content(240, 0, jmax(0,getWidth()-240), getHeight());
+        if(content.getWidth() > 0 && content.getHeight() > 0) {
+            transition_image_ = createComponentSnapshot(content);
+            transition_direction_ = page > page_ ? 1 : -1;
+            transition_start_ = Time::getMillisecondCounterHiRes();
+        }
     }
     page_ = page;
     misc_nav_.setToggleState(page==3,dontSendNotification);
@@ -277,7 +287,8 @@ void FxProView::timerCallback()
     if(!isShowing()) return;
     const auto now=Time::getMillisecondCounterHiRes();
     if(transition_image_.isValid()) {
-        if(FxTheme::isReducedMotion() || now-transition_start_>=220) transition_image_=Image();
+        if(FxTheme::isReducedMotion() ||
+           now-transition_start_>=CynUiMotion::pageDurationMs) transition_image_=Image();
         repaint();
     }
     if (theme_from_image_.isValid())
@@ -587,7 +598,7 @@ void FxProView::paint(Graphics& g)
     text("AUDIO", 80, 52, 132, 16, 10, true);
     text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
     text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text("Version 2.0.53", 80, 529, 140, 16, 10, true);
+    text("Version 2.0.54", 80, 529, 140, 16, 10, true);
     text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
     text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
         ? "Choose a listening mode and the neural model that powers it." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
@@ -778,9 +789,16 @@ void FxProView::paintOverChildren(Graphics& g)
         return;
     }
     if(transition_image_.isValid() && !FxTheme::isReducedMotion()) {
-        const float progress=jlimit(0.0f,1.0f,(float)((Time::getMillisecondCounterHiRes()-transition_start_)/220.0));
-        g.setOpacity((1-progress)*(1-progress));
-        g.drawImageAt(transition_image_,0,0);
+        const auto content=juce::Rectangle<int>(240,0,jmax(0,getWidth()-240),getHeight());
+        Graphics::ScopedSaveState clipped(g);
+        g.reduceClipRegion(content); // No old-page pixels over the active sidebar.
+        const float t=CynUiMotion::progress(
+            Time::getMillisecondCounterHiRes()-transition_start_,
+            CynUiMotion::pageDurationMs);
+        g.setOpacity(CynUiMotion::outgoingOpacity(t));
+        g.drawImageAt(transition_image_,
+            content.getX()+roundToInt(CynUiMotion::outgoingX(t,transition_direction_)),
+            content.getY());
     }
     if(page_==0 && !FxTheme::isReducedMotion()) {
         const auto time=(float)(Time::getMillisecondCounterHiRes()*0.001);

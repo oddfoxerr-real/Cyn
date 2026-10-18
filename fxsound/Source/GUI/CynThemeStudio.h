@@ -6,6 +6,7 @@
 #include "FxTheme.h"
 #include "CynThemeAtmosphere.h"
 #include "CynDjTouch.h"
+#include "CynUiMotion.h"
 #include <cmath>
 
 class CynThemeStudioContent final : public juce::Component, private juce::Timer
@@ -173,8 +174,8 @@ public:
             if(transitioning_ && !FxTheme::isReducedMotion())
             {
                 const float elapsed=(float)(Time::getMillisecondCounterHiRes()-transitionStart_);
-                const float linear=jlimit(0.0f,1.0f,elapsed/420.0f);
-                progress=linear*linear*(3.0f-2.0f*linear);
+                progress=CynUiMotion::easeOutCubic(
+                    CynUiMotion::progress(elapsed,CynUiMotion::themeCarouselDurationMs));
             }
             const float stride=preview_.getWidth()+19.0f;
             const float direction=(float)slideDirection_;
@@ -316,7 +317,7 @@ private:
     {
         if(!isShowing())return;
         if(transitioning_ &&
-           juce::Time::getMillisecondCounterHiRes()-transitionStart_>=420.0)
+           juce::Time::getMillisecondCounterHiRes()-transitionStart_>=CynUiMotion::themeCarouselDurationMs)
         {
             transitioning_=false;
             source_=selected_;
