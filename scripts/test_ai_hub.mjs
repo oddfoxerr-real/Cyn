@@ -161,8 +161,10 @@ assert(studio.includes('const float stride=preview_.getWidth()+19.0f;') &&
        studio.includes('progress=linear*linear*(3.0f-2.0f*linear)'),
        "Theme transitions must be smooth horizontal slides");
 assert(studio.includes('controller.setThemeMode(static_cast<FxThemeMode>(selected_))') &&
-       studio.includes('controller.getSettings().setInt("cyn_dj_touch_style",touchStyle_)'),
-       "Studio Apply must persist BOTH the theme and independent AI DJ Touch choice through the real controller");
+       studio.includes('controller.getSettings().setInt("cyn_dj_touch_style_effects",effectsTouchStyle_)') &&
+       studio.includes('controller.getSettings().setInt("cyn_dj_touch_style_eq",eqTouchStyle_)') &&
+       studio.includes('controller.getSettings().setInt("cyn_dj_touch_flower_count",flowerCount_)'),
+       "Studio Apply must persist the theme and BOTH independent AI Touch panel styles and flowers");
 assert(view.includes('theme_from_image_,-offset') &&
        view.includes('theme_to_image_,getWidth()-offset'),
        "Live application theme changes must slide between actual UI snapshots");
