@@ -3326,8 +3326,13 @@ bool FxController::selectAIProfile(const String& id,String& error) {
     // Leave private learning and the previous model untouched.
     if(id=="apex6m") {
         if(smart_mode_!=0) {error="Full APEX is a Music AI preview only.";return false;}
-        if(!apex6MInstalled() || !apex6MReady()) {
-            error="Full APEX model is missing or still loading; try again shortly.";
+        if(!apex6MInstalled()) {
+            error=apex6MDiagnostic();
+            return false;
+        }
+        if(!apex6MReady()) {
+            startApex6MIfAvailable();
+            error=apex6MDiagnostic();
             return false;
         }
         settings_.setString("cyn_apex_previous_music_profile",getActiveAIProfileId());
