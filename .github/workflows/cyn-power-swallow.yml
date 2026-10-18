@@ -8,6 +8,9 @@ on:
       - "fxsound/Source/GUI/FxMainWindow.*"
       - "fxsound/Source/GUI/FxWindow.h"
       - "fxsound/Source/GUI/FxTheme.cpp"
+      - "fxsound/Source/GUI/FxTheme.h"
+      - "fxsound/Source/GUI/CynButtonVisuals.h"
+      - "scripts/test_cyn_button_visuals.mjs"
       - "fxsound/Source/GUI/FxProView.*"
       - "fxsound/Source/GUI/FxController.cpp"
       - "fxsound/Source/GUI/CynYamNetWorker.h"
@@ -36,5 +39,6 @@ jobs:
           node scripts/test_cyn_power_swallow.mjs
           node scripts/test_cyn_liquid_close.mjs
           node scripts/test_cyn_close_motion.mjs
+          node scripts/test_cyn_button_visuals.mjs
           node scripts/test_version_controls.mjs
           node scripts/test_apex6m_activation.mjs

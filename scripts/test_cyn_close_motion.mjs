@@ -7,18 +7,23 @@ const motion=read("fxsound/Source/GUI/CynCloseMotion.h");
 const overlay=read("fxsound/Source/GUI/CynLiquidCloseOverlay.h");
 const window=read("fxsound/Source/GUI/FxMainWindow.cpp");
 
-for (const label of ["Vortex","Gravity Melt","Liquid Ripple","Soft Fade","None (instant)"])
+for (const label of ["Vortex","Gravity Melt","Liquid Ripple","Soft Fade","None (instant)","Stardust","Liquid Curtain"])
     assert(motion.includes('return "'+label+'"'),"Missing native close effect: "+label);
 assert(motion.includes("defaultSpeedPercent = 85") &&
        motion.includes("minSpeedPercent = 55") &&
        motion.includes("maxSpeedPercent = 160") &&
-       motion.includes("baseDurationMs = 460.0") &&
+       motion.includes("baseDurationMs = 700.0") &&
+       motion.includes("phaseExpandEnd = 0.43f") &&
+       motion.includes("phaseHoldEnd = 0.51f") &&
+       motion.includes("expandEase(") &&
        motion.includes("baseDurationMs*100.0/(double)clampSpeed(speedPercent)"),
        "Duration formula must make the default slightly slower, and clamp speed to 0.55–1.60x");
 assert(motion.includes("inline float coverage(") &&
        motion.includes("if(style==GravityMelt)") &&
        motion.includes("if(style==LiquidRipple)") &&
-       motion.includes("if(style==SoftFade)"),
+       motion.includes("if(style==SoftFade)") &&
+       motion.includes("if(style==StarDust)") &&
+       motion.includes("if(style==Curtain)"),
        "Each style must be backed by a distinct material coverage algorithm");
 assert(overlay.includes("CynCloseMotion::coverage(style_,progress") &&
        studio.includes("CynCloseMotion::coverage(closeStyle_,melt"),

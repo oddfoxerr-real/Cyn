@@ -34,12 +34,12 @@ assert(liquid.includes("windowIsSemiTransparent") &&
        "Close animation should be truly desktop-transparent and click-through");
 assert(liquid.includes("FxTheme::isReducedMotion()") &&
        liquid.includes("startTimerHz(60)") &&
-       liquid.includes("durationMs = 460.0") &&
+       liquid.includes("durationMs = CynCloseMotion::baseDurationMs") &&
        liquid.includes("snapshot_ = juce::Image()"),
        "Animation must be brief, respect accessibility, and release the snapshot");
-assert(liquid.includes("phaseExpandEnd = 0.28f") &&
-       liquid.includes("phaseHoldEnd = 0.37f") &&
-       liquid.includes("easeOutQuint(") &&
+assert(liquid.includes("phaseExpandEnd = CynCloseMotion::phaseExpandEnd") &&
+       liquid.includes("phaseHoldEnd = CynCloseMotion::phaseHoldEnd") &&
+       liquid.includes("CynCloseMotion::expandEase(") &&
        liquid.includes("g.drawImageAt(snapshot_, 0, 0)") &&
        liquid.includes("renderVortexMask(melt)") &&
        liquid.includes("reduceClipRegion(vortexMask_") &&
@@ -63,7 +63,7 @@ assert(controller.includes('settings_.setBool("run_minimized", true)'),
        "Existing tray-minimized preference must be preserved");
 assert(theme.includes("frameMs/16.666667f") &&
        theme.includes("std::pow(1.0f-rate") &&
-       theme.includes("it->value[i]+=delta*mix;"),
+       theme.includes("buttonMix : mix);"),
        "Shared button/toggle transitions must be responsive and frame-rate independent");
 assert(power.includes("irisDurationMs = 410.0") &&
        power.includes("curtain.setUsingNonZeroWinding(false)") &&
