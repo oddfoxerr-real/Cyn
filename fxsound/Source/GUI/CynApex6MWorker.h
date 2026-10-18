@@ -31,10 +31,39 @@ public:
             stamp_.store(0,std::memory_order_release);
         }
     }
-    void startIfAvailable() {
-        if(installed() && !isThreadRunning()) startThread(2);
+    // Startup is async. A fast PC may become ready immediately, while a slower
+    // PC can need several seconds; do not permanently reject its activation.
+    void startIfAvailable(bool explicitRetry=false) {
+        if(!installed()) return;
+        if(isThreadRunning() || ready()) return;
+        if(state_.load(std::memory_order_acquire)==Failed && !explicitRetry) return;
+        {
+            const juce::ScopedLock lock(errorLock_);
+            lastError_.clear();
+        }
+        state_.store(Starting,std::memory_order_release);
+        startThread(2);
     }
     bool ready() const noexcept { return ready_.load(std::memory_order_acquire); }
+    bool failed() const noexcept { return state_.load(std::memory_order_acquire)==Failed; }
+    bool starting() const noexcept { return state_.load(std::memory_order_acquire)==Starting; }
+    juce::String diagnostic() const {
+        const auto dir=juce::File::getSpecialLocation(
+            juce::File::currentExecutableFile).getParentDirectory();
+        if(!dir.getChildFile("apex6m-225.onnx").existsAsFile() ||
+           dir.getChildFile("apex6m-225.onnx").getSize()<=20000000)
+            return "APEX model file is missing or incomplete. Repair the Cyn installation.";
+        if(!dir.getChildFile("onnxruntime.dll").existsAsFile())
+            return "onnxruntime.dll is missing. Repair the Cyn installation.";
+        if(ready()) return "APEX neural engine ready.";
+        if(failed()) {
+            const juce::ScopedLock lock(errorLock_);
+            return "APEX neural engine failed: "+lastError_
+                 +" Run DIAGNOSE_CYN_APEX.ps1 from the installation folder for details.";
+        }
+        if(starting()) return "APEX neural engine initializing; activation is queued.";
+        return "APEX neural engine has not started; use Activate to retry.";
+    }
     bool latest(std::array<float,8>& bands) const noexcept {
         if(!processing_enabled_.load(std::memory_order_acquire)) return false;
         const auto stamp=stamp_.load(std::memory_order_acquire);
@@ -57,6 +86,16 @@ public:
         return bands[7];
     }
 private:
+    enum State : int { Idle=0, Starting=1, Ready=2, Failed=3 };
+    void reportFailure(const juce::String& reason) {
+        {
+            const juce::ScopedLock lock(errorLock_);
+            lastError_=reason;
+        }
+        ready_.store(false,std::memory_order_release);
+        state_.store(Failed,std::memory_order_release);
+        juce::Logger::writeToLog("CYN APEX 6M: "+reason);
+    }
     using Complex=std::complex<float>;
     static constexpr int fftSize=1024, hop=256, bins=513;
     static constexpr int frames=189; // windows centered every 256 samples, with reflected boundary
@@ -145,17 +184,33 @@ private:
         const auto dir=juce::File::getSpecialLocation(
             juce::File::currentExecutableFile).getParentDirectory();
         juce::DynamicLibrary library;
-        if(!library.open(dir.getChildFile("onnxruntime.dll").getFullPathName())) return;
+        if(!library.open(dir.getChildFile("onnxruntime.dll").getFullPathName())) {
+            const auto code=static_cast<int>(::GetLastError());
+            if(code==126)
+                reportFailure("Windows could not load ONNX Runtime (error 126). "
+                    "Check/install the Microsoft Visual C++ 2015-2022 x64 Runtime.");
+            else if(code==193)
+                reportFailure("ONNX Runtime is not compatible with this Windows architecture (error 193).");
+            else if(code==1114)
+                reportFailure("Windows could not initialize ONNX Runtime (error 1114).");
+            else
+                reportFailure("Windows failed to load onnxruntime.dll (error "
+                    +juce::String(code)+").");
+            return;
+        }
         using ApiFunction=const OrtApiBase*(ORT_API_CALL*)();
         auto* function=library.getFunction("OrtGetApiBase");
-        if(!function) return;
+        if(!function) { reportFailure("onnxruntime.dll has no OrtGetApiBase export."); return; }
         const auto* base=reinterpret_cast<ApiFunction>(function)();
-        if(!base) return;
+        if(!base) { reportFailure("ONNX Runtime entry point returned null."); return; }
         const auto* api=base->GetApi(ORT_API_VERSION);
-        if(!api) return;
-        const auto ok=[api](OrtStatus* status) {
+        if(!api) { reportFailure("ONNX Runtime API version does not match this Cyn build."); return; }
+        const auto ok=[this,api](OrtStatus* status) {
             if(!status) return true;
-            api->ReleaseStatus(status);return false;
+            const juce::String message(api->GetErrorMessage(status));
+            api->ReleaseStatus(status);
+            reportFailure("ONNX Runtime: "+message);
+            return false;
         };
         OrtEnv* env=nullptr;OrtSessionOptions* opts=nullptr;
         OrtSession* session=nullptr;OrtMemoryInfo* memory=nullptr;
@@ -175,6 +230,7 @@ private:
             if(!ok(api->SessionGetOutputName(session,0,allocator,&maskName)))break;
             if(!ok(api->SessionGetOutputName(session,1,allocator,&sceneName)))break;
             ready_.store(true,std::memory_order_release);
+            state_.store(Ready,std::memory_order_release);
             const char* const inputs[]={inputName};
             const char* const outputs[]={maskName,sceneName};
             const int64_t shape[]={1,bins,frames};
@@ -228,10 +284,15 @@ private:
                 }
                 for(auto* v:result)if(v)api->ReleaseValue(v);
                 if(input)api->ReleaseValue(input);
-                if(!valid)break;
+                if(!valid) {
+                    if(!failed()) reportFailure("ONNX returned an invalid output or stopped inference.");
+                    break;
+                }
                 wait(360);
             }
         } while(false);
+        if(!threadShouldExit() && !failed())
+            reportFailure("ONNX session setup failed before the model became ready.");
         stamp_.store(0,std::memory_order_release);
         ready_.store(false,std::memory_order_release);
         if(allocator) {
@@ -247,6 +308,9 @@ private:
     std::atomic<bool> processing_enabled_ {false};
     DfxDsp& source_;
     std::atomic<bool> ready_ {false};
+    std::atomic<int> state_ {Idle};
+    mutable juce::CriticalSection errorLock_;
+    juce::String lastError_;
     std::array<std::atomic<float>,8> eq_ {};
     std::atomic<uint32_t> stamp_ {0};
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CynApex6MWorker)
