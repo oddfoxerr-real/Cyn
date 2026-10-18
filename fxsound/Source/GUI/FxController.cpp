@@ -3321,7 +3321,14 @@ String FxController::getActiveAIProfileId() {
 }
 bool FxController::selectAIProfile(const String& id,String& error) {
     if(smart_training_) { error="Wait for your model training to finish.";return false; }
-    if(id==getActiveAIProfileId()) { error.clear();return true; }
+    if(id==getActiveAIProfileId()) {
+        // An earlier selection may survive an update even if this PC can
+        // no longer load the engine; don't falsely report success.
+        if(id=="apex6m" && !apex6MReady()) {
+            error=apex6MDiagnostic();return false;
+        }
+        error.clear();return true;
+    }
     // The full APEX ONNX model is a distinct runtime, NOT a 209-weight .cynai.
     // Leave private learning and the previous model untouched.
     if(id=="apex6m") {
