@@ -14,6 +14,9 @@ on:
       - "fxsound/Source/GUI/CynApex6MWorker.h"
       - "scripts/test_cyn_power_swallow.mjs"
       - "scripts/test_cyn_liquid_close.mjs"
+      - "scripts/test_cyn_close_motion.mjs"
+      - "fxsound/Source/GUI/CynCloseMotion.h"
+      - "fxsound/Source/GUI/CynThemeStudio.h"
       - ".github/workflows/cyn-power-swallow.yml"
   workflow_dispatch:
 
@@ -32,5 +35,6 @@ jobs:
       - run: |
           node scripts/test_cyn_power_swallow.mjs
           node scripts/test_cyn_liquid_close.mjs
+          node scripts/test_cyn_close_motion.mjs
           node scripts/test_version_controls.mjs
           node scripts/test_apex6m_activation.mjs
