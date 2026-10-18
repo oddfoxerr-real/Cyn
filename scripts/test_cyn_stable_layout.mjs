@@ -23,20 +23,20 @@ assert(view.includes('void FxProView::selectSoundFocus(int focus)') &&
        view.includes('audio_controls_.setVisible(sound_focus_!=1)') &&
        view.includes('equalizer_.setVisible(sound_focus_!=2)'),
        "Overview/EQ/FX navigation must actually rearrange live components");
-assert(view.includes('equalizer_.setBounds(eqX,250,eqW,230)') &&
-       view.includes('visualizer_.setBounds(1002,250,282,230)') &&
-       view.includes('audio_controls_.setBounds(eqX,510,eqW,161)'),
+assert(view.includes('equalizer_.setBounds(eqX,278,eqW,203)') &&
+       view.includes('visualizer_.setBounds(1002,278,282,203)') &&
+       view.includes('audio_controls_.setBounds(eqX,522,eqW,152)'),
        "Default layout must display actual 31-band EQ, visualizer and DSP effects");
 assert(fx.includes("getWidth() >= 540") &&
        fx.includes("const int cell=(getWidth()-margin*2-gap*4)/5"),
        "The five real DSP effect sliders must adapt to a wide horizontal rack");
-assert(view.includes('embedded_ai_hub_.setBounds(247,222,1053,467)') &&
+assert(view.includes('embedded_ai_hub_.setBounds(247,250,1053,435)') &&
        view.includes('ai_hub_nav_.onClick = [this] { selectPage(3); };') &&
        view.includes('embedded_ai_hub_.setVisible(page==3)'),
        "AI Hub should be an actual full CYN workspace page, not a navigation-only popup");
-assert(view.includes('learning_timeline_.setBounds(left+13,246,722,194)') &&
-       view.includes('neural_activity_.setBounds(993,246,291,194)') &&
-       view.includes('learning_effect_.setBounds(left+22,538,179,35)'),
+assert(view.includes('learning_timeline_.setBounds(left+13,278,722,173)') &&
+       view.includes('neural_activity_.setBounds(1008,278,271,173)') &&
+       view.includes('learning_effect_.setBounds(left+22,548,179,32)'),
        "Smart Listening timeline, neural analyzer and learning controls must remain interactive");
 assert(view.includes('pin_toggle_.setBounds') &&
        view.includes('refresh_.setBounds') &&
