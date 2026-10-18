@@ -37,7 +37,7 @@ assert(atmosphere.includes("constexpr int columns=33, rows=9") &&
 assert(atmosphere.includes("if(theme==FxThemeMode::DarkMesh)") &&
        atmosphere.includes("g.setColour(Colour(0xff000000))"),
        "Dark Theme must fill near-black with no opaque blue-gray gradient");
-assert(view.includes("ColourGradient side(Colour(0xff090c10)") &&
+assert(view.includes("ColourGradient side(Colour(0xff050609)") &&
        view.includes('g.fillRect(0,0,228,getHeight())'),
        "Dark navigation must be one continuous native black-blue sidebar");
 console.log("PASS: pure-black palette, fluid retained mesh, model colors and controls");
