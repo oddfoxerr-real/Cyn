@@ -11,6 +11,15 @@ the bundled, Microsoft-signed FxSound driver. Administrator access is required.
 The audio device retains its official FxSound name. You do not need to launch
 the original FxSound app to use Cyn. Do not run both audio apps together.
 
+APEX 6M x64 runtime
+Some Windows PCs cannot load onnxruntime.dll (Windows error 126) because
+Microsoft Visual C++ 2015-2022 x64 runtime dependencies are missing.
+The installer offers an explicit, optional check-box to install the official,
+Microsoft-signed x64 runtime if missing, or to repair it when already installed.
+The runtime is embedded in the installer: no internet access is required on
+the user's PC. It does not change Cyn's AI models, training or audio driver.
+Manual repair: https://aka.ms/vs/17/release/vc_redist.x64.exe
+
 Uninstall
 Remove Cyn using Windows Settings > Apps > Installed apps.
 Your preferences and training data in %APPDATA%\Cyn are retained.

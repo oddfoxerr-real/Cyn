@@ -8,8 +8,8 @@
 [Setup]
 AppId={{3049F105-E971-49A1-876E-50FDB14EF351}
 AppName=Cyn
-AppVersion=2.0.58
-AppVerName=Cyn 2.0.58
+AppVersion=2.0.59
+AppVerName=Cyn 2.0.59
 AppPublisher=Cyn contributors
 DefaultDirName={autopf}\Cyn
 DefaultGroupName=Cyn
@@ -19,7 +19,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 PrivilegesRequired=admin
 OutputDir={#OutputDir}
-OutputBaseFilename=Cyn-Setup-2.0.58-x64
+OutputBaseFilename=Cyn-Setup-2.0.59-x64
 SetupIconFile=..\..\fxsound\Project\icon.ico
 UninstallDisplayIcon={app}\Cyn.exe
 LicenseFile=..\..\LICENSE
@@ -31,10 +31,14 @@ DisableWelcomePage=no
 CloseApplications=no
 RestartApplications=no
 SetupLogging=yes
-VersionInfoVersion=2.0.58.0
+VersionInfoVersion=2.0.59.0
 
 [Tasks]
 Name: desktopicon; Description: "Create a &desktop shortcut"; GroupDescription: "Shortcuts:"
+; Offer a Microsoft-signed prerequisite to the installer user; never auto-download
+; or modify their system behind their back. Missing runtime is checked by x64 registry.
+Name: vcruntime; Description: "Install Microsoft Visual C++ x64 runtime (required for APEX AI)"; GroupDescription: "APEX AI compatibility:"; Check: NeedsVcRuntime
+Name: repairvcruntime; Description: "Repair Microsoft Visual C++ x64 runtime (APEX Windows error 126)"; GroupDescription: "APEX AI compatibility:"; Flags: unchecked; Check: HasVcRuntime
 
 [InstallDelete]
 Type: files; Name: "{app}\SPOTIFY.md"
@@ -49,6 +53,8 @@ Source: "..\Drivers\Version14\win10\x64\fxvadntamd64.cat"; Flags: dontcopy
 Source: "..\Drivers\Version14\win10\x64\fxdevcon64.exe"; Flags: dontcopy
 Source: "..\Apps\Version14\DfxSetupDrv.exe"; Flags: dontcopy
 Source: "runtime-x86\vcruntime140.dll"; Flags: dontcopy
+; Official Microsoft-signed x64 redistributable staged and signature-checked during build.
+Source: "..\..\.build-tools\vc-redist-x64\VC_redist.x64.exe"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\Cyn"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Parameters: "--view=2"
@@ -60,6 +66,20 @@ Filename: "{app}\Cyn.exe"; Parameters: "--view=2"; WorkingDir: "{app}"; Descript
 [Code]
 var
   DriverReady: Boolean;
+
+function HasVcRuntime: Boolean;
+var
+  Value: Cardinal;
+begin
+  Result := RegQueryDWordValue(HKLM64,
+    'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64',
+    'Installed', Value) and (Value = 1);
+end;
+
+function NeedsVcRuntime: Boolean;
+begin
+  Result := not HasVcRuntime;
+end;
 
 function AudioAppBlockReason: String;
 var
@@ -141,4 +161,48 @@ end;
 function InitializeUninstall: Boolean;
 begin
   Result := WaitForAudioAppsToExit(UninstallSilent) = '';
+end;
+
+// Install only after a visible, user-selected checkbox. No runtime is
+// installed when both checkboxes are unselected. Driver setup is untouched.
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ExitCode: Integer;
+  Params: String;
+begin
+  if (CurStep <> ssPostInstall) or
+     (not WizardIsTaskSelected('vcruntime') and
+      not WizardIsTaskSelected('repairvcruntime')) then exit;
+
+  ExtractTemporaryFile('VC_redist.x64.exe');
+  if WizardIsTaskSelected('repairvcruntime') then
+    Params := '/repair /quiet /norestart'
+  else
+    Params := '/install /quiet /norestart';
+
+  WizardForm.StatusLabel.Caption := 'Preparing the APEX neural runtime...';
+  if not Exec(ExpandConstant('{tmp}\VC_redist.x64.exe'), Params,
+    ExpandConstant('{tmp}'), SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+  begin
+    Log('VC++ x64 redistributable installer could not start.');
+    if not WizardSilent then
+      MsgBox('Microsoft Visual C++ x64 runtime could not start. ' +
+        'APEX AI may still show error 126. Install the official Microsoft x64 ' +
+        'redistributable and then restart CYN.', mbError, MB_OK);
+  end
+  else if (ExitCode <> 0) and (ExitCode <> 3010) then
+  begin
+    Log('VC++ x64 redistributable returned exit code ' + IntToStr(ExitCode));
+    if not WizardSilent then
+      MsgBox('Microsoft Visual C++ x64 runtime setup returned code ' +
+        IntToStr(ExitCode) + '. APEX AI may still fail to start. ' +
+        'Try the official Microsoft VC++ x64 redistributable repair.', mbError, MB_OK);
+  end
+  else
+  begin
+    Log('Microsoft VC++ x64 runtime installation completed, exit code ' + IntToStr(ExitCode));
+    if (ExitCode = 3010) and not WizardSilent then
+      MsgBox('Windows requests a restart to finish the Microsoft VC++ x64 runtime. ' +
+        'Restart before testing APEX 6M.', mbInformation, MB_OK);
+  end;
 end;

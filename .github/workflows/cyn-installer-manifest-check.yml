@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - "BUILD_INSTALLER.ps1"
+      - "PREPARE_CYN_VCRUNTIME.ps1"
+      - "scripts/test_cyn_vc_runtime.mjs"
       - "Installer/Cyn/Cyn.iss"
       - "scripts/test_version_controls.mjs"
       - ".github/workflows/cyn-installer-manifest-check.yml"
@@ -18,16 +20,45 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node scripts/test_version_controls.mjs
-      - name: Parse installer build script with PowerShell
+      - name: Verify version and VC++ x64 installer integration
+        run: |
+          node scripts/test_version_controls.mjs
+          node scripts/test_cyn_vc_runtime.mjs
+      - name: Validate PowerShell staging/build scripts parse
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [void][System.Management.Automation.Language.Parser]::ParseFile(
-            (Resolve-Path 'BUILD_INSTALLER.ps1'), [ref]$tokens, [ref]$errors)
-          if ($errors.Count -ne 0) {
-            $errors | ForEach-Object { Write-Host $_.Message }
-            throw 'BUILD_INSTALLER.ps1 contains syntax errors.'
+          foreach ($path in @('BUILD_INSTALLER.ps1','PREPARE_CYN_VCRUNTIME.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $path), [ref]$tokens, [ref]$errors)
+            if ($errors.Count -ne 0) { throw "$path contains PowerShell syntax errors" }
           }
-
+  installer-prerequisite-build:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build real native CYN payload and APEX ONNX
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./BUILD_CYN.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Native CYN build failed.' }
+      - name: Package signed official x64 VC++ runtime into Inno Setup
+        shell: pwsh
+        run: |
+          ./BUILD_INSTALLER.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'CYN installer build failed.' }
+      - name: Verify Windows installer, package and signed runtime
+        shell: pwsh
+        run: |
+          $iss=Get-Content 'Installer/Cyn/Cyn.iss' -Raw
+          $output=[regex]::Match($iss,'(?m)^OutputBaseFilename=([A-Za-z0-9._-]+)\s*$')
+          if (!$output.Success) { throw 'Missing installer filename.' }
+          $file=Join-Path dist ($output.Groups[1].Value+'.exe')
+          if (!(Test-Path $file)) { throw 'Inno Setup did not produce the installer.' }
+          if ((Get-Item $file).Length -lt 20000000) { throw 'Generated installer is unexpectedly small.' }
+          if (!(Test-Path '.build-tools/vc-redist-x64/VC_redist.x64.exe')) { throw 'Official Microsoft runtime not staged.' }
+          Write-Host "Validated signed VC++ x64 prerequisite in $file"
