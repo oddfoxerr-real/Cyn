@@ -187,8 +187,8 @@ private:
                       "Listening-quality improvement has not yet been proven.\n\n"
                     + "Creator: " + p->author,
                     juce::dontSendNotification);
-                import_.setButtonText (activeAI ? "Switch to previous AI"
-                    : pendingApexActivation_ ? "Starting neural engine..."
+                import_.setButtonText (pendingApexActivation_ ? "Starting neural engine..."
+                    : (activeAI && ready) ? "Switch to previous AI"
                     : failed ? "Retry APEX engine"
                     : installed ? "Activate selected AI" : "View model files");
             }
@@ -425,7 +425,7 @@ private:
                 return;
             }
             if (ctrl.getSmartListeningMode() == 0 &&
-                ctrl.getActiveAIProfileId() == "apex6m")
+                ctrl.getActiveAIProfileId() == "apex6m" && ctrl.apex6MReady())
             {
                 juce::String error;
                 const bool success = ctrl.restorePreviousApexMusicAI(error);
