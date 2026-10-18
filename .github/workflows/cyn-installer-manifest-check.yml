@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - "BUILD_INSTALLER.ps1"
+      - "PREPARE_CYN_VCRUNTIME.ps1"
+      - "scripts/test_cyn_vc_runtime.mjs"
       - "Installer/Cyn/Cyn.iss"
       - "scripts/test_version_controls.mjs"
       - ".github/workflows/cyn-installer-manifest-check.yml"
@@ -18,7 +20,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node scripts/test_version_controls.mjs
+      - run: |
+          node scripts/test_version_controls.mjs
+          node scripts/test_cyn_vc_runtime.mjs
       - name: Parse installer build script with PowerShell
         shell: pwsh
         run: |
@@ -31,3 +35,11 @@ jobs:
             throw 'BUILD_INSTALLER.ps1 contains syntax errors.'
           }
 
+      - name: Validate VC++ staging script syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'PREPARE_CYN_VCRUNTIME.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count -ne 0) { throw 'VC++ runtime staging script syntax errors.' }

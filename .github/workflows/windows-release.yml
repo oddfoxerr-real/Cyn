@@ -68,7 +68,11 @@ jobs:
         run: node scripts/test_theme_neural.mjs
       - name: Validate installed version and update controls
         shell: pwsh
-        run: node scripts/test_version_controls.mjs
+        run: |
+          node scripts/test_version_controls.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Version controls regression.' }
+          node scripts/test_cyn_vc_runtime.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'x64 VC++ runtime installer regression.' }
       - name: Validate updater animation XAML
         if: steps.inspect.outputs.state != 'published'
         shell: powershell

@@ -31,6 +31,9 @@ foreach ($file in $manifest) {
         throw "Bundled upstream driver file changed: $($file.path)"
     }
 }
+# Package Microsoft's x64 runtime only after verifying its Authenticode signature.
+# Inno Setup offers an explicit optional install/repair checkbox.
+& (Join-Path $PSScriptRoot 'PREPARE_CYN_VCRUNTIME.ps1')
 & $CompilerPath ('/DPayloadDir=' + $payload) ('/DOutputDir=' + (Join-Path $PSScriptRoot 'dist')) (Join-Path $PSScriptRoot 'Installer\Cyn\Cyn.iss')
 if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed: $LASTEXITCODE" }
 $innoScript = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'Installer\Cyn\Cyn.iss') -Raw
