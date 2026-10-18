@@ -202,7 +202,7 @@ void FxProView::selectPage(int page)
     // so the sidebar stays live and responsive even on slower machines.
     transition_image_ = Image(); // Never capture a previous transition overlay.
     if(isShowing() && !FxTheme::isReducedMotion()) {
-        const Rectangle<int> content(240, 0, jmax(0,getWidth()-240), getHeight());
+        const juce::Rectangle<int> content(240, 0, jmax(0,getWidth()-240), getHeight());
         if(content.getWidth() > 0 && content.getHeight() > 0) {
             transition_image_ = createComponentSnapshot(content);
             transition_direction_ = page > page_ ? 1 : -1;
