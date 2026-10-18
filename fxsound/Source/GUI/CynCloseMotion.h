@@ -7,12 +7,20 @@
 
 namespace CynCloseMotion
 {
-    enum Style : int { Vortex=0, GravityMelt=1, LiquidRipple=2, SoftFade=3, None=4, NumStyles=5 };
+    enum Style : int { Vortex=0, GravityMelt=1, LiquidRipple=2, SoftFade=3, None=4, StarDust=5, Curtain=6, NumStyles=7 };
     static constexpr int defaultStyle = Vortex;
     static constexpr int defaultSpeedPercent = 85; // Slightly slower than v2.0.56.
     static constexpr int minSpeedPercent = 55;
     static constexpr int maxSpeedPercent = 160;
-    static constexpr double baseDurationMs = 460.0;
+    static constexpr double baseDurationMs = 700.0;
+    // Deliberately readable: the X visibly grows for ~350ms at the default
+    // 0.85x speed, holds as a fullscreen surface, then dissolves.
+    static constexpr float phaseExpandEnd = 0.43f;
+    static constexpr float phaseHoldEnd = 0.51f;
+    inline float expandEase(float t) noexcept {
+        t=juce::jlimit(0.0f,1.0f,t);
+        return t*t*(3.0f-2.0f*t);
+    }
 
     inline const char* styleName(int i) noexcept
     {
@@ -23,6 +31,8 @@ namespace CynCloseMotion
             case LiquidRipple: return "Liquid Ripple";
             case SoftFade: return "Soft Fade";
             case None: return "None (instant)";
+            case StarDust: return "Stardust";
+            case Curtain: return "Liquid Curtain";
             default: return "Vortex";
         }
     }
@@ -51,6 +61,14 @@ namespace CynCloseMotion
         if(melt<=0.0f) return 1.0f;
         if(melt>=1.0f) return 0.0f;
         if(style==SoftFade) return 1.0f-smoothstep(0.0f,1.0f,melt);
+        if(style==StarDust) {
+            const float grain=.5f+.3f*std::sin(x*123.0f+y*81.0f)*std::sin(x*199.0f-y*113.0f);
+            return 1.0f-smoothstep(melt-.09f,melt+.09f,grain);
+        }
+        if(style==Curtain) {
+            const float front=-.22f+1.46f*melt+.08f*std::sin(x*22.0f+melt*10.0f);
+            return smoothstep(front-.015f,front+.015f,y);
+        }
         if(style==None) return 0.0f;
         const float pi=juce::MathConstants<float>::pi;
         const float finish=1.0f-smoothstep(.87f,1.0f,melt);

@@ -8,6 +8,7 @@
 #include "CynDjTouch.h"
 #include "CynUiMotion.h"
 #include "CynCloseMotion.h"
+#include "CynButtonVisuals.h"
 #include <cmath>
 
 class CynThemeStudioContent final : public juce::Component, private juce::Timer
@@ -379,7 +380,7 @@ private:
             g.setColour(backdrop.darker(.14f));
             g.fillRoundedRectangle(area,17.0f);
             const auto inside=area.reduced(17.0f);
-            if (none || t<.28f)
+            if (none || t<CynCloseMotion::phaseExpandEnd)
             {
                 // Mock native surface uses CYN palette; no extra screenshot,
                 // IO or desktop window is needed for the preview.
@@ -409,7 +410,7 @@ private:
                     (int)inside.getBottom()-48,400,22,Justification::centredLeft);
                 if (!none)
                 {
-                    const float e=1.0f-std::pow(1.0f-juce::jlimit(0.0f,1.0f,t/.28f),5.0f);
+                    const float e=CynCloseMotion::expandEase(t/CynCloseMotion::phaseExpandEnd);
                     const auto expanded=juce::Rectangle<float>(
                         button.getX()+(area.getX()-button.getX())*e,
                         button.getY()+(area.getY()-button.getY())*e,
@@ -419,7 +420,7 @@ private:
                     g.fillRoundedRectangle(expanded,juce::jmin(13.0f,expanded.getHeight()*.24f));
                 }
             }
-            else if(t<.37f)
+            else if(t<CynCloseMotion::phaseHoldEnd)
             {
                 g.setColour(backdrop.interpolatedWith(accent,.15f));
                 g.fillRoundedRectangle(area,13.0f);
@@ -430,7 +431,7 @@ private:
                 // The 96 x 54 preview mask keeps redraw inexpensive.
                 constexpr int mw=96,mh=54;
                 Image mask(Image::ARGB,mw,mh,true);
-                const float melt=(t-.37f)/.63f;
+                const float melt=(t-CynCloseMotion::phaseHoldEnd)/(1.0f-CynCloseMotion::phaseHoldEnd);
                 {
                     Image::BitmapData bitmap(mask,Image::BitmapData::writeOnly);
                     for(int y=0;y<mh;++y)

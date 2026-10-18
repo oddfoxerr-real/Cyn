@@ -12,10 +12,10 @@
 class CynLiquidCloseOverlay final : public juce::Component, private juce::Timer
 {
 public:
-    // Quick and decisive like a native desktop interaction, not a delayed shrink.
-    static constexpr double durationMs = 460.0;
-    static constexpr float phaseExpandEnd = 0.28f; // 129 ms
-    static constexpr float phaseHoldEnd = 0.37f;   // 41 ms
+    // Expose each stage long enough to be seen, including at 60 FPS.
+    static constexpr double durationMs = CynCloseMotion::baseDurationMs;
+    static constexpr float phaseExpandEnd = CynCloseMotion::phaseExpandEnd;
+    static constexpr float phaseHoldEnd = CynCloseMotion::phaseHoldEnd;
     static constexpr int maskWidth = 192;
     static constexpr int maskHeight = 108;
 
@@ -95,7 +95,7 @@ public:
             // Preserve the genuine CYN UI while its real X button takes over.
             // The capture disappears only after the button covers EVERY pixel.
             g.drawImageAt(snapshot_, 0, 0);
-            const float e = easeOutQuint(t / phaseExpandEnd);
+            const float e = CynCloseMotion::expandEase(t / phaseExpandEnd);
             const auto screen = getLocalBounds().toFloat();
             const juce::Rectangle<float> expanded(lerp(buttonBounds_.getX(), screen.getX(), e),
                                             lerp(buttonBounds_.getY(), screen.getY(), e),
@@ -162,12 +162,6 @@ public:
 
 private:
     static float lerp(float a,float b,float t) noexcept { return a+(b-a)*t; }
-    static float easeOutQuint(float t) noexcept
-    {
-        t=juce::jlimit(0.0f,1.0f,t);
-        const float q=1.0f-t;
-        return 1.0f-q*q*q*q*q;
-    }
     static float smoothstep(float lo,float hi,float value) noexcept
     {
         const float t=juce::jlimit(0.0f,1.0f,(value-lo)/(hi-lo));
