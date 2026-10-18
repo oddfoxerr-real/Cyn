@@ -506,10 +506,10 @@ void FxProView::resized()
     }
     const bool studio=page_==0;
     if(studio) {
-        const int eqX=left+12,eqW=731;
+        const int eqX=left+12,eqW=785;
         if(sound_focus_==0) {
             equalizer_.setBounds(eqX,288,eqW,193);
-            visualizer_.setBounds(1002,288,282,193);
+            visualizer_.setBounds(1057,288,227,193);
             audio_controls_.setBounds(eqX,536,eqW,136);
         } else if(sound_focus_==1) {
             equalizer_.setBounds(eqX,286,1036,344);
@@ -550,8 +550,8 @@ void FxProView::resized()
     refresh_.setBounds(left+27,397,191,37);
     // The real Smart Listening switch must never sit over a DSP slider.
     if(page_==0) {
-        smart_toggle_.setBounds(1013,638,230,25);
-        smart_status_.setBounds(1008,658,277,25);
+        smart_toggle_.setBounds(1062,638,212,25);
+        smart_status_.setBounds(1060,658,214,25);
     } else if(page_==1) {
         smart_toggle_.setBounds(1032,477,244,26);
         smart_status_.setBounds(1008,627,281,24);
@@ -595,8 +595,8 @@ void FxProView::paint(Graphics& g)
     // The only expensive drawing is bounded to existing scene/video widgets.
     auto& theme=dynamic_cast<FxTheme&>(getLookAndFeel());
     auto colour=[](FxColor c) { return Colour(FxTheme::getColor(c)).withAlpha(1.0f); };
-    const Colour base(0xff03070d), panel(0xff091321),panel2(0xff0b1728);
-    const Colour border(0xff20354b), cyan(0xff45bffb);
+    const Colour base(0xff02060b), panel(0xff07111d),panel2(0xff0a1b2b);
+    const Colour border(0xff1a3249), cyan(0xff45bffb);
     const Colour white(0xffedf5ff),muted(0xff9aadc4);
     const bool reduced=FxTheme::isReducedMotion();
     const float playLevel=jlimit(0.0f,1.0f,theme_audio_level_);
@@ -712,19 +712,19 @@ void FxProView::paint(Graphics& g)
         g.drawRoundedRectangle(selX+.5f,202.5f,selW-1.0f,35.0f,10.5f,.9f);
         txt("31 / 35 / 39 BAND EQ  /  LIVE DSP",964,208,321,23,11.6f,true);
         if(sound_focus_==0) {
-            card(247,253,743,235);
-            card(996,253,304,235);
-            card(247,500,743,188);
-            card(996,500,304,188);
+            card(247,253,798,235);
+            card(1051,253,249,235);
+            card(247,500,798,188);
+            card(1051,500,249,188);
             txt("31-BAND EQUALIZER",263,258,490,23,14.0f,false,true);
-            txt("LIVE SPECTRUM",1013,258,250,23,14.0f,false,true);
+            txt("LIVE SPECTRUM",1066,258,225,23,13.0f,false,true);
             txt("SOUND ENHANCEMENTS",263,505,420,23,14.0f,false,true);
-            txt("LISTENING STATUS",1013,505,250,23,14.0f,false,true);
-            txt("Applied AI model",1013,539,230,19,11.5f,true);
-            txt(modelText,1013,562,250,25,19.0f,false,true);
+            txt("LISTENING STATUS",1066,505,222,23,13.0f,false,true);
+            txt("Applied AI model",1066,539,220,19,11.5f,true);
+            txt(modelText,1066,562,220,25,18.0f,false,true);
             txt(aiOn?"Real-time adaptive processing":"Manual audio processing",
-                1013,593,265,20,12.0f,true);
-            txt("Change presets and output at the top.",1013,620,272,18,11.0f,true);
+                1066,593,218,20,11.0f,true);
+            txt("Adjust your sound in real time.",1066,620,222,18,11.0f,true);
         } else if(sound_focus_==1) {
             card(247,253,1053,435);
             txt("EQUALIZER  /  PRECISION VIEW",265,262,650,25,15,false,true);
