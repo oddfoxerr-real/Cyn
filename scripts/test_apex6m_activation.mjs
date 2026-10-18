@@ -38,6 +38,26 @@ assert(source.includes("const bool apexFlowActive=apex_hybrid_active_ || apex6m_
        source.includes("CynFlagshipMixer::musicEqCorrection(") &&
        source.includes("CynApex6MWorker::interpolate(neuralBands,freq)"),
        "Native APEX must retain the existing live music, bass, and passage control engine");
+const diagnostic = read("DIAGNOSE_CYN_APEX.ps1");
+assert(worker.includes("reportFailure(") &&
+       worker.includes("ONNX Runtime: ") &&
+       worker.includes("error 126") &&
+       worker.includes("startIfAvailable(bool explicitRetry=false)") &&
+       worker.includes("diagnostic() const"),
+       "Cross-PC APEX must report actual ONNX errors and allow a manual retry");
+assert(native.includes("apexActivationPending_") &&
+       native.includes("void timerCallback() override") &&
+       native.includes("ctrl.retryApex6M()") &&
+       native.includes("apex6MDiagnostic()"),
+       "AI Hub must wait for slow ONNX startup, then report success or a clear failure");
+assert(source.includes("error=apex6MDiagnostic()") &&
+       !source.includes("Full APEX model is missing or still loading; try again shortly."),
+       "Selecting APEX must not confuse missing weights, slow startup and DLL failure");
+assert(build.includes("DIAGNOSE_CYN_APEX.ps1") &&
+       diagnostic.includes("Get-FileHash") &&
+       diagnostic.includes("LoadLibraryEx") &&
+       diagnostic.includes("vc_redist.x64.exe"),
+       "The installed application must include a local, read-only diagnostic tool");
 assert(source.includes("restorePreviousApexMusicAI(") &&
        native.includes("Switch to previous AI"),
        "Native APEX must be deactivatable without losing private learned model");

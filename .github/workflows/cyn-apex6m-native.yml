@@ -11,6 +11,7 @@ on:
       - "fxsound/Source/GUI/CynAiHubDialog.h"
       - "scripts/test_apex6m_activation.mjs"
       - "BUILD_CYN.ps1"
+      - "DIAGNOSE_CYN_APEX.ps1"
       - "PREPARE_CYN_APEX6M.ps1"
       - "tests/cyn_apex6m_onnx_smoke.cpp"
       - ".github/workflows/cyn-apex6m-native.yml"
