@@ -85,8 +85,11 @@ void FxAudioControls::setLookAndFeel()
 
 void FxAudioControls::resized()
 {
-	effects_.setBounds(0, 0, WIDTH, HEIGHT);
-	equalizer_control_.setBounds(0, 0, WIDTH, HEIGHT);
+	effects_.setBounds(0, 0, getWidth(), getHeight());
+    // Output-tuning internals retain their legacy 168px layout until a later
+    // redesign; centre it inside the wide Sound Studio enhancement region.
+    equalizer_control_.setBounds(getWidth()>480 ? (getWidth()-168)/2 : 0,0,
+                                getWidth()>480 ? 168 : getWidth(),getHeight());
 
 	flip_button_.setBounds(getWidth() - BUTTON_WIDTH - 5, 5, BUTTON_WIDTH, BUTTON_HEIGHT);
 }
@@ -102,7 +105,8 @@ void FxAudioControls::paint(Graphics& g)
     auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
     g.setFont(theme.getSmallFont().withHeight(9.0f));
     g.setColour(Colour(FXCOLOR(HintText)).withAlpha(0.82f));
-    g.drawText(effects_shown_ ? "ENHANCEMENTS" : "OUTPUT TUNING", 12, 7, 128, 14, Justification::centredLeft, false);
+    g.drawText(effects_shown_ ? "SOUND ENHANCEMENTS" : "OUTPUT TUNING", 16, 10,
+               getWidth()>540 ? 300 : 128, 17, Justification::centredLeft, false);
 }
 
 FxEffects::FxEffects()
@@ -176,13 +180,23 @@ void FxEffects::resized()
 {
 	auto bounds = getLocalBounds();
 
-	int y = Y_MARGIN;
-	for (int i = EffectType::Fidelity; i < EffectType::NumEffects; i++)
-	{
-		labels_[i]->setBounds(X_MARGIN+FxTheme::SLIDER_THUMB_RADIUS, y, SLIDER_WIDTH, LABEL_HEIGHT);
-		effects_[i]->setBounds(X_MARGIN, labels_[i]->getBottom() + 1, SLIDER_WIDTH, SLIDER_HEIGHT);
-		y = effects_[i]->getBottom() + 10;
-	}
+    if (getWidth() >= 540) {
+        // Horizontal five-channel rack for Horizon x Depth Sound Studio.
+        const int gap=11,margin=14;
+        const int cell=(getWidth()-margin*2-gap*4)/5;
+        for(int i=EffectType::Fidelity;i<EffectType::NumEffects;++i) {
+            const int x=margin+i*(cell+gap);
+            labels_[i]->setBounds(x+3,58,cell-6,LABEL_HEIGHT+4);
+            effects_[i]->setBounds(x+4,90,cell-8,SLIDER_HEIGHT+12);
+        }
+    } else {
+        int y=Y_MARGIN;
+        for(int i=EffectType::Fidelity;i<EffectType::NumEffects;++i) {
+            labels_[i]->setBounds(X_MARGIN+FxTheme::SLIDER_THUMB_RADIUS,y,SLIDER_WIDTH,LABEL_HEIGHT);
+            effects_[i]->setBounds(X_MARGIN,labels_[i]->getBottom()+1,SLIDER_WIDTH,SLIDER_HEIGHT);
+            y=effects_[i]->getBottom()+10;
+        }
+    }
 }
 
 void FxEffects::paint(Graphics& g)

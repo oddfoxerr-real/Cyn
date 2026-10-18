@@ -71,7 +71,7 @@ public:
     void update();
     void setLookAndFeel();
 private:
-    static constexpr int WIDTH = 1240, HEIGHT = 620;
+    static constexpr int WIDTH = 1320, HEIGHT = 700;
     void resized() override;
     void paint(Graphics&) override;
     void paintOverChildren(Graphics&) override;
@@ -82,7 +82,9 @@ private:
     void openSettings();
     void updateDjTouch(double now);
     int page_ = 0;
-    TextButton misc_nav_{"Misc"},dj_download_{"Download AI DJ"},dj_remove_{"Remove download"},dj_cancel_{"Cancel download"};
+    int sound_focus_ = 0; // 0 overview, 1 EQ focus, 2 effects focus.
+    void selectSoundFocus(int focus);
+    TextButton misc_nav_{"Misc / AI DJ"},dj_download_{"Download AI DJ"},dj_remove_{"Remove download"},dj_cancel_{"Cancel download"};
     ToggleButton dj_toggle_{"Enable AI DJ"},dj_stereo_{"Move echoes between ears"};
     Slider dj_intensity_{Slider::LinearHorizontal,Slider::TextBoxRight},dj_spacing_{Slider::LinearHorizontal,Slider::TextBoxRight};
     Label dj_status_,dj_recent_;
@@ -98,7 +100,11 @@ private:
     FxVisualizer visualizer_;
     TooltipWindow tool_tip_;
     CynPowerCurtain power_curtain_;
-    TextButton sound_nav_ { "Sound studio" }, smart_nav_ { "Smart listening" }, devices_nav_ { "Output devices" }, ai_hub_nav_ { "AI Hub" };
+    TextButton sound_nav_ { "Sound Studio" }, smart_nav_ { "Smart Listening" },
+       devices_nav_ { "Output Devices" }, ai_hub_nav_ { "AI Hub" },
+       studio_nav_ { "CYN Studio" }, ai_status_card_ { "AI status" };
+    TextButton overview_tab_ { "Overview" }, eq_focus_tab_ { "Equalizer" },
+               effects_focus_tab_ { "Enhancements" };
     CynRailButton home_ { "Sound studio", 0 }, smart_rail_ { "Smart listening", 1 }, devices_rail_ { "Output devices", 2 };
     CynRailButton settings_rail_ { "Settings", 3 };
     TextButton settings_ { "Settings" };

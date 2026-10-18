@@ -7,6 +7,7 @@
 #include "CynUiMotion.h"
 #include "FxSettingsDialog.h"
 #include "CynAiHubDialog.h"
+#include "CynThemeStudio.h"
 #include <array>
 #include <cmath>
 
@@ -16,11 +17,18 @@ FxProView::FxProView() : tool_tip_(this)
     tool_tip_.setOpaque(false);
     for (auto* component : std::initializer_list<Component*> {
         &audio_controls_, &equalizer_, &visualizer_, &sound_nav_, &smart_nav_,
-        &devices_nav_, &ai_hub_nav_, &home_, &smart_rail_, &devices_rail_, &settings_,
+        &devices_nav_, &ai_hub_nav_, &studio_nav_, &ai_status_card_, &overview_tab_, &eq_focus_tab_, &effects_focus_tab_, &home_, &smart_rail_, &devices_rail_, &settings_,
         &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &headroom_cap_, &preset_cycling_, &preset_cycling_status_, &learning_timeline_, &neural_activity_, &learning_effect_, &listening_mode_, &ai_profile_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
         addAndMakeVisible(component);
     for(auto* c:std::initializer_list<Component*> {&misc_nav_,&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) addAndMakeVisible(c);
     misc_nav_.onClick=[this]{selectPage(3);};
+    studio_nav_.onClick=[this]{CynThemeStudioDialog::show(this);};
+    ai_status_card_.onClick=[this]{selectPage(1);};
+    overview_tab_.onClick=[this]{selectSoundFocus(0);};
+    eq_focus_tab_.onClick=[this]{selectSoundFocus(1);};
+    effects_focus_tab_.onClick=[this]{selectSoundFocus(2);};
+    studio_nav_.setTooltip("Open native Dark Theme, AI Touch and animation personalization.");
+    ai_status_card_.setTooltip("Open Smart Listening and neural AI controls.");
     dj_download_.onClick=[]{if(auto* dj=FxController::getInstance().dj()) dj->download();};
     dj_cancel_.onClick=[]{if(auto* dj=FxController::getInstance().dj()) dj->cancelDownload();};
     dj_remove_.onClick=[]{if(auto* dj=FxController::getInstance().dj()) dj->remove();};
@@ -208,6 +216,15 @@ void FxProView::openSettings()
     FxController::getInstance().refreshOutputList();
     update();
 }
+void FxProView::selectSoundFocus(int focus)
+{
+    sound_focus_=juce::jlimit(0,2,focus);
+    overview_tab_.setToggleState(sound_focus_==0,dontSendNotification);
+    eq_focus_tab_.setToggleState(sound_focus_==1,dontSendNotification);
+    effects_focus_tab_.setToggleState(sound_focus_==2,dontSendNotification);
+    resized();
+    repaint();
+}
 void FxProView::selectPage(int page)
 {
     if(page == page_ && isShowing()) return; // Initial page must still initialize child visibility.
@@ -224,15 +241,23 @@ void FxProView::selectPage(int page)
     }
     page_ = page;
     misc_nav_.setToggleState(page==3,dontSendNotification);
+    for(auto* b:std::initializer_list<TextButton*> {
+        &overview_tab_, &eq_focus_tab_, &effects_focus_tab_ })
+        b->setVisible(page==0);
+    ai_status_card_.setVisible(true);
     for(auto* c:std::initializer_list<Component*> {&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) c->setVisible(page==3);
     smart_toggle_.setVisible(page!=3);smart_status_.setVisible(page!=3);
     sound_nav_.setToggleState(page == 0, dontSendNotification);
     smart_nav_.setToggleState(page == 1, dontSendNotification);
     devices_nav_.setToggleState(page == 2, dontSendNotification);
     home_.setToggleState(page == 0, dontSendNotification);
+    // Legacy compact-rail glyphs are replaced by one legible labelled sidebar.
+    home_.setVisible(false);smart_rail_.setVisible(false);
+    devices_rail_.setVisible(false);settings_rail_.setVisible(false);
+    studio_nav_.setVisible(true);
     smart_rail_.setToggleState(page == 1, dontSendNotification);
     devices_rail_.setToggleState(page == 2, dontSendNotification);
-    for (auto* button : std::initializer_list<TextButton*> { &sound_nav_, &smart_nav_, &devices_nav_, &ai_hub_nav_, &misc_nav_, &home_, &smart_rail_, &devices_rail_ })
+    for (auto* button : std::initializer_list<TextButton*> { &sound_nav_, &smart_nav_, &devices_nav_, &ai_hub_nav_, &misc_nav_, &studio_nav_, &home_, &smart_rail_, &devices_rail_ })
     {
         button->setColour(TextButton::buttonColourId, Colours::transparentBlack);
         button->setColour(TextButton::buttonOnColourId, Colours::transparentBlack);
@@ -264,6 +289,8 @@ void FxProView::selectPage(int page)
             button->toFront(false);
     }
     ai_hub_nav_.toFront(false);
+    studio_nav_.toFront(false);
+    ai_status_card_.toFront(false);
     power_curtain_.toFront(false);
     repaint();
 }
@@ -436,69 +463,91 @@ void FxProView::timerCallback()
 }
 void FxProView::resized()
 {
+    // The stable shell is based on a 1320 x 700 design canvas. Keep all
+    // functional JUCE widgets, not an image of controls.
     power_curtain_.setBounds(getLocalBounds());
+    const int left=245, right=1301, usable=right-left;
+    const int navX=27,navW=186;
+    sound_nav_.setBounds(navX,128,navW,42);
+    smart_nav_.setBounds(navX,177,navW,42);
+    devices_nav_.setBounds(navX,226,navW,42);
+    ai_hub_nav_.setBounds(navX,275,navW,42);
+    misc_nav_.setBounds(navX,324,navW,42);
+    studio_nav_.setBounds(navX,373,navW,42);
+    settings_.setBounds(navX,615,navW,42);
+    // Header cards contain live, operable preset/device selectors.
+    preset_list_.setBounds(left+14,118,315,37);
+    endpoint_list_.setBounds(left+350,118,341,37);
+    ai_status_card_.setBounds(963,118,324,37);
+    live_status_.setBounds(1023,40,265,24);
+    overview_tab_.setBounds(left+12,172,126,34);
+    eq_focus_tab_.setBounds(left+146,172,126,34);
+    effects_focus_tab_.setBounds(left+280,172,163,34);
+    for(auto* b:std::initializer_list<TextButton*> {
+        &overview_tab_, &eq_focus_tab_, &effects_focus_tab_}) {
+        b->getProperties().set("ember_navigation",true);
+        b->setColour(TextButton::buttonColourId,Colours::transparentBlack);
+        b->setColour(TextButton::textColourOffId,Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
+        b->setColour(TextButton::textColourOnId,Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
+    }
+    const bool studio=page_==0;
+    if(studio) {
+        const int eqX=left+12,eqW=731;
+        if(sound_focus_==0) {
+            equalizer_.setBounds(eqX,250,eqW,230);
+            visualizer_.setBounds(1002,250,282,230);
+            audio_controls_.setBounds(eqX,510,eqW,161);
+        } else if(sound_focus_==1) {
+            equalizer_.setBounds(eqX,251,1036,417);
+            visualizer_.setBounds(1002,251,282,100);
+            audio_controls_.setBounds(eqX,507,731,161);
+        } else {
+            audio_controls_.setBounds(eqX,272,1036,331);
+            equalizer_.setBounds(eqX,251,731,230);
+            visualizer_.setBounds(1002,250,282,230);
+        }
+        equalizer_.setVisible(sound_focus_!=2);
+        visualizer_.setVisible(sound_focus_==0);
+        audio_controls_.setVisible(sound_focus_!=1);
+    }
+    // Smart Listening gets a wide live training timeline and its own neural
+    // inspector, while preserving all AI mode, training and export controls.
+    neural_activity_.setBounds(993,246,291,194);
+    learning_timeline_.setBounds(left+13,246,722,194);
+    listening_mode_.setBounds(left+22,490,216,32);
+    ai_profile_.setBounds(left+253,490,397,32);
+    learning_effect_.setBounds(left+22,538,179,35);
+    more_.setBounds(left+213,538,103,35);
+    less_.setBounds(left+327,538,103,35);
+    train_.setBounds(left+443,538,165,35);
+    resume_.setBounds(left+619,538,165,35);
+    sensitivity_.setBounds(left+150,591,265,25);
+    headroom_cap_.setBounds(left+542,591,259,25);
+    preset_cycling_.setBounds(left+20,618,208,24);
+    preset_cycling_status_.setBounds(left+234,618,210,24);
+    learning_status_.setBounds(left+20,644,393,31);
+    export_ai_.setBounds(left+456,643,92,32);
+    import_ai_.setBounds(left+556,643,92,32);
+    browse_ai_.setBounds(left+656,643,103,32);
+    starter_.setBounds(left+766,643,134,32);
+
+    // Device selection uses the same header device selector.
+    pin_toggle_.setBounds(left+27,295,404,34);
+    refresh_.setBounds(left+27,390,191,37);
+    smart_toggle_.setBounds(left+21, page_==1 ? 449 : page_==2 ? 495 : 661,217,26);
+    smart_status_.setBounds(left+254,page_==1 ? 449 : page_==2 ? 495 : 663, 772,29);
+
+    dj_download_.setBounds(left+24,281,205,39);
+    dj_remove_.setBounds(left+24,281,205,39);
+    dj_cancel_.setBounds(left+24,281,205,39);
+    dj_progress_.setBounds(left+250,292,750,19);
+    dj_toggle_.setBounds(left+23,346,260,34);
+    dj_status_.setBounds(left+24,391,990,31);
+    dj_intensity_.setBounds(left+209,490,540,31);
+    dj_spacing_.setBounds(left+209,542,540,31);
+    dj_stereo_.setBounds(left+24,590,480,27);
+    dj_recent_.setBounds(left+24,630,920,28);
     power_curtain_.toFront(false);
-    misc_nav_.setBounds(68,240,152,36);
-    dj_toggle_.setBounds(280,270,230,32);
-    dj_download_.setBounds(280,215,200,38);dj_remove_.setBounds(280,215,200,38);dj_cancel_.setBounds(280,215,200,38);
-    dj_progress_.setBounds(505,224,665,22);
-    dj_status_.setBounds(280,310,900,35);
-    dj_intensity_.setBounds(530,376,645,30);dj_spacing_.setBounds(530,422,645,30);
-    dj_stereo_.setBounds(280,473,470,30);dj_recent_.setBounds(280,525,895,26);
-    home_.setBounds(10, 18, 32, 34);
-    smart_rail_.setBounds(10, 64, 32, 34);
-    devices_rail_.setBounds(10, 110, 32, 34);
-    settings_rail_.setBounds(10, 565, 32, 34);
-    // Reserve the empty sidebar area for the native neural-activity animation.
-    neural_activity_.setBounds(72, 286, 148, 187);
-    learning_timeline_.setBounds(256,164,952,156);
-    learning_effect_.setBounds(280,433,194,36);
-    listening_mode_.setBounds(280,386,235,33);
-    ai_profile_.setBounds(540,386,425,33);
-    more_.setBounds(490,433,136,36); less_.setBounds(638,433,136,36);
-    train_.setBounds(790,433,210,36); resume_.setBounds(1012,433,170,36);
-    sensitivity_.setBounds(403,491,323,28);
-    headroom_cap_.setBounds(879,491,303,28);
-    preset_cycling_.setBounds(280,520,225,24);
-    preset_cycling_status_.setBounds(500,520,172,24);
-    learning_status_.setBounds(280, 542, 390, 42);
-    export_ai_.setBounds(685, 545, 96, 35);
-    import_ai_.setBounds(791, 545, 96, 35);
-    browse_ai_.setBounds(897, 545, 106, 35);
-    starter_.setBounds(1012,545,170,35);
-    sound_nav_.setBounds(68, 72, 152, 36);
-    smart_nav_.setBounds(68, 114, 152, 36);
-    devices_nav_.setBounds(68, 156, 152, 36);
-    ai_hub_nav_.setBounds(68, 198, 152, 36);
-    settings_.setBounds(68, 554, 152, 36);
-    ai_hub_nav_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(MenuHighlightBackground)).withAlpha(1.0f));
-    ai_hub_nav_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
-    browse_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(MenuHighlightBackground)).withAlpha(1.0f));
-    browse_ai_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
-    export_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(PanelBackground)).withAlpha(1.0f));
-    import_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(PanelBackground)).withAlpha(1.0f));
-    for (auto* button : std::initializer_list<TextButton*> { &export_ai_, &import_ai_ })
-    {
-        button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
-        button->setColour(TextButton::textColourOnId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
-    }
-    browse_ai_.setColour(TextButton::textColourOnId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
-    ai_hub_nav_.setColour(TextButton::textColourOnId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
-    live_status_.setBounds(1000, 23, 208, 24);
-    preset_list_.setBounds(256, 97, 465, 40);
-    endpoint_list_.setBounds(737, 97, 471, 40);
-    visualizer_.setBounds(256, 164, 952, 102);
-    audio_controls_.setBounds(256, 288, 168, 257);
-    equalizer_.setBounds(440, 288, 768, 257);
-    smart_toggle_.setBounds(272, page_ == 1 ? 339 : 565, 220, 25);
-    smart_status_.setBounds(508, page_ == 1 ? 340 : 566, 678, 23);
-    if (page_ == 2)
-    {
-        smart_toggle_.setBounds(276, 406, 220, 28);
-        smart_status_.setBounds(508, 407, 678, 26);
-    }
-    pin_toggle_.setBounds(276, 204, 410, 30);
-    refresh_.setBounds(276, 302, 168, 36);
 }
 void FxProView::paint(Graphics& g)
 {
