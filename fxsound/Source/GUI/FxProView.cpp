@@ -291,6 +291,14 @@ void FxProView::timerCallback()
 {
     if(!isShowing()) return;
     power_curtain_.syncPower(FxModel::getModel().getPowerState());
+    // Preserve the visible interface in standby while skipping all hidden
+    // 60 Hz telemetry, graph updates, AI hand/flower animations and polling.
+    // The curtain's own short timer handles its iris animation independently.
+    if(!FxModel::getModel().getPowerState()) {
+        if(live_status_.getText()!="Processing off")
+            live_status_.setText("Processing off",dontSendNotification);
+        return;
+    }
     const auto now=Time::getMillisecondCounterHiRes();
     if(transition_image_.isValid()) {
         if(FxTheme::isReducedMotion() || now-transition_start_>=220) transition_image_=Image();
