@@ -12,6 +12,64 @@ on:
 permissions:
   contents: read
 jobs:
+  installer-prerequisite-build:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build real native CYN payload and APEX ONNX
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./BUILD_CYN.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Native CYN build failed.' }
+      - name: Stage signed official x64 Visual C++ redistributable and compile installer
+        shell: pwsh
+        run: |
+          ./BUILD_INSTALLER.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'CYN installer build failed.' }
+      - name: Verify resulting Windows installer exists
+        shell: pwsh
+        run: |
+          $iss=Get-Content 'Installer/Cyn/Cyn.iss' -Raw
+          $output=[regex]::Match($iss,'(?m)^OutputBaseFilename=([A-Za-z0-9._-]+)\s*
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          node scripts/test_version_controls.mjs
+          node scripts/test_cyn_vc_runtime.mjs
+      - name: Parse installer build script with PowerShell
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'BUILD_INSTALLER.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count -ne 0) {
+            $errors | ForEach-Object { Write-Host $_.Message }
+            throw 'BUILD_INSTALLER.ps1 contains syntax errors.'
+          }
+
+      - name: Validate VC++ staging script syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'PREPARE_CYN_VCRUNTIME.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count -ne 0) { throw 'VC++ runtime staging script syntax errors.' }
+)
+          if (!$output.Success) { throw 'Missing installer filename.' }
+          $file=Join-Path dist ($output.Groups[1].Value+'.exe')
+          if (!(Test-Path $file)) { throw 'Inno Setup did not produce the expected installer.' }
+          if ((Get-Item $file).Length -lt 20000000) { throw 'Generated installer is unexpectedly small.' }
+          Write-Host "Validated signed VC++ x64 prerequisite in $file"
   output-name:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
