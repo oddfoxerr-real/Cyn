@@ -104,11 +104,18 @@ FxProView::FxProView() : tool_tip_(this)
     };
     learning_effect_.addItemList({"Clarity", "Ambience", "Surround", "Dynamic Boost", "Bass"},1);
     learning_effect_.setSelectedId(1,dontSendNotification);
+    learning_timeline_.setActiveEffect(0);
+    learning_effect_.onChange=[this] {
+        learning_timeline_.setActiveEffect(
+            juce::jlimit(0,4,learning_effect_.getSelectedId()-1));
+    };
     learning_effect_.setTooltip("Choose the effect to teach for the selected time range.");
     auto label=[this](bool more) {
         auto selected=learning_timeline_.selection();
         if(selected.size()<5) return;
         FxController::getInstance().labelAudio(selected,learning_effect_.getSelectedId()-1,more);
+        learning_timeline_.recordLabeledSelection(
+            juce::jlimit(0,4,learning_effect_.getSelectedId()-1),more);
         learning_timeline_.clearSelection(); timerCallback();
     };
     more_.onClick=[label]{label(true);}; less_.onClick=[label]{label(false);};
@@ -607,15 +614,14 @@ void FxProView::paint(Graphics& g)
     auto& theme=dynamic_cast<FxTheme&>(getLookAndFeel());
     auto colour=[](FxColor c) { return Colour(FxTheme::getColor(c)).withAlpha(1.0f); };
     const auto mode=FxTheme::getThemeMode();
-    const Colour base=mode==FxThemeMode::DarkMesh ? Colour(0xff000000) :
-        Colour(FxTheme::getColorForMode(mode,WindowBackground)).darker(.52f);
-    const Colour panel=mode==FxThemeMode::DarkMesh ? Colour(0xff030405) :
-        Colour(FxTheme::getColorForMode(mode,PanelBackground)).darker(.46f);
-    const Colour panel2=panel.brighter(.12f);
-    const Colour border(0xff18212b);
-    const Colour cyan=mode==FxThemeMode::DarkMesh ? Colour(0xff65b9ff) :
-        Colour(FxTheme::getColorForMode(mode,SliderTrack));
-    const Colour white(0xffedf5ff),muted(0xff9aadc4);
+    // Match the native JUCE controls AND the custom-drawn workspace.
+    // No palette gets re-darkened into black or recolored with fixed blue.
+    const Colour base=colour(WindowBackground);
+    const Colour panel=colour(PanelBackground);
+    const Colour panel2=colour(WidgetBackground);
+    const Colour border=colour(RowOutline);
+    const Colour cyan=colour(SliderTrack);
+    const Colour white=colour(DefaultText),muted=colour(HintText);
     const bool reduced=FxTheme::isReducedMotion();
     const float playLevel=jlimit(0.0f,1.0f,theme_audio_level_);
     g.fillAll(base);
@@ -628,17 +634,17 @@ void FxProView::paint(Graphics& g)
         CynThemeAtmosphere::paint(g,mode,
             reduced ? 0.0f : (float)(Time::getMillisecondCounterHiRes()*.001),
             playLevel,juce::Rectangle<float>(229.0f,0.0f,getWidth()-229.0f,205.0f));
-        ColourGradient veil(Colour(0xff03070d).withAlpha(.40f),230.0f,10.0f,
+        ColourGradient veil(panel.withAlpha(.32f),230.0f,10.0f,
                             base.withAlpha(.96f),740.0f,208.0f,false);
         g.setGradientFill(veil); g.fillRect(229,0,getWidth()-229,220);
     }
 
     // Solid continuous navigation rail, no second row of icon-only buttons.
-    ColourGradient side(Colour(0xff050609),0.0f,0.0f,
-                         Colour(0xff010203),228.0f,700.0f,false);
+    ColourGradient side(base.interpolatedWith(panel,.46f),0.0f,0.0f,
+                         base,228.0f,700.0f,false);
     g.setGradientFill(side);g.fillRect(0,0,228,getHeight());
     // Clean continuous sidebar edge: no decorative corner flourish.
-    g.setColour(Colour(0xff1e303d).withAlpha(.85f));
+    g.setColour(border.withAlpha(.85f));
     g.drawLine(228.0f,0.0f,228.0f,(float)getHeight(),.8f);
     // Native title bar already displays the CYN wordmark. The sidebar
     // identifies the navigation instead of repeating the same logo.
@@ -651,15 +657,16 @@ void FxProView::paint(Graphics& g)
     g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,87.0f,203.0f,87.0f,.8f);
 
     const float navY=104.0f+49.0f*(float)page_;
-    ColourGradient navGlow(cyan.darker(.68f),22.0f,navY,
-                            cyan.darker(.81f).interpolatedWith(Colour(0xff27205c),.28f),218.0f,navY+42.0f,false);
+    ColourGradient navGlow(colour(MenuHighlightBackground),22.0f,navY,
+                            cyan.withAlpha(1.0f).interpolatedWith(base,.77f),
+                            218.0f,navY+42.0f,false);
     g.setGradientFill(navGlow);
     g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,15.0f);
     g.setColour(cyan.withAlpha(.78f));
     g.drawRoundedRectangle(22.5f,navY+.5f,195.0f,41.0f,14.5f,1.05f);
     g.fillRoundedRectangle(22.0f,navY+11.0f,3.2f,20.0f,1.5f);
     g.setColour(border);g.drawLine(27.0f,590.0f,210.0f,590.0f,.8f);
-    g.setColour(Colour(0xff040709));g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
+    g.setColour(panel2);g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
     g.setColour(border.withAlpha(.38f));g.drawRoundedRectangle(21.5f,524.5f,194.0f,55.0f,12.0f,.8f);
     g.setColour(muted.withAlpha(.85f));
     g.setFont(theme.getNormalFont().withHeight(9.0f).boldened());
@@ -727,7 +734,7 @@ void FxProView::paint(Graphics& g)
     if(page_==0) {
         const float selX=sound_focus_==0 ? 258.0f : sound_focus_==1 ? 392.0f : 526.0f;
         const float selW=sound_focus_==2 ? 164.0f : 126.0f;
-        g.setColour(Colour(0xff142334));
+        g.setColour(colour(MenuHighlightBackground));
         g.fillRoundedRectangle(selX,202.0f,selW,36.0f,11.0f);
         g.setColour(cyan.withAlpha(.75f));
         g.drawRoundedRectangle(selX+.5f,202.5f,selW-1.0f,35.0f,10.5f,.9f);
@@ -904,16 +911,16 @@ void FxProView::updateDjTouch(double now)
         juce::Point<float> position {};
         int index=-1;
     };
-    std::array<std::array<Candidate,4>,2> ranked {};
+    std::array<std::array<Candidate,39>,2> ranked {};
     const auto offer=[&](int panel,int index,float score,
                          juce::Point<float> position) {
         if(score<=0.0017f) return;
         auto& choices=ranked[(size_t)panel];
         // An agent never duplicates another flower's EQ band/knob.
         int insert=0;
-        while(insert<4 && score<=choices[(size_t)insert].score) ++insert;
-        if(insert==4) return;
-        for(int i=3;i>insert;--i)
+        while(insert<39 && score<=choices[(size_t)insert].score) ++insert;
+        if(insert==39) return;
+        for(int i=38;i>insert;--i)
             choices[(size_t)i]=choices[(size_t)(i-1)];
         choices[(size_t)insert]={score,position,index};
     };
@@ -927,9 +934,21 @@ void FxProView::updateDjTouch(double now)
         if(!dj_touch_seeded_[0] || !audio_controls_.isEffectsShown())continue;
         const float score=(std::min)(movement,1.0f)*
                           (std::min)(std::abs(value-preset),2.0f);
-        if(movement>0.022f && std::abs(value-preset)>0.08f)
-            offer(0,i,score,{audio_controls_.getX()+22.0f+value*12.5f,
-                              audio_controls_.getY()+52.0f+i*43.0f});
+        if(movement>0.022f && std::abs(value-preset)>0.08f) {
+            const float panelWidth=(float)audio_controls_.getWidth();
+            if(panelWidth>=540.0f) {
+                // Native FX rack: five horizontal columns, one live knob each.
+                const float cell=(panelWidth-28.0f-44.0f)/5.0f;
+                const float slideWidth=cell-8.0f;
+                const float x=audio_controls_.getX()+18.0f+
+                      i*(cell+11.0f)+9.0f+(slideWidth-18.0f)*
+                      juce::jlimit(0.0f,1.0f,value/10.0f);
+                offer(0,i,score,{x,audio_controls_.getY()+105.0f});
+            } else {
+                offer(0,i,score,{audio_controls_.getX()+18.0f+14.0f*value,
+                                  audio_controls_.getY()+52.0f+i*43.0f});
+            }
+        }
     }
     const int n=juce::jmin(39,controller.getNumEqBands());
     for(int i=0;i<n;++i) {
@@ -942,37 +961,64 @@ void FxProView::updateDjTouch(double now)
         const float score=(std::min)(movement,0.6f)*
                           (std::min)(std::abs(value-preset),2.0f);
         if(movement>0.028f && std::abs(value-preset)>0.09f) {
-            const float stride=(float)(equalizer_.getWidth()-22)/(float)(std::max)(1,n);
+            const float stride=(float)(equalizer_.getWidth()-32)/(float)(std::max)(1,n);
+            const float sliderHeight=juce::jmax(65.0f,
+                (float)equalizer_.getHeight()-28.0f-24.0f-16.0f);
             offer(1,i,score,{
-                equalizer_.getX()+11.0f+stride*(i+0.5f),
+                equalizer_.getX()+16.0f+stride*(i+0.5f),
                 equalizer_.getY()+40.0f+
-                juce::jlimit(0.0f,1.0f,(12.0f-value)/24.0f)*166.0f});
+                juce::jlimit(0.0f,1.0f,(12.0f-value)/24.0f)*
+                juce::jmax(12.0f,sliderHeight-24.0f)});
         }
     }
     dj_touch_seeded_={{true,true}};
     for(int panel=0;panel<2;++panel) {
         const int style=chosen[(size_t)panel];
-        const bool shown=(panel==1 || audio_controls_.isEffectsShown());
+        const bool shown=(panel==0 ?
+            (audio_controls_.isVisible() && audio_controls_.isEffectsShown()) :
+            equalizer_.isVisible());
         const int agents=style==CynDjTouch::Flowers ? dj_touch_flower_count_:1;
         auto& choices=ranked[(size_t)panel];
+        std::array<bool,39> used{};
+        std::array<juce::Point<float>,4> claimed{};
+        int claimedCount=0;
         for(int slot=0;slot<4;++slot) {
             auto& agent=dj_touch_agents_[(size_t)(panel*4+slot)];
-            // Only one hand or one cursor per panel. Flowers can occupy
-            // several distinct ACTIVE knobs/bands simultaneously.
-            if(style!=CynDjTouch::None && shown && slot<agents &&
-               choices[(size_t)slot].score>0.0017f) {
-                // Avoid overlapping flowers on adjacent very narrow EQ bands:
-                // retain the highest-ranked distinct targets for this frame.
-                const auto point=choices[(size_t)slot].position;
+            const auto available=[&](int candidate) {
+                if(candidate<0 || candidate>=39 || used[(size_t)candidate] ||
+                   choices[(size_t)candidate].score<=0.0017f) return false;
+                const auto position=choices[(size_t)candidate].position;
+                for(int k=0;k<claimedCount;++k)
+                    if(position.getDistanceFrom(claimed[(size_t)k])<39.0f)
+                        return false;
+                return true;
+            };
+            int picked=-1;
+            if(style!=CynDjTouch::None && shown && slot<agents) {
+                // Hold a flower on its own actively changing target whenever
+                // possible. Never send two flowers to an occupied control.
+                for(int c=0;c<39;++c)
+                    if(choices[(size_t)c].index==agent.targetId &&
+                       available(c)) { picked=c; break; }
+                if(picked<0)
+                    for(int c=0;c<39;++c)
+                        if(available(c)) { picked=c; break; }
+            }
+            if(picked>=0) {
+                const auto point=choices[(size_t)picked].position;
+                used[(size_t)picked]=true;
+                claimed[(size_t)claimedCount++]=point;
                 if(agent.opacity<=0.004f) agent.pos=point;
                 agent.target=point;
+                agent.targetId=choices[(size_t)picked].index;
                 agent.lastActivity=now;
+            } else {
+                agent.lastActivity=0.0;
+                agent.targetId=-1;
             }
-            const float goal=style!=CynDjTouch::None && shown &&
-                slot<agents && now-agent.lastActivity<=900.0 &&
-                agent.lastActivity>0.0 ? 0.80f : 0.0f;
-            agent.pos+=(agent.target-agent.pos)*0.20f;
-            agent.opacity+=(goal-agent.opacity)*0.17f;
+            const float goal=picked>=0 ? .80f : 0.0f;
+            agent.pos+=(agent.target-agent.pos)*.20f;
+            agent.opacity+=(goal-agent.opacity)*.17f;
         }
     }
 }
@@ -1106,7 +1152,10 @@ void FxProView::paintOverChildren(Graphics& g)
         const auto time=(float)(Time::getMillisecondCounterHiRes()*0.001);
         for(int panel=0;panel<2;++panel) {
             const int style=dj_touch_styles_[(size_t)panel];
-            if(style==CynDjTouch::None)continue;
+            if(style==CynDjTouch::None ||
+               (panel==0 && (!audio_controls_.isVisible() ||
+                             !audio_controls_.isEffectsShown())) ||
+               (panel==1 && !equalizer_.isVisible())) continue;
             Graphics::ScopedSaveState panelClip(g);
             // Neither hand/cursor nor flower may wander over another panel.
             const auto area=(panel==0?audio_controls_.getBounds():

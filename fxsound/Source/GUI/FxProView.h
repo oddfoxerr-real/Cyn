@@ -130,6 +130,7 @@ private:
     struct DjTouchAgent {
         juce::Point<float> pos {}, target {};
         float opacity=0.0f;
+        int targetId=-1;
         double lastActivity=0.0;
     };
     std::array<DjTouchAgent,8> dj_touch_agents_ {};

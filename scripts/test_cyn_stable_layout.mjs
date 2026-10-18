@@ -49,7 +49,7 @@ assert(view.includes('modelText=model=="apex6m"') &&
        "The AI status panel must show actual engine state, not invented model status");
 assert(view.includes("FxThemeMode::DarkMesh") &&
        view.includes('g.fillRoundedRectangle(22.0f,navY') &&
-       view.includes('CynThemeAtmosphere::paint(g,FxThemeMode::DarkMesh') &&
+       view.includes('CynThemeAtmosphere::paint(g,mode') &&
        view.includes("reduced ? 0.0f"),
        "Horizon x Depth native shell must retain live Dark Theme and reduced motion");
 assert(!view.includes('g.drawArc(juce::Path(),0)'),"No placeholder painting calls");

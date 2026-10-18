@@ -134,9 +134,9 @@ void FxVisualizer::paint(Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
 
-    g.setColour(Colour(0xff050607).withAlpha(0.80f));
+    g.setColour(Colour(FXCOLOR(PanelBackground)).withAlpha(.88f));
     g.fillRoundedRectangle(bounds, 18.0f);
-    g.setColour(Colour(0xff18212b).withAlpha(0.72f));
+    g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(.72f));
     g.drawRoundedRectangle(bounds.reduced(0.5f), 18.0f, 1.0f);
 
     // Baseline gives the spectrum the same quiet, technical feel as the

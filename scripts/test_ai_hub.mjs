@@ -134,7 +134,7 @@ console.log("PASS: live neural inference and supervised epoch animation");
 // The existing personal-model network must be labeled separately from pretrained
 // YAMNet event classifications; no fabricated YAMNet weight-node activity.
 const themeHeader=readFileSync(path("fxsound/Source/GUI/FxTheme.h"),"utf8");
-assert(themeHeader.includes("CharcoalDesktop, NeuralCore, DarkMesh, NumModes"),"Neural Core must preserve existing saved theme IDs");
+assert(themeHeader.includes("CharcoalDesktop, NeuralCore, DarkMesh, AetherGlass, IonViolet, LiquidTitanium, JadeCircuit, SolarInk, PolarMist, NumModes"),"Neural Core must preserve existing saved theme IDs");
 assert(theme.includes('return "Dark Theme";'),"Default dark palette must remain compatible with existing stored theme IDs");
 assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Neural theme must use real personal model activations");
 assert(view.includes("brainController.getLiveYamNetScene(scene)"),"Neural theme must read real YAMNet classifications");
@@ -152,7 +152,7 @@ console.log("PASS: Neural Core live inference visualization, distinct AI identit
 const atmosphere=readFileSync(path("fxsound/Source/GUI/CynThemeAtmosphere.h"),"utf8");
 const themeModes=[...themeHeader.matchAll(/enum FxThemeMode : int \{([^}]+)\}/g)][0][1]
   .split(",").map(item=>item.trim().replace(/=.*/,"")).filter(item=>item!=="NumModes");
-assert.equal(themeModes.length,21,"All original twenty theme IDs plus Dark Theme are required");
+assert.equal(themeModes.length,27,"Original saved IDs and six new native CYN themes must be retained");
 for(const mode of themeModes)
   assert(atmosphere.includes("case FxThemeMode::"+mode+":"),"No dynamic artwork for "+mode);
 assert(view.includes("CynThemeAtmosphere::paint(g,mode"),
