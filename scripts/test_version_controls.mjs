@@ -19,8 +19,8 @@ assert(ui.includes('Installed: Cyn v'));
 assert(!ui.includes('Cyn identity-2 / DSP v'),"Ambiguous old version text returned");
 assert(controller.includes('const auto currentVersion=major+"."+minor+"."+patch'));
 assert.equal((native.match(/JUCE_APP_VERSION=2\.0\.59\.0/g)||[]).length,4);
-assert.match(installer,/^AppVersion=2\.0\.58\s*$/m);
-assert.match(installer,/^VersionInfoVersion=2\.0\.58\.0\s*$/m);
+assert.match(installer,/^AppVersion=2\.0\.59\s*$/m);
+assert.match(installer,/^VersionInfoVersion=2\.0\.59\.0\s*$/m);
 console.log("PASS: installed version UI, manual update, auto-update toggle and matching native version");
 
 // Prevent installer publication from failing on every subsequent version bump.
