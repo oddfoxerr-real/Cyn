@@ -456,6 +456,11 @@ void FxProView::timerCallback()
     smart_status_.setFont(theme.getNormalFont().withHeight(page_ == 1 ? 11.5f : 13.0f));
     smart_status_.setColour(Label::textColourId, Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     const bool power = FxModel::getModel().getPowerState();
+    const auto status=controller.isSmartListening()
+        ? String("AI ACTIVE  •  ")+controller.getActiveAIProfileId().toUpperCase()
+        : String("AI STANDBY  •  OPEN CONTROLS");
+    if(ai_status_card_.getButtonText()!=status)
+        ai_status_card_.setButtonText(status);
     live_status_.setFont(theme.getNormalFont().withHeight(12));
     live_status_.setColour(Label::textColourId, Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     live_status_.setText(!power ? "Processing off" : !controller.isPlaybackDeviceAvailable()
@@ -551,162 +556,191 @@ void FxProView::resized()
 }
 void FxProView::paint(Graphics& g)
 {
-    auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
-    auto color = [](FxColor c) { return Colour(FxTheme::getColor(c)).withAlpha(1.0f); };
-    // Leave the outer rail transparent so the parent paints one continuous shell.
-    Path workspace;
-    workspace.addRoundedRectangle(52.0f, 0.0f, WIDTH - 60.0f, HEIGHT - 8.0f, 18.0f);
-    {
-        Graphics::ScopedSaveState save(g);
-        g.reduceClipRegion(workspace);
-        // Actual immersive artwork is clipped to the entire workspace,
-        // never placed as a decorative widget underneath sidebar controls.
-        CynThemeAtmosphere::paint(g,FxTheme::getThemeMode(),
-            FxTheme::isReducedMotion()?0.0f:
-                (float)(Time::getMillisecondCounterHiRes()*0.001),
-            theme_audio_level_,juce::Rectangle<float>(52.0f,0.0f,
-                                                WIDTH-52.0f,HEIGHT-8.0f));
-        const auto rail=color(PanelBackground);
-        // Let the full scene continue faintly beneath navigation, with a
-        // legible tinted overlay. No separate sidebar theme card or obstruction.
-        const bool webDark=FxTheme::getThemeMode()==FxThemeMode::DarkMesh;
-        ColourGradient sidebar((webDark?Colour(0xff000000):rail.brighter(0.045f)).withAlpha(webDark?0.90f:0.94f),
-                               52.0f,0.0f,
-                               (webDark?Colour(0xff000000):rail.darker(0.11f)).withAlpha(webDark?0.91f:0.82f),
-                               232.0f,(float)HEIGHT,false);
-        g.setGradientFill(sidebar);
-        g.fillRect(52,0,180,HEIGHT);
-        const float drift=FxTheme::isReducedMotion()?0.0f:
-            (float)Time::getMillisecondCounterHiRes()*0.00032f;
-        const float glowY=355.0f+112.0f*std::sin(drift);
-        ColourGradient railGlow(color(SliderTrack).withAlpha((webDark?0.075f+0.065f*theme_audio_level_:0.075f+0.085f*theme_audio_level_)),
-                                218.0f,glowY,
-                                Colours::transparentBlack,55.0f,glowY+185.0f,true);
-        g.setGradientFill(railGlow);
-        g.fillRect(52,0,180,HEIGHT);
-        if(FxTheme::getThemeMode()==FxThemeMode::NeuralCore) {
-            // The top-right telemetry is ACTUAL pretrained YAMNet event scores
-            // (not YAMNet internal activations or a synthetic music animation).
-            const auto cyan=Colour(0xff67edee), violet=Colour(0xffa18cff);
-            const auto glow=jlimit(0.0f,1.0f,theme_audio_level_);
-            ColourGradient aura(cyan.withAlpha(0.045f+glow*0.075f),
-                                985.0f,115.0f,
-                                Colours::transparentBlack,1140.0f,370.0f,true);
-            g.setGradientFill(aura);
-            g.fillEllipse(785.0f,-65.0f,410.0f,430.0f);
-            // Faint fixed-position lines only illuminate when personal
-            // inference is valid. Actual connection activity is drawn in
-            // the 11->12->5 neural graph on the sidebar.
-            for(int i=0;i<9;++i) {
-                const float x=275.0f+99.0f*i;
-                g.setColour((i%2?violet:cyan).withAlpha(0.018f+0.035f*glow));
-                g.drawLine(x,84.0f,x+55.0f,284.0f,0.7f);
-            }
-            const auto activity=neural_core_live_?neural_core_scene_:CynAudioScene {};
-            const float meters[3]={activity.music,activity.percussion,activity.speech};
-            const char* names[3]={"MUSIC","DRUMS","VOICE"};
-            for(int i=0;i<3;++i) {
-                const float x=968.0f+80.0f*i, y=59.0f;
-                g.setColour(color(HintText).withAlpha(0.84f));
-                g.setFont(Font(8.0f,Font::bold));
-                g.drawText(names[i],(int)x,46,72,11,Justification::centredLeft,false);
-                g.setColour(color(RowOutline).withAlpha(0.9f));
-                g.fillRoundedRectangle(x,y,65.0f,3.5f,1.75f);
-                g.setColour((i==2?violet:cyan).withAlpha(neural_core_live_?0.90f:0.20f));
-                g.fillRoundedRectangle(x,y,65.0f*jlimit(0.0f,1.0f,meters[i]),3.5f,1.75f);
-            }
-            g.setColour(cyan.withAlpha(neural_core_live_?0.85f:0.28f));
-            g.setFont(Font(9.0f,Font::bold));
-            g.drawText(neural_core_live_?"YAMNET / LIVE EVENTS":"YAMNET / WAITING",
-                       987,6,220,14,Justification::centredRight,false);
-        }
-        g.setColour(color(RowOutline).withAlpha(0.65f));
-        g.drawVerticalLine(232,0,HEIGHT-8.0f);
-    }
-    g.setColour(color(RowOutline).withAlpha(0.65f));
-    g.strokePath(workspace, PathStrokeType(1.0f));
-    auto text = [&](const String& value, int x, int y, int w, int h, float size, bool muted = false) {
-        g.setColour(color(muted ? HintText : DefaultText));
-        g.setFont(theme.getNormalFont().withHeight(size));
-        g.drawText(value, x, y, w, h, Justification::centredLeft, true);
-    };
-    auto card = [&](int x, int y, int w, int h) {
-        const auto panel=color(ControlBackground);
-        ColourGradient glass((FxTheme::getThemeMode()==FxThemeMode::DarkMesh ? Colour(0xff010102) : panel.brighter(0.095f)),(float)x,(float)y,
-                             (FxTheme::getThemeMode()==FxThemeMode::DarkMesh?Colour(0xff010102):panel.darker(0.055f)),(float)(x+w),(float)(y+h),false);
-        glass.addColour(0.42,panel);
-        g.setGradientFill(glass);
-        g.fillRoundedRectangle((float)x,(float)y,(float)w,(float)h,16.0f);
-        if (FxTheme::getThemeMode()==FxThemeMode::DarkMesh && w>=600 && h>=140) {
-            // Continue the page's dotted web faintly ON the large black card.
-            // Small controls and text remain unobstructed and readable.
-            Graphics::ScopedSaveState clip(g);
-            Path mask; mask.addRoundedRectangle((float)x,(float)y,(float)w,(float)h,16.0f);
-            g.reduceClipRegion(mask);
-            const int cols=23, rows=6;
-            auto dot=[&](int cx,int cy) -> Point<float> {
-                return {float(x+w-430+cx*21),float(y+h-122+cy*23)
-                     +4.0f*std::sin(cx*0.49f+cy*0.31f)};
-            };
-            for(int ry=0;ry<rows;++ry)
-                for(int col=0;col<cols;++col) {
-                    const auto p=dot(col,ry);
-                    const float opacity=0.009f+0.033f*(float)ry/(float)(rows-1);
-                    g.setColour(Colour(0xff9fc7ff).withAlpha(opacity));
-                    if(col+1<cols)g.drawLine(Line<float>(p,dot(col+1,ry)),0.6f);
-                    if(ry+1<rows)g.drawLine(Line<float>(p,dot(col,ry+1)),0.6f);
-                    g.setColour(Colour(0xffdeebff).withAlpha(opacity*1.7f));
-                    g.fillEllipse(p.x-0.85f,p.y-0.85f,1.7f,1.7f);
-                }
-        }
-        g.setColour(color(DefaultText).withAlpha(0.065f));
-        g.drawLine((float)x+17.0f,(float)y+1.0f,(float)(x+w)-17.0f,(float)y+1.0f,0.8f);
-        g.setColour(color(RowOutline).withAlpha(0.72f));
-        g.drawRoundedRectangle(x+0.5f,y+0.5f,w-1.0f,h-1.0f,16.0f,1.0f);
-    };
-    const float selected=theme.animate(*this,3,page_==3?4.0f:(float)page_);
-    g.setColour(color(MenuHighlightBackground));
-    g.fillRoundedRectangle(68.0f,72.0f+42.0f*selected,152.0f,36.0f,12.0f);
-    g.setColour(color(SliderTrack));
-    g.fillRoundedRectangle(68.0f,83.0f+42.0f*selected,3.0f,14.0f,1.5f);
-    text("Your workspace", 76, 25, 140, 20, 14);
-    text("AUDIO", 80, 52, 132, 16, 10, true);
-    text("Cyn / Personal audio", 80, 486, 136, 18, 12, true);
-    text("Made for your ears.", 80, 508, 140, 18, 12, true);
-    text(String("Version ") + JUCEApplication::getInstance()->getApplicationVersion(), 80, 529, 140, 16, 10, true);
-    text(page_ == 0 ? "Sound studio" : page_ == 1 ? "Smart listening" : page_==2 ? "Output devices" : "Misc / AI DJ", 256, 16, 640, 32, 25);
-    text(page_ == 0 ? "Shape your sound. Keep your focus." : page_ == 1
-        ? "Choose a listening mode and the neural model that powers it." : page_==2 ? "Your output, with fewer interruptions." : "Optional musical accents, made for your headphones.", 256, 49, 640, 22, 13, true);
-    text("PRESET", 260, 78, 300, 16, 10, true);
-    text("OUTPUT DEVICE", 741, 78, 300, 16, 10, true);
-    if (page_ == 0) card(256, 556, 952, 48);
-    else if (page_ == 1)
-    {
-        card(256, 334, 952, 270);
-        text("LISTENING MODE",280,369,235,13,10,true);
-        text("ACTIVE AI MODEL",540,369,425,13,10,true);
-        text("Swap models anytime.",977,386,205,28,12,true);
-        text("AI PROFILES", 688, 521, 310, 18, 10, true);
-        text("Sensitivity",280,491,120,28,14);
-        text("Headroom Cap",747,491,134,28,13);
+    using namespace juce;
+    // Horizon x Depth — stable design candidate. This paints a real native
+    // JUCE shell around working DSP/AI widgets, not a screenshot or webview.
+    // The only expensive drawing is bounded to existing scene/video widgets.
+    auto& theme=dynamic_cast<FxTheme&>(getLookAndFeel());
+    auto colour=[](FxColor c) { return Colour(FxTheme::getColor(c)).withAlpha(1.0f); };
+    const Colour base(0xff03070d), panel(0xff091321),panel2(0xff0b1728);
+    const Colour border(0xff20354b), cyan(0xff45bffb);
+    const Colour white(0xffedf5ff),muted(0xff8097b0);
+    const bool reduced=FxTheme::isReducedMotion();
+    const float playLevel=jlimit(0.0f,1.0f,theme_audio_level_);
+    g.fillAll(base);
 
-    }
-    else if(page_==3)
+    // One atmospheric mesh, kept underneath everything and anchored to
+    // actual audio telemetry. True black still dominates the interface.
     {
-        card(256,164,952,188);card(256,365,952,207);
-        text("AI DJ / Live remix",280,172,850,30,21);
-        text("Intensity",280,376,220,30,15);
-        text("Minimum spacing",280,422,230,30,15);
-        text("Remixes the playing song: beat repeats, echoes and filter sweeps. Timing is approximate.",280,578,900,22,12,true);
+        Graphics::ScopedSaveState scene(g);
+        g.reduceClipRegion(Rectangle<int>(229,0,getWidth()-229,getHeight()));
+        CynThemeAtmosphere::paint(g,FxThemeMode::DarkMesh,
+            reduced ? 0.0f : (float)(Time::getMillisecondCounterHiRes()*.001),
+            playLevel,Rectangle<float>(229.0f,0.0f,getWidth()-229.0f,205.0f));
+        ColourGradient veil(Colour(0xff03070d).withAlpha(.40f),230.0f,10.0f,
+                            base.withAlpha(.96f),740.0f,208.0f,false);
+        g.setGradientFill(veil); g.fillRect(229,0,getWidth()-229,220);
     }
-    else
-    {
-        card(256, 171, 952, 190);
-        text("Stay with this device while it is available. If unplugged, use the next available output.", 280, 247, 880, 24, 13, true);
-        card(256, 388, 952, 168);
-        text("Sound shaping follows your selected output.", 280, 452, 860, 24, 16);
-        text("Device priorities and per-device presets are available in Settings.", 280, 490, 860, 24, 13, true);
+
+    // Solid continuous navigation rail, no second row of icon-only buttons.
+    ColourGradient side(Colour(0xff07121f),0.0f,0.0f,
+                         Colour(0xff03080f),228.0f,700.0f,false);
+    g.setGradientFill(side);g.fillRect(0,0,228,getHeight());
+    g.setColour(border.withAlpha(.68f));
+    g.drawLine(228.0f,0.0f,228.0f,(float)getHeight(),.8f);
+    g.setColour(white);g.setFont(theme.getNormalFont().withHeight(29.0f).boldened());
+    g.drawText("CYN",28,22,128,38,Justification::centredLeft);
+    g.setColour(cyan);g.fillEllipse(109.0f,50.0f,5.0f,5.0f);
+    g.setFont(theme.getNormalFont().withHeight(10.5f));
+    g.setColour(muted);g.drawText("PERSONAL AUDIO  /  STABLE UI",30,67,188,18,
+                                 Justification::centredLeft);
+    g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,105.0f,203.0f,105.0f,.8f);
+
+    const float navY=128.0f+49.0f*(float)page_;
+    g.setColour(Colour(0xff102b45).withAlpha(.94f));
+    g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,12.0f);
+    g.setColour(cyan.withAlpha(.78f));
+    g.drawRoundedRectangle(22.5f,navY+.5f,195.0f,41.0f,11.0f,1.05f);
+    g.fillRoundedRectangle(22.0f,navY+11.0f,3.2f,20.0f,1.5f);
+    // Small glyphs are purely decorative; the real labelled TextButtons
+    // provide keyboard focus, pointer targets, and accessibility names.
+    for(int i=0;i<6;++i) {
+        const float y=149.0f+49.0f*i;
+        const Colour col=i==page_?cyan:muted;
+        g.setColour(col.withAlpha(i==page_?.85f:.50f));
+        if(i==0) {
+            for(int k=0;k<5;++k)
+                g.drawLine(37.0f+k*4.0f,y-(2+(k*5)%11)*.5f,
+                           37.0f+k*4.0f,y+(2+(k*5)%11)*.5f,1.2f);
+        } else {
+            g.fillEllipse(40.0f,y-3.0f,5.0f,5.0f);
+            g.drawEllipse(36.5f,y-6.5f,12.0f,12.0f,.75f);
+        }
     }
+    g.setColour(border);g.drawLine(27.0f,590.0f,210.0f,590.0f,.8f);
+    g.setColour(Colour(0xff091829));g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
+    g.setColour(border);g.drawRoundedRectangle(21.5f,524.5f,194.0f,55.0f,12.0f,1.0f);
+    const auto model=FxController::getInstance().getActiveAIProfileId();
+    const String modelText=model=="apex6m" ? "APEX 6M" :
+            model=="yamnet" ? "YAMNet" : model.isNotEmpty() ? model.toUpperCase() : "No model";
+    const bool aiOn=FxController::getInstance().isSmartListening();
+    g.setColour(aiOn?Colour(0xff49dcb3):muted);
+    g.fillEllipse(35.0f,544.0f,8.0f,8.0f);
+    g.setColour(white);g.setFont(theme.getNormalFont().withHeight(13.0f).boldened());
+    g.drawText(modelText,54,533,148,20,Justification::centredLeft,true);
+    g.setColour(muted);g.setFont(theme.getNormalFont().withHeight(10.0f));
+    g.drawText(aiOn?"AI enabled":"AI standby",54,555,140,14,Justification::centredLeft);
+    g.drawText("CYN  "+JUCEApplication::getInstance()->getApplicationVersion(),
+               25,669,178,16,Justification::centredLeft);
+
+    auto txt=[&](String value,float x,float y,float width,float height,
+                 float size,bool mutedText=false,bool bold=false) {
+        g.setColour(mutedText?muted:white);
+        auto font=theme.getNormalFont().withHeight(size);
+        if(bold)font=font.boldened();
+        g.setFont(font);
+        g.drawText(value,roundToInt(x),roundToInt(y),roundToInt(width),roundToInt(height),
+                   Justification::centredLeft,true);
+    };
+    auto card=[&](float x,float y,float width,float height,float r=15.0f) {
+        ColourGradient finish(panel2,x,y,panel,x+width,y+height,false);
+        finish.addColour(.55,panel);
+        g.setGradientFill(finish);
+        g.fillRoundedRectangle(x,y,width,height,r);
+        g.setColour(border.withAlpha(.88f));
+        g.drawRoundedRectangle(x+.5f,y+.5f,width-1.0f,height-1.0f,r-.3f,1.0f);
+        g.setColour(Colours::white.withAlpha(.032f));
+        g.drawLine(x+13.0f,y+1.0f,x+width-13.0f,y+1.0f,.85f);
+    };
+    // Clear hierarchy: a large page title, meaningful status, then real
+    // selectors and page-specific content. No fictitious audio readouts.
+    const char* pageNames[]={"Sound Studio","Smart Listening","Output Devices","Misc / AI DJ"};
+    const char* subtitles[]={
+        "Fine-tune your sound with real-time processing.",
+        "Neural listening, personal learning, and live AI controls.",
+        "Your output hardware, connected devices and device priority.",
+        "Optional musical effects and stereo creative controls."
+    };
+    txt("CYN  /  "+String(pageNames[page_]).toUpperCase(),246,12,610,20,10.8f,true,true);
+    txt(pageNames[page_],246,34,650,45,29.0f,false,true);
+    txt(subtitles[page_],248,78,750,24,13.0f,true);
+    txt(FxModel::getModel().getPowerState()?"●  AUDIO ON":"○  PROCESSING OFF",
+        1115,19,174,21,11.0f,false,true);
+
+    card(247,108,333,58,12.0f);
+    card(587,108,361,58,12.0f);
+    card(956,108,344,58,12.0f);
+    txt("ACTIVE PROFILE",259,110,260,16,10,true,true);
+    txt("OUTPUT DEVICE",600,110,260,16,10,true,true);
+    txt("AI ENHANCEMENT",970,110,230,16,10,true,true);
+
+    // Clickable tabs over a restrained, visually unified toolbar.
+    card(247,170,1053,44,11.0f);
+    if(page_==0) {
+        const float selX=sound_focus_==0 ? 258.0f : sound_focus_==1 ? 392.0f : 526.0f;
+        const float selW=sound_focus_==2 ? 164.0f : 126.0f;
+        g.setColour(Colour(0xff103455));
+        g.fillRoundedRectangle(selX,172.0f,selW,34.0f,11.0f);
+        g.setColour(cyan.withAlpha(.75f));
+        g.drawRoundedRectangle(selX+.5f,172.5f,selW-1.0f,33.0f,10.5f,.9f);
+        txt("31 / 35 / 39 BAND EQ  •  LIVE DSP",966,180,315,23,11.3f,true);
+        if(sound_focus_==0) {
+            card(247,226,743,258);
+            card(996,226,304,258);
+            card(247,494,743,189);
+            card(996,494,304,189);
+            txt("31-BAND EQUALIZER",263,230,490,24,13.4f,false,true);
+            txt("LIVE SPECTRUM",1013,230,250,23,13.4f,false,true);
+            txt("SOUND ENHANCEMENTS",263,497,420,22,13.4f,false,true);
+            txt("LISTENING STATUS",1013,497,250,22,13.4f,false,true);
+            txt("Actual DSP controls",263,460,560,17,10.3f,true);
+            txt("Applied AI model",1013,532,230,19,10.2f,true);
+            txt(modelText,1013,552,250,24,18.0f,false,true);
+            txt(aiOn?"Real-time adaptive processing":"Manual audio processing",
+                1013,581,265,20,11.0f,true);
+            txt("Select a profile above to change the sound.",1013,628,272,34,11.0f,true);
+        } else if(sound_focus_==1) {
+            card(247,226,1053,457);
+            txt("EQUALIZER  /  PRECISION VIEW",265,233,650,24,14,false,true);
+            txt("Drag the actual frequency controls to shape audio.",265,627,730,21,11,true);
+        } else {
+            card(247,226,1053,457);
+            txt("SOUND ENHANCEMENTS  /  STUDIO VIEW",265,233,800,25,14,false,true);
+            txt("Tune clarity, ambience, surround, dynamics and bass.",265,613,900,22,11,true);
+        }
+    } else if(page_==1) {
+        txt("REAL AI TELEMETRY  •  PERSONAL LEARNING",267,180,800,25,12,true,true);
+        card(247,225,743,231);
+        card(996,225,304,231);
+        card(247,468,1053,220);
+        txt("LEARNING TIMELINE",265,229,490,20,13.4f,false,true);
+        txt("LIVE NEURAL ACTIVITY",1011,229,274,20,13.4f,false,true);
+        txt("LISTENING CONTROLS",264,470,470,18,13.2f,false,true);
+        txt("SENSITIVITY",265,583,128,19,10.5f,true,true);
+        txt("HEADROOM CAP",663,583,150,19,10.5f,true,true);
+    } else if(page_==2) {
+        txt("DEVICE ROUTING  •  OUTPUT PRIORITY",267,180,790,25,12,true,true);
+        card(247,225,1053,219);
+        card(247,454,1053,234);
+        txt("OUTPUT DEVICE MANAGEMENT",266,231,780,28,17,false,true);
+        txt("Keep your preferred output when available.",266,258,900,25,12.5f,true);
+        txt("DEVICE FALLBACK",266,458,500,27,15,false,true);
+        txt("Automatic recovery when a selected device disconnects.",266,550,920,28,13,true);
+        txt("Device-specific presets and priority are managed in Settings.",
+            266,587,920,24,12.3f,true);
+    } else {
+        txt("AI DJ  •  OPTIONAL CREATIVE EFFECTS",267,180,790,25,12,true,true);
+        card(247,225,1053,216);
+        card(247,453,1053,235);
+        txt("AI DJ  /  LIVE REMIX",266,233,720,30,18,false,true);
+        txt("Enable creative processing only when you want it.",266,328,920,22,12,true);
+        txt("EFFECT BEHAVIOUR",266,458,730,24,15,false,true);
+        txt("Intensity",266,492,120,23,12.5f,true);
+        txt("Minimum spacing",266,545,155,23,12.5f,true);
+    }
+    // Footer is a real engine-status report, not a fabricated media player.
+    g.setColour(border.withAlpha(.50f));
+    g.drawLine(245.0f,693.0f,1299.0f,693.0f,.8f);
 }
 void FxProView::refreshAIProfileChoices()
 {
