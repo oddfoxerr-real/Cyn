@@ -128,7 +128,23 @@ void FxWindow::paint(Graphics& g)
                              base.darker(0.11f),bounds.getRight(),bounds.getBottom(),false);
         shell.addColour(0.45,base);
         g.setGradientFill(shell);
-        g.fillRoundedRectangle(bounds,(float)FxTheme::WINDOW_CORNER_RADIUS);
+        const float radius=(float)FxTheme::WINDOW_CORNER_RADIUS;
+        g.fillRoundedRectangle(bounds,radius);
+        // Restore the original framed, rounded corner treatment. The thin
+        // edge and corner arcs are purely decorative: no fake resize grip.
+        auto rim=bounds.reduced(0.85f);
+        const auto outline=Colour(FXCOLOR(RowOutline)).withAlpha(0.65f);
+        g.setColour(outline);
+        g.drawRoundedRectangle(rim,radius-0.7f,1.1f);
+        const auto accent=Colour(FXCOLOR(SliderTrack)).withAlpha(0.56f);
+        g.setColour(accent);
+        Path corner;
+        const float x=rim.getRight()-radius, y=rim.getBottom()-radius;
+        corner.startNewSubPath(x+radius,y-18.0f);
+        corner.lineTo(x+radius,y);
+        corner.quadraticTo(x+radius,y+radius,x,y+radius);
+        corner.lineTo(x-18.0f,y+radius);
+        g.strokePath(corner,PathStrokeType(1.6f));
         return;
     }
     auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
