@@ -163,8 +163,16 @@ FxProView::FxProView() : tool_tip_(this)
     live_status_.setJustificationType(Justification::centredRight);
     live_status_.setInterceptsMouseClicks(false, false);
     smart_status_.setInterceptsMouseClicks(false, false);
+    // Standby is an overlay, not a separate window: settings and EQ remain
+    // visible, but no controls can accidentally modify audio while Off.
+    addAndMakeVisible(power_curtain_);
+    power_curtain_.onPowerRequested=[] {
+        FxController::getInstance().setPowerState(true);
+    };
     setSize(WIDTH, HEIGHT);
     selectPage(0);
+    power_curtain_.syncPower(FxModel::getModel().getPowerState());
+    power_curtain_.toFront(false);
     if(FxTheme::isReducedMotion()) startTimer(500); else startTimerHz(60);
 }
 
@@ -241,6 +249,7 @@ void FxProView::selectPage(int page)
             button->toFront(false);
     }
     ai_hub_nav_.toFront(false);
+    power_curtain_.toFront(false);
     repaint();
 }
 void FxProView::update()
@@ -264,6 +273,7 @@ void FxProView::update()
     starter_.setButtonText(controller.getSmartListeningMode()==1?"Reset Movie AI":"Reset to starter");
     pin_toggle_.setToggleState(controller.isOutputPinned(), dontSendNotification);
     auto power = FxModel::getModel().getPowerState();
+    power_curtain_.syncPower(power);
     preset_list_.setEnabled(power);
     audio_controls_.setEnabled(power);
     equalizer_.setEnabled(power);
@@ -275,6 +285,7 @@ void FxProView::update()
 void FxProView::timerCallback()
 {
     if(!isShowing()) return;
+    power_curtain_.syncPower(FxModel::getModel().getPowerState());
     const auto now=Time::getMillisecondCounterHiRes();
     if(transition_image_.isValid()) {
         if(FxTheme::isReducedMotion() || now-transition_start_>=220) transition_image_=Image();
@@ -401,6 +412,8 @@ void FxProView::timerCallback()
 }
 void FxProView::resized()
 {
+    power_curtain_.setBounds(getLocalBounds());
+    power_curtain_.toFront(false);
     misc_nav_.setBounds(68,240,152,36);
     dj_toggle_.setBounds(280,270,230,32);
     dj_download_.setBounds(280,215,200,38);dj_remove_.setBounds(280,215,200,38);dj_cancel_.setBounds(280,215,200,38);
@@ -764,6 +777,8 @@ void FxProView::updateDjTouch(double now)
 
 void FxProView::paintOverChildren(Graphics& g)
 {
+    // Keep the standby portal above DJ hands, flowers and theme screenshots.
+    if(power_curtain_.isVisible()) return;
     if(theme_from_image_.isValid() && theme_to_image_.isValid() &&
        !FxTheme::isReducedMotion())
     {
