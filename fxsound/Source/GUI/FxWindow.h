@@ -39,6 +39,10 @@ public:
     juce::Point<float> getCloseButtonCentre() const noexcept {
         return title_bar_.getPosition().toFloat() + title_bar_.getCloseButtonCentre();
     }
+    juce::Rectangle<float> getCloseButtonBounds() const noexcept {
+        return title_bar_.getCloseButtonBounds().translated(
+            (float) title_bar_.getX(), (float) title_bar_.getY());
+    }
 
     void enableShadow(bool enable);
     bool isShadowEnabled();
@@ -71,6 +75,9 @@ protected:
 		void addToolbarButton(Button* toolbarButton, bool right_aligned=true);
         juce::Point<float> getCloseButtonCentre() const noexcept {
             return close_button_.getBounds().getCentre().toFloat();
+        }
+        juce::Rectangle<float> getCloseButtonBounds() const noexcept {
+            return close_button_.getBounds().toFloat();
         }
 
 	private:
