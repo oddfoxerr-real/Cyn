@@ -7,7 +7,7 @@
 
 namespace CynCloseMotion
 {
-    enum Style : int { Vortex=0, GravityMelt=1, LiquidRipple=2, SoftFade=3, None=4, StarDust=5, Curtain=6, NumStyles=7 };
+    enum Style : int { Vortex=0, GravityMelt=1, LiquidRipple=2, SoftFade=3, None=4, StarDust=5, Curtain=6, LiquidInk=7, SprayDissolve=8, NumStyles=9 };
     static constexpr int defaultStyle = Vortex;
     static constexpr int defaultSpeedPercent = 85; // Slightly slower than v2.0.56.
     static constexpr int minSpeedPercent = 55;
@@ -33,6 +33,8 @@ namespace CynCloseMotion
             case None: return "None (instant)";
             case StarDust: return "Stardust";
             case Curtain: return "Liquid Curtain";
+            case LiquidInk: return "Liquid Ink";
+            case SprayDissolve: return "Spray Dissolve";
             default: return "Vortex";
         }
     }
@@ -64,6 +66,20 @@ namespace CynCloseMotion
         if(style==StarDust) {
             const float grain=.5f+.3f*std::sin(x*123.0f+y*81.0f)*std::sin(x*199.0f-y*113.0f);
             return 1.0f-smoothstep(melt-.09f,melt+.09f,grain);
+        }
+        if(style==LiquidInk) {
+            // Dissolve into irregular fluid droplets travelling down the window.
+            const float tongue=.055f*std::sin(x*24.0f+melt*9.0f)
+                              +.027f*std::sin(x*58.0f-melt*17.0f);
+            const float front=-.22f+1.48f*melt+tongue;
+            return smoothstep(front-.025f,front+.025f,y)
+                 *(1.0f-smoothstep(.92f,1.0f,melt));
+        }
+        if(style==SprayDissolve) {
+            // Coherent grain threshold, no per-frame random flashing.
+            const float grain=.5f+.25f*std::sin(x*137.0f+y*63.0f)
+                +.15f*std::sin(x*219.0f-y*181.0f);
+            return 1.0f-smoothstep(melt-.10f,melt+.10f,grain);
         }
         if(style==Curtain) {
             const float front=-.22f+1.46f*melt+.08f*std::sin(x*22.0f+melt*10.0f);
