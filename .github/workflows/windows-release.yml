@@ -73,6 +73,7 @@ jobs:
           node scripts/test_cyn_ui_polish.mjs
           node scripts/test_cyn_workspace_polish.mjs
           node scripts/test_cyn_v2069_material_and_timeline.mjs
+          node scripts/test_cyn_liquid_screen_reveal.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Native UI polish regression.' }
           node scripts/test_cyn_button_visuals.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Version controls regression.' }
