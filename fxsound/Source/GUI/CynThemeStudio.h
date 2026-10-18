@@ -469,11 +469,12 @@ private:
         g.drawText("EFFECT INTENSITY",93,638,168,34,Justification::centredLeft);
         g.setFont(Font(12.0f));
         g.setColour(hint);
-        g.drawText("Native JUCE effects; no fluid simulation or audio-thread work.",
-                   92,691,718,21,Justification::centredLeft);
-        if(FxTheme::isReducedMotion())
-            g.drawText("Reduce Motion is on: motion and decorative highlights are disabled.",
-                92,681,710,19,Justification::centredLeft);
+        // Keep guidance away from the bottom-right Apply/Close controls.
+        // The original 690px-wide footer text could paint behind buttons.
+        g.drawText(FxTheme::isReducedMotion()
+                ? "Reduce Motion enabled: decorative effects are disabled."
+                : "Preview first; Apply studio saves the chosen styles.",
+            92,686,525,18,Justification::centredLeft);
     }
 
     void replayMotionPreview()
@@ -595,11 +596,11 @@ private:
         g.drawText(none ? "Instant hide - no effect" :
                    ("Speed "+speed+"  /  Approximately "+ms+" total"),
                    610,644,215,28,Justification::centredLeft);
-        g.drawText("Slower: move left    •    Faster: move right.  Apply studio saves the choice.",
-                   92,701,getWidth()-180,24,Justification::centredLeft);
-        if(FxTheme::isReducedMotion())
-            g.drawText("Reduce Motion is enabled: the actual close animation will be skipped.",
-                       92,677,getWidth()-180,20,Justification::centredLeft);
+        // The shorter bottom caption stays outside the Save/Close hit targets.
+        g.drawText(FxTheme::isReducedMotion()
+                 ? "Reduce Motion enabled: close effects will be skipped."
+                 : "Slower on the left, faster on the right. Apply to save.",
+                   92,688,525,18,Justification::centredLeft);
     }
 
     void chooseCustomTouch()

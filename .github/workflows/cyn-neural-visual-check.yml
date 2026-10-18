@@ -20,6 +20,7 @@ on:
       - scripts/test_ai_hub.mjs
       - scripts/test_cyn_stable_layout.mjs
       - scripts/test_cyn_ui_polish.mjs
+      - scripts/test_cyn_workspace_polish.mjs
       - fxsound/Project/resources.rc
       - fxsound/Source/GUI/CynAudioRepair.h
       - fxsound/Source/GUI/FxSettingsDialog.h
@@ -51,6 +52,7 @@ jobs:
           node scripts/test_theme_neural.mjs
           node scripts/test_cyn_stable_layout.mjs
           node scripts/test_cyn_ui_polish.mjs
+          node scripts/test_cyn_workspace_polish.mjs
       - name: Validate opt-in audio repair and PowerShell worker
         shell: pwsh
         run: |
