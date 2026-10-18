@@ -6,6 +6,7 @@ The Horizon × Depth redesign in v2.0.61 introduced visible UI layout regression
 - Dropdown labels (active profile, output device, AI enhancement) now have their **own line** above the actual selectors, eliminating clipped/overlapping text.
 - The workspace tab bar sits below the selector cards, rather than passing through the card labels.
 - Sound Studio, Smart Listening, Devices, AI Hub and AI DJ use corrected vertical spacing for the toolbar, card headings and working controls.
+- Real 31/35/39-band EQ slider heights adapt to the smaller studio panels instead of clipping the bottom of the bands and frequency labels.
 - AI DJ now separates its real enable/download controls from a second factual, live engine-state panel, and aligns intensity, spacing and stereo settings.
 - The existing native title bar retains CYN branding; the sidebar instead identifies **Workspaces**, avoiding duplicated CYN branding.
 - Increased muted-text contrast, corrected status indicators and replaced a UTF-8 separator that showed as scrambled text on Windows.

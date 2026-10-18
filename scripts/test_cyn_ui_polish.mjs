@@ -5,6 +5,7 @@ const win=readFileSync(new URL("../fxsound/Project/resources.rc",import.meta.url
 const juce=readFileSync(new URL("../fxsound/JuceLibraryCode/JuceHeader.h",import.meta.url),"utf8");
 const jucer=readFileSync(new URL("../fxsound/FxSound.jucer",import.meta.url),"utf8");
 const shell=readFileSync(new URL("../fxsound/Source/GUI/FxWindow.cpp",import.meta.url),"utf8");
+const eq=readFileSync(new URL("../fxsound/Source/GUI/FxEqualizer.cpp",import.meta.url),"utf8");
 const required=[
     "preset_list_.setBounds(left+14,139,315,36)",
     "endpoint_list_.setBounds(left+350,139,341,36)",
@@ -42,4 +43,9 @@ assert(win.includes("FILEVERSION  2,0,62,0") &&
 assert(shell.includes('g.drawRoundedRectangle(rim,radius-0.7f') &&
        shell.includes('g.strokePath(corner,PathStrokeType(1.6f))'),
        "Restore the original rounded window-corner frame and accent.");
+assert(eq.includes("const int compactBandHeight=juce::jlimit(65") &&
+       eq.includes("const int tunedBandHeight=juce::jlimit(55") &&
+       eq.includes("Y_MARGIN, thumbWidth, compactBandHeight)") &&
+       eq.includes("Y_MARGIN, thumbWidth, tunedBandHeight )"),
+       "Native EQ sliders must fit their panel with working labels at all supported band counts");
 console.log("PASS: native cards, DJ controls, dark sidebar, version and status string are aligned");
