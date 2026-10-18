@@ -135,7 +135,7 @@ console.log("PASS: live neural inference and supervised epoch animation");
 // YAMNet event classifications; no fabricated YAMNet weight-node activity.
 const themeHeader=readFileSync(path("fxsound/Source/GUI/FxTheme.h"),"utf8");
 assert(themeHeader.includes("CharcoalDesktop, NeuralCore, DarkMesh, NumModes"),"Neural Core must preserve existing saved theme IDs");
-assert(theme.includes('return "Dark Theme";'),"Stable shell must offer only the Dark Theme while retaining legacy internal modes");
+assert(theme.includes('return "Dark Theme";'),"Default dark palette must remain compatible with existing stored theme IDs");
 assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Neural theme must use real personal model activations");
 assert(view.includes("brainController.getLiveYamNetScene(scene)"),"Neural theme must read real YAMNet classifications");
 assert(controllerHeader.includes("getLiveYamNetScene(CynAudioScene& out)"),"Missing native read-only scene telemetry API");
@@ -155,7 +155,7 @@ const themeModes=[...themeHeader.matchAll(/enum FxThemeMode : int \{([^}]+)\}/g)
 assert.equal(themeModes.length,21,"All original twenty theme IDs plus Dark Theme are required");
 for(const mode of themeModes)
   assert(atmosphere.includes("case FxThemeMode::"+mode+":"),"No dynamic artwork for "+mode);
-assert(view.includes("CynThemeAtmosphere::paint(g,FxThemeMode::DarkMesh"),
+assert(view.includes("CynThemeAtmosphere::paint(g,mode"),
        "Theme atmosphere must render in the workspace");
 assert(view.includes("snapshot.rms"),"Themes must respond to measured audio, not fake FFT values");
 assert(atmosphere.includes("FxTheme::isReducedMotion()"),
@@ -170,8 +170,8 @@ assert(menu.includes('CynThemeStudioDialog::show(this)'),
        "Theme selection must open Theme Studio rather than a static submenu");
 assert(!studio.includes('previous_.onClick =') &&
        !studio.includes('next_.onClick =') &&
-       studio.includes('controller.setThemeMode(FxThemeMode::DarkMesh)'),
-       "Stable studio must support only canonical Dark Theme and remove carousel navigation");
+       studio.includes('controller.setThemeMode(themeMode_)'),
+       "Theme Studio must persist a selected dark palette without obsolete carousel navigation");
 assert(studio.includes('controller.getSettings().setInt("cyn_dj_touch_style_effects",effectsTouchStyle_)') &&
        studio.includes('controller.getSettings().setInt("cyn_dj_touch_style_eq",eqTouchStyle_)') &&
        studio.includes('controller.getSettings().setInt("cyn_dj_touch_flower_count",flowerCount_)') &&
