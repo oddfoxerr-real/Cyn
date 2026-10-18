@@ -144,7 +144,17 @@ void FxVisualizer::paint(Graphics& g)
     g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(0.52f));
     g.drawLine(24.0f, bounds.getCentreY(), bounds.getRight() - 24.0f, bounds.getCentreY(), 1.0f);
 
-    g.setGradientFill(gradient_);
+    // Chromatic spectrum spans real FFT bars, using the selected theme accent.
+    const auto primary=Colour(FXCOLOR(GraphHigh));
+    const auto secondary=Colour(FXCOLOR(SliderTrack));
+    const auto tertiary=Colour(FXCOLOR(SliderHighlight));
+    ColourGradient spectrum(primary.withAlpha(.96f),
+        27.0f,bounds.getCentreY(),tertiary.withAlpha(.94f),
+        bounds.getRight()-27.0f,bounds.getCentreY(),false);
+    spectrum.addColour(.33f,secondary.withAlpha(.96f));
+    spectrum.addColour(.69f,Colour(0xffbf9fff)
+         .interpolatedWith(secondary,.36f).withAlpha(.95f));
+    g.setGradientFill(spectrum);
     const float left = 27.0f;
     const float usable = bounds.getWidth() - 54.0f;
     const int count = FxController::NUM_SPECTRUM_BANDS * NUM_BARS;
