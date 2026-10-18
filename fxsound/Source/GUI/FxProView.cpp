@@ -595,8 +595,8 @@ void FxProView::paint(Graphics& g)
     // The only expensive drawing is bounded to existing scene/video widgets.
     auto& theme=dynamic_cast<FxTheme&>(getLookAndFeel());
     auto colour=[](FxColor c) { return Colour(FxTheme::getColor(c)).withAlpha(1.0f); };
-    const Colour base(0xff030609), panel(0xff080d13),panel2(0xff0a1018);
-    const Colour border(0xff192735), cyan(0xff45bffb);
+    const Colour base(0xff000000), panel(0xff050607),panel2(0xff080a0d);
+    const Colour border(0xff18212b), cyan(0xff65b9ff);
     const Colour white(0xffedf5ff),muted(0xff9aadc4);
     const bool reduced=FxTheme::isReducedMotion();
     const float playLevel=jlimit(0.0f,1.0f,theme_audio_level_);
@@ -616,26 +616,18 @@ void FxProView::paint(Graphics& g)
     }
 
     // Solid continuous navigation rail, no second row of icon-only buttons.
-    ColourGradient side(Colour(0xff080e16),0.0f,0.0f,
-                         Colour(0xff05090e),228.0f,700.0f,false);
+    ColourGradient side(Colour(0xff090c10),0.0f,0.0f,
+                         Colour(0xff050608),228.0f,700.0f,false);
     g.setGradientFill(side);g.fillRect(0,0,228,getHeight());
-    // Signature CYN curved spine: the navigation rail bends organically into
-    // the workbench, without covering any interactive child components.
-    Path spine;
-    spine.startNewSubPath(228.0f,0.0f);
-    spine.lineTo(228.0f,177.0f);
-    spine.cubicTo(228.0f,216.0f,242.0f,234.0f,242.0f,278.0f);
-    spine.lineTo(242.0f,405.0f);
-    spine.cubicTo(242.0f,448.0f,228.0f,472.0f,228.0f,506.0f);
-    spine.lineTo(228.0f,(float)getHeight());
-    g.setColour(Colour(0xff0b1520));
-    Path railFill(spine);
-    railFill.lineTo(0.0f,(float)getHeight());
-    railFill.lineTo(0.0f,0.0f);
-    railFill.closeSubPath();
-    g.fillPath(railFill);
-    g.setColour(cyan.withAlpha(.32f));
-    g.strokePath(spine,PathStrokeType(1.25f));
+    // A stable straight rail with a restrained, non-filled corner flourish.
+    // The prior filled cubic path created an unwanted bulge into the content.
+    g.setColour(Colour(0xff172431).withAlpha(.80f));
+    g.drawLine(228.0f,0.0f,228.0f,(float)getHeight(),.8f);
+    Path cornerAccent;
+    cornerAccent.startNewSubPath(228.0f,64.0f);
+    cornerAccent.cubicTo(228.0f,75.0f,224.0f,81.0f,216.0f,89.0f);
+    g.setColour(cyan.withAlpha(.42f));
+    g.strokePath(cornerAccent,PathStrokeType(1.5f));
     // Native title bar already displays the CYN wordmark. The sidebar
     // identifies the navigation instead of repeating the same logo.
     g.setColour(cyan);g.fillRoundedRectangle(26.0f,28.0f,3.0f,24.0f,1.5f);
@@ -647,7 +639,7 @@ void FxProView::paint(Graphics& g)
     g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,87.0f,203.0f,87.0f,.8f);
 
     const float navY=104.0f+49.0f*(float)page_;
-    g.setColour(Colour(0xff102233).withAlpha(.96f));
+    g.setColour(Colour(0xff111923).withAlpha(.96f));
     g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,12.0f);
     g.setColour(cyan.withAlpha(.78f));
     g.drawRoundedRectangle(22.5f,navY+.5f,195.0f,41.0f,11.0f,1.05f);
@@ -719,7 +711,7 @@ void FxProView::paint(Graphics& g)
     if(page_==0) {
         const float selX=sound_focus_==0 ? 258.0f : sound_focus_==1 ? 392.0f : 526.0f;
         const float selW=sound_focus_==2 ? 164.0f : 126.0f;
-        g.setColour(Colour(0xff102b40));
+        g.setColour(Colour(0xff142334));
         g.fillRoundedRectangle(selX,202.0f,selW,36.0f,11.0f);
         g.setColour(cyan.withAlpha(.75f));
         g.drawRoundedRectangle(selX+.5f,202.5f,selW-1.0f,35.0f,10.5f,.9f);
