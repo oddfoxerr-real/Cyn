@@ -624,14 +624,14 @@ void FxProView::paint(Graphics& g)
     // Keep the workspace edge straight; this is an inset frame, never a fill.
     g.setColour(Colour(0xff1e303d).withAlpha(.85f));
     g.drawLine(228.0f,0.0f,228.0f,(float)getHeight(),.8f);
-    // Draw only the signature bottom-right sweep. A full interior frame
-    // looked like a stray outlined card and cut across the settings section.
+    // Signature CYN corner flourish, entirely inside the sidebar.
+    // No large stroked frame or protrusion over workspace controls.
     Path railOutline;
     railOutline.startNewSubPath(218.0f,546.0f);
     railOutline.lineTo(218.0f,629.0f);
     railOutline.cubicTo(218.0f,658.0f,201.0f,675.0f,172.0f,675.0f);
     railOutline.lineTo(150.0f,675.0f);
-    g.setColour(cyan.withAlpha(.32f));
+    g.setColour(cyan.withAlpha(.19f));
     g.strokePath(railOutline,PathStrokeType(1.3f,PathStrokeType::curved,PathStrokeType::rounded));
     // Native title bar already displays the CYN wordmark. The sidebar
     // identifies the navigation instead of repeating the same logo.
@@ -644,10 +644,12 @@ void FxProView::paint(Graphics& g)
     g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,87.0f,203.0f,87.0f,.8f);
 
     const float navY=104.0f+49.0f*(float)page_;
-    g.setColour(Colour(0xff0a1420).withAlpha(.88f));
-    g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,12.0f);
+    ColourGradient navGlow(Colour(0xff074069),22.0f,navY,
+                            Colour(0xff27205c),218.0f,navY+42.0f,false);
+    g.setGradientFill(navGlow);
+    g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,15.0f);
     g.setColour(cyan.withAlpha(.78f));
-    g.drawRoundedRectangle(22.5f,navY+.5f,195.0f,41.0f,11.0f,1.05f);
+    g.drawRoundedRectangle(22.5f,navY+.5f,195.0f,41.0f,14.5f,1.05f);
     g.fillRoundedRectangle(22.0f,navY+11.0f,3.2f,20.0f,1.5f);
     g.setColour(border);g.drawLine(27.0f,590.0f,210.0f,590.0f,.8f);
     g.setColour(Colour(0xff040709));g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
@@ -704,8 +706,11 @@ void FxProView::paint(Graphics& g)
     txt(FxModel::getModel().getPowerState()?"AUDIO ON":"PROCESSING OFF",
         1160,16,129,21,11.0f,false,true);
 
-    // Preset and device selectors float on one uninterrupted black workbench.
-    // AI is a compact status action rather than a third competing panel.
+    // Three quiet glass tiles, with the real live selectors above them.
+    // Paint before the child components; their hit targets remain unchanged.
+    card(247,108,333,78,19.0f);
+    card(587,108,361,78,19.0f);
+    card(955,108,345,78,19.0f);
     txt("PRESET",262,114,260,18,11.5f,true,true);
     txt("OUTPUT DEVICE",603,114,260,18,11.5f,true,true);
     txt("ACTIVE AI",972,114,230,18,11.5f,true,true);
@@ -721,10 +726,10 @@ void FxProView::paint(Graphics& g)
         g.drawRoundedRectangle(selX+.5f,202.5f,selW-1.0f,35.0f,10.5f,.9f);
         txt("31 / 35 / 39 BANDS",1110,208,180,23,11.6f,true);
         if(sound_focus_==0) {
-            card(247,253,795,235);
-            card(1053,253,247,235);
-            card(247,500,795,188);
-            card(1053,500,247,188);
+            card(247,253,795,235,23.0f);
+            card(1053,253,247,235,23.0f);
+            card(247,500,795,188,23.0f);
+            card(1053,500,247,188,23.0f);
             txt("31-BAND EQUALIZER",263,258,490,23,14.0f,false,true);
             txt("SPECTRUM",1066,258,210,23,11.5f,true,true);
             txt("SOUND ENHANCEMENTS",263,505,420,23,14.0f,false,true);
@@ -735,11 +740,11 @@ void FxProView::paint(Graphics& g)
                 1066,583,218,20,11.0f,true);
             
         } else if(sound_focus_==1) {
-            card(247,253,1053,435);
+            card(247,253,1053,435,23.0f);
             txt("EQUALIZER  /  PRECISION VIEW",265,262,650,25,15,false,true);
             txt("Drag the frequency controls to shape your sound.",265,649,730,21,12,true);
         } else {
-            card(247,253,1053,435);
+            card(247,253,1053,435,23.0f);
             txt("SOUND ENHANCEMENTS  /  STUDIO VIEW",265,262,800,25,15,false,true);
             txt("Tune clarity, ambience, surround, dynamics and bass.",265,644,900,22,12,true);
         }
