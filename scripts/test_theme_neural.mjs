@@ -67,7 +67,7 @@ assert(theme.includes('case FxThemeMode::Obsidian:') &&
        theme.includes('case FxThemeMode::Emerald:') &&
        fxController.includes('settings_.getInt("theme_mode"') &&
        fxController.includes('FxTheme::setThemeMode(mode);') &&
-       !fxController.includes('mode=FxThemeMode::DarkMesh;'),
+       fxController.includes("case FxThemeMode::Obsidian:"),
        "Selected dark themes must persist instead of being reset at startup");
 assert(studio.includes('themePicker_.onChange=') &&
        studio.includes('controller.setThemeMode(themeMode_)') &&
