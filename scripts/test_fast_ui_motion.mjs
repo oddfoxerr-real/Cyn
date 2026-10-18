@@ -18,8 +18,9 @@ assert(page.includes("g.reduceClipRegion(content);") &&
        page.includes("CynUiMotion::outgoingOpacity(t)"),
   "Old-page fade should never obscure the live navigation controls");
 assert(page.includes("CynUiMotion::pageDurationMs") &&
-       studio.includes("CynUiMotion::themeCarouselDurationMs"),
-  "Shortened navigation and studio transitions must share tested easing");
+       studio.includes("CynCloseMotion::expandEase(") &&
+       studio.includes("CynButtonVisuals::paint("),
+  "Page navigation must retain tested easing; Dark Studio must preview real close and button animations without a removed carousel");
 assert(page.includes("FxTheme::isReducedMotion()"),
   "Reduced motion should bypass expensive effects");
 assert(studio.includes("effectsTouchPicker_") && studio.includes("eqTouchPicker_") &&
