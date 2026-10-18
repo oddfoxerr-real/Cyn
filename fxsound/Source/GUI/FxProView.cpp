@@ -219,7 +219,18 @@ void FxProView::openSettings()
 }
 void FxProView::selectSoundFocus(int focus)
 {
-    sound_focus_=juce::jlimit(0,2,focus);
+    focus=juce::jlimit(0,2,focus);
+    if(focus==sound_focus_) return;
+    transition_image_=Image();
+    if(isShowing() && !FxTheme::isReducedMotion()) {
+        const juce::Rectangle<int> content(240,0,jmax(0,getWidth()-240),getHeight());
+        if(content.getWidth()>0 && content.getHeight()>0) {
+            transition_image_=createComponentSnapshot(content);
+            transition_direction_=focus>sound_focus_ ? 1 : -1;
+            transition_start_=Time::getMillisecondCounterHiRes();
+        }
+    }
+    sound_focus_=focus;
     overview_tab_.setToggleState(sound_focus_==0,dontSendNotification);
     eq_focus_tab_.setToggleState(sound_focus_==1,dontSendNotification);
     effects_focus_tab_.setToggleState(sound_focus_==2,dontSendNotification);
@@ -595,8 +606,15 @@ void FxProView::paint(Graphics& g)
     // The only expensive drawing is bounded to existing scene/video widgets.
     auto& theme=dynamic_cast<FxTheme&>(getLookAndFeel());
     auto colour=[](FxColor c) { return Colour(FxTheme::getColor(c)).withAlpha(1.0f); };
-    const Colour base(0xff000000), panel(0xff030405),panel2(0xff06080b);
-    const Colour border(0xff18212b), cyan(0xff65b9ff);
+    const auto mode=FxTheme::getThemeMode();
+    const Colour base=mode==FxThemeMode::DarkMesh ? Colour(0xff000000) :
+        Colour(FxTheme::getColorForMode(mode,WindowBackground)).darker(.52f);
+    const Colour panel=mode==FxThemeMode::DarkMesh ? Colour(0xff030405) :
+        Colour(FxTheme::getColorForMode(mode,PanelBackground)).darker(.46f);
+    const Colour panel2=panel.brighter(.12f);
+    const Colour border(0xff18212b);
+    const Colour cyan=mode==FxThemeMode::DarkMesh ? Colour(0xff65b9ff) :
+        Colour(FxTheme::getColorForMode(mode,SliderTrack));
     const Colour white(0xffedf5ff),muted(0xff9aadc4);
     const bool reduced=FxTheme::isReducedMotion();
     const float playLevel=jlimit(0.0f,1.0f,theme_audio_level_);
@@ -607,7 +625,7 @@ void FxProView::paint(Graphics& g)
     {
         Graphics::ScopedSaveState scene(g);
         g.reduceClipRegion(juce::Rectangle<int>(229,0,getWidth()-229,getHeight()));
-        CynThemeAtmosphere::paint(g,FxThemeMode::DarkMesh,
+        CynThemeAtmosphere::paint(g,mode,
             reduced ? 0.0f : (float)(Time::getMillisecondCounterHiRes()*.001),
             playLevel,juce::Rectangle<float>(229.0f,0.0f,getWidth()-229.0f,205.0f));
         ColourGradient veil(Colour(0xff03070d).withAlpha(.40f),230.0f,10.0f,
@@ -619,20 +637,9 @@ void FxProView::paint(Graphics& g)
     ColourGradient side(Colour(0xff050609),0.0f,0.0f,
                          Colour(0xff010203),228.0f,700.0f,false);
     g.setGradientFill(side);g.fillRect(0,0,228,getHeight());
-    // Integrated rounded interior rail outline, following the requested large
-    // continuous corner silhouette without displacing the content boundary.
-    // Keep the workspace edge straight; this is an inset frame, never a fill.
+    // Clean continuous sidebar edge: no decorative corner flourish.
     g.setColour(Colour(0xff1e303d).withAlpha(.85f));
     g.drawLine(228.0f,0.0f,228.0f,(float)getHeight(),.8f);
-    // Signature CYN corner flourish, entirely inside the sidebar.
-    // No large stroked frame or protrusion over workspace controls.
-    Path railOutline;
-    railOutline.startNewSubPath(218.0f,546.0f);
-    railOutline.lineTo(218.0f,629.0f);
-    railOutline.cubicTo(218.0f,658.0f,201.0f,675.0f,172.0f,675.0f);
-    railOutline.lineTo(150.0f,675.0f);
-    g.setColour(cyan.withAlpha(.19f));
-    g.strokePath(railOutline,PathStrokeType(1.3f,PathStrokeType::curved,PathStrokeType::rounded));
     // Native title bar already displays the CYN wordmark. The sidebar
     // identifies the navigation instead of repeating the same logo.
     g.setColour(cyan);g.fillRoundedRectangle(26.0f,28.0f,3.0f,24.0f,1.5f);
@@ -644,8 +651,8 @@ void FxProView::paint(Graphics& g)
     g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,87.0f,203.0f,87.0f,.8f);
 
     const float navY=104.0f+49.0f*(float)page_;
-    ColourGradient navGlow(Colour(0xff074069),22.0f,navY,
-                            Colour(0xff27205c),218.0f,navY+42.0f,false);
+    ColourGradient navGlow(cyan.darker(.68f),22.0f,navY,
+                            cyan.darker(.81f).interpolatedWith(Colour(0xff27205c),.28f),218.0f,navY+42.0f,false);
     g.setGradientFill(navGlow);
     g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,15.0f);
     g.setColour(cyan.withAlpha(.78f));
@@ -1058,10 +1065,42 @@ void FxProView::paintOverChildren(Graphics& g)
         const float t=CynUiMotion::progress(
             Time::getMillisecondCounterHiRes()-transition_start_,
             CynUiMotion::pageDurationMs);
-        g.setOpacity(CynUiMotion::outgoingOpacity(t));
-        g.drawImageAt(transition_image_,
-            content.getX()+roundToInt(CynUiMotion::outgoingX(t,transition_direction_)),
-            content.getY());
+        // New controls are already visible behind this overlay. An organic
+        // liquid-spray frontier reveals the destination DURING the switch.
+        // One clipped image draw is far cheaper than thousands of tile draws.
+        juce::Path remnants;
+        const int width=content.getWidth(),height=content.getHeight();
+        for(int y=0;y<height;y+=7) {
+            const float v=(float)y/(float)juce::jmax(1,height);
+            const float wav=.039f*std::sin(v*23.0f+t*13.0f)
+                           +.022f*std::sin(v*67.0f-t*19.0f);
+            const float progress=juce::jlimit(0.0f,1.0f,t*1.30f-.15f+wav);
+            const float front=width*progress;
+            if(transition_direction_>=0) {
+                if(front<width) remnants.addRectangle(front,(float)y,
+                    width-front,(float)juce::jmin(7,height-y));
+            } else {
+                if(front<width) remnants.addRectangle(0.0f,(float)y,
+                    width-front,(float)juce::jmin(7,height-y));
+            }
+        }
+        // Small stable aerosol droplets are leftover pieces of the old image;
+        // they disperse behind the wave without frame-to-frame random flicker.
+        for(int k=0;k<140;++k) {
+            const float u=(float)((k*47+11)%149)/149.0f;
+            const float v=(float)((k*73+19)%151)/151.0f;
+            const float drift=.14f*std::sin(k*1.9f+t*8.0f);
+            const float front=juce::jlimit(0.0f,1.0f,t*1.30f-.15f+drift);
+            const float x=width*u,y=height*v;
+            const bool oldSide=transition_direction_>=0 ? u>front : u<1.0f-front;
+            const float distance=transition_direction_>=0 ? front-u : u-(1.0f-front);
+            if(!oldSide && distance>0.0f && distance<.14f) {
+                const float r=(1.1f+(float)(k%5)*.88f)*(1.0f-t*.65f);
+                remnants.addEllipse(x-r,y-r,2.0f*r,2.0f*r);
+            }
+        }
+        g.reduceClipRegion(remnants);
+        g.drawImageAt(transition_image_,content.getX(),content.getY());
     }
     if(page_==0 && !FxTheme::isReducedMotion()) {
         const auto time=(float)(Time::getMillisecondCounterHiRes()*0.001);

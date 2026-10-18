@@ -53,7 +53,7 @@ assert(atmosphere.includes('const float liquid=.68f+.32f*std::sin') &&
        "Keep low-speed flowing connected neural mesh lines and dots");
 assert(theme.includes('getThemeMode()==FxThemeMode::DarkMesh?base:base.brighter(0.035f)'),
        "Black dropdowns must not be brightened into gray");
-assert(view.includes("const Colour base(0xff000000)") &&
+assert(view.includes("const Colour base=mode==FxThemeMode::DarkMesh") &&
        view.includes("ColourGradient side(Colour(0xff050609)"),
        "Stable shell must remain near-black instead of gray");
 assert(view.includes("const Colour border(0xff18212b)") &&
@@ -63,13 +63,15 @@ console.log("PASS: mesh retained and flowing, surfaces pure black, no gray bloom
 
 const studio=file("fxsound/Source/GUI/CynThemeStudio.h");
 const fxController=file("fxsound/Source/GUI/FxController.cpp");
-assert(theme.includes("theme_mode_ = FxThemeMode::DarkMesh") &&
-       theme.includes('return "Dark Theme";') &&
-       fxController.includes('settings_.setInt("cyn_previous_theme_mode",previousTheme)') &&
-       fxController.includes("mode=FxThemeMode::DarkMesh;"),
-       "Stable dark-only redesign must safely migrate legacy colours without deleting user data");
-assert(!studio.includes('next_.onClick =') &&
-       !studio.includes('previous_.onClick =') &&
-       studio.includes('g.drawText("Dark Theme"'),
-       "CYN Studio should keep AI Touch/button/close controls, not the obsolete theme carousel");
-console.log("PASS: Dark Theme migration, no theme carousel, preserve studio customization");
+assert(theme.includes('case FxThemeMode::Obsidian:') &&
+       theme.includes('case FxThemeMode::Emerald:') &&
+       fxController.includes('settings_.getInt("theme_mode"') &&
+       fxController.includes('FxTheme::setThemeMode(mode);') &&
+       fxController.includes("case FxThemeMode::Obsidian:"),
+       "Selected dark themes must persist instead of being reset at startup");
+assert(studio.includes('themePicker_.onChange=') &&
+       studio.includes('controller.setThemeMode(themeMode_)') &&
+       studio.includes('paintPreview(g,themeMode_,preview_,time)') &&
+       !studio.includes('next_.onClick ='),
+       "CYN Studio must preview and persist a real dark preset while retaining AI Touch");
+console.log("PASS: curated dark theme selection, persisted palette and studio customization");

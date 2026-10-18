@@ -17,12 +17,12 @@ assert(page.includes("page_ = page;") &&
        page.includes("ai_hub_nav_.setToggleState(page==3"),
   "The selected AI Hub/Misc pages and native navigation controls must update immediately");
 assert(page.includes("g.reduceClipRegion(content);") &&
-       page.includes("CynUiMotion::outgoingOpacity(t)"),
-  "Old-page fade should never obscure the live navigation controls");
+       page.includes("g.reduceClipRegion(remnants)"),
+  "Animated liquid-spray mask should never obscure live navigation");
 assert(page.includes("CynUiMotion::pageDurationMs") &&
        studio.includes("CynCloseMotion::expandEase(") &&
        studio.includes("CynButtonVisuals::paint("),
-  "Page navigation must retain tested easing; Dark Studio must preview real close and button animations without a removed carousel");
+  "Page navigation must retain tested duration; Theme Studio must preview real close and button animations");
 assert(page.includes("FxTheme::isReducedMotion()"),
   "Reduced motion should bypass expensive effects");
 assert(studio.includes("effectsTouchPicker_") && studio.includes("eqTouchPicker_") &&

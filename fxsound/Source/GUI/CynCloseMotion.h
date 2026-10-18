@@ -7,7 +7,7 @@
 
 namespace CynCloseMotion
 {
-    enum Style : int { Vortex=0, GravityMelt=1, LiquidRipple=2, SoftFade=3, None=4, StarDust=5, Curtain=6, NumStyles=7 };
+    enum Style : int { Vortex=0, GravityMelt=1, LiquidRipple=2, SoftFade=3, None=4, StarDust=5, Curtain=6, LiquidInk=7, SprayDissolve=8, MercuryDrop=9, PaintWash=10, BubbleBurst=11, NumStyles=12 };
     static constexpr int defaultStyle = Vortex;
     static constexpr int defaultSpeedPercent = 85; // Slightly slower than v2.0.56.
     static constexpr int minSpeedPercent = 55;
@@ -33,6 +33,11 @@ namespace CynCloseMotion
             case None: return "None (instant)";
             case StarDust: return "Stardust";
             case Curtain: return "Liquid Curtain";
+            case LiquidInk: return "Liquid Ink";
+            case SprayDissolve: return "Spray Dissolve";
+            case MercuryDrop: return "Mercury Drop";
+            case PaintWash: return "Paint Wash";
+            case BubbleBurst: return "Bubble Burst";
             default: return "Vortex";
         }
     }
@@ -64,6 +69,39 @@ namespace CynCloseMotion
         if(style==StarDust) {
             const float grain=.5f+.3f*std::sin(x*123.0f+y*81.0f)*std::sin(x*199.0f-y*113.0f);
             return 1.0f-smoothstep(melt-.09f,melt+.09f,grain);
+        }
+        if(style==LiquidInk) {
+            // Dissolve into irregular fluid droplets travelling down the window.
+            const float tongue=.055f*std::sin(x*24.0f+melt*9.0f)
+                              +.027f*std::sin(x*58.0f-melt*17.0f);
+            const float front=-.22f+1.48f*melt+tongue;
+            return smoothstep(front-.025f,front+.025f,y)
+                 *(1.0f-smoothstep(.92f,1.0f,melt));
+        }
+        if(style==SprayDissolve) {
+            // Coherent grain threshold, no per-frame random flashing.
+            const float grain=.5f+.25f*std::sin(x*137.0f+y*63.0f)
+                +.15f*std::sin(x*219.0f-y*181.0f);
+            return 1.0f-smoothstep(melt-.10f,melt+.10f,grain);
+        }
+        if(style==MercuryDrop) {
+            const float dx=x-.5f,dy=y-.5f;
+            const float distance=std::sqrt(dx*dx+dy*dy);
+            const float wave=.045f*std::sin(std::atan2(dy,dx)*9.0f+melt*15.0f);
+            return 1.0f-smoothstep(.85f-melt*.95f,.90f-melt*.95f,distance+wave);
+        }
+        if(style==PaintWash) {
+            const float ripple=.047f*std::sin(y*27.0f+melt*8.0f)
+                              +.024f*std::sin(y*63.0f-melt*13.0f);
+            return smoothstep(-.18f+1.45f*melt+ripple-.02f,
+                              -.18f+1.45f*melt+ripple+.02f,x);
+        }
+        if(style==BubbleBurst) {
+            const float dx=x-.52f,dy=y-.48f;
+            const float bubbles=.09f*std::sin(x*31.0f+y*29.0f)
+                              *std::cos(x*43.0f-y*37.0f);
+            const float distance=std::sqrt(dx*dx+dy*dy)+bubbles;
+            return 1.0f-smoothstep(.79f-melt*.83f,.83f-melt*.83f,distance);
         }
         if(style==Curtain) {
             const float front=-.22f+1.46f*melt+.08f*std::sin(x*22.0f+melt*10.0f);

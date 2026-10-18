@@ -597,10 +597,18 @@ void FxTheme::setThemeMode(FxThemeMode theme_mode)
 {
 	auto& theme = dynamic_cast<FxTheme&>(LookAndFeel::getDefaultLookAndFeel());
 
-	// The stable UI intentionally supports one canonical jet-black palette.
-	// Legacy modes remain defined internally only while old components migrate.
-    juce::ignoreUnused(theme_mode);
-	theme_mode_ = FxThemeMode::DarkMesh;
+	// Curated dark presets share the same native layout and DSP controls.
+    switch(theme_mode) {
+        case FxThemeMode::DarkMesh:
+        case FxThemeMode::Midnight:
+        case FxThemeMode::Obsidian:
+        case FxThemeMode::Emerald:
+        case FxThemeMode::DeepSea:
+        case FxThemeMode::NeonTokyo:
+        case FxThemeMode::CharcoalDesktop:
+            theme_mode_=theme_mode; break;
+        default: theme_mode_=FxThemeMode::DarkMesh; break;
+    }
 
 	theme.init();
 }
@@ -845,9 +853,15 @@ void FxTheme::setButtonVisualSettings(int motion,int highlight,int speedPct,int 
 }
 const char* FxTheme::getThemeName(int i)
 {
-    juce::ignoreUnused(i);
-    // Only Dark Theme is exposed to users in the stable release candidate.
-    return "Dark Theme";
+    switch(static_cast<FxThemeMode>(i)) {
+        case FxThemeMode::Midnight: return "Midnight";
+        case FxThemeMode::Obsidian: return "Liquid Obsidian";
+        case FxThemeMode::Emerald: return "Emerald";
+        case FxThemeMode::DeepSea: return "Deep Sea";
+        case FxThemeMode::NeonTokyo: return "Neon Tokyo";
+        case FxThemeMode::CharcoalDesktop: return "Graphite";
+        default: return "Dark Theme";
+    }
 }
 bool FxTheme::isLightTheme()
 {

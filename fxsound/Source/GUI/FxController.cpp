@@ -898,16 +898,10 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 
 		FxTheme::setReducedMotion(settings_.getBool("cyn_reduce_motion",false));
         FxTheme::setSmoothAnimations(settings_.getBool("cyn_smooth_animations", true));
-        // Migrate old colour themes to the single supported Dark Theme.
-        // Keep the previous selection as a harmless local backup, without
-        // overwriting models, presets, UI motion or audio-device preferences.
-        const int previousTheme=settings_.getInt("theme_mode",(int)FxThemeMode::DarkMesh);
-        if(previousTheme!=(int)FxThemeMode::DarkMesh &&
-           settings_.getInt("cyn_previous_theme_mode",-1)==-1)
-            settings_.setInt("cyn_previous_theme_mode",previousTheme);
-        settings_.setInt("theme_mode",(int)FxThemeMode::DarkMesh);
-        if(FxTheme::getThemeMode()!=FxThemeMode::DarkMesh)
-            FxTheme::setThemeMode(FxThemeMode::DarkMesh);
+        // Restore saved curated dark theme; unsupported legacy modes fall back
+        // safely inside FxTheme::setThemeMode.
+        FxTheme::setThemeMode(static_cast<FxThemeMode>(
+            settings_.getInt("theme_mode",(int)FxThemeMode::DarkMesh)));
         main_window_->sendLookAndFeelChange();
         if(auto* theme=dynamic_cast<FxTheme*>(&LookAndFeel::getDefaultLookAndFeel()))
             theme->loadFont(language_);
@@ -3003,8 +2997,17 @@ FxThemeMode FxController::getThemeMode()
 
 void FxController::setThemeMode(FxThemeMode mode)
 {
-    // Disallow legacy colours even if an older script invokes this method.
-    mode=FxThemeMode::DarkMesh;
+    // Only the seven reviewed dark presets are supported.
+    switch(mode) {
+        case FxThemeMode::DarkMesh:
+        case FxThemeMode::Midnight:
+        case FxThemeMode::Obsidian:
+        case FxThemeMode::Emerald:
+        case FxThemeMode::DeepSea:
+        case FxThemeMode::NeonTokyo:
+        case FxThemeMode::CharcoalDesktop: break;
+        default: mode=FxThemeMode::DarkMesh; break;
+    }
     settings_.setInt("theme_mode",(int)mode);
 	if (mode == getThemeMode())
 	{
