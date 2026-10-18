@@ -667,7 +667,11 @@ void FxMainWindow::closeToTrayWithLiquid()
     if (isOnDesktop() && isShowing() && !FxTheme::isReducedMotion())
     {
         liquid_close_overlay_.begin(createComponentSnapshot(getLocalBounds()),
-                                    getScreenBounds(), getCloseButtonBounds());
+                                    getScreenBounds(), getCloseButtonBounds(),
+                                    FxController::getInstance().getSettings().getInt(
+                                        "cyn_close_motion_style", CynCloseMotion::defaultStyle),
+                                    FxController::getInstance().getSettings().getInt(
+                                        "cyn_close_motion_speed_pct", CynCloseMotion::defaultSpeedPercent));
     }
     FxController::getInstance().hideMainWindow();
 }

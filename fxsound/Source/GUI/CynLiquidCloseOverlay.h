@@ -6,6 +6,7 @@
 
 #include <JuceHeader.h>
 #include "FxTheme.h"
+#include "CynCloseMotion.h"
 #include <cmath>
 
 class CynLiquidCloseOverlay final : public juce::Component, private juce::Timer
@@ -30,13 +31,17 @@ public:
 
     bool begin(const juce::Image& frame,
                juce::Rectangle<int> screenBounds,
-               juce::Rectangle<float> closeButtonBounds)
+               juce::Rectangle<float> closeButtonBounds,
+               int motionStyle, int speedPercent)
     {
         cancel();
         if (!frame.isValid() || screenBounds.isEmpty()
-            || closeButtonBounds.isEmpty() || FxTheme::isReducedMotion())
+            || closeButtonBounds.isEmpty() || FxTheme::isReducedMotion()
+            || CynCloseMotion::clampStyle(motionStyle)==CynCloseMotion::None)
             return false;
 
+        style_ = CynCloseMotion::clampStyle(motionStyle);
+        durationMs_ = CynCloseMotion::durationForSpeed(speedPercent);
         snapshot_ = frame;
         // The source is the actual X control, not a guessed corner or a
         // centre point that would cause the window to shrink into the X.
@@ -83,7 +88,7 @@ public:
         if (!running_ || !snapshot_.isValid()) return;
 
         const auto elapsed = Time::getMillisecondCounterHiRes() - startedAt_;
-        const float t = jlimit(0.0f, 1.0f, (float)(elapsed / durationMs));
+        const float t = jlimit(0.0f, 1.0f, (float)(elapsed / durationMs_));
 
         if (t < phaseExpandEnd)
         {
@@ -133,10 +138,11 @@ public:
                 AffineTransform::scale((float)getWidth()/maskWidth,
                                        (float)getHeight()/maskHeight));
             drawSurface(g, getLocalBounds().toFloat(), melt);
-            drawVortexHighlights(g, melt);
+            if (style_ == CynCloseMotion::Vortex)
+                drawVortexHighlights(g, melt);
         }
         // Fine, short-lived detached particles, with no random allocations.
-        if (melt > .08f && melt < .88f)
+        if (style_ == CynCloseMotion::Vortex && melt > .08f && melt < .88f)
         {
             const float fade = std::sin(MathConstants<float>::pi*melt);
             const auto accent = Colour(FXCOLOR(SliderTrack)).withAlpha(.36f*fade);
@@ -189,34 +195,20 @@ private:
             juce::jmin(14.0f,bounds.getHeight()*.23f),.8f);
     }
 
+    // The style preview and the native overlay share exactly the same
+    // bounded field, so preview choice is faithful to the rendered effect.
     void renderVortexMask(float progress)
     {
         using namespace juce;
-        const float pi=MathConstants<float>::pi;
-        const float radius=1.20f*(1.0f-std::pow(progress,.86f))+.005f;
-        const float swirlGain=.085f*std::sin(pi*progress);
-        const float finishFade=1.0f-smoothstep(.87f,1.0f,progress);
         Image::BitmapData bitmap(vortexMask_,Image::BitmapData::writeOnly);
         for (int y=0; y<maskHeight; ++y)
-        {
-            const float dy=((float)y+.5f)/maskHeight-.48f;
             for (int x=0; x<maskWidth; ++x)
             {
-                const float dx=(((float)x+.5f)/maskWidth-.56f)*1.6f;
-                const float r=std::sqrt(dx*dx+dy*dy);
-                const float theta=std::atan2(dy,dx);
-                // Curling front derived from the selected offline vortex
-                // look: rotating lobes and finer eddies, never scale-to-X.
-                const float curl=swirlGain*(
-                    std::sin(theta*6.0f+r*14.0f-progress*15.0f)*.74f
-                    +std::sin(theta*11.0f-r*22.0f+progress*21.0f)*.26f);
-                const float edge=.015f+.026f*progress;
-                const float coverage=(1.0f-smoothstep(radius-edge,
-                    radius+edge,r+curl))*finishFade;
+                const float alpha=CynCloseMotion::coverage(style_,progress,
+                    ((float)x+.5f)/maskWidth,((float)y+.5f)/maskHeight);
                 bitmap.setPixelColour(x,y,Colour::fromRGBA(255,255,255,
-                    (uint8)roundToInt(jlimit(0.0f,1.0f,coverage)*255.0f)));
+                    (uint8)roundToInt(jlimit(0.0f,1.0f,alpha)*255.0f)));
             }
-        }
     }
 
     void drawVortexHighlights(juce::Graphics& g,float melt) const
@@ -245,7 +237,7 @@ private:
 
     void timerCallback() override
     {
-        if (juce::Time::getMillisecondCounterHiRes()-startedAt_ >= durationMs)
+        if (juce::Time::getMillisecondCounterHiRes()-startedAt_ >= durationMs_)
             cancel();
         else
             repaint();
@@ -254,6 +246,8 @@ private:
     juce::Image snapshot_;
     juce::Image vortexMask_;
     juce::Rectangle<float> buttonBounds_;
+    int style_ = CynCloseMotion::defaultStyle;
+    double durationMs_ = durationMs;
     double startedAt_=0.0;
     bool running_=false;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CynLiquidCloseOverlay)
