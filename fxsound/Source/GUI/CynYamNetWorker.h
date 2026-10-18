@@ -18,6 +18,12 @@ public:
         : juce::Thread("Cyn YAMNet flagship"), source_(source) {}
     ~CynYamNetWorker() override { signalThreadShouldExit(); stopThread(15000); }
 
+    void setProcessingEnabled(bool active) noexcept {
+        processing_enabled_.store(active,std::memory_order_release);
+        if(!active) {
+            lastResultMs_.store(0,std::memory_order_release);
+        }
+    }
     void startIfAvailable() {
         const auto dir=juce::File::getSpecialLocation(juce::File::currentExecutableFile).getParentDirectory();
         model_=dir.getChildFile("yamnet-16k-0p975s.onnx");
@@ -28,6 +34,7 @@ public:
     }
 
     bool latest(CynAudioScene& scene) const noexcept {
+        if(!processing_enabled_.load(std::memory_order_acquire)) return false;
         const auto now=juce::Time::getMillisecondCounter();
         for(int retry=0;retry<3;++retry) {
             const auto version=sequence_.load(std::memory_order_acquire);
@@ -112,6 +119,10 @@ private:
             uint64_t lastWindow=0;
             CynAudioScene previous {};
             while(!threadShouldExit()) {
+                if(!processing_enabled_.load(std::memory_order_acquire)) {
+                    wait(220);
+                    continue;
+                }
                 if(!source_.copyYamNetWindow(waveform,lastWindow)) {
                     wait(220); continue;
                 }
@@ -223,6 +234,7 @@ private:
         if(options) api->ReleaseSessionOptions(options);
         if(env) api->ReleaseEnv(env);
     }
+    std::atomic<bool> processing_enabled_ {false};
     DfxDsp& source_;
     juce::File model_,runtime_;
     std::array<std::atomic<float>,11> metrics_ {};
