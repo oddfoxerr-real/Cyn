@@ -37,7 +37,7 @@ assert(atmosphere.includes("constexpr int columns=33, rows=9") &&
 assert(atmosphere.includes("if(theme==FxThemeMode::DarkMesh)") &&
        atmosphere.includes("g.setColour(Colour(0xff000000))"),
        "Dark Theme must fill near-black with no opaque blue-gray gradient");
-assert(view.includes("ColourGradient side(Colour(0xff07121f)") &&
+assert(view.includes("ColourGradient side(Colour(0xff080e16)") &&
        view.includes('g.fillRect(0,0,228,getHeight())'),
        "Dark navigation must be one continuous native black-blue sidebar");
 console.log("PASS: pure-black palette, fluid retained mesh, model colors and controls");
@@ -53,10 +53,10 @@ assert(atmosphere.includes('const float liquid=.68f+.32f*std::sin') &&
        "Keep low-speed flowing connected neural mesh lines and dots");
 assert(theme.includes('getThemeMode()==FxThemeMode::DarkMesh?base:base.brighter(0.035f)'),
        "Black dropdowns must not be brightened into gray");
-assert(view.includes("const Colour base(0xff03070d)") &&
-       view.includes("Colour(0xff07121f)"),
+assert(view.includes("const Colour base(0xff030609)") &&
+       view.includes("Colour(0xff080e16)"),
        "Stable shell must remain near-black instead of gray");
-assert(view.includes("const Colour border(0xff20354b)") &&
+assert(view.includes("const Colour border(0xff192735)") &&
        view.includes('g.fillRoundedRectangle(x,y,width,height,r)'),
        "Cards must share the subtle dark Depth hierarchy");
 console.log("PASS: mesh retained and flowing, surfaces pure black, no gray bloom");
