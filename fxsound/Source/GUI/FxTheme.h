@@ -101,6 +101,11 @@ public:
     static void setReducedMotion(bool value);
     static bool isSmoothAnimations() { return smooth_animations_; }
     static void setSmoothAnimations(bool value);
+    static void setButtonVisualSettings(int motion,int highlight,int speedPct,int intensityPct);
+    static int getButtonMotion() noexcept { return button_motion_; }
+    static int getButtonHighlight() noexcept { return button_highlight_; }
+    static int getButtonSpeed() noexcept { return button_speed_; }
+    static int getButtonIntensity() noexcept { return button_intensity_; }
     float animate(Component&, int channel, float target);
 	static void setThemeMode(FxThemeMode theme_mode);
 	static uint32 getColor(FxColor color);
@@ -116,6 +121,7 @@ private:
     double lastMotionTickMs_ = 0.0;
     static bool reduced_motion_;
     static bool smooth_animations_;
+    static int button_motion_,button_highlight_,button_speed_,button_intensity_;
 
     TextLayout layoutTooltipText(const String& text, Colour colour) noexcept;
     Typeface::Ptr loadTypeface(String fileName);
