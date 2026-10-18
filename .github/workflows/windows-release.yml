@@ -70,6 +70,8 @@ jobs:
         shell: pwsh
         run: |
           node scripts/test_version_controls.mjs
+          node scripts/test_cyn_ui_polish.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Native UI polish regression.' }
           node scripts/test_cyn_button_visuals.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Version controls regression.' }
           node scripts/test_cyn_vc_runtime.mjs
