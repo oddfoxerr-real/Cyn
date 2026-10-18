@@ -163,8 +163,8 @@ begin
   Result := WaitForAudioAppsToExit(UninstallSilent) = '';
 end;
 
-; Install only after a visible, user-selected checkbox. No runtime is
-; installed when both checkboxes are unselected. Driver setup is untouched.
+// Install only after a visible, user-selected checkbox. No runtime is
+// installed when both checkboxes are unselected. Driver setup is untouched.
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ExitCode: Integer;
