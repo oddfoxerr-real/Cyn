@@ -21,11 +21,11 @@ assert(ui.includes('version_button_.setBounds') && ui.includes('check_updates_bu
 assert(ui.includes('Installed: Cyn v'));
 assert(!ui.includes('Cyn identity-2 / DSP v'),"Ambiguous old version text returned");
 assert(controller.includes('const auto currentVersion=major+"."+minor+"."+patch'));
-assert.equal((native.match(/JUCE_APP_VERSION=2\.0\.63\.0/g)||[]).length,4);
-assert.match(installer,/^AppVersion=2\.0\.63\s*$/m);
-assert.match(installer,/^VersionInfoVersion=2\.0\.63\.0\s*$/m);
+assert.equal((native.match(/JUCE_APP_VERSION=2\.0\.64\.0/g)||[]).length,4);
+assert.match(installer,/^AppVersion=2\.0\.64\s*$/m);
+assert.match(installer,/^VersionInfoVersion=2\.0\.64\.0\s*$/m);
 assert(winResource.includes("FILEVERSION  2,0,64,0") &&
-       (winResource.match(/2\.0\.63\.0/g) || []).length === 2 &&
+       (winResource.match(/2\.0\.64\.0/g) || []).length === 2 &&
        juceHeader.includes('versionString  = "2.0.64.0"') &&
        juceHeader.includes("versionNumber  = 0x2004000") &&
        juceProject.includes('version="2.0.64.0"'),
