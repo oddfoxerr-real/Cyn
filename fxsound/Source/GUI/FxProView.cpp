@@ -552,6 +552,19 @@ void FxProView::resized()
     dj_spacing_.setBounds(left+209,542,540,31);
     dj_stereo_.setBounds(left+24,590,480,27);
     dj_recent_.setBounds(left+24,630,920,28);
+    // Keep real AI Hub export/import/browse controls readable when moving
+    // from the old control grid into the new dark workbench.
+    ai_hub_nav_.setColour(TextButton::buttonColourId, Colours::transparentBlack);
+    ai_hub_nav_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
+    browse_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(MenuHighlightBackground)).withAlpha(1.0f));
+    browse_ai_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
+    browse_ai_.setColour(TextButton::textColourOnId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));
+    export_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(PanelBackground)).withAlpha(1.0f));
+    import_ai_.setColour(TextButton::buttonColourId, Colour(FXCOLOR(PanelBackground)).withAlpha(1.0f));
+    for(auto* button:std::initializer_list<TextButton*> { &export_ai_, &import_ai_ }) {
+        button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
+        button->setColour(TextButton::textColourOnId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
+    }
     power_curtain_.toFront(false);
 }
 void FxProView::paint(Graphics& g)
