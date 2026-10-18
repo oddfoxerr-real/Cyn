@@ -10,10 +10,10 @@ const required=[
     "preset_list_.setBounds(left+14,139,315,36)",
     "endpoint_list_.setBounds(left+350,139,341,36)",
     "ai_status_card_.setBounds(968,139,314,36)",
-    'txt("ACTIVE PROFILE",262,114,260,18',
+    'txt("PRESET",262,114,260,18',
     'txt("OUTPUT DEVICE",603,114,260,18',
-    'txt("AI ENHANCEMENT",972,114,230,18',
-    "card(247,108,333,78",
+    'txt("ACTIVE AI",972,114,230,18',
+    "// Preset and device selectors float",
     "// Tabs sit directly on the workbench",
     "overview_tab_.setBounds(left+12,203,126,34)",
     "const float navY=104.0f+49.0f*(float)page_",
@@ -48,4 +48,5 @@ assert(eq.includes("const int compactBandHeight=juce::jlimit(65") &&
        eq.includes("Y_MARGIN, thumbWidth, compactBandHeight)") &&
        eq.includes("Y_MARGIN, thumbWidth, tunedBandHeight )"),
        "Native EQ sliders must fit their panel with working labels at all supported band counts");
-console.log("PASS: native cards, DJ controls, dark sidebar, version and status string are aligned");
+assert(view.includes("railOutline.cubicTo(") && !view.includes("Path railFill(spine)"), "Continuous rounded sidebar frame must not deform the rail boundary");
+console.log("PASS: clean native workspace, outlined sidebar, DJ controls and version metadata");
