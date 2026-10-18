@@ -595,8 +595,8 @@ void FxProView::paint(Graphics& g)
     // The only expensive drawing is bounded to existing scene/video widgets.
     auto& theme=dynamic_cast<FxTheme&>(getLookAndFeel());
     auto colour=[](FxColor c) { return Colour(FxTheme::getColor(c)).withAlpha(1.0f); };
-    const Colour base(0xff02060b), panel(0xff07111d),panel2(0xff0a1b2b);
-    const Colour border(0xff1a3249), cyan(0xff45bffb);
+    const Colour base(0xff030609), panel(0xff080d13),panel2(0xff0a1018);
+    const Colour border(0xff192735), cyan(0xff45bffb);
     const Colour white(0xffedf5ff),muted(0xff9aadc4);
     const bool reduced=FxTheme::isReducedMotion();
     const float playLevel=jlimit(0.0f,1.0f,theme_audio_level_);
@@ -616,11 +616,26 @@ void FxProView::paint(Graphics& g)
     }
 
     // Solid continuous navigation rail, no second row of icon-only buttons.
-    ColourGradient side(Colour(0xff07121f),0.0f,0.0f,
-                         Colour(0xff03080f),228.0f,700.0f,false);
+    ColourGradient side(Colour(0xff080e16),0.0f,0.0f,
+                         Colour(0xff05090e),228.0f,700.0f,false);
     g.setGradientFill(side);g.fillRect(0,0,228,getHeight());
-    g.setColour(border.withAlpha(.68f));
-    g.drawLine(228.0f,0.0f,228.0f,(float)getHeight(),.8f);
+    // Signature CYN curved spine: the navigation rail bends organically into
+    // the workbench, without covering any interactive child components.
+    Path spine;
+    spine.startNewSubPath(228.0f,0.0f);
+    spine.lineTo(228.0f,177.0f);
+    spine.cubicTo(228.0f,216.0f,242.0f,234.0f,242.0f,278.0f);
+    spine.lineTo(242.0f,405.0f);
+    spine.cubicTo(242.0f,448.0f,228.0f,472.0f,228.0f,506.0f);
+    spine.lineTo(228.0f,(float)getHeight());
+    g.setColour(Colour(0xff0b1520));
+    Path railFill(spine);
+    railFill.lineTo(0.0f,(float)getHeight());
+    railFill.lineTo(0.0f,0.0f);
+    railFill.closeSubPath();
+    g.fillPath(railFill);
+    g.setColour(cyan.withAlpha(.32f));
+    g.strokePath(spine,PathStrokeType(1.25f));
     // Native title bar already displays the CYN wordmark. The sidebar
     // identifies the navigation instead of repeating the same logo.
     g.setColour(cyan);g.fillRoundedRectangle(26.0f,28.0f,3.0f,24.0f,1.5f);
@@ -632,13 +647,13 @@ void FxProView::paint(Graphics& g)
     g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,87.0f,203.0f,87.0f,.8f);
 
     const float navY=104.0f+49.0f*(float)page_;
-    g.setColour(Colour(0xff102b45).withAlpha(.94f));
+    g.setColour(Colour(0xff102233).withAlpha(.96f));
     g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,12.0f);
     g.setColour(cyan.withAlpha(.78f));
     g.drawRoundedRectangle(22.5f,navY+.5f,195.0f,41.0f,11.0f,1.05f);
     g.fillRoundedRectangle(22.0f,navY+11.0f,3.2f,20.0f,1.5f);
     g.setColour(border);g.drawLine(27.0f,590.0f,210.0f,590.0f,.8f);
-    g.setColour(Colour(0xff091829));g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
+    g.setColour(panel);g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
     g.setColour(border);g.drawRoundedRectangle(21.5f,524.5f,194.0f,55.0f,12.0f,1.0f);
     g.setColour(muted.withAlpha(.85f));
     g.setFont(theme.getNormalFont().withHeight(9.0f).boldened());
@@ -670,10 +685,8 @@ void FxProView::paint(Graphics& g)
         finish.addColour(.55,panel);
         g.setGradientFill(finish);
         g.fillRoundedRectangle(x,y,width,height,r);
-        g.setColour(border.withAlpha(.88f));
-        g.drawRoundedRectangle(x+.5f,y+.5f,width-1.0f,height-1.0f,r-.3f,1.0f);
-        g.setColour(Colours::white.withAlpha(.032f));
-        g.drawLine(x+13.0f,y+1.0f,x+width-13.0f,y+1.0f,.85f);
+        g.setColour(border.withAlpha(.46f));
+        g.drawRoundedRectangle(x+.5f,y+.5f,width-1.0f,height-1.0f,r-.3f,.8f);
     };
     // Clear hierarchy: a large page title, meaningful status, then real
     // selectors and page-specific content. No fictitious audio readouts.
@@ -696,35 +709,33 @@ void FxProView::paint(Graphics& g)
 
     card(247,108,333,78,12.0f);
     card(587,108,361,78,12.0f);
-    card(956,108,344,78,12.0f);
+    // AI is a compact status action rather than a third competing panel.
     txt("ACTIVE PROFILE",262,114,260,18,11.5f,true,true);
     txt("OUTPUT DEVICE",603,114,260,18,11.5f,true,true);
     txt("AI ENHANCEMENT",972,114,230,18,11.5f,true,true);
 
     // Dedicated workspace band sits BELOW the taller selector cards.
-    card(247,198,1053,44,11.0f);
+    // Tabs sit directly on the workbench; no surrounding button bar.
     if(page_==0) {
         const float selX=sound_focus_==0 ? 258.0f : sound_focus_==1 ? 392.0f : 526.0f;
         const float selW=sound_focus_==2 ? 164.0f : 126.0f;
-        g.setColour(Colour(0xff103455));
+        g.setColour(Colour(0xff102b40));
         g.fillRoundedRectangle(selX,202.0f,selW,36.0f,11.0f);
         g.setColour(cyan.withAlpha(.75f));
         g.drawRoundedRectangle(selX+.5f,202.5f,selW-1.0f,35.0f,10.5f,.9f);
-        txt("31 / 35 / 39 BAND EQ  /  LIVE DSP",964,208,321,23,11.6f,true);
+        txt("31 / 35 / 39 BANDS",1110,208,180,23,11.6f,true);
         if(sound_focus_==0) {
-            card(247,253,798,235);
-            card(1051,253,249,235);
-            card(247,500,798,188);
-            card(1051,500,249,188);
+            card(247,253,1053,235);
+            card(247,500,1053,188);
             txt("31-BAND EQUALIZER",263,258,490,23,14.0f,false,true);
-            txt("LIVE SPECTRUM",1066,258,225,23,13.0f,false,true);
+            txt("SPECTRUM",1066,258,210,23,11.5f,true,true);
             txt("SOUND ENHANCEMENTS",263,505,420,23,14.0f,false,true);
-            txt("LISTENING STATUS",1066,505,222,23,13.0f,false,true);
-            txt("Applied AI model",1066,539,220,19,11.5f,true);
-            txt(modelText,1066,562,220,25,18.0f,false,true);
-            txt(aiOn?"Real-time adaptive processing":"Manual audio processing",
-                1066,593,218,20,11.0f,true);
-            txt("Adjust your sound in real time.",1066,620,222,18,11.0f,true);
+            txt("AI STATUS",1066,505,210,23,11.5f,true,true);
+            
+            txt(modelText,1066,551,220,25,17.0f,false,true);
+            txt(aiOn?"Adaptive processing":"Manual processing",
+                1066,583,218,20,11.0f,true);
+            
         } else if(sound_focus_==1) {
             card(247,253,1053,435);
             txt("EQUALIZER  /  PRECISION VIEW",265,262,650,25,15,false,true);
