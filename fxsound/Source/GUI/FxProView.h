@@ -114,14 +114,19 @@ private:
     float theme_audio_level_=0.0f;
     double last_theme_repaint_=0;
     double last_ai_controls_update_=0;
-    // Cosmetic only: measured DSP adjustments -> touch target -> eased overlay.
-    int dj_touch_style_=0;
+    // Entirely visual: one independent layer per real DSP panel. Four
+    // independently targeted flowers per panel; hand/cursor use one per panel.
+    struct DjTouchAgent {
+        juce::Point<float> pos {}, target {};
+        float opacity=0.0f;
+        double lastActivity=0.0;
+    };
+    std::array<DjTouchAgent,8> dj_touch_agents_ {};
+    std::array<int,2> dj_touch_styles_ {{0,0}};
+    std::array<bool,2> dj_touch_seeded_ {{false,false}};
+    int dj_touch_flower_count_=4;
     juce::Image dj_touch_image_;
     juce::Time dj_touch_image_stamp_;
-    juce::Point<float> dj_touch_pos_ {365.0f,340.0f},dj_touch_target_ {365.0f,340.0f};
-    float dj_touch_opacity_=0.0f;
-    double dj_touch_last_activity_=0.0;
-    bool dj_touch_seeded_=false;
     std::array<float,5> dj_touch_last_effect_ {};
     std::array<float,39> dj_touch_last_eq_ {};
 
