@@ -515,11 +515,15 @@ void FxEqualizerControl::resized()
         place(filter_q_title_,filter_q_slider_,3,top);
         const int lower=top+(getHeight()<200?58:87);
         place(balance_title_,balance_slider_,1,lower);
+        left_label_.setVisible(getHeight()>=200);
+        right_label_.setVisible(getHeight()>=200);
         left_label_.setBounds(margin+cell+5,lower+46,cell/2-5,14);
         right_label_.setBounds(margin+cell+cell/2,lower+46,cell/2-5,14);
         restore_defaults_button_.setBounds(margin+cell-20,top-14,BUTTON_WIDTH,BUTTON_HEIGHT);
         return;
     }
+    left_label_.setVisible(true);
+    right_label_.setVisible(true);
 	auto width = getWidth() - (X_MARGIN * 2);
 
 	int y = Y_MARGIN;
