@@ -138,7 +138,9 @@ assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Neural 
 assert(view.includes("brainController.getLiveYamNetScene(scene)"),"Neural theme must read real YAMNet classifications");
 assert(controllerHeader.includes("getLiveYamNetScene(CynAudioScene& out)"),"Missing native read-only scene telemetry API");
 assert(controllerSource.includes("return yamnet_worker_->latest(out)"),"Neural theme must use actual async ONNX scene data");
-assert(view.includes("neural_core_live_?neural_core_scene_"),"No fade-to-idle for stale YAMNet output");
+assert(view.includes("neural_core_live_=brainController.getLiveYamNetScene(scene) && hasAudio;") &&
+       view.includes("neural_core_scene_=neural_core_live_?scene:CynAudioScene {};"),
+       "Native AI telemetry must reject stale YAMNet output even with Dark Theme only");
 assert(view.includes("const double interval=FxTheme::isReducedMotion()?500.0:42.0;") &&
        view.includes("now-last_theme_repaint_>=interval"),"UI repaint must remain <=24Hz");
 assert(neural.includes("setProfileId(const juce::String& id)") && neural.includes("const Colour accent=trained"),"Neural Core must have its own network lighting");
