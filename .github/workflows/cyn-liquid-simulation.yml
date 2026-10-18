@@ -1,0 +1,54 @@
+name: CYN Offline Liquid Motion Simulation
+
+on:
+  pull_request:
+    paths:
+      - "experiments/liquid_close/**"
+      - ".github/workflows/cyn-liquid-simulation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout CYN
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install simulation packages
+        run: python -m pip install numpy==2.2.6 pillow==11.3.0
+      - name: Simulate fluid and bake reusable animation frames
+        run: |
+          python experiments/liquid_close/bake_fluid.py --preset all --frames 72 --fps 60 --grid 160x90 --output dist/fluid-simulations
+      - name: Verify simulation manifests and PNG sequences
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image
+          root=Path('dist/fluid-simulations')
+          for preset in ('cascade','vortex','ripple'):
+              directory=root/preset
+              meta=json.loads((directory/'manifest.json').read_text())
+              assert meta['frames']==72
+              assert len(list((directory/'masks').glob('*.png')))==72
+              assert len(list((directory/'flow').glob('*.png')))==72
+              assert (directory/(preset+'.gif')).is_file()
+              assert (directory/(preset+'-filmstrip.jpg')).is_file()
+              assert Image.open(directory/'masks'/'0000.png').size==(160,90)
+              assert Image.open(directory/'masks'/'0071.png').getextrema()[1]==0
+              print('PASS',preset,': 72 masks + 72 velocity fields + animated preview')
+          PY
+      - name: Archive frames and previews (experiments only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyn-offline-liquid-simulations
+          path: dist/fluid-simulations/
+          retention-days: 14
+          if-no-files-found: error
