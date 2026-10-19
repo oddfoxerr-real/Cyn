@@ -56,7 +56,11 @@ final class UpdateManager {
             if(version==null){stage=UP_TO_DATE;message="CYN "+BuildConfig.VERSION_NAME+" · up to date";return;}
             String hash=newest.optString("digest");if(hash.startsWith("sha256:"))hash=hash.substring(7);else hash=new String(read(AndroidRelease.assetUrl(version)+".sha256",4096),StandardCharsets.UTF_8).trim().split("\\s+")[0];
             if(!hash.matches("[0-9a-fA-F]{64}"))throw new IOException("Release has no valid SHA-256");
-            prefs(c).edit().putString("version",version).putString("hash",hash.toLowerCase(Locale.ROOT)).apply();
+            String oldVerified=prefs(c).getString("verified_hash","");
+            SharedPreferences.Editor store=prefs(c).edit()
+                .putString("version",version).putString("hash",hash.toLowerCase(Locale.ROOT));
+            if(!hash.equalsIgnoreCase(oldVerified))store.remove("verified_hash");
+            store.apply();
             stage=AVAILABLE;message="CYN "+version+" available · waiting for Wi-Fi";
             ConnectivityManager network=c.getSystemService(ConnectivityManager.class);
             if(manual||(downloads(c)&&network!=null&&!network.isActiveNetworkMetered()))download(c,version,hash,newest.getLong("size"));
@@ -83,7 +87,9 @@ final class UpdateManager {
         if(size<1||size>200*1024*1024)throw new IOException("Unexpected APK size");File destination=new File(folder(c),"Cyn-update.apk");
         if(destination.isFile()&&hash.equalsIgnoreCase(DesktopAi.digest(destination))){
             stage=VERIFYING;message="Verifying previously downloaded APK…";
-            verify(c,destination);stage=READY;progress=100;
+            verify(c,destination);
+            prefs(c).edit().putString("verified_hash",hash.toLowerCase(Locale.ROOT)).apply();
+            stage=READY;progress=100;
             message="CYN "+version+" verified · ready to install";notifyReady(c);return;
         }
         stage=DOWNLOADING;progress=0;message="Downloading CYN "+version+" · 0%";
@@ -93,6 +99,7 @@ final class UpdateManager {
             if(!hash.equalsIgnoreCase(DesktopAi.digest(part)))throw new IOException("APK checksum mismatch");
             verify(c,part);
             if(destination.exists()&&!destination.delete())throw new IOException("Cannot replace update");if(!part.renameTo(destination))throw new IOException("Cannot finish download");
+            prefs(c).edit().putString("verified_hash",hash.toLowerCase(Locale.ROOT)).apply();
             stage=READY;message="CYN "+version+" verified · ready to install";notifyReady(c);
         }finally{connection.disconnect();part.delete();}
     }
@@ -108,6 +115,7 @@ final class UpdateManager {
             String hash=prefs(c).getString("hash","");
             return AndroidRelease.number(version)>AndroidRelease.number(BuildConfig.VERSION_NAME)
                 &&hash.matches("[0-9a-f]{64}")
+                &&hash.equals(prefs(c).getString("verified_hash",""))
                 &&new File(folder(c),"Cyn-update.apk").isFile();
         }catch(Exception e){return false;}
     }
