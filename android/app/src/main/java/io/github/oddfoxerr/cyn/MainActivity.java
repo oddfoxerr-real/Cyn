@@ -27,6 +27,7 @@ public final class MainActivity extends Activity {
     SharedPreferences ui;
     TextView liveStatus,learningStatus,playLabel,positionLabel,powerButton,connectionTitle,connectionHint,externalStatus,processingDetails,playButton,miniTitle,miniState,miniToggle,updateState;
     SeekBar position;
+    final ArrayList<AiControlMarker> liveControlMarkers=new ArrayList<>();
     Timeline timeline;NeuralView neural;Spectrum spectrum;
     int page=0,feedbackEffect=4,visibleTracks=60;
     int bg=0xff030509,card=0xff0c111c,text=0xffedf3ff,hint=0xffa4b3cc,accent=0xff83b8ff,secondary=0xffaa8fff,outline=0xff1b263b;
@@ -55,7 +56,7 @@ public final class MainActivity extends Activity {
     void animateRows(LinearLayout l){if(reduced)return;for(int i=0;i<l.getChildCount();i++){View v=l.getChildAt(i);v.setAlpha(0);v.setTranslationY(dp(8));v.animate().alpha(1).translationY(0).setDuration(220).setStartDelay(Math.min(i,5)*25L).start();}}
     LinearLayout section(String title,String description){LinearLayout c=column();c.setPadding(dp(18),dp(16),dp(18),dp(16));c.setBackground(shape(card,24));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,dp(8),0,dp(8));content.addView(c,lp);TextView h=label(title,18,text);h.setTypeface(null,Typeface.BOLD);add(c,h);if(!description.isEmpty())add(c,label(description,13,hint));gap(c,8);return c;}
     void build(){build(false);}
-    void build(boolean transition){if(isFinishing()||isDestroyed())return;palette();liveStatus=learningStatus=playLabel=positionLabel=powerButton=connectionTitle=connectionHint=externalStatus=processingDetails=playButton=updateState=null;position=null;timeline=null;neural=null;spectrum=null;libraryRows=null;
+    void build(boolean transition){if(isFinishing()||isDestroyed())return;palette();liveControlMarkers.clear();liveStatus=learningStatus=playLabel=positionLabel=powerButton=connectionTitle=connectionHint=externalStatus=processingDetails=playButton=updateState=null;position=null;timeline=null;neural=null;spectrum=null;libraryRows=null;
         if(shell==null){shell=column();shell.setBackgroundColor(bg);setContentView(shell);if(Build.VERSION.SDK_INT>=29)shell.setForceDarkAllowed(false);shell.setOnApplyWindowInsetsListener((v,insets)->{if(Build.VERSION.SDK_INT>=30){Insets e=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());v.setPadding(e.left,e.top,e.right,e.bottom);}else v.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets;});shell.requestApplyInsets();
             LinearLayout header=row();header.setPadding(dp(22),dp(10),dp(22),dp(6));TextView brand=label("CYN",23,text);brand.setTypeface(null,Typeface.BOLD);brand.setLetterSpacing(.15f);header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));TextView badge=label("SOUND STUDIO",10,hint);badge.setLetterSpacing(.12f);header.addView(badge);add(shell,header);
             pages=new LiquidPage(this);shell.addView(pages,new LinearLayout.LayoutParams(-1,0,1));
@@ -71,14 +72,85 @@ public final class MainActivity extends Activity {
     }
     void toggle(LinearLayout parent,String title,boolean checked,java.util.function.Consumer<Boolean> change){Switch s=new Switch(this);s.setText(title);s.setTextColor(text);s.setTextSize(14);s.setMinHeight(dp(52));s.setChecked(checked);s.setThumbTintList(ColorStateList.valueOf(accent));s.setOnCheckedChangeListener((b,on)->change.accept(on));add(parent,s);}
     void slider(LinearLayout parent,String title,float value,float min,float max,String suffix,java.util.function.Consumer<Float> change){TextView caption=label(title+"   "+String.format(Locale.ROOT,"%.1f",value)+suffix,13,text);add(parent,caption);SeekBar bar=new SeekBar(this);bar.setMax(120);bar.setProgress(Math.round((value-min)/(max-min)*120));bar.setMinimumHeight(dp(48));bar.setProgressTintList(ColorStateList.valueOf(accent));bar.setThumbTintList(ColorStateList.valueOf(accent));bar.setContentDescription(title);bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int n,boolean user){if(user){float v=min+(max-min)*n/120;caption.setText(title+"   "+String.format(Locale.ROOT,"%.1f",v)+suffix);change.accept(v);}}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}});add(parent,bar);}
+    /** Two independent indicators: user's saved baseline and CYN's measured AI target. */
+    void smartSlider(LinearLayout parent,String key,int band,String labelText,float baseline,float min,float max,
+                     String suffix,java.util.function.Consumer<Float> change){
+        TextView caption=label(labelText+"   "+String.format(Locale.ROOT,"%.1f",baseline)+suffix,13,text);
+        add(parent,caption);
+        AiControlMarker bar=new AiControlMarker(key,band,min,max);
+        bar.setMax(120);
+        bar.setProgress(Math.round((baseline-min)/(max-min)*120));
+        bar.setMinimumHeight(dp(49));
+        bar.setProgressTintList(ColorStateList.valueOf(accent));
+        bar.setThumbTintList(ColorStateList.valueOf(accent));
+        bar.setContentDescription(labelText+" · manual baseline");
+        bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+            @Override public void onProgressChanged(SeekBar slider,int progress,boolean user){
+                if(user){
+                    float newValue=min+(max-min)*progress/120;
+                    caption.setText(labelText+"   "+String.format(Locale.ROOT,"%.1f",newValue)+suffix);
+                    change.accept(newValue);
+                }
+            }
+            @Override public void onStartTrackingTouch(SeekBar slider){bar.touching=true;}
+            @Override public void onStopTrackingTouch(SeekBar slider){bar.touching=false;}
+        });
+        add(parent,bar);
+        TextView aiLabel=label("AI · waiting for measured adjustments",11,hint);
+        add(parent,aiLabel);
+        bar.readout=aiLabel;
+        liveControlMarkers.add(bar);
+    }
+    final class AiControlMarker extends SeekBar {
+        final String key;
+        final int band;
+        final float minimum,maximum;
+        TextView readout;
+        float marker=Float.NaN;
+        boolean touching;
+        final Paint markerPaint=new Paint(Paint.ANTI_ALIAS_FLAG);
+        AiControlMarker(String key,int band,float min,float max){
+            super(MainActivity.this);
+            this.key=key;this.band=band;minimum=min;maximum=max;
+        }
+        void sync(){
+            if(service==null)return;
+            float value=service.aiControlValue(key,band);
+            if(!Float.isFinite(value)){
+                marker=Float.NaN;
+                if(readout!=null)setLabel(readout,"AI · no applied adjustment");
+            }else{
+                value=Math.max(minimum,Math.min(maximum,value));
+                marker=Float.isFinite(marker)&&!reduced?marker+(value-marker)*.35f:value;
+                if(readout!=null)setLabel(readout,"AI target · "+String.format(Locale.ROOT,"%.1f",value)+
+                    ("EQ".equals(key)?" dB":("Stereo width".equals(key)||"Ambience".equals(key)||"Dynamics".equals(key)?"%":" dB")));
+            }
+            invalidate();
+        }
+        @Override protected void onDraw(Canvas canvas){
+            super.onDraw(canvas);
+            if(!Float.isFinite(marker))return;
+            float ratio=(marker-minimum)/(maximum-minimum);
+            float centerX=getPaddingLeft()+(getWidth()-getPaddingLeft()-getPaddingRight())*ratio;
+            float centerY=getHeight()*.5f;
+            markerPaint.setColor(secondary);
+            markerPaint.setStyle(Paint.Style.STROKE);
+            markerPaint.setStrokeWidth(dp(2));
+            markerPaint.setAlpha(touching?120:230);
+            canvas.drawCircle(centerX,centerY,dp(11),markerPaint);
+            markerPaint.setStyle(Paint.Style.FILL);
+            markerPaint.setAlpha(220);
+            canvas.drawCircle(centerX,centerY,dp(3),markerPaint);
+        }
+    }
     void category(LinearLayout parent,String title,java.util.function.Consumer<LinearLayout> fill){LinearLayout body=column();body.setVisibility(View.GONE);fill.accept(body);TextView header=button(title+"  ›",()->{boolean open=body.getVisibility()!=View.VISIBLE;body.setVisibility(open?View.VISIBLE:View.GONE);if(open)animateRows(body);});add(parent,header);add(parent,body);gap(parent,8);}
     void music(){
         add(content,label("CYN · Smart Listening",29,text));add(content,label("Your music AI assistant · adaptive sound and live processing.",14,hint));
         LinearLayout hero=section("SOUND STUDIO","");hero.setBackground(gradient(26));connectionTitle=label("",19,text);connectionTitle.setTypeface(null,Typeface.BOLD);add(hero,connectionTitle);spectrum=new Spectrum();hero.addView(spectrum,new LinearLayout.LayoutParams(-1,dp(148)));connectionHint=label("",12,hint);add(hero,connectionHint);processingDetails=label(service.processingStatus(),12,accent);processingDetails.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(hero,processingDetails);
         toggle(hero,"CYN enhancement",service.enabled,on->{service.enabled=on;service.changed();});
-        LinearLayout c=section("Sound controls","For library playback and compatible music sessions.");slider(c,"Bass",service.bass,0,12," dB",v->{service.bass=v;service.changed();});slider(c,"Vocal clarity",service.clarity,0,8," dB",v->{service.clarity=v;service.changed();});
-        category(c,"Space & dynamics",body->{slider(body,"Stereo width",service.width,0,100,"%",v->{service.width=v;service.changed();});slider(body,"Ambience",service.ambience*100,0,100,"%",v->{service.ambience=v/100;service.changed();});slider(body,"Dynamics",service.dynamics*100,0,100,"%",v->{service.dynamics=v/100;service.changed();});slider(body,"Output headroom",service.headroom,.3f,6," dB",v->{service.headroom=v;service.changed();});add(body,label("Ambience, dynamics and the full EQ process CYN library playback. Other apps use the effects their audio session supports.",12,hint));});
-        category(c,service.bandCount+"-band equalizer",body->{buttons(body,new String[]{"31","35","39"},new Runnable[]{()->bands(31),()->bands(35),()->bands(39)});gap(body,8);for(int i=0;i<service.bandCount;i++){final int n=i;float hz=(float)(20*Math.pow(1000,i/(double)(service.bandCount-1)));slider(body,hz<1000?Math.round(hz)+" Hz":String.format(Locale.ROOT,"%.1f kHz",hz/1000),service.studioEq[i],-12,12," dB",v->{service.studioEq[n]=v;service.changed();});}add(body,button("Reset equalizer",()->{Arrays.fill(service.studioEq,0);service.changed();build();}));});
+        LinearLayout c=section("Sound controls","For library playback and compatible music sessions.");smartSlider(c,"Bass",-1,"Bass",service.bass,0,12," dB",v->{service.bass=v;service.changed();});smartSlider(c,"Vocal clarity",-1,"Vocal clarity",service.clarity,0,8," dB",v->{service.clarity=v;service.changed();});
+        category(c,"Space & dynamics",body->{smartSlider(body,"Stereo width",-1,"Stereo width",service.width,0,100,"%",v->{service.width=v;service.changed();});smartSlider(body,"Ambience",-1,"Ambience",service.ambience*100,0,100,"%",v->{service.ambience=v/100;service.changed();});smartSlider(body,"Dynamics",-1,"Dynamics",service.dynamics*100,0,100,"%",v->{service.dynamics=v/100;service.changed();});slider(body,"Output headroom",service.headroom,.3f,6," dB",v->{service.headroom=v;service.changed();});add(body,label("Ambience, dynamics and the full EQ process CYN library playback. Other apps use the effects their audio session supports.",12,hint));});
+        category(c,service.bandCount+"-band equalizer",body->{buttons(body,new String[]{"31","35","39"},new Runnable[]{()->bands(31),()->bands(35),()->bands(39)});gap(body,8);for(int i=0;i<service.bandCount;i++){final int n=i;float hz=(float)(20*Math.pow(1000,i/(double)(service.bandCount-1)));smartSlider(body,"EQ",n,hz<1000?Math.round(hz)+" Hz":String.format(Locale.ROOT,"%.1f kHz",hz/1000),service.studioEq[i],-12,12," dB",v->{service.studioEq[n]=v;service.changed();});}add(body,button("Reset equalizer",()->{Arrays.fill(service.studioEq,0);service.changed();build();}));});
         category(c,"Listening presets",body->{buttons(body,new String[]{"Balanced","Impact","Dialogue"},new Runnable[]{()->preset(2,1,.2f),()->preset(5,1,.45f),()->preset(1,3,.15f)});});
         LinearLayout external=section("Connect CYN","Enable real-time sound control for compatible music apps. Android determines which audio sessions accept enhancement.");
         externalStatus=label(service.connectionState()+"\n"+service.connectionHint(),12,hint);externalStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(external,externalStatus);
@@ -169,7 +241,7 @@ public final class MainActivity extends Activity {
         if(playLabel!=null)setLabel(playLabel,service.title);if(position!=null&&!seeking){position.setMax(Math.max(1,service.duration()));position.setProgress(service.position());}if(positionLabel!=null)setLabel(positionLabel,time(service.position())+" / "+time(service.duration()));
         if(liveStatus!=null){DesktopAi.Result r=service.desktopAi.latest;String state=!service.enabled?"CYN bypassed":!service.smart?"AI off":service.playing?service.desktopAi.status:service.player!=null?"Playback paused":service.monitor?service.analysis:"Play a library track for AI listening";if(r!=null&&service.playing&&service.smart&&service.enabled&&SystemClock.elapsedRealtime()-r.at<2500)state+="\nMusic "+Math.round(r.scene[0]*100)+"% · Speech "+Math.round(r.scene[1]*100)+"% · "+r.milliseconds+" ms inference";setLabel(liveStatus,state);}
         if(learningStatus!=null){int more=0,less=0;for(PreferenceModel.Example e:service.learning.examples)if(e.effect==feedbackEffect){if(e.more)more++;else less++;}setLabel(learningStatus,new String[]{"Clarity","Ambience","Width","Dynamics","Bass"}[feedbackEffect]+" · "+more+" More / "+less+" Less\n"+(service.training?"Training "+service.trainingEpoch+" / 240":service.learning.message));}
-        if(updateState!=null)setLabel(updateState,UpdateManager.message);if(timeline!=null)timeline.invalidate();if(neural!=null)neural.invalidate();if(spectrum!=null)spectrum.invalidate();
+        if(updateState!=null)setLabel(updateState,UpdateManager.message);for(AiControlMarker marker:liveControlMarkers)marker.sync();if(timeline!=null)timeline.invalidate();if(neural!=null)neural.invalidate();if(spectrum!=null)spectrum.invalidate();
     }
     void setLabel(TextView view,String value){if(!value.contentEquals(view.getText()))view.setText(value);}
     final Runnable refresh=new Runnable(){public void run(){update();handler.postDelayed(this,250);}};
