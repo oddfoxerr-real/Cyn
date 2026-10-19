@@ -71,7 +71,7 @@ class FoxSlider extends SeekBar {
         shape.cubicTo(20*tailSide,-9+wag,19*tailSide,0,11*tailSide,5);
         shape.close();canvas.drawPath(shape,fox);
         color(CREAM);
-        canvas.drawOval(11*tailSide,-10+wag,16*tailSide,-5+wag,fox);
+        canvas.drawOval(Math.min(11*tailSide,16*tailSide),-10+wag,Math.max(11*tailSide,16*tailSide),-5+wag,fox);
         // Little paws ride the actual seek thumb.
         color(FUR_DARK);canvas.drawRoundRect(-7,5, -2,10,2,2,fox);
         canvas.drawRoundRect(2,5,7,10,2,2,fox);
