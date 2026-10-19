@@ -1,59 +1,114 @@
 name: Cyn Android Release
 on:
   push:
-    branches: ['codex/android']
-    paths: ['android/**', 'release-artifacts/android/**', '.github/workflows/android-release.yml']
+    branches: ['codex/android', 'feature/android-sound-studio']
+    paths: ['android/**', '.github/workflows/android-release.yml']
   workflow_dispatch:
 permissions:
   contents: write
 concurrency:
-  group: cyn-android-release
+  group: cyn-android-release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  publish:
+  validate-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      TAG: android-v0.1.2-preview
-      APK: Cyn-Android-0.1.2-preview.apk
-      SOURCE: Cyn-Android-0.1.2-Source.zip
-      GH_TOKEN: ${{ github.token }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - name: Verify source and signed package
-        shell: bash
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install pinned Android tools and model test runtime
+        run: |
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
+          pip install numpy==2.2.6 onnxruntime==1.23.2
+          python android/scripts/prepare_models.py
+      - name: Real DSP, learning and ONNX verification
         run: |
           set -euo pipefail
-          git diff --exit-code 8b418ff38ba0999019a24d256504d7f5c0af4ad7 HEAD -- android
-          base64 --decode release-artifacts/android/0.1.2-preview.apk.base64 > "$APK"
-          echo 'fb321cfbdfe31581fc69d4de5182c23fa61b065615270ae0565c24c46a027730  Cyn-Android-0.1.2-preview.apk' | sha256sum --check
-          tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
-          "$tools/apksigner" verify --print-certs "$APK" | tee signing.txt
-          grep -F 'certificate SHA-256 digest: 20698db6b762137a5e5199c0c5a6c728e8b90374d9dc76973c6ea21c005ee13d' signing.txt
-          "$tools/aapt" dump badging "$APK" > package.txt
-          grep -F "name='io.github.oddfoxerr.cyn' versionCode='3' versionName='0.1.2-preview'" package.txt
-          mkdir -p /tmp/cyn-host-tests
-          javac -d /tmp/cyn-host-tests android/app/src/main/java/io/github/oddfoxerr/cyn/{PreferenceModel,AudioFeatures,AndroidRelease}.java android/tests/AudioModelTest.java
-          java -cp /tmp/cyn-host-tests io.github.oddfoxerr.cyn.AudioModelTest
-          git archive --format=zip --output="$SOURCE" HEAD android
-          sha256sum "$APK" > "$APK.sha256"
-      - name: Publish verified preview
-        shell: bash
+          mkdir -p /tmp/cyn-tests
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/linux" android/tests/native/engine_test.cpp -o /tmp/cyn-tests/engine
+          /tmp/cyn-tests/engine
+          javac -d /tmp/cyn-tests android/app/src/main/java/io/github/oddfoxerr/cyn/{PreferenceModel,AudioFeatures,AndroidRelease,ApexFeatures}.java android/tests/{AudioModelTest,ApexFeaturesTest}.java
+          java -cp /tmp/cyn-tests io.github.oddfoxerr.cyn.AudioModelTest
+          java -cp /tmp/cyn-tests io.github.oddfoxerr.cyn.ApexFeaturesTest /tmp/cyn-tests/features.bin
+          python android/scripts/test_models.py /tmp/cyn-tests/features.bin
+      - name: Build and lint
+        run: bash android/gradlew -p android :app:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
+      - name: Enable accelerated Android testing
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Real Android playback, neural models and screens
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: false
+          script: |
+            bash android/gradlew -p android :app:connectedDebugAndroidTest
+      - name: Preserve device reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cyn-Android-device-checks
+          path: |
+            android/app/build/reports/androidTests/
+            android/app/build/outputs/androidTest-results/
+            android/app/build/outputs/connected_android_test_additional_output/
+          if-no-files-found: ignore
+      - name: Stage corresponding source and unsigned build
+        run: |
+          mkdir -p dist/android
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/android/Cyn-Android-0.2.0-preview-unsigned.apk
+          git archive --format=zip --output=dist/android/Cyn-Android-0.2.0-Source.zip HEAD android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Cyn-Android-0.2.0-validated-build
+          path: |
+            dist/android/
+            android/app/build/reports/lint-results-debug.*
+          retention-days: 30
+      - name: Verify original signing key and sign update
+        if: github.ref == 'refs/heads/codex/android'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.CYN_ANDROID_KEYSTORE_BASE64 }}
+          CYN_KEY_PASSWORD: ${{ secrets.CYN_ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          if gh release view "$TAG" --json isDraft --jq '.isDraft' > release-state.txt 2>/dev/null; then
-            if grep -qx false release-state.txt; then
-              echo "Release already published; leaving its assets unchanged."
-              exit 0
-            fi
-          else
-            gh release create "$TAG" --target "$GITHUB_SHA" --title "Cyn Android 0.1.2 preview" --notes-file release-artifacts/android/0.1.2-notes.md --draft --prerelease
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$CYN_KEY_PASSWORD" ]; then
+            echo '::error::Build verified; installable publishing is blocked. Configure the ORIGINAL CYN Android key in CYN_ANDROID_KEYSTORE_BASE64 and CYN_ANDROID_KEY_PASSWORD. Never generate a replacement key.'
+            exit 1
           fi
-          gh release upload "$TAG" "$APK" "$APK.sha256" "$SOURCE" --clobber
-          gh release edit "$TAG" --draft=false --prerelease --latest=false
+          keyfile="$RUNNER_TEMP/cyn-original.jks"
+          trap 'rm -f "$keyfile"' EXIT
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keyfile"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$keyfile" --ks-key-alias cyn-android --ks-pass env:CYN_KEY_PASSWORD --key-pass env:CYN_KEY_PASSWORD --out dist/android/Cyn-Android-0.2.0-preview.apk dist/android/Cyn-Android-0.2.0-preview-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/android/Cyn-Android-0.2.0-preview.apk > "$RUNNER_TEMP/cyn-cert.txt"
+          grep -F 'certificate SHA-256 digest: 20698db6b762137a5e5199c0c5a6c728e8b90374d9dc76973c6ea21c005ee13d' "$RUNNER_TEMP/cyn-cert.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 dist/android/Cyn-Android-0.2.0-preview.apk
+          cd dist/android
+          sha256sum Cyn-Android-0.2.0-preview.apk > Cyn-Android-0.2.0-preview.apk.sha256
+      - name: Publish verified Android preview
+        if: github.ref == 'refs/heads/codex/android'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=android-v0.2.0-preview
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo 'Release already exists; refusing to replace its assets.'
+            exit 1
+          fi
+          gh release create "$tag" --target "$GITHUB_SHA" --title 'CYN Android 0.2.0 preview — Sound Studio' --notes-file android/RELEASE_NOTES.md --draft --prerelease
+          gh release upload "$tag" dist/android/Cyn-Android-0.2.0-preview.apk dist/android/Cyn-Android-0.2.0-preview.apk.sha256 dist/android/Cyn-Android-0.2.0-Source.zip
+          gh release edit "$tag" --draft=false --prerelease --latest=false

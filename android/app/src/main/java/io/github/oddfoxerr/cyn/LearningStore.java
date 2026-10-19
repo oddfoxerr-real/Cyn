@@ -30,6 +30,17 @@ final class LearningStore {
         }
         message="Experimental desktop starter loaded; Android sound analysis differs."; save();
     }
+    void importModel(InputStream input) throws Exception {
+        ByteArrayOutputStream output=new ByteArrayOutputStream();byte[] buffer=new byte[4096];int n;
+        while((n=input.read(buffer))!=-1){if(output.size()+n>1024*1024)throw new IOException("Model exceeds 1 MB");output.write(buffer,0,n);}
+        JSONObject j=new JSONObject(output.toString("UTF-8"));
+        if(j.has("model")&&j.optJSONObject("model")!=null)j=j.getJSONObject("model");
+        if(!j.has("ready"))throw new IOException("Model must declare trained output heads");
+        readModel(j);message="Imported desktop preference weights · phone-local";save();
+    }
+    String exportModel() throws Exception {
+        return new JSONObject().put("format","cyn-ai-profile").put("schema",1).put("profile",new JSONObject().put("name","CYN Phone Preferences").put("author","Local listener").put("description","Personal preferences trained on phone library audio").put("category","personal").put("license","AGPL-3.0-or-later")).put("model",new JSONObject().put("schema",1).put("architecture","cyn-audio-11x12x5").put("weights",new JSONArray(model.weights)).put("ready",new JSONArray(model.ready))).toString(2);
+    }
     private void load() {
         AtomicFile file=new AtomicFile(new File(context.getFilesDir(),"learning.json"));
         try(FileInputStream in=file.openRead()) {

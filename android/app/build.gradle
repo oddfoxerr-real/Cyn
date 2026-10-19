@@ -8,8 +8,11 @@ android {
         applicationId 'io.github.oddfoxerr.cyn'
         minSdk 28
         targetSdk 35
-        versionCode 3
-        versionName '0.1.2-preview'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        versionCode 4
+        versionName '0.2.0-preview'
+        ndk { abiFilters 'arm64-v8a', 'x86_64' }
+        externalNativeBuild { cmake { cppFlags '-std=c++17 -O2' } }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -32,4 +35,15 @@ android {
         }
     }
     lint { abortOnError true }
+    ndkVersion '27.2.12479018'
+    externalNativeBuild { cmake { path 'src/main/cpp/CMakeLists.txt'; version '3.22.1' } }
+    androidResources { noCompress 'onnx' }
+}
+dependencies {
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test:rules:1.6.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    implementation 'androidx.media3:media3-exoplayer:1.5.1'
+    implementation 'androidx.core:core:1.15.0'
+    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.23.2'
 }

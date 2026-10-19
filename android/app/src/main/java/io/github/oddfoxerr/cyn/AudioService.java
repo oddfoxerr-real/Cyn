@@ -14,6 +14,7 @@ import android.provider.OpenableColumns;
 import java.util.*;
 import java.util.concurrent.*;
 
+@androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
 public final class AudioService extends Service {
     static final String PLAY="cyn.PLAY", TOGGLE="cyn.TOGGLE", MONITOR="cyn.MONITOR", STOP="cyn.STOP";
     static final class Frame {
@@ -27,7 +28,14 @@ public final class AudioService extends Service {
     final ExecutorService trainer=Executors.newSingleThreadExecutor();
     LearningStore learning;
     SharedPreferences prefs;
-    MediaPlayer player;
+    androidx.media3.exoplayer.ExoPlayer player;
+    DesktopAi desktopAi;
+    AudioLibrary library;
+    float ambience=0, dynamics=.2f, headroom=1;
+    int bandCount=31;
+    final float[] studioEq=new float[39];
+    boolean useApex, movieMode;
+    private long libraryFrame, libraryTrace;
     MediaSession mediaSession;
     AudioManager audio;
     AudioFocusRequest focus;
@@ -46,6 +54,7 @@ public final class AudioService extends Service {
     String neuralStatus() {
         if(training) return "Training candidate · epoch "+trainingEpoch+" / 240 · example input";
         PreferenceModel.Trace t=neuralTrace(); Chain c=displayedChain();
+        if(playing)return enabled?(smart?desktopAi.status:"AI off · manual library sound"):"CYN bypassed · original audio";
         if(t==null) return "No fresh audio analysis · no live model values";
         String outputs="Frame #"+traceSequence+" · Bass "+(t.ready[4]?Math.round(t.outputs[4]*100)+"%":"untrained")+" · Clarity "+(t.ready[0]?Math.round(t.outputs[0]*100)+"%":"untrained");
         boolean applied=c!=null&&c.controlsEq()&&sensitivity>0&&(t.ready[4]||t.ready[0]);
@@ -79,7 +88,12 @@ public final class AudioService extends Service {
     @android.annotation.SuppressLint("UnspecifiedRegisterReceiverFlag")
     @Override public void onCreate() {
         super.onCreate(); learning=new LearningStore(this); prefs=getSharedPreferences("audio",0);
-        enabled=prefs.getBoolean("enabled",true); smart=prefs.getBoolean("smart",false); sensitivity=prefs.getFloat("sensitivity",.7f);
+        desktopAi=new DesktopAi(this);library=new AudioLibrary(this);
+        ambience=prefs.getFloat("ambience",0);dynamics=prefs.getFloat("dynamics",.2f);headroom=prefs.getFloat("headroom",1);
+        bandCount=prefs.getInt("bands",31);if(bandCount!=31&&bandCount!=35&&bandCount!=39)bandCount=31;
+        useApex=prefs.getBoolean("apex",false);movieMode=prefs.getBoolean("movie",false);
+        for(int i=0;i<39;i++)studioEq[i]=prefs.getFloat("studioEq"+i,0);
+        enabled=prefs.getBoolean("enabled",true); smart=prefs.getBoolean("smart",true); sensitivity=prefs.getFloat("sensitivity",.7f);
         bass=prefs.getFloat("bass",2); clarity=prefs.getFloat("clarity",1); width=prefs.getFloat("width",0); loudness=prefs.getFloat("loudness",0);
         for(int i=0;i<5;i++) eq[i]=prefs.getFloat("eq"+i,0);
         audio=getSystemService(AudioManager.class);
@@ -87,11 +101,11 @@ public final class AudioService extends Service {
             if(change==AudioManager.AUDIOFOCUS_LOSS) { resumeOnFocus=false; pause(); }
             else if(change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
                 resumeOnFocus=playing;
-                if(player!=null&&!preparing) { try { player.pause(); } catch(IllegalStateException ignored) { } }
+                if(player!=null) { try { player.pause(); } catch(IllegalStateException ignored) { } }
                 playing=false; updateSession(); updateNotification();
             }
-            else if(change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) { if(player!=null) player.setVolume(.2f,.2f); }
-            else if(change==AudioManager.AUDIOFOCUS_GAIN) { if(player!=null) player.setVolume(.8f,.8f); if(resumeOnFocus) { resumeOnFocus=false; startPlayback(); } }
+            else if(change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) { if(player!=null) player.setVolume(.25f); }
+            else if(change==AudioManager.AUDIOFOCUS_GAIN) { if(player!=null) player.setVolume(1f); if(resumeOnFocus) { resumeOnFocus=false; startPlayback(); } }
         },handler).build();
         mediaSession=new MediaSession(this,"Cyn");
         mediaSession.setCallback(new MediaSession.Callback() {
@@ -99,6 +113,8 @@ public final class AudioService extends Service {
             @Override public void onPause() { pause(); }
             @Override public void onStop() { stopAll(); }
             @Override public void onSeekTo(long pos) { seek((int)pos); }
+            @Override public void onSkipToNext(){ next(); }
+            @Override public void onSkipToPrevious(){ previous(); }
         });
         IntentFilter f=new IntentFilter(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION);
         f.addAction(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION); f.addAction(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
@@ -117,11 +133,12 @@ public final class AudioService extends Service {
                 monitor=true; foreground(); enabled=true; changed();
                 if(i.getBooleanExtra("legacy",false)) startLegacy();
                 else {
-                    if(legacy) { detach(0); legacy=false; if(playerSession>0) attach(playerSession,"Cyn player"); }
+                    if(legacy) { detach(0); legacy=false;  }
                     int id=i.getIntExtra("session",-1); if(id>0&&id!=playerSession) attach(id,"Music app");
                     status="Waiting for a music app to share its audio session";
                 }
             }
+            else if("cyn.QUEUE".equals(action)) { foreground(); }
             else if(PLAY.equals(action)&&i.getData()!=null) { foreground(); open(i.getData()); }
             else if(TOGGLE.equals(action)) { if(playing) pause(); else { foreground(); startPlayback(); } }
         } catch(Exception e) { status="Audio could not start: "+e.getClass().getSimpleName(); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); }
@@ -130,7 +147,7 @@ public final class AudioService extends Service {
     void stopMonitor() {
         monitor=false; legacy=false; for(Integer id:new ArrayList<>(chains.keySet())) if(id!=playerSession) detach(id);
         if(playing||preparing) foreground(); else { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); }
-        if(playerSession>0) attach(playerSession,"Cyn player");
+
         status="Other-app enhancement stopped";
     }
     private void foreground() {
@@ -154,42 +171,73 @@ public final class AudioService extends Service {
     }
     private void updateNotification() { if(playing||monitor||player!=null) getSystemService(NotificationManager.class).notify(41,notification()); }
     private void open(Uri uri) {
-        releasePlayer(); frames.clear();
-        title="Audio file";
-        try(android.database.Cursor c=getContentResolver().query(uri,new String[]{OpenableColumns.DISPLAY_NAME},null,null,null)) { if(c!=null&&c.moveToFirst()) title=c.getString(0); } catch(Exception ignored) { }
-        try {
-            MediaPlayer p=new MediaPlayer(); player=p; preparing=true; p.setAudioAttributes(attributes()); p.setWakeMode(this,PowerManager.PARTIAL_WAKE_LOCK);
-            p.setDataSource(this,uri); p.setVolume(.8f,.8f);
-            p.setOnPreparedListener(mp->{ if(player!=mp) return; preparing=false; playerSession=mp.getAudioSessionId(); attach(playerSession,"Cyn player"); startPlayback(); });
-            p.setOnCompletionListener(mp->{ playing=false; resumeOnFocus=false; audio.abandonAudioFocusRequest(focus); updateSession(); updateNotification(); if(!monitor) stopForeground(STOP_FOREGROUND_DETACH); });
-            p.setOnErrorListener((mp,what,extra)->{ status="This audio file could not be played ("+what+"). Try another format."; releasePlayer(); if(!monitor) { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); } return true; });
-            p.prepareAsync(); status="Opening "+title; updateNotification();
-        } catch(Exception e) { status="Unable to open this file: "+e.getClass().getSimpleName(); releasePlayer(); if(!monitor) { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); } }
+        List<AudioLibrary.Track> queue=library.all();int index=-1;
+        for(int i=0;i<queue.size();i++)if(queue.get(i).uri.equals(uri))index=i;
+        if(index<0){queue=Collections.singletonList(new AudioLibrary.Track(uri,"Audio file","","",0,false));index=0;}
+        playQueue(queue,index);
     }
+    void playQueue(List<AudioLibrary.Track> queue,int index) {
+        if(queue.isEmpty()||index<0||index>=queue.size())return;
+        releasePlayer();frames.clear();clearTrace();
+        // Never stack the native library DSP with the optional output-mix EQ.
+        if(legacy){detach(0);legacy=false;monitor=false;}
+        try {
+            androidx.media3.exoplayer.DefaultRenderersFactory factory=new androidx.media3.exoplayer.DefaultRenderersFactory(this){
+                @Override protected androidx.media3.exoplayer.audio.AudioSink buildAudioSink(Context context,boolean floatOutput,boolean playbackParameters){
+                    androidx.media3.common.audio.SonicAudioProcessor resampler=new androidx.media3.common.audio.SonicAudioProcessor();resampler.setOutputSampleRateHz(48000);
+                    return new androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context).setEnableFloatOutput(false).setAudioProcessors(new androidx.media3.common.audio.AudioProcessor[]{resampler,new CynAudioProcessor(desktopAi.engine)}).build();
+                }
+            };
+            player=new androidx.media3.exoplayer.ExoPlayer.Builder(this,factory).build();
+            player.setAudioAttributes(new androidx.media3.common.AudioAttributes.Builder().setUsage(androidx.media3.common.C.USAGE_MEDIA).setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MUSIC).build(),false);
+            player.setWakeMode(androidx.media3.common.C.WAKE_MODE_LOCAL);player.setHandleAudioBecomingNoisy(true);
+            player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setMaxAudioChannelCount(2).build());
+            player.setShuffleModeEnabled(prefs.getBoolean("shuffle",false));player.setRepeatMode(prefs.getInt("repeat",0));
+            final androidx.media3.exoplayer.ExoPlayer current=player;
+            player.addListener(new androidx.media3.common.Player.Listener(){
+                @Override public void onPlaybackStateChanged(int state){
+                    if(player!=current)return;preparing=state==androidx.media3.common.Player.STATE_BUFFERING;
+                    if(state==androidx.media3.common.Player.STATE_READY){preparing=false;updateSession();}
+                    if(state==androidx.media3.common.Player.STATE_ENDED){playing=false;desktopAi.active=false;audio.abandonAudioFocusRequest(focus);updateSession();updateNotification();if(!monitor)stopForeground(STOP_FOREGROUND_DETACH);}
+                }
+                @Override public void onIsPlayingChanged(boolean value){if(player!=current)return;playing=value;updateNativeControls();updateSession();updateNotification();}
+                @Override public void onMediaItemTransition(androidx.media3.common.MediaItem item,int reason){if(item!=null&&item.mediaMetadata.title!=null)title=item.mediaMetadata.title.toString();frames.clear();clearTrace();desktopAi.reset();updateSession();updateNotification();}
+                @Override public void onPlayerError(androidx.media3.common.PlaybackException error){status="Cannot play this track · "+error.getErrorCodeName();playing=false;preparing=false;desktopAi.active=false;audio.abandonAudioFocusRequest(focus);updateSession();updateNotification();if(!monitor)stopForeground(STOP_FOREGROUND_DETACH);}
+            });
+            ArrayList<androidx.media3.common.MediaItem> items=new ArrayList<>();
+            for(AudioLibrary.Track track:queue)items.add(new androidx.media3.common.MediaItem.Builder().setUri(track.uri).setMediaId(track.uri.toString()).setMediaMetadata(new androidx.media3.common.MediaMetadata.Builder().setTitle(track.title).setArtist(track.artist).setAlbumTitle(track.album).build()).build());
+            title=queue.get(index).title;player.setMediaItems(items,index,0);preparing=true;foreground();player.prepare();startPlayback();
+        }catch(Exception e){status="Unable to play: "+e.getClass().getSimpleName();releasePlayer();if(!monitor)stopForeground(STOP_FOREGROUND_REMOVE);}
+    }
+    void next(){if(player!=null){player.seekToNextMediaItem();updateSession();}}
+    void previous(){if(player!=null){if(player.getCurrentPosition()>3000)player.seekTo(0);else player.seekToPreviousMediaItem();updateSession();}}
+    void shuffle(boolean on){prefs.edit().putBoolean("shuffle",on).apply();if(player!=null)player.setShuffleModeEnabled(on);}
+    void repeat(int mode){prefs.edit().putInt("repeat",mode).apply();if(player!=null)player.setRepeatMode(mode);}
+    String currentUri(){return player!=null&&player.getCurrentMediaItem()!=null?player.getCurrentMediaItem().mediaId:"";}
     void startPlayback() {
-        if(player==null||preparing) return;
+        if(player==null) return;
         try {
             // Android 15 requires visible activity or foreground service before focus.
             foreground();
             if(audio.requestAudioFocus(focus)!=AudioManager.AUDIOFOCUS_REQUEST_GRANTED) { status="Another app has audio focus"; if(!monitor) stopForeground(STOP_FOREGROUND_DETACH); return; }
-            player.setVolume(.8f,.8f); player.start(); playing=true; status="Playing"; mediaSession.setActive(true); updateSession(); updateNotification();
+            player.setVolume(1f); player.play(); playing=player.isPlaying(); status="Playing"; mediaSession.setActive(true); updateSession(); updateNotification();
         } catch(Exception e) { status="Playback unavailable"; releasePlayer(); if(!monitor) stopForeground(STOP_FOREGROUND_REMOVE); }
     }
     void pause() {
         resumeOnFocus=false;
-        if(player!=null&&!preparing) { try { player.pause(); } catch(IllegalStateException ignored) { } }
-        playing=false; audio.abandonAudioFocusRequest(focus); updateSession(); updateNotification(); if(!monitor) stopForeground(STOP_FOREGROUND_DETACH);
+        if(player!=null) { try { player.pause(); } catch(IllegalStateException ignored) { } }
+        playing=false; audio.abandonAudioFocusRequest(focus); updateSession(); updateNotification(); if(!monitor) stopForeground(STOP_FOREGROUND_DETACH);desktopAi.active=false;desktopAi.reset();
     }
-    int position() { try { return player!=null&&!preparing?player.getCurrentPosition():0; } catch(Exception e) { return 0; } }
-    int duration() { try { return player!=null&&!preparing?player.getDuration():0; } catch(Exception e) { return 0; } }
-    void seek(int value) { if(player!=null&&!preparing) { player.seekTo(Math.max(0,Math.min(duration(),value))); frames.clear(); updateSession(); } }
+    int position() { try { return player!=null?(int)Math.max(0,player.getCurrentPosition()):0; } catch(Exception e) { return 0; } }
+    int duration() { try { return player!=null?(int)Math.max(0,player.getDuration()):0; } catch(Exception e) { return 0; } }
+    void seek(int value) { if(player!=null&&!preparing) { player.seekTo(Math.max(0,Math.min(duration(),value))); desktopAi.reset();frames.clear(); updateSession(); } }
     private void updateSession() {
-        mediaSession.setPlaybackState(new PlaybackState.Builder().setActions(PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PAUSE|PlaybackState.ACTION_PLAY_PAUSE|PlaybackState.ACTION_STOP|PlaybackState.ACTION_SEEK_TO).setState(playing?PlaybackState.STATE_PLAYING:PlaybackState.STATE_PAUSED,position(),playing?1:0).build());
+        mediaSession.setPlaybackState(new PlaybackState.Builder().setActions(PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PAUSE|PlaybackState.ACTION_PLAY_PAUSE|PlaybackState.ACTION_STOP|PlaybackState.ACTION_SEEK_TO|PlaybackState.ACTION_SKIP_TO_NEXT|PlaybackState.ACTION_SKIP_TO_PREVIOUS).setState(playing?PlaybackState.STATE_PLAYING:PlaybackState.STATE_PAUSED,position(),playing?1:0).build());
         mediaSession.setMetadata(new MediaMetadata.Builder().putString(MediaMetadata.METADATA_KEY_TITLE,title).putLong(MediaMetadata.METADATA_KEY_DURATION,duration()).build());
     }
     private void releasePlayer() {
         if(playerSession>0) detach(playerSession); playerSession=-1;
-        if(player!=null) { player.release(); player=null; } playing=false; preparing=false; audio.abandonAudioFocusRequest(focus);
+        if(player!=null) { player.release(); player=null; } desktopAi.active=false;desktopAi.reset();playing=false; preparing=false; audio.abandonAudioFocusRequest(focus);
     }
     void stopAll() { monitor=false; legacy=false; clearTrace(); releasePlayer(); for(Integer id:new ArrayList<>(chains.keySet())) detach(id); mediaSession.setActive(false); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); status="Stopped"; }
     private void attach(int id,String owner) {
@@ -203,9 +251,33 @@ public final class AudioService extends Service {
     }
     void changed() {
         SharedPreferences.Editor e=prefs.edit().putBoolean("enabled",enabled).putBoolean("smart",smart).putFloat("sensitivity",sensitivity).putFloat("bass",bass).putFloat("clarity",clarity).putFloat("width",width).putFloat("loudness",loudness);
-        for(int i=0;i<5;i++) e.putFloat("eq"+i,eq[i]); e.apply();
+        for(int i=0;i<5;i++) e.putFloat("eq"+i,eq[i]);
+        e.putFloat("ambience",ambience).putFloat("dynamics",dynamics).putFloat("headroom",headroom).putInt("bands",bandCount).putBoolean("apex",useApex).putBoolean("movie",movieMode);
+        for(int i=0;i<39;i++)e.putFloat("studioEq"+i,studioEq[i]);e.apply();updateNativeControls();
         for(Chain c:chains.values()) { c.apply(); c.analyze(); }
         if(!smart||!enabled) { clearTrace(); analysis="Analysis off · manual settings restored"; }
+    }
+    void updateNativeControls() {
+        desktopAi.active=playing&&enabled&&smart;desktopAi.apexEnabled=useApex;desktopAi.movie=movieMode;
+        DesktopAi.Result r=desktopAi.latest;
+        boolean fresh=desktopAi.active&&r!=null&&SystemClock.elapsedRealtime()-r.at<2500;
+        float[] p=new float[48];p[0]=enabled?1:0;p[1]=bass;p[2]=clarity;p[3]=width/100;p[4]=ambience;p[5]=dynamics;p[6]=loudness;p[7]=headroom;p[8]=bandCount;
+        for(int b=0;b<bandCount;b++)p[9+b]=studioEq[b];
+        if(fresh){
+            double[] x=new double[11];for(int i=0;i<11;i++)x[i]=r.features[i];
+            PreferenceModel.Trace trace=learning.model.trace(x);
+            float[] preferences=Arrays.copyOf(r.decision,5);
+            for(int o=0;o<5;o++)if(trace.ready[o])preferences[o]=.78f*preferences[o]+.22f*(float)trace.outputs[o];
+            float peak=r.features[11]*(float)Math.exp(Math.min(3.5,r.features[8]));
+            float[] targets=NativeEngine.effectTargets(new float[]{clarity/8*10,ambience*10,width/10,dynamics*10,bass/12*10},preferences,sensitivity*100,peak,movieMode);
+            p[1]=targets[4]/10*12;p[2]=targets[0]/10*8;p[3]=targets[2]/10;p[4]=targets[1]/10;p[5]=targets[3]/10;
+            float[] curve=Arrays.copyOfRange(r.decision,5,13);for(int i=0;i<8;i++)curve[i]+=r.apex[i];
+            for(int b=0;b<bandCount;b++)p[9+b]+=sensitivity*ApexFeatures.interpolate(curve,(float)(20*Math.pow(1000,b/(double)(bandCount-1))));
+            if(r.at!=libraryTrace){libraryTrace=r.at;liveTrace=trace;traceAt=SystemClock.elapsedRealtime();traceSequence++;predictions=trace.outputs;neurons=trace.hidden;}
+            if(r.at!=libraryFrame){libraryFrame=r.at;frames.add(new Frame(x,Math.min(1,r.features[11]*4)));while(frames.size()>240)frames.remove(0);}
+        }
+        if(playing)analysis=enabled?(smart?desktopAi.status:"AI off · manual studio sound"):"CYN bypassed · original audio";
+        NativeEngine.controls(desktopAi.engine,p);
     }
     void train() {
         if(training) return; training=true; trainingEpoch=0; trainingTrace=null;
@@ -225,8 +297,9 @@ public final class AudioService extends Service {
         @Override public void run() {
             if(destroyed) return;
             for(Chain c:chains.values()) { if(SystemClock.elapsedRealtime()-c.lastCapture>900) c.targetBass=c.targetClarity=0; c.bassOffset+=(c.targetBass-c.bassOffset)*.12; c.clarityOffset+=(c.targetClarity-c.clarityOffset)*.12; c.apply(); }
+            updateNativeControls();
             long now=SystemClock.elapsedRealtime();
-            if(now-traceAt>900) { clearTrace(); if(smart&&enabled) analysis="Waiting for session analysis · enable permission if needed"; }
+            if(!playing&&now-traceAt>900) { clearTrace(); if(smart&&enabled) analysis="Waiting for session analysis · enable permission if needed"; }
             long cutoff=System.nanoTime()-60_000_000_000L; while(!frames.isEmpty()&&frames.get(0).id<cutoff) frames.remove(0);
             handler.postDelayed(this,150);
         }
@@ -260,7 +333,7 @@ public final class AudioService extends Service {
                         // Do not boost silence. The model does not control Android volume or routing.
                         targetBass=rms>.01&&learning.model.ready[4]?(p[4]*2-1)*bass*sensitivity:0;
                         targetClarity=rms>.01&&learning.model.ready[0]?(p[0]*2-1)*clarity*sensitivity:0;
-                        if(id==0||(playing&&id==playerSession)||(!playing&&id==activeSession)) {
+                        if(!playing&&(id==0||id==activeSession)) {
                             if(rms>.01) { liveTrace=trace; traceAt=lastCapture; traceSequence++; } else clearTrace();
                             predictions=p; neurons=trace.hidden; analysis=rms>.01?"Live session analysis · features stay on this phone":"Waiting for audible audio";
                             if(rms>.01&&lastCapture-lastFrame>=240) { lastFrame=lastCapture; frames.add(new Frame(x,(float)Math.min(1,rms*4))); while(frames.size()>240) frames.remove(0); }
@@ -297,6 +370,6 @@ public final class AudioService extends Service {
     }
     @Override public void onDestroy() {
         destroyed=true; handler.removeCallbacksAndMessages(null); trainer.shutdownNow(); unregisterReceiver(receiver); releasePlayer();
-        for(Chain c:chains.values()) c.close(); chains.clear(); mediaSession.release(); super.onDestroy();
+        for(Chain c:chains.values()) c.close(); chains.clear(); mediaSession.release();desktopAi.closeAfterPlayer(); super.onDestroy();
     }
 }
