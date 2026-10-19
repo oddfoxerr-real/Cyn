@@ -39,7 +39,7 @@ public final class MainActivity extends Activity {
     @Override public void onCreate(Bundle state){super.onCreate(state);ui=getSharedPreferences("ui",0);if(state!=null){page=state.getInt("page",0);query=state.getString("query","");onlyFavorites=state.getBoolean("favorites");}if(getIntent().getBooleanExtra("updates",false))page=3;build(false);bound=bindService(new Intent(this,AudioService.class),connection,BIND_AUTO_CREATE);UpdateManager.schedule(this);UpdateManager.check(this,false,null);}
     @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);state.putInt("page",page);state.putString("query",query);state.putBoolean("favorites",onlyFavorites);}
     @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);if(i.getBooleanExtra("updates",false)){page=3;build(false);}processControlIntent(i);}
-    void processControlIntent(Intent i){if(service!=null&&AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL.equals(i.getAction())){notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("session",i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1)));i.setAction(null);page=0;build(false);}}
+    void processControlIntent(Intent i){if(service!=null&&AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL.equals(i.getAction())){notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("session",i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1)));i.setAction(null);page=0;build(false);offerLiveVisuals();}}
     String asset(String name)throws IOException{try(InputStream in=getAssets().open(name)){return Streams.text(in);}}
     int dp(float v){return Math.round(v*getResources().getDisplayMetrics().density);}
     void palette(){reduced=ui.getBoolean("reduce",false)||!android.animation.ValueAnimator.areAnimatorsEnabled();int t=ui.getInt("studio_theme",0);int[][]colors={{0xff83b8ff,0xffaa8fff,0xff0c111c},{0xff65e4be,0xff7aa7ff,0xff071713},{0xffffad82,0xffea8da9,0xff190f10},{0xffc0a0ff,0xff86d9f3,0xff100d1b}};int[]c=colors[Math.floorMod(t,colors.length)];accent=c[0];secondary=c[1];card=c[2];}
@@ -92,8 +92,8 @@ public final class MainActivity extends Activity {
             .setMessage("Android's legacy output-mix EQ works only on some phones. It can affect multiple apps, and obtaining effect control does not prove music is being processed. Compare sound with CYN off/on. Disconnect music apps to stop the attempt.")
             .setPositiveButton("Try",(d,w)->{notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("legacy",true));offerLiveVisuals();})
             .setNegativeButton("Cancel",null).show()));
-        if(service.smart&&checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)
-            add(external,button("Allow live session analysis",this::requestAnalysis));
+        if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)
+            add(external,button("Enable live visuals",this::requestAnalysis));
         add(external,button("Connection details",this::connectionHelp));
     }
     void bands(int count){float[]old=service.studioEq.clone();int n=service.bandCount;for(int i=0;i<count;i++){float position=i*(n-1f)/(count-1);int lo=(int)position;service.studioEq[i]=old[lo]+(old[Math.min(n-1,lo+1)]-old[lo])*(position-lo);}service.bandCount=count;service.changed();build();}
@@ -163,7 +163,7 @@ public final class MainActivity extends Activity {
         if(miniToggle!=null){setLabel(miniToggle,service.playing?"Ⅱ":"▶");miniToggle.setContentDescription(service.playing?"Pause current track":"Play current track");}
         if(playButton!=null)setLabel(playButton,service.playing?"Pause":"Play");
         if(connectionTitle!=null){setLabel(connectionTitle,!service.enabled?"Original sound":service.playing?"Your sound, live":service.monitor?service.connectionState():"Ready when you are");setLabel(connectionHint,service.playing?(service.smart?service.desktopAi.status:"AI off · manual sound controls"):service.connectionHint());}
-        if(externalStatus!=null)setLabel(externalStatus,service.connectionState()+"\n"+service.connectionHint());
+        if(externalStatus!=null)setLabel(externalStatus,service.connectionState()+"\n"+service.connectionHint()+"\n"+service.visualizationStatus());
         if(processingDetails!=null)setLabel(processingDetails,service.processingStatus()+"\n"+service.visualizationStatus());
         if(powerButton!=null)setLabel(powerButton,service.monitor?"Disconnect CYN":"Connect CYN");
         if(playLabel!=null)setLabel(playLabel,service.title);if(position!=null&&!seeking){position.setMax(Math.max(1,service.duration()));position.setProgress(service.position());}if(positionLabel!=null)setLabel(positionLabel,time(service.position())+" / "+time(service.duration()));
