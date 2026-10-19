@@ -1,6 +1,6 @@
-# CYN Studio Android 0.2.3 preview
+# CYN Studio Android 0.2.4 preview
 
-Download **Cyn-Studio-Android-0.2.3-preview.apk**, open it on your phone and confirm
+Download **Cyn-Studio-Android-0.2.4-preview.apk**, open it on your phone and confirm
 installation. Requires Android 9+ on a 64-bit ARM or x86 device.
 
 This installs as **CYN Studio** alongside the old **Cyn** app. The old signing key
@@ -8,6 +8,13 @@ was unavailable, so Studio has a new app identity and a preserved release key fo
 future updates. Your old app and its data remain intact; Studio starts with its own
 settings and learning. Turn off monitoring in old Cyn before enabling Studio.
 
+- Sound Studio now displays a second, animated AI target marker for bass,
+  vocal clarity, width, ambience, dynamics and every 31/35/39 EQ band.
+  Markers follow actual parameters applied to CYN's native sound engine.
+  Compatible external audio only shows adjusted bass/clarity when Android
+  grants EQ control and live audio analysis is available.
+- Manual sliders remain independently touchable. AI markers disappear when
+  Smart Listening is disabled or when no current model adjustment exists.
 - Connect CYN now offers the permission needed for live audio visuals.
 - Added Android output-mix visualizer fallback for players without individual
   audio-effect sessions. Live spectrum and neural activity use measured audio,
