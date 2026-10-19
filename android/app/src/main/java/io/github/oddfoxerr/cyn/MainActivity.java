@@ -260,35 +260,95 @@ public final class MainActivity extends Activity {
     }
     final class NeuralView extends View {
         final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
-        final double[] direction=new double[5];
         final String[] names={"Clarity","Ambience","Surround","Dynamic","Bass"};
-        NeuralView() { super(MainActivity.this); setContentDescription("Measured 11 input, 12 hidden and 5 output neural activations; no decorative animation."); }
-        float x(int i,int count) { return dp(10)+(getWidth()-dp(20))*i/(count-1f); }
-        void edges(Canvas c,double[] values,int from,int to,float y1,float y2) {
-            p.setStrokeWidth(dp(.8f));
-            for(int j=0;j<to;j++) for(int i=0;i<from;i++) {
-                double v=values[j*from+i]; p.setColor(v<0?0xffeeb060:accent); p.setAlpha(10+(int)(170*(1-Math.exp(-Math.abs(v)))));
-                c.drawLine(x(i,from),y1,x(j,to),y2,p);
+        final double[] previousInput=new double[11],previousHidden=new double[12],previousOutput=new double[5];
+        final double[] previousEdgesIn=new double[132],previousEdgesOut=new double[60];
+        final double[] visibleInput=new double[11],visibleHidden=new double[12],visibleOutput=new double[5];
+        final double[] visibleEdgesIn=new double[132],visibleEdgesOut=new double[60];
+        PreferenceModel.Trace lastTrace;
+        long transitionAt;
+        NeuralView(){
+            super(MainActivity.this);
+            setContentDescription("Measured neural activations: glowing nodes and signal impulses follow live model values");
+        }
+        float x(int i,int count){return dp(12)+(getWidth()-dp(24))*i/(count-1f);}
+        void transition(double[] from,double[] target,double[] output,float t){
+            for(int i=0;i<output.length;i++)output[i]=from[i]+(target[i]-from[i])*t;
+        }
+        void copyVisibleToPrevious(){
+            System.arraycopy(visibleInput,0,previousInput,0,11);
+            System.arraycopy(visibleHidden,0,previousHidden,0,12);
+            System.arraycopy(visibleOutput,0,previousOutput,0,5);
+            System.arraycopy(visibleEdgesIn,0,previousEdgesIn,0,132);
+            System.arraycopy(visibleEdgesOut,0,previousEdgesOut,0,60);
+        }
+        void edges(Canvas c,double[] values,int from,int to,float y1,float y2,long now,boolean pulse){
+            p.setStrokeWidth(dp(.75f));
+            for(int j=0;j<to;j++)for(int i=0;i<from;i++){
+                double v=values[j*from+i],strength=Math.min(1,Math.abs(v)*5);
+                if(strength<.008)continue;
+                float x1=x(i,from),x2=x(j,to);
+                p.setColor(v<0?0xffffa76c:accent);
+                p.setAlpha(Math.min(165,12+(int)(145*strength)));
+                c.drawLine(x1,y1,x2,y2,p);
+                if(pulse&&strength>.18){
+                    // The number, brightness and speed of impulses depend on measured connection strength.
+                    float phase=(float)(((now*(.00030+.00048*strength)+(i*7+j*11)*.19)%1+1)%1);
+                    float px=x1+(x2-x1)*phase,py=y1+(y2-y1)*phase;
+                    p.setAlpha((int)(50+145*strength));
+                    c.drawCircle(px,py,dp(1.1f)+(float)(dp(1.5f)*strength),p);
+                }
             }
         }
-        void nodes(Canvas c,double[] values,float y) {
-            for(int i=0;i<values.length;i++) { double v=values[i]; p.setColor(v<0?0xffeeb060:accent); p.setAlpha(35+(int)(220*Math.min(1,Math.abs(v)))); c.drawCircle(x(i,values.length),y,dp(3.5f),p); }
+        void nodes(Canvas c,double[] values,float y,boolean[] trained){
+            for(int i=0;i<values.length;i++){
+                double value=trained!=null&&!trained[i]?0:values[i];
+                float strength=(float)Math.min(1,Math.abs(value));
+                p.setColor(value<0?0xffffa76c:accent);
+                p.setAlpha((int)(24+85*strength));
+                c.drawCircle(x(i,values.length),y,dp(3.8f)+dp(4)*strength,p);
+                p.setAlpha((int)(60+195*strength));
+                c.drawCircle(x(i,values.length),y,dp(2.8f)+dp(1.5f)*strength,p);
+            }
         }
-        @Override protected void onDraw(Canvas c) {
-            super.onDraw(c); PreferenceModel.Trace t=service.neuralTrace();
-            p.setAlpha(255); p.setColor(hint); p.setTextSize(dp(12));
-            if(t==null) { c.drawText(service.training?"Waiting for a training epoch":"Waiting for fresh audio analysis",dp(4),getHeight()/2f,p); return; }
-            float y1=dp(20),y2=getHeight()*.42f,y3=getHeight()-dp(55);
-            edges(c,t.inputConnections,11,12,y1,y2); edges(c,t.outputConnections,12,5,y2,y3);
-            nodes(c,t.inputs,y1); nodes(c,t.hidden,y2);
-            for(int i=0;i<5;i++) direction[i]=t.ready[i]?t.outputs[i]*2-1:0; nodes(c,direction,y3);
-            p.setTextAlign(Paint.Align.CENTER); p.setAlpha(255); p.setColor(hint); p.setTextSize(dp(9));
-            for(int i=0;i<5;i++) {
-                float labelX=dp(23)+(getWidth()-dp(46))*i/4f;
+        @Override protected void onDraw(Canvas c){
+            super.onDraw(c);
+            if(service==null)return;
+            PreferenceModel.Trace t=service.neuralTrace();
+            long now=SystemClock.elapsedRealtime();
+            p.setColor(hint);p.setAlpha(255);p.setTextSize(dp(12));
+            if(t==null){
+                lastTrace=null;
+                c.drawText(service.training?"Waiting for a measured training epoch":"Waiting for fresh neural activity",dp(8),getHeight()*.5f,p);
+                return;
+            }
+            if(lastTrace!=t){
+                copyVisibleToPrevious();
+                lastTrace=t;transitionAt=now;
+            }
+            float blend=reduced?1:Math.min(1,(now-transitionAt)/270f);
+            transition(previousInput,t.inputs,visibleInput,blend);
+            transition(previousHidden,t.hidden,visibleHidden,blend);
+            transition(previousOutput,t.outputs,visibleOutput,blend);
+            transition(previousEdgesIn,t.inputConnections,visibleEdgesIn,blend);
+            transition(previousEdgesOut,t.outputConnections,visibleEdgesOut,blend);
+            float y1=dp(20),y2=getHeight()*.43f,y3=getHeight()-dp(53);
+            boolean live=!reduced&&service.enabled&&service.smart&&!service.training;
+            edges(c,visibleEdgesIn,11,12,y1,y2,now,live);
+            edges(c,visibleEdgesOut,12,5,y2,y3,now,live);
+            nodes(c,visibleInput,y1,null);
+            nodes(c,visibleHidden,y2,null);
+            double[] signedOutput=new double[5];
+            for(int i=0;i<5;i++)signedOutput[i]=t.ready[i]?(visibleOutput[i]*2-1):0;
+            nodes(c,signedOutput,y3,t.ready);
+            p.setTextAlign(Paint.Align.CENTER);p.setAlpha(255);p.setColor(hint);p.setTextSize(dp(9));
+            for(int i=0;i<5;i++){
+                float labelX=x(i,5);
                 c.drawText(names[i],labelX,y3+dp(19),p);
-                c.drawText(t.ready[i]?Math.round(t.outputs[i]*100)+"%":"--",labelX,y3+dp(34),p);
+                c.drawText(t.ready[i]?Math.round(visibleOutput[i]*100)+"%":"--",labelX,y3+dp(34),p);
             }
             p.setTextAlign(Paint.Align.LEFT);
+            if(!reduced&&(live||blend<1)&&isAttachedToWindow())postInvalidateDelayed(40);
         }
     }
 }
