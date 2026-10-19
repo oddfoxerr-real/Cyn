@@ -1,9 +1,9 @@
-# CYN Studio Android 0.2.1 validation plan — 2026-10-19
+# CYN Studio Android 0.2.2 validation plan — 2026-10-19
 
 ## Studio identity and signing
 
 Studio uses application ID `io.github.oddfoxerr.cyn.studio`, launcher label
-`CYN Studio`, version code 5 and version name `0.2.1-preview`. It installs alongside
+`CYN Studio`, version code 6 and version name `0.2.2-preview`. It installs alongside
 legacy `io.github.oddfoxerr.cyn` because the original signing key was not recovered.
 The old app and its data remain intact. Studio starts with independent storage.
 
@@ -17,7 +17,18 @@ assets. Before installation it verifies the APK checksum, package, increasing
 version code and equality with the installed signing certificate. Legacy Android
 and Windows release channels are excluded.
 
-## 0.2.1 connection regression gate
+## 0.2.2 validation requirements
+
+- Verify spectrum is derived from measured FFT bins and silence has zero visual activity.
+- Verify local Connection details omit manufacturer, model, app names and session IDs.
+- Check native AI processing status distinguishes external Android EQ and CYN library PCM.
+- Check neural view goes inactive without recent activations and respects reduce-motion.
+- Verify existing music-session monitoring remains functional and the user off-switch
+  stays off until re-enabled.
+- These tests cannot prove physical-device system-mix routing, headset quality or
+  external Spotify compatibility. Verify on target devices before stable release.
+
+## 0.2.2 connection regression gate
 
 The Android 15 instrumentation suite adds an external-session test that starts
 monitoring while enhancement is off and asserts the on/off state is preserved.
