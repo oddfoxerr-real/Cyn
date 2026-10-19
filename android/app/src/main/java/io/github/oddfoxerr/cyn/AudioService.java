@@ -51,6 +51,12 @@ public final class AudioService extends Service {
     int traceSequence;
     volatile float[] sessionSpectrum=new float[31];
     volatile long sessionSpectrumAt;
+    // Visualizer(0) may provide permitted output-mix measurements even if the
+    // music player never exposes an EQ session. It does not route audio.
+    private Visualizer outputVisuals;
+    private long visualRetryAt;
+    private volatile double measuredRms, measuredPeak;
+    private String visualError="Not started";
     float aiDeltaDb;
     int aiEqBands;
     boolean legacy;
@@ -110,10 +116,22 @@ public final class AudioService extends Service {
             "\nSystem mix compatibility: "+(legacy?"requested":"not requested")+
             "\nLive session spectrum: "+(hasSessionSpectrum()?"receiving samples":"no recent samples")+
             "\nPersonal neural activity: "+(neuralTrace()!=null?"measured locally":"no recent activation data")+
+            "\nVisualization: "+visualizationStatus()+
             "\nAudio remains on your device. These details are shown only in the app.";
     }
     boolean hasSessionSpectrum() {
         return monitor&&enabled&&sessionSpectrumAt>0&&SystemClock.elapsedRealtime()-sessionSpectrumAt<1200;
+    }
+    String visualizationStatus(){
+        if(!monitor&&!playing)return "Connect CYN to activate live audio visuals";
+        if(!enabled)return "Visuals paused · enhancement disabled";
+        if(playing)return "CYN internal player visualization";
+        if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)
+            return "Live visuals need playback analysis permission";
+        if(hasSessionSpectrum())return neuralTrace()!=null
+            ?"Live audio spectrum + neural activity"
+            :"Live audio spectrum · enable Smart Listening for neural activity";
+        return "Waiting for playback measurements · "+visualError;
     }
     String processingStatus() {
         if(!enabled)return "Enhancement off · original sound";
