@@ -1,14 +1,14 @@
-# CYN Studio Android 0.2.3 preview
+# CYN Studio Android 0.2.4 preview
 
 Android 9+ on 64-bit ARM or x86. The app is named **CYN Studio**, package
-`io.github.oddfoxerr.cyn.studio`, version code 7. It installs alongside the older
+`io.github.oddfoxerr.cyn.studio`, version code 8. It installs alongside the older
 Cyn app because that app's original signing key could not be recovered. Keep the
 old app to preserve its settings and learning; Studio starts with separate data.
 Disable the old app's audio monitoring before enabling Studio to avoid competing
 effects. Future Studio releases retain this identity and signing key.
 
-Download `Cyn-Studio-Android-0.2.3-preview.apk` from the
-[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.3-preview),
+Download `Cyn-Studio-Android-0.2.4-preview.apk` from the
+[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.4-preview),
 open it on your phone and confirm installation. Do not uninstall the old Cyn to
 install Studio.
 
@@ -35,6 +35,15 @@ install Studio.
   and current signing certificate must verify before install. Android confirms the
   installation. Legacy Android and Windows releases are never selected. Background
   checks can be disabled.
+
+## AI-controlled Sound Studio
+
+Sound controls display independent AI target rings. The primary slider is
+always the user's manual setting. Live rings are backed by applied native
+DSP values for local playback; on compatible third-party sessions, only bass
+and clarity offsets supported by the Android EQ are shown. No ring appears
+when neural updates are absent, unavailable, or turned off. Animations respect
+reduced motion.
 
 ## Connect CYN visuals
 
