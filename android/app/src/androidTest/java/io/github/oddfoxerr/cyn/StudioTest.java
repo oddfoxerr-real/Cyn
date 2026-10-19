@@ -118,4 +118,37 @@ public class StudioTest {
         });
     }
 
+    @Test public void spectrumUsesOnlyMeasuredBinsAndSilenceDecays()throws Exception {
+        byte[] silent=new byte[1024];
+        float[] empty=AudioFeatures.spectrum(silent,48000);
+        assertEquals(31,empty.length);
+        for(float level:empty)assertEquals(0f,level,0.00001f);
+        byte[] fft=new byte[1024];
+        fft[32]=100;
+        fft[128]=30;
+        float[] measured=AudioFeatures.spectrum(fft,48000);
+        int active=0;float strongest=0;
+        for(float level:measured){
+            assertTrue(Float.isFinite(level));
+            assertTrue(level>=0f&&level<=1f);
+            if(level>.01f)active++;
+            strongest=Math.max(strongest,level);
+        }
+        assertEquals("Only occupied spectrum bands should react",2,active);
+        assertTrue(strongest>.95f);
+    }
+    @Test public void connectionDetailsDoNotExposeDeviceIdentity()throws Exception {
+        MainActivity a=ready();
+        main(()->{
+            String details=a.service.diagnostics();
+            assertTrue(details.contains("CYN Studio"));
+            assertTrue(details.contains("Audio remains on your device"));
+            String model=Build.MODEL,manufacturer=Build.MANUFACTURER;
+            if(model!=null&&model.length()>2)assertFalse(details.contains(model));
+            if(manufacturer!=null&&manufacturer.length()>2)assertFalse(details.contains(manufacturer));
+            assertFalse("Connection text should not contain an audio session identifier",details.contains(" · session "));
+            assertNotNull(a.service.processingStatus());
+        });
+    }
+
 }

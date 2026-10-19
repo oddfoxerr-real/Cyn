@@ -1,6 +1,6 @@
-# CYN Studio Android 0.2.1 preview
+# CYN Studio Android 0.2.2 preview
 
-Download **Cyn-Studio-Android-0.2.1-preview.apk**, open it on your phone and confirm
+Download **Cyn-Studio-Android-0.2.2-preview.apk**, open it on your phone and confirm
 installation. Requires Android 9+ on a 64-bit ARM or x86 device.
 
 This installs as **CYN Studio** alongside the old **Cyn** app. The old signing key
@@ -8,6 +8,16 @@ was unavailable, so Studio has a new app identity and a preserved release key fo
 future updates. Your old app and its data remain intact; Studio starts with its own
 settings and learning. Turn off monitoring in old Cyn before enabling Studio.
 
+- Smart Listening is the primary mobile experience; the audio library is optional.
+- Reworked Connection details to show a concise, identity-free on-device status instead
+  of phone model, manufacturer, Android version, player names and session identifiers.
+- Added a measured, audio-reactive 31-band spectrum for library playback and compatible
+  external audio with granted visualization permission, with honest silence/stale decay.
+- Neural connections now interpolate real personal-model activations, with strength-based
+  moving impulses and a truthful inactive state when no model measurements are available.
+- Exposed the actual processing path and AI adjustment telemetry. Compatible external
+  audio gets conservative spectral auto-EQ when the personal model is not trained.
+  External playback does not use CYN's internal native YAMNet PCM DSP.
 - Fixed the music-app connection button: it now distinguishes monitoring, no session,
   incompatible sessions, controlled Android EQ and device-dependent compatibility mode.
   Connecting no longer silently re-enables enhancement after switching it off.

@@ -1,14 +1,14 @@
-# CYN Studio Android 0.2.1 preview
+# CYN Studio Android 0.2.2 preview
 
 Android 9+ on 64-bit ARM or x86. The app is named **CYN Studio**, package
-`io.github.oddfoxerr.cyn.studio`, version code 5. It installs alongside the older
+`io.github.oddfoxerr.cyn.studio`, version code 6. It installs alongside the older
 Cyn app because that app's original signing key could not be recovered. Keep the
 old app to preserve its settings and learning; Studio starts with separate data.
 Disable the old app's audio monitoring before enabling Studio to avoid competing
 effects. Future Studio releases retain this identity and signing key.
 
-Download `Cyn-Studio-Android-0.2.1-preview.apk` from the
-[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.1-preview),
+Download `Cyn-Studio-Android-0.2.2-preview.apk` from the
+[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.2-preview),
 open it on your phone and confirm installation. Do not uninstall the old Cyn to
 install Studio.
 
@@ -36,12 +36,32 @@ install Studio.
   installation. Legacy Android and Windows releases are never selected. Background
   checks can be disabled.
 
+## CYN as a music AI assistant
+
+Smart Listening is the primary feature. The Sound Studio shows measured audio
+and its actual processing state for compatible external sessions. Audio Library
+is a bonus local player, not a required input or the focus of the app.
+
+The app does not automatically collect device model, manufacturer, Android
+version, media session IDs or app identities in connection details. Optional
+on-device diagnostics are anonymized by default. Measured Visualizer FFT data is
+processed on the phone and not uploaded. Android's playback-session and system
+mix limitations still apply; no root or covert recording is requested.
+
+The live spectrum interpolates measured source frequency bins only and fades
+when samples stop. Personal neural animations use recorded activations and
+weighted connections, never artificial inference telemetry. Output percentages
+appear only for trained personal preferences. The untrained fallback for
+compatible external sessions is conservative spectral adaptation, not YAMNet.
+The complete native YAMNet + CYN PCM chain remains a separate path for
+locally played tracks. This does not imply mobile interception of every app.
+
 ## Music-app connection
 
-Tap **Connect music apps**, then start playback in a compatible music app, and
+Tap **Connect CYN**, then start playback in a compatible music app, and
 choose CYN as the app's equalizer if offered. The status now distinguishes
 monitoring from a real session with Android EQ control. A connected effect does
-not establish that another player routes through it. **Disconnect music apps**
+not establish that another player routes through it. **Disconnect CYN**
 stops external monitoring. **CYN enhancement** separately disables all effects
 without silently being re-enabled when monitoring starts.
 
