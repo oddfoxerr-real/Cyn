@@ -1,14 +1,14 @@
-# CYN Studio Android 0.2.0 preview
+# CYN Studio Android 0.2.1 preview
 
 Android 9+ on 64-bit ARM or x86. The app is named **CYN Studio**, package
-`io.github.oddfoxerr.cyn.studio`, version code 4. It installs alongside the older
+`io.github.oddfoxerr.cyn.studio`, version code 5. It installs alongside the older
 Cyn app because that app's original signing key could not be recovered. Keep the
 old app to preserve its settings and learning; Studio starts with separate data.
 Disable the old app's audio monitoring before enabling Studio to avoid competing
 effects. Future Studio releases retain this identity and signing key.
 
-Download `Cyn-Studio-Android-0.2.0-preview.apk` from the
-[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.0-preview),
+Download `Cyn-Studio-Android-0.2.1-preview.apk` from the
+[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.1-preview),
 open it on your phone and confirm installation. Do not uninstall the old Cyn to
 install Studio.
 
@@ -35,6 +35,21 @@ install Studio.
   and current signing certificate must verify before install. Android confirms the
   installation. Legacy Android and Windows releases are never selected. Background
   checks can be disabled.
+
+## Music-app connection
+
+Tap **Connect music apps**, then start playback in a compatible music app, and
+choose CYN as the app's equalizer if offered. The status now distinguishes
+monitoring from a real session with Android EQ control. A connected effect does
+not establish that another player routes through it. **Disconnect music apps**
+stops external monitoring. **CYN enhancement** separately disables all effects
+without silently being re-enabled when monitoring starts.
+
+For phones that do not expose sessions, **Try device-wide EQ (experimental)**
+requests the legacy output-mix effect (session 0), after a warning. Android may
+refuse it, or the player may ignore it. Compare music with the toggle off and
+on; unsupported apps cannot be forced through CYN. Granting RECORD_AUDIO permits
+session visualization where supported; it does not grant global audio interception.
 
 ## Audio scope
 

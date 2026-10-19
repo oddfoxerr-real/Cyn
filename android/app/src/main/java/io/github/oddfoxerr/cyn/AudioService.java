@@ -51,6 +51,39 @@ public final class AudioService extends Service {
     boolean legacy;
     PreferenceModel.Trace neuralTrace() { return training?trainingTrace:enabled&&smart&&SystemClock.elapsedRealtime()-traceAt<900?liveTrace:null; }
     Chain displayedChain() { return chains.get(legacy?0:playing?playerSession:activeSession); }
+    int externalSessionCount() {
+        int count=0;
+        for(Chain c:chains.values()) if(c.id>0&&c.id!=playerSession) count++;
+        return count;
+    }
+    int controlledExternalEqCount() {
+        int count=0;
+        for(Chain c:chains.values()) if(c.id>0&&c.id!=playerSession&&c.controlsEq()) count++;
+        return count;
+    }
+    String connectionState() {
+        if(!monitor) return "Other apps disconnected";
+        if(!enabled) return "Enhancement off · monitoring only";
+        if(legacy) {
+            Chain c=chains.get(0);
+            return c!=null&&c.controlsEq()?"System-mix EQ available · routing unverified":"System-mix EQ unavailable on this device";
+        }
+        int controlled=controlledExternalEqCount();
+        if(controlled>0) return controlled==1?"1 music session EQ controlled":controlled+" music session EQs controlled";
+        if(externalSessionCount()>0) return "Music session detected · EQ unavailable";
+        return "Waiting for a compatible music session";
+    }
+    String connectionHint() {
+        if(!monitor) return "Connect a compatible music app, or play a track in CYN's library for full processing.";
+        if(!enabled) return "Monitoring is on, but enhancement is switched off.";
+        if(legacy) return "Experimental output-mix mode: even EQ control does not prove that other apps use it. Compare sound on/off.";
+        if(controlledExternalEqCount()>0) return "CYN controls Android's session EQ. Whether the player routes through it is device-dependent; full neural DSP is for CYN library tracks.";
+        if(externalSessionCount()>0) {
+            for(Chain c:chains.values()) if(c.id>0&&c.id!=playerSession&&!c.failure.isEmpty()) return c.failure;
+            return "Android exposed a session but did not grant usable effect control.";
+        }
+        return "Open a music app and restart its playback. Select CYN in that app's EQ settings if available. Some apps never share an audio session.";
+    }
     String neuralStatus() {
         if(training) return "Training candidate · epoch "+trainingEpoch+" / 240 · example input";
         PreferenceModel.Trace t=neuralTrace(); Chain c=displayedChain();
@@ -63,15 +96,16 @@ public final class AudioService extends Service {
     }
     void clearTrace() { liveTrace=null; traceAt=0; Arrays.fill(predictions,0); Arrays.fill(neurons,0); }
     String diagnostics() {
-        StringBuilder s=new StringBuilder("Cyn "+BuildConfig.VERSION_NAME+" ("+BuildConfig.VERSION_CODE+")\n"+Build.MANUFACTURER+" "+Build.MODEL+" · Android "+Build.VERSION.RELEASE+"\nMonitor: "+monitor+" · legacy output mix: "+legacy+"\n"+neuralStatus());
+        StringBuilder s=new StringBuilder("Cyn "+BuildConfig.VERSION_NAME+" ("+BuildConfig.VERSION_CODE+")\n"+Build.MANUFACTURER+" "+Build.MODEL+" · Android "+Build.VERSION.RELEASE+"\nMonitor: "+monitor+" · legacy output mix: "+legacy+" · detected external sessions: "+externalSessionCount()+" · controlled external EQs: "+controlledExternalEqCount()+"\n"+connectionState()+"\n"+connectionHint()+"\n"+neuralStatus());
         for(Chain c:chains.values()) s.append("\n").append(c.description());
-        if(chains.isEmpty()) s.append("\nNo audio session received. Start monitoring, then reopen playback or select Cyn in the music app's equalizer.");
+        if(monitor&&!legacy&&externalSessionCount()==0) s.append("\nNo compatible third-party audio session received yet.");
         return s.toString();
     }
     void startLegacy() {
         for(Integer id:new ArrayList<>(chains.keySet())) detach(id);
         legacy=true; monitor=true; attach(0,"Legacy output mix (device dependent)");
-        status="Legacy compatibility requested; compare sound with Enhancement on/off. Effect ownership does not prove this phone routes Spotify through it.";
+        status=connectionState();
+        updateNotification();
     }
     private final BroadcastReceiver receiver=new BroadcastReceiver() {
         @Override public void onReceive(Context c,Intent i) {
@@ -130,13 +164,15 @@ public final class AudioService extends Service {
             String action=i.getAction();
             if(STOP.equals(action)) { stopAll(); return START_NOT_STICKY; }
             if(MONITOR.equals(action)) {
-                monitor=true; foreground(); enabled=true; changed();
+                monitor=true; foreground();
                 if(i.getBooleanExtra("legacy",false)) startLegacy();
                 else {
-                    if(legacy) { detach(0); legacy=false;  }
-                    int id=i.getIntExtra("session",-1); if(id>0&&id!=playerSession) attach(id,"Music app");
-                    status="Waiting for a music app to share its audio session";
+                    if(legacy) { detach(0); legacy=false; }
+                    int id=i.getIntExtra("session",-1);
+                    if(id>0&&id!=playerSession) attach(id,i.getStringExtra(AudioEffect.EXTRA_PACKAGE_NAME));
+                    status=connectionState();
                 }
+                updateNotification();
             }
             else if("cyn.QUEUE".equals(action)) { foreground(); }
             else if(PLAY.equals(action)&&i.getData()!=null) { foreground(); open(i.getData()); }
@@ -148,7 +184,8 @@ public final class AudioService extends Service {
         monitor=false; legacy=false; for(Integer id:new ArrayList<>(chains.keySet())) if(id!=playerSession) detach(id);
         if(playing||preparing) foreground(); else { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); }
 
-        status="Other-app enhancement stopped";
+        status=connectionState();
+        updateNotification();
     }
     private void foreground() {
         int type=0;
@@ -164,7 +201,7 @@ public final class AudioService extends Service {
     private Notification notification() {
         PendingIntent open=PendingIntent.getActivity(this,0,new Intent(this,MainActivity.class),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder b=new Notification.Builder(this,"audio").setSmallIcon(R.drawable.ic_notification).setContentTitle("Cyn · "+(player!=null?title:"Compatible apps"))
-            .setContentText(playing?"Playing with your sound settings":monitor?"Other-app enhancement enabled":"Paused")
+            .setContentText(playing?"Playing with your sound settings":monitor?connectionState():"Paused")
             .setContentIntent(open).setOnlyAlertOnce(true).setOngoing(playing||monitor).addAction(new Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(this,R.drawable.ic_stop),"Stop",action(STOP)).build());
         if(player!=null) b.addAction(new Notification.Action.Builder(android.graphics.drawable.Icon.createWithResource(this,playing?R.drawable.ic_pause:R.drawable.ic_play),playing?"Pause":"Play",action(TOGGLE)).build()).setStyle(new Notification.MediaStyle().setMediaSession(mediaSession.getSessionToken()).setShowActionsInCompactView(1,0));
         return b.build();
@@ -244,10 +281,12 @@ public final class AudioService extends Service {
         if(id<0||(!legacy&&id==0)||(legacy&&id!=0)||chains.containsKey(id)) return;
         if(chains.size()>=8) { status="Too many audio sessions; close an unused player."; return; }
         clearTrace(); Chain c=new Chain(id,owner==null?"Music app":owner); chains.put(id,c); activeSession=id; frames.clear(); c.apply(); c.analyze();
+        if(monitor) { status=connectionState(); updateNotification(); }
     }
     private void detach(int id) {
         clearTrace(); Chain c=chains.remove(id); if(c!=null) c.close();
         if(activeSession==id) { activeSession=chains.isEmpty()?-1:chains.keySet().iterator().next(); frames.clear(); }
+        if(monitor) { status=connectionState(); updateNotification(); }
     }
     void changed() {
         SharedPreferences.Editor e=prefs.edit().putBoolean("enabled",enabled).putBoolean("smart",smart).putFloat("sensitivity",sensitivity).putFloat("bass",bass).putFloat("clarity",clarity).putFloat("width",width).putFloat("loudness",loudness);
@@ -255,6 +294,7 @@ public final class AudioService extends Service {
         e.putFloat("ambience",ambience).putFloat("dynamics",dynamics).putFloat("headroom",headroom).putInt("bands",bandCount).putBoolean("apex",useApex).putBoolean("movie",movieMode);
         for(int i=0;i<39;i++)e.putFloat("studioEq"+i,studioEq[i]);e.apply();updateNativeControls();
         for(Chain c:chains.values()) { c.apply(); c.analyze(); }
+        if(monitor) { status=connectionState(); updateNotification(); }
         if(!smart||!enabled) { clearTrace(); analysis="Analysis off · manual settings restored"; }
     }
     void updateNativeControls() {

@@ -1,9 +1,9 @@
-# CYN Studio Android 0.2.0 validation — 2026-10-19
+# CYN Studio Android 0.2.1 validation plan — 2026-10-19
 
 ## Studio identity and signing
 
 Studio uses application ID `io.github.oddfoxerr.cyn.studio`, launcher label
-`CYN Studio`, version code 4 and version name `0.2.0-preview`. It installs alongside
+`CYN Studio`, version code 5 and version name `0.2.1-preview`. It installs alongside
 legacy `io.github.oddfoxerr.cyn` because the original signing key was not recovered.
 The old app and its data remain intact. Studio starts with independent storage.
 
@@ -17,7 +17,20 @@ assets. Before installation it verifies the APK checksum, package, increasing
 version code and equality with the installed signing certificate. Legacy Android
 and Windows release channels are excluded.
 
-## Checks completed locally
+## 0.2.1 connection regression gate
+
+The Android 15 instrumentation suite adds an external-session test that starts
+monitoring while enhancement is off and asserts the on/off state is preserved.
+It also asserts waiting and unavailable-EQ statuses instead of claiming a
+connection without effect control. The workflow runs these tests for pull
+requests targeting `codex/android` before release.
+
+Physical-phone verification is still necessary: actual routing through Spotify,
+browser audio, Samsung EQ interoperability and the experimental session-0
+compatibility path cannot be established by emulator tests. This update does not
+claim unrestricted other-app interception or desktop-equivalent DSP for Spotify.
+
+## Earlier checks (Studio 0.2.0)
 
 - 288 pure-Java assertions passed, including learning, inference telemetry,
   numeric release ordering, legacy channel exclusion and malformed release data.
@@ -33,7 +46,8 @@ real ONNX inference, Android build and lint checks. Android 15 instrumentation
 covers native/model loading, disabled PCM bypass, 44.1-to-48 kHz library playback,
 seek/pause, persistent favorites, rapid page changes and four phone screenshots.
 A fifth test checks Studio's application identity, launcher name and private
-update FileProvider. Publication requires all five tests to pass.
+update FileProvider. The sixth test checks the music-app monitor and enhancement
+state. Publication requires all instrumentation tests to pass.
 
 The signed APK must pass apksigner certificate verification, 16 KB zip alignment,
 and an aapt package/version check. A SHA-256 file and corresponding-source archive

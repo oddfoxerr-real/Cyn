@@ -88,4 +88,34 @@ public class StudioTest {
         main(()->a.service.seek(4000));Thread.sleep(800);assertTrue(position(a.service)>=3900);main(()->a.service.pause());int at=position(a.service);Thread.sleep(500);assertTrue(Math.abs(at-position(a.service))<100);main(()->a.service.stopAll());
         AudioLibrary library=new AudioLibrary(a);Uri fake=Uri.parse("content://media/external/audio/media/99999999");library.merge(Collections.singletonList(new AudioLibrary.Track(fake,"Persistent favorite","Artist","Album",1000,false)));library.favorite(fake);assertTrue(new AudioLibrary(a).all().stream().anyMatch(t->t.uri.equals(fake)&&t.favorite));library.remove(fake);
     }
+    @Test public void externalMonitoringPreservesPowerAndReportsActualControl()throws Exception {
+        MainActivity a=ready();
+        main(()->{
+            AudioService service=a.service;
+            boolean previous=service.enabled;
+            service.stopMonitor();
+            try {
+                service.enabled=false;
+                service.changed();
+                service.onStartCommand(new Intent(a,AudioService.class).setAction(AudioService.MONITOR),0,1);
+                assertTrue("Monitor should start",service.monitor);
+                assertFalse("Connecting must not force enhancement on",service.enabled);
+                assertEquals("Enhancement off · monitoring only",service.connectionState());
+                assertEquals(0,service.controlledExternalEqCount());
+                service.stopMonitor();
+                service.enabled=true;
+                service.changed();
+                service.onStartCommand(new Intent(a,AudioService.class).setAction(AudioService.MONITOR),0,2);
+                if(service.externalSessionCount()==0)
+                    assertEquals("Waiting for a compatible music session",service.connectionState());
+                else if(service.controlledExternalEqCount()==0)
+                    assertEquals("Music session detected · EQ unavailable",service.connectionState());
+            } finally {
+                service.stopMonitor();
+                service.enabled=previous;
+                service.changed();
+            }
+        });
+    }
+
 }
