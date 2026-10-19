@@ -93,7 +93,7 @@ public final class MainActivity extends Activity {
             .setPositiveButton("Try",(d,w)->{notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("legacy",true));offerLiveVisuals();})
             .setNegativeButton("Cancel",null).show()));
         if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)
-            add(external,button("Enable live visuals",this::requestAnalysis));
+            add(external,button("Enable live visuals",this::offerLiveVisuals));
         add(external,button("Connection details",this::connectionHelp));
     }
     void bands(int count){float[]old=service.studioEq.clone();int n=service.bandCount;for(int i=0;i<count;i++){float position=i*(n-1f)/(count-1);int lo=(int)position;service.studioEq[i]=old[lo]+(old[Math.min(n-1,lo+1)]-old[lo])*(position-lo);}service.bandCount=count;service.changed();build();}
@@ -150,7 +150,7 @@ public final class MainActivity extends Activity {
             .setPositiveButton("Enable",(d,w)->requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},21))
             .setNegativeButton("Not now",null).show();
     }
-    void requestAnalysis(){offerLiveVisuals();}
+    void requestAnalysis(){service.smart=true;service.changed();offerLiveVisuals();}
     void notifications(){if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},22);}
     @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results){super.onRequestPermissionsResult(code,permissions,results);if(service==null)return;if(code==23&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)scan();
         service.changed();
