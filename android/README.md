@@ -87,6 +87,8 @@ and unsigned build artifacts cannot replace them.
 
 ## Verification
 
+Recorded build, emulator and signing results are in [VALIDATION.md](VALIDATION.md).
+
 `tests/native/engine_test.cpp` exercises real DSP: settled exact bypass, worst-case
 boosts, mono/stereo, silence and model windows. `tests/AudioModelTest.java` checks
 training/inference and Android release ordering. `tests/ApexFeaturesTest.java` plus

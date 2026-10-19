@@ -4,7 +4,10 @@ The source adds a phone sound studio, persistent library, native PCM effects,
 desktop ONNX inference and verified automatic Android updates. Release publication
 requires all workflow gates plus the original Android signing certificate.
 
-## Completed local checks
+## Completed build and functional checks
+
+[Workflow run 39256987103](https://github.com/oddfoxerr-real/Cyn/actions/runs/39256987103)
+checked application commit `416031cc36319998c0005b543549d1b3e73f3048`.
 
 - Native C++ DSP tests passed: exact settled bypass, 31/35/39 bands, mono/stereo,
   silence, bounded boosted output, feature snapshots and both neural model windows.
@@ -12,8 +15,44 @@ requires all workflow gates plus the original Android signing certificate.
 - Java APEX preprocessing matches an independent NumPy STFT within 2e-5.
 - Actual desktop YAMNet and APEX model inference returned finite, correctly shaped
   outputs. Weights are SHA-256 pinned by `scripts/prepare_models.py`.
-- Earlier development builds compiled; the final ONNX Runtime 1.23.2 build, lint,
-  device instrumentation and release signing are verified by the release workflow.
+- Release, debug and instrumentation APK builds and Android lint passed with
+  ONNX Runtime 1.23.2.
+- Android 15 emulator instrumentation passed: **4 tests, 0 failures, 0 errors**.
+  This covered native/model loading, exact disabled PCM bypass, 44.1-to-48 kHz
+  library playback, seek/pause, persistent favorites and rapid page transitions.
+- Four phone-page captures were checked in touch mode after transitions completed.
+  Pixel assertions verified the header, mini-player text/play control and every
+  navigation tab on each page. The captured header and mini-player pixels are
+  identical across all four pages. The screenshots use Android PixelCopy to capture
+  CYN's actual window without unrelated emulator launcher dialogs.
+- Liquid transitions draw their bitmap mesh in a separate overlay view. Cancelled
+  transitions remove that view; Android retains bitmap ownership until rendering
+  has finished. Reduced motion skips the overlay.
+- Independent inspection of the earlier `4464fe9` unsigned APK confirmed that all
+  six native libraries across ARM64 and x86_64 have 16 KB ELF and APK alignment.
+  Both real desktop ONNX model assets were present. Native libraries and build
+  configuration are unchanged in `416031c`.
+- The Windows signing setup helper passed PowerShell parser validation. Its actual
+  key upload requires the original Windows account and has not been executed here.
+
+## Release status
+
+The workflow stopped at **Verify original signing key and sign update** because
+`CYN_ANDROID_KEYSTORE_BASE64` and `CYN_ANDROID_KEY_PASSWORD` were missing. Build,
+lint and device gates passed before that step. **No signed 0.2.0 APK was published.**
+
+From the updated repository on the original Windows account, with JDK 17 and an
+authenticated GitHub CLI, run:
+
+```powershell
+.\android\scripts\configure_release_key.ps1 -Publish
+```
+
+The helper verifies the original certificate, configures the encrypted repository
+secrets and starts the release workflow. It requires the existing
+`android/.signing/cyn-android.jks` and `password.dpapi`; use `-SigningDirectory`
+if those files are in an older checkout. A replacement key cannot update existing
+installations.
 
 ## Reproducible release gates
 
