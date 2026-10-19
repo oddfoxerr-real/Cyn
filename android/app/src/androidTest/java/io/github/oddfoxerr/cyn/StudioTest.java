@@ -17,6 +17,7 @@ import static org.junit.Assert.*;
 public class StudioTest {
     @Rule public ActivityTestRule<MainActivity> rule=new ActivityTestRule<>(MainActivity.class);
     private void main(Runnable action){InstrumentationRegistry.getInstrumentation().runOnMainSync(action);}
+    private int position(AudioService service){int[] value={0};main(()->value[0]=service.position());return value[0];}
     private MainActivity ready()throws Exception{MainActivity activity=rule.getActivity();long until=SystemClock.elapsedRealtime()+15000;while(activity.service==null&&SystemClock.elapsedRealtime()<until)Thread.sleep(100);assertNotNull(activity.service);return activity;}
     @Test public void captureScreens()throws Exception{
         MainActivity a=ready();String output=InstrumentationRegistry.getArguments().getString("additionalTestOutputDir");File folder=output==null?new File(a.getExternalFilesDir(null),"qa"):new File(output);assertTrue(folder.isDirectory()||folder.mkdirs());
@@ -37,8 +38,8 @@ public class StudioTest {
         data.put("RIFF".getBytes("US-ASCII")).putInt(data.capacity()-8).put("WAVEfmt ".getBytes("US-ASCII")).putInt(16).putShort((short)1).putShort((short)2).putInt(rate).putInt(rate*4).putShort((short)4).putShort((short)16).put("data".getBytes("US-ASCII")).putInt(frames*4);
         for(int i=0;i<frames;i++){short sample=(short)(5000*Math.sin(2*Math.PI*220*i/rate));data.putShort(sample).putShort(sample);}try(FileOutputStream out=new FileOutputStream(file)){out.write(data.array());}
         AudioLibrary.Track track=new AudioLibrary.Track(Uri.fromFile(file),"Playback test","CYN tests","QA",8000,false);
-        main(()->a.service.playQueue(Collections.singletonList(track),0));long end=SystemClock.elapsedRealtime()+30000;while(a.service.position()<800&&SystemClock.elapsedRealtime()<end)Thread.sleep(100);assertTrue(a.service.status,a.service.position()>=800);
-        main(()->a.service.seek(4000));Thread.sleep(800);assertTrue(a.service.position()>=3900);main(()->a.service.pause());int at=a.service.position();Thread.sleep(500);assertTrue(Math.abs(at-a.service.position())<100);main(()->a.service.stopAll());
+        main(()->a.service.playQueue(Collections.singletonList(track),0));long end=SystemClock.elapsedRealtime()+30000;while(position(a.service)<800&&SystemClock.elapsedRealtime()<end)Thread.sleep(100);assertTrue(a.service.status,position(a.service)>=800);
+        main(()->a.service.seek(4000));Thread.sleep(800);assertTrue(position(a.service)>=3900);main(()->a.service.pause());int at=position(a.service);Thread.sleep(500);assertTrue(Math.abs(at-position(a.service))<100);main(()->a.service.stopAll());
         AudioLibrary library=new AudioLibrary(a);Uri fake=Uri.parse("content://media/external/audio/media/99999999");library.merge(Collections.singletonList(new AudioLibrary.Track(fake,"Persistent favorite","Artist","Album",1000,false)));library.favorite(fake);assertTrue(new AudioLibrary(a).all().stream().anyMatch(t->t.uri.equals(fake)&&t.favorite));library.remove(fake);
     }
 }
