@@ -203,4 +203,62 @@ public class StudioTest {
         });
     }
 
+    @Test public void aiThumbMovesButBaselineRingNeverMovesAndReturnsWhenOff()throws Exception {
+        MainActivity a=ready();
+        main(()->{
+            AudioService audio=a.service;
+            boolean originalEnabled=audio.enabled, originalSmart=audio.smart, originalPlaying=audio.playing;
+            int oldBandCount=audio.bandCount;
+            try {
+                a.page=0;
+                a.bands(39);
+                audio.enabled=true;audio.smart=true;audio.playing=true;
+                audio.appliedAiFresh=true;
+                audio.appliedTargetAt=SystemClock.elapsedRealtime();
+                audio.appliedTargets[1]=10f;
+                audio.appliedTargets[3]=.82f;
+                audio.appliedTargets[4]=.73f;
+                audio.appliedTargets[5]=.67f;
+                audio.appliedTargets[9+38]=7f;
+                MainActivity.AiControlMarker bass=null,width=null,ambience=null,dynamics=null,lastEq=null,headroom=null;
+                int eqBars=0;
+                for(MainActivity.AiControlMarker bar:a.liveControlMarkers){
+                    if("Bass".equals(bar.key))bass=bar;
+                    if("Stereo width".equals(bar.key))width=bar;
+                    if("Ambience".equals(bar.key))ambience=bar;
+                    if("Dynamics".equals(bar.key))dynamics=bar;
+                    if("Output headroom".equals(bar.key))headroom=bar;
+                    if("EQ".equals(bar.key)){
+                        eqBars++;
+                        if(bar.band==38)lastEq=bar;
+                    }
+                }
+                assertEquals("All 39 EQ bands must expose AI-following thumbs",39,eqBars);
+                assertNotNull("Space & Dynamics width uses AI thumb",width);
+                assertNotNull("Space & Dynamics ambience uses AI thumb",ambience);
+                assertNotNull("Space & Dynamics dynamics uses AI thumb",dynamics);
+                assertNotNull("Headroom retains an explicit manual ring",headroom);
+                assertNotNull(lastEq);
+                assertNotNull(bass);
+                float savedBass=bass.manualValue, savedWidth=width.manualValue;
+                float savedEq=lastEq.manualValue;
+                for(int n=0;n<22;n++){bass.sync();width.sync();ambience.sync();dynamics.sync();lastEq.sync();}
+                assertEquals("AI cannot rewrite the saved bass ring",savedBass,bass.manualValue,0.001f);
+                assertEquals("AI cannot rewrite the width ring",savedWidth,width.manualValue,0.001f);
+                assertEquals("AI cannot rewrite the EQ band ring",savedEq,lastEq.manualValue,0.001f);
+                assertEquals(bass.position(10f),bass.getProgress(),2);
+                assertEquals(width.position(82f),width.getProgress(),2);
+                assertEquals(lastEq.position(7f),lastEq.getProgress(),2);
+                audio.smart=false;
+                for(int n=0;n<22;n++){bass.sync();width.sync();ambience.sync();dynamics.sync();lastEq.sync();}
+                assertEquals("AI-off returns draggable thumb to manual bass ring",bass.position(savedBass),bass.getProgress(),2);
+                assertEquals("AI-off returns width thumb to manual ring",width.position(savedWidth),width.getProgress(),2);
+                assertEquals("AI-off returns EQ thumb to manual ring",lastEq.position(savedEq),lastEq.getProgress(),2);
+            }finally{
+                audio.enabled=originalEnabled;audio.smart=originalSmart;audio.playing=originalPlaying;
+                audio.bandCount=oldBandCount;audio.changed();a.build();
+            }
+        });
+    }
+
 }

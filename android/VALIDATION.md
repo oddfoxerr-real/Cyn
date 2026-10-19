@@ -1,9 +1,9 @@
-# CYN Studio Android 0.2.4 validation plan — 2026-10-19
+# CYN Studio Android 0.2.5 validation plan — 2026-10-19
 
 ## Studio identity and signing
 
 Studio uses application ID `io.github.oddfoxerr.cyn.studio`, launcher label
-`CYN Studio`, version code 8 and version name `0.2.4-preview`. It installs alongside
+`CYN Studio`, version code 9 and version name `0.2.5-preview`. It installs alongside
 legacy `io.github.oddfoxerr.cyn` because the original signing key was not recovered.
 The old app and its data remain intact. Studio starts with independent storage.
 
@@ -17,7 +17,7 @@ assets. Before installation it verifies the APK checksum, package, increasing
 version code and equality with the installed signing certificate. Legacy Android
 and Windows release channels are excluded.
 
-## 0.2.4 control-animation checks
+## 0.2.5 control-animation checks
 
 - In CYN Library, play audio with enabled Smart Listening: bass, clarity,
   stereo width, ambience, dynamics and EQ rings follow actual DSP target
@@ -29,7 +29,7 @@ and Windows release channels are excluded.
 - User dragging a manual slider must never be overwritten by AI target updates.
 - Verify reduced-motion disables smooth interpolation and that all EQ sizes work.
 
-## 0.2.4 visualization checks
+## 0.2.5 visualization checks
 
 - Connect CYN without audio permission: user is offered a clear opt-in.
 - External playback with consent: measured spectrum and neural visuals when
@@ -39,7 +39,7 @@ and Windows release channels are excluded.
 - Check reduced motion, training view, and local player are not regressed.
 - Verify on physical phones; emulator results cannot establish Spotify routing.
 
-## 0.2.4 validation requirements
+## 0.2.5 validation requirements
 
 - Verify spectrum is derived from measured FFT bins and silence has zero visual activity.
 - Verify local Connection details omit manufacturer, model, app names and session IDs.
@@ -50,7 +50,7 @@ and Windows release channels are excluded.
 - These tests cannot prove physical-device system-mix routing, headset quality or
   external Spotify compatibility. Verify on target devices before stable release.
 
-## 0.2.4 connection regression gate
+## 0.2.5 connection regression gate
 
 The Android 15 instrumentation suite adds an external-session test that starts
 monitoring while enhancement is off and asserts the on/off state is preserved.
@@ -108,3 +108,11 @@ checks do not establish identical audible output to Windows. Full neural
 processing applies to CYN library playback; external players require compatible
 Android audio-effects sessions. Disable the old app's monitor before enabling
 Studio to avoid competing effects.
+
+## 0.2.5 reversible thumb regression
+
+- Start a local library track with active inference: manual ring stays at baseline while physical SeekBar thumb moves toward applied AI DSP values.
+- Toggle Smart Listening or enhancement off; thumb returns smoothly to ring; ring does not move.
+- Drag a slider while AI is active: manual value/ring update from touch, not AI; release resumes AI thumb follow.
+- Expand Space & dynamics to inspect stereo width, ambience, dynamics, and manual-only headroom; expand EQ to inspect every band for all 31, 35, and 39 configurations.
+- No fabricated controls for external audio; only bass/clarity on Android EQ-controlled sessions; no headroom AI target. Reduced motion must disable interpolation.
