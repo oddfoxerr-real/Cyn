@@ -1,9 +1,9 @@
-# CYN Studio Android 0.2.3 validation plan — 2026-10-19
+# CYN Studio Android 0.2.4 validation plan — 2026-10-19
 
 ## Studio identity and signing
 
 Studio uses application ID `io.github.oddfoxerr.cyn.studio`, launcher label
-`CYN Studio`, version code 7 and version name `0.2.3-preview`. It installs alongside
+`CYN Studio`, version code 8 and version name `0.2.4-preview`. It installs alongside
 legacy `io.github.oddfoxerr.cyn` because the original signing key was not recovered.
 The old app and its data remain intact. Studio starts with independent storage.
 
@@ -17,7 +17,19 @@ assets. Before installation it verifies the APK checksum, package, increasing
 version code and equality with the installed signing certificate. Legacy Android
 and Windows release channels are excluded.
 
-## 0.2.3 visualization checks
+## 0.2.4 control-animation checks
+
+- In CYN Library, play audio with enabled Smart Listening: bass, clarity,
+  stereo width, ambience, dynamics and EQ rings follow actual DSP target
+  values, distinct from the user's baseline.
+- In external playback, animate only proven supported bass/clarity EQ offsets;
+  never represent local-only width, dynamics or EQ bands as applied.
+- Without model inference, or when enhancement/Smart Listening is disabled,
+  AI rings disappear instead of animating without measurements.
+- User dragging a manual slider must never be overwritten by AI target updates.
+- Verify reduced-motion disables smooth interpolation and that all EQ sizes work.
+
+## 0.2.4 visualization checks
 
 - Connect CYN without audio permission: user is offered a clear opt-in.
 - External playback with consent: measured spectrum and neural visuals when
@@ -27,7 +39,7 @@ and Windows release channels are excluded.
 - Check reduced motion, training view, and local player are not regressed.
 - Verify on physical phones; emulator results cannot establish Spotify routing.
 
-## 0.2.3 validation requirements
+## 0.2.4 validation requirements
 
 - Verify spectrum is derived from measured FFT bins and silence has zero visual activity.
 - Verify local Connection details omit manufacturer, model, app names and session IDs.
@@ -38,7 +50,7 @@ and Windows release channels are excluded.
 - These tests cannot prove physical-device system-mix routing, headset quality or
   external Spotify compatibility. Verify on target devices before stable release.
 
-## 0.2.3 connection regression gate
+## 0.2.4 connection regression gate
 
 The Android 15 instrumentation suite adds an external-session test that starts
 monitoring while enhancement is off and asserts the on/off state is preserved.
