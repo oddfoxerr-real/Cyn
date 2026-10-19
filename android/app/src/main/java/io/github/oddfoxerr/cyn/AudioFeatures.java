@@ -21,6 +21,26 @@ public final class AudioFeatures {
         for(byte b:wave) { double v=((b&255)-128)/128.0; energy+=v*v; peak=Math.max(peak,Math.abs(v)); }
         return new double[]{Math.sqrt(energy/Math.max(1,wave.length)),peak};
     }
+    /** 31 logarithmic display bands from Android's measured playback FFT.
+     * Values are normalized to the strongest current band, not synthetic animation. */
+    public static float[] spectrum(byte[] fft,int sampleRate) {
+        float[] bands=new float[31];
+        if(fft==null||fft.length<4||sampleRate<=0)return bands;
+        double[] power=new double[31];
+        for(int k=1;k<fft.length/2;k++) {
+            double hz=(double)k*sampleRate/fft.length;
+            if(hz<30||hz>19000)continue;
+            int band=(int)Math.floor(30*Math.log(hz/30)/Math.log(19000.0/30));
+            band=Math.max(0,Math.min(30,band));
+            int re=fft[k*2],im=fft[k*2+1];
+            power[band]+=re*re+im*im;
+        }
+        double peak=0;
+        for(double value:power)peak=Math.max(peak,value);
+        if(peak<=0)return bands;
+        for(int i=0;i<31;i++)bands[i]=(float)Math.min(1,Math.sqrt(power[i]/peak));
+        return bands;
+    }
     /** Bounded signed offset: neutral probability leaves the manual baseline intact. */
     public static double offset(double prediction, double sensitivity) {
         return PreferenceModel.clamp((prediction-.5)*2,-1,1)*PreferenceModel.clamp(sensitivity,0,1)*3;
