@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "FxPresetImportDialog.h"
 #include "FxPresetNameEditor.h"
 #include "CynThemeStudio.h"
+#include "CynMobileInstallPanel.h"
 
 class FxPresetMenuItem : public PopupMenu::CustomComponent, private TextEditor::Listener
 {
@@ -587,6 +588,8 @@ void FxMainWindow::showMenu()
 	popup_menu.addSeparator();
 	popup_menu.addItem(TRANS("Download Bonus Presets"), downloadClicked);
 	popup_menu.addSeparator();
+	popup_menu.addItem("Add Mobile Version...", [this] { CynMobileInstallPanel::show(this); });
+    popup_menu.addSeparator();
 	popup_menu.addItem("Check for updates", checkForUpdatesClicked);
     popup_menu.addItem("Automatically check for updates", true,
         FxController::getInstance().getAutoUpdates(), toggleAutoUpdatesClicked);
