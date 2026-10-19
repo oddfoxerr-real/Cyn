@@ -71,6 +71,20 @@ repository secrets `CYN_ANDROID_KEYSTORE_BASE64` and `CYN_ANDROID_KEY_PASSWORD`.
 The old key was created by `BUILD_ANDROID.ps1` in `.signing/cyn-android.jks`; its
 DPAPI password file is tied to the original Windows account. Do not commit keys.
 
+On that original Windows account, with JDK 17 and GitHub CLI installed and signed
+in to the repository owner, run from the updated repository:
+
+```powershell
+.\android\scripts\configure_release_key.ps1 -Publish
+```
+
+The helper verifies the original certificate, stores the key and password in the
+two encrypted GitHub Actions secrets, then starts the checked release workflow.
+Use `-SigningDirectory 'C:\path\to\original\android\.signing'` if the original
+key lives in an older checkout. The helper never generates a new signing key and
+does not print either secret. It needs the actual original key files; source code
+and unsigned build artifacts cannot replace them.
+
 ## Verification
 
 `tests/native/engine_test.cpp` exercises real DSP: settled exact bypass, worst-case

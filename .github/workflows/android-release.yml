@@ -2,7 +2,7 @@ name: Cyn Android Release
 on:
   push:
     branches: ['codex/android', 'feature/android-sound-studio']
-    paths: ['android/**', '.github/workflows/android-release.yml']
+    paths: ['android/**', '!android/**/*.md', '.github/workflows/android-release.yml']
   workflow_dispatch:
 permissions:
   contents: write
@@ -43,6 +43,7 @@ jobs:
           java -cp /tmp/cyn-tests io.github.oddfoxerr.cyn.AudioModelTest
           java -cp /tmp/cyn-tests io.github.oddfoxerr.cyn.ApexFeaturesTest /tmp/cyn-tests/features.bin
           python android/scripts/test_models.py /tmp/cyn-tests/features.bin
+          pwsh -NoProfile -Command '$tokens=$null; $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path "android/scripts/configure_release_key.ps1"), [ref]$tokens, [ref]$errors) | Out-Null; if ($errors.Count) { throw ($errors | Out-String) }'
       - name: Build and lint
         run: bash android/gradlew -p android :app:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
       - name: Enable accelerated Android testing
