@@ -20,9 +20,23 @@ import static org.junit.Assert.*;
 @RunWith(AndroidJUnit4.class)
 public class StudioTest {
     @Rule public ActivityTestRule<MainActivity> rule=new ActivityTestRule<>(MainActivity.class);
+    @Before public void usePhoneTouchMode(){InstrumentationRegistry.getInstrumentation().setInTouchMode(true);}
     private void main(Runnable action){InstrumentationRegistry.getInstrumentation().runOnMainSync(action);}
     private int position(AudioService service){int[] value={0};main(()->value[0]=service.position());return value[0];}
     private MainActivity ready()throws Exception{MainActivity activity=rule.getActivity();long until=SystemClock.elapsedRealtime()+15000;while(activity.service==null&&SystemClock.elapsedRealtime()<until)Thread.sleep(100);assertNotNull(activity.service);return activity;}
+    private void waitForTransition(MainActivity activity)throws Exception{
+        boolean[] running={true};long until=SystemClock.elapsedRealtime()+10000;
+        do{Thread.sleep(50);main(()->running[0]=activity.pages.isTransitioning());}while(running[0]&&SystemClock.elapsedRealtime()<until);
+        assertFalse("Page transition did not finish",running[0]);Thread.sleep(150);
+    }
+    private void assertTextVisible(Bitmap screenshot,View view){
+        int[] bounds=new int[4];main(()->{int[] at=new int[2];view.getLocationInWindow(at);bounds[0]=at[0];bounds[1]=at[1];bounds[2]=at[0]+view.getWidth();bounds[3]=at[1]+view.getHeight();});
+        int pixels=0;
+        for(int y=Math.max(0,bounds[1]);y<Math.min(screenshot.getHeight(),bounds[3]);y++)for(int x=Math.max(0,bounds[0]);x<Math.min(screenshot.getWidth(),bounds[2]);x++){
+            int color=screenshot.getPixel(x,y);if(((color>>16)&255)>100&&((color>>8)&255)>100&&(color&255)>100)pixels++;
+        }
+        assertTrue("Persistent phone control text disappeared",pixels>20);
+    }
     private Bitmap captureWindow(MainActivity activity)throws Exception{
         // Capture CYN's rendered surface, excluding unrelated emulator/launcher dialogs.
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
@@ -39,9 +53,13 @@ public class StudioTest {
     }
     @Test public void captureScreens()throws Exception{
         MainActivity a=ready();String output=InstrumentationRegistry.getArguments().getString("additionalTestOutputDir");File folder=output==null?new File(a.getExternalFilesDir(null),"qa"):new File(output);assertTrue(folder.isDirectory()||folder.mkdirs());
-        for(int page=0;page<4;page++){final int p=page;main(()->{a.page=p;a.build(true);});Thread.sleep(800);
+        for(int page=0;page<4;page++){final int p=page;main(()->{a.page=p;a.build(true);});waitForTransition(a);
             Bitmap screenshot=captureWindow(a);
-            try(FileOutputStream out=new FileOutputStream(new File(folder,"screen-"+page+".png"))){assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG,100,out));}finally{screenshot.recycle();}
+            try{
+                try(FileOutputStream out=new FileOutputStream(new File(folder,"screen-"+page+".png"))){assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG,100,out));}
+                assertTextVisible(screenshot,a.shell.getChildAt(0));assertTextVisible(screenshot,a.miniTitle);assertTextVisible(screenshot,a.miniToggle);
+                for(int tab=0;tab<4;tab++)assertTextVisible(screenshot,a.nav.getChildAt(tab));
+            }finally{screenshot.recycle();}
         }
     }
     @Test public void screensAndRapidTransitions()throws Exception{MainActivity a=ready();for(int page:new int[]{0,2,1,3,2,0,3,1}){final int p=page;main(()->{a.page=p;a.build(true);});}Thread.sleep(600);main(()->{assertEquals(4,a.nav.getChildCount());assertTrue(a.pages.getChildCount()==1);assertNotNull(a.content);});}
