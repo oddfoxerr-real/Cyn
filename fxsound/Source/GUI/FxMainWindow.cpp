@@ -594,9 +594,22 @@ void FxMainWindow::showMenu()
     popup_menu.addItem("Automatically check for updates", true,
         FxController::getInstance().getAutoUpdates(), toggleAutoUpdatesClicked);
     popup_menu.addSeparator();
-	popup_menu.addItem("About Cyn", [] { AlertWindow::showMessageBox(AlertWindow::InfoIcon,"Cyn",R"(Personal audio with local learning.
-Built on the open-source FxSound DSP and official audio driver.
-AGPL-3.0-or-later; see the bundled LICENSE and source.)"); });
+	popup_menu.addItem("FxSound credits & CYN license...", [] { AlertWindow::showMessageBox(AlertWindow::InfoIcon,"CYN / FxSound credits",R"(ORIGINAL AUDIO ENGINE
+CYN is an unofficial modified project based on FxSound. Original FxSound DSP,
+virtual driver and relevant notices belong to FxSound LLC and its contributors.
+Upstream source: https://github.com/fxsound2/fxsound-app
+
+CYN-SPECIFIC CHANGES
+CYN interface, AI features and other modifications are community additions.
+They are not official FxSound releases, warranties or endorsements.
+Source: https://github.com/oddfoxerr-real/Cyn
+
+LICENSE AND NO WARRANTY
+GNU Affero General Public License v3 or later. License and original notices
+are bundled; original third-party components retain their respective licenses.
+This program comes WITHOUT ANY WARRANTY to the extent allowed by law.
+See AGPL sections 15-17. FxSound credit does not assign responsibility for
+CYN modifications to FxSound or waive applicable legal obligations.)"); });
 	popup_menu.addSeparator();
 	popup_menu.addItem("Theme Studio...", [this] { CynThemeStudioDialog::show(this); });
     popup_menu.addItem("Smooth animations", true, FxTheme::isSmoothAnimations(), [] { FxController::getInstance().setSmoothAnimations(!FxTheme::isSmoothAnimations()); });
