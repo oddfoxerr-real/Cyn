@@ -105,7 +105,7 @@ jobs:
           grep -F 'certificate SHA-256 digest: 045d9c122b2158d569c0ef8d10bbb08496a9f19e7397b702e99e9330c780bcb7' "$RUNNER_TEMP/cyn-cert.txt"
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 dist/android/Cyn-Studio-Android-0.2.5-preview.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.5-preview.apk > "$RUNNER_TEMP/cyn-package.txt"
-          grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='8' versionName='0.2.5-preview'" "$RUNNER_TEMP/cyn-package.txt"
+          grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='9' versionName='0.2.5-preview'" "$RUNNER_TEMP/cyn-package.txt"
           cd dist/android
           sha256sum Cyn-Studio-Android-0.2.5-preview.apk > Cyn-Studio-Android-0.2.5-preview.apk.sha256
       - name: Publish verified Android preview
