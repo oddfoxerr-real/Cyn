@@ -317,4 +317,52 @@ public class StudioTest {
         });
     }
 
+    @Test public void foxArtTracksRealThumbWithoutChangingManualBaseline()throws Exception {
+        MainActivity a=ready();
+        main(()->{
+            a.page=0;a.build();
+            MainActivity.AiControlMarker marker=null;
+            int eqCount=0;
+            for(MainActivity.AiControlMarker bar:a.liveControlMarkers){
+                assertTrue("AI controls use the fox slider",bar instanceof FoxSlider);
+                if("EQ".equals(bar.key))eqCount++;
+                if("Bass".equals(bar.key))marker=bar;
+            }
+            assertEquals("Every EQ band includes the fox",a.service.bandCount,eqCount);
+            assertNotNull(marker);
+            float stored=marker.manualValue;
+            marker.setProgress(marker.position(marker.maximum));
+            assertEquals("Decorative fox never stores an audio setting",stored,marker.manualValue,0.00001f);
+            FoxSlider fox=new FoxSlider(a,true);
+            fox.setMax(120);fox.layout(0,0,480,76);
+            Bitmap png=Bitmap.createBitmap(480,76,Bitmap.Config.ARGB_8888);
+            try {
+                android.graphics.Canvas canvas=new android.graphics.Canvas(png);
+                fox.setProgress(24);fox.draw(canvas);
+                int left=foxMeanX(png);
+                assertTrue("The fox is rendered as actual vector artwork",left>0);
+                png.eraseColor(android.graphics.Color.TRANSPARENT);
+                fox.setProgress(94);fox.draw(canvas);
+                int right=foxMeanX(png);
+                assertTrue("The fox must ride the actual thumb, not a static overlay",right-left>150);
+            }finally{png.recycle();}
+        });
+    }
+    private static int foxMeanX(Bitmap png){
+        long sum=0;int found=0;
+        for(int y=0;y<png.getHeight();y++)for(int x=0;x<png.getWidth();x++)
+            if(png.getPixel(x,y)==0xffed914f){sum+=x;found++;}
+        return found>8?(int)(sum/found):-1;
+    }
+    @Test public void upstreamCreditsAreExplicitAndAgplIsUnmodified()throws Exception {
+        MainActivity activity=ready();
+        String notice=activity.asset("NOTICE.txt");
+        String license=activity.asset("LICENSE.txt");
+        assertTrue(notice.contains("FxSound LLC"));
+        assertTrue(notice.contains("CYN-SPECIFIC MODIFICATIONS"));
+        assertTrue(notice.contains("NO WARRANTY"));
+        assertTrue(notice.contains("does not transfer liability"));
+        assertTrue(license.contains("GNU AFFERO GENERAL PUBLIC LICENSE"));
+    }
+
 }
