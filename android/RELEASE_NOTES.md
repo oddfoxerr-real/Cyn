@@ -1,3 +1,12 @@
+# CYN Studio v0.2.5-preview — AI-driven slider thumbs
+
+- The outlined ring now stays at **your** manual sound setting. The physical draggable SeekBar thumb animates toward CYN's actually applied live AI target, then returns to your setting when AI turns off or its live target becomes unavailable.
+- Extends the reversible UI to all Sound Controls, stereo width, ambience, dynamics and every 31/35/39-band equalizer slider, including inside expandable sections.
+- Headroom receives the consistent outlined manual setting marker; it stays manual because CYN's AI does not automatically adjust headroom.
+- Moving AI thumbs **never overwrite** manual settings, trained preferences or presets. Dragging temporarily gives your finger control and updates your manual baseline; the thumb returns to live AI motion after release.
+- Uses native DSP targets for CYN Library; other Android apps are limited to compatible, actually controlled session EQ effects and cannot claim library-only effects are applied.
+- Respects reduced-motion settings and adds instrumented UI state tests.
+
 # CYN Studio Android 0.2.4 preview
 
 Download **Cyn-Studio-Android-0.2.4-preview.apk**, open it on your phone and confirm
