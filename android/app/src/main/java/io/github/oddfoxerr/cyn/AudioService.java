@@ -151,7 +151,7 @@ public final class AudioService extends Service {
             if(!monitor||legacy) return;
             int id=i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1);
             if(id<=0||id==playerSession) return;
-            if(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION.equals(action)) attach(id,i.getStringExtra(AudioEffect.EXTRA_PACKAGE_NAME));
+            if(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION.equals(action)) attach(id,"External playback");
             else if(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION.equals(action)) detach(id);
         }
     };
@@ -206,7 +206,7 @@ public final class AudioService extends Service {
                 else {
                     if(legacy) { detach(0); legacy=false; }
                     int id=i.getIntExtra("session",-1);
-                    if(id>0&&id!=playerSession) attach(id,i.getStringExtra(AudioEffect.EXTRA_PACKAGE_NAME));
+                    if(id>0&&id!=playerSession) attach(id,"External playback");
                     status=connectionState();
                 }
                 updateNotification();
