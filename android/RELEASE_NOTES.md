@@ -1,3 +1,11 @@
+# CYN Studio v0.2.7-preview — Fox Sliders & FxSound Credits
+
+- A stylized small vector fox rides every manual and AI-controlled slider thumb, including Bass, Vocal clarity, Space & Dynamics, all 31/35/39-band EQ sliders, and AI sensitivity. The fox bounces and wags its tail when actual slider positions move; it never fabricates AI activity or changes sound values.
+- The fox animation runs briefly only during real thumb motion and respects Reduce motion. No external images or heavy renderer are required.
+- The built-in **FxSound credits, licenses & no warranty** panel now clearly attributes original FxSound DSP and source copyrights to FxSound LLC and original contributors, while identifying CYN-specific changes separately.
+- GNU AGPL-3.0-or-later license remains unchanged, with original code notices and applicable third-party licenses preserved. Clarifies that attribution is not an endorsement, transfer of liability, or release from applicable obligations.
+- App package and signing identity are unchanged.
+
 # CYN Studio v0.2.6-preview — Mechanical Update Splash
 
 - One prominent **UPDATE CYN** button in Style → Updates replaces the separate check/download and install actions.
