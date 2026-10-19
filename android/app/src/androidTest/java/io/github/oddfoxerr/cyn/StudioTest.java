@@ -21,6 +21,16 @@ import static org.junit.Assert.*;
 public class StudioTest {
     @Rule public ActivityTestRule<MainActivity> rule=new ActivityTestRule<>(MainActivity.class);
     @Before public void usePhoneTouchMode(){InstrumentationRegistry.getInstrumentation().setInTouchMode(true);}
+    @Test public void studioIdentityAndUpdateProvider()throws Exception{
+        MainActivity a=ready();
+        assertEquals("io.github.oddfoxerr.cyn.studio",a.getPackageName());
+        android.content.pm.ProviderInfo provider=a.getPackageManager().resolveContentProvider(a.getPackageName()+".updates",0);
+        assertNotNull("Studio has its own update FileProvider",provider);
+        assertEquals(a.getPackageName(),provider.packageName);
+        assertFalse(provider.exported);
+        assertTrue(provider.grantUriPermissions);
+        assertEquals("CYN Studio",a.getApplicationInfo().loadLabel(a.getPackageManager()).toString());
+    }
     private void main(Runnable action){InstrumentationRegistry.getInstrumentation().runOnMainSync(action);}
     private int position(AudioService service){int[] value={0};main(()->value[0]=service.position());return value[0];}
     private MainActivity ready()throws Exception{MainActivity activity=rule.getActivity();long until=SystemClock.elapsedRealtime()+15000;while(activity.service==null&&SystemClock.elapsedRealtime()<until)Thread.sleep(100);assertNotNull(activity.service);return activity;}

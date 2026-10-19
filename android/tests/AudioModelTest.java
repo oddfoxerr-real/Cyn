@@ -33,11 +33,14 @@ public final class AudioModelTest {
         }
         for(int o=0;o<5;o++) for(int j=0;j<12;j++) check(trace.outputConnections[o*12+j]==trace.hidden[j]*m.weights[144+o*12+j],"Actual weighted output contribution");
         check(AndroidRelease.newerVersion("v2.0.17","0.1.0-preview")==null,"Windows releases excluded");
-        check(AndroidRelease.newerVersion("android-v0.1.0-preview","0.1.1-preview")==null,"Older APK rejected");
-        check(AndroidRelease.newerVersion("android-v0.1.1-preview","0.1.1-preview")==null,"Same APK rejected");
-        check("0.1.10-preview".equals(AndroidRelease.newerVersion("android-v0.1.10-preview","0.1.9-preview")),"Numeric update ordering");
-        check(AndroidRelease.newerVersion("android-vinvalid","0.1.0-preview")==null,"Malformed version rejected");
-        check(AndroidRelease.assetUrl("0.1.1-preview").endsWith("/android-v0.1.1-preview/Cyn-Android-0.1.1-preview.apk"),"Android release link matches version");
+        check(AndroidRelease.newerVersion("android-studio-v0.1.0-preview","0.1.1-preview")==null,"Older APK rejected");
+        check(AndroidRelease.newerVersion("android-studio-v0.1.1-preview","0.1.1-preview")==null,"Same APK rejected");
+        check("0.1.10-preview".equals(AndroidRelease.newerVersion("android-studio-v0.1.10-preview","0.1.9-preview")),"Numeric update ordering");
+        check(AndroidRelease.newerVersion("android-studio-vinvalid","0.1.0-preview")==null,"Malformed version rejected");
+        check(AndroidRelease.assetUrl("0.2.1-preview").endsWith("/android-studio-v0.2.1-preview/Cyn-Studio-Android-0.2.1-preview.apk"),"Studio release link matches version");
+        check(AndroidRelease.newerVersion("android-v99.0.0-preview","0.2.0-preview")==null,"Legacy Android channel excluded even with higher version");
+        check(AndroidRelease.newerVersion("android-studio-v0.2.1-preview","invalid")==null,"Invalid installed version rejected");
+        check(AndroidRelease.newerVersion(null,"0.2.0-preview")==null,"Missing release tag rejected");
         check(m.ready[4]&&!m.ready[0],"Only trained head ready");
         check(m.predict(feature(true))[4]>.85,"Learns More bass examples");
         check(m.predict(feature(false))[4]<.15,"Learns Less bass examples");

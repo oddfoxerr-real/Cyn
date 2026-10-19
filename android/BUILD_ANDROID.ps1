@@ -1,4 +1,4 @@
-param([switch]$DebugBuild, [switch]$Offline)
+param([switch]$DebugBuild, [switch]$Offline, [string]$SigningDirectory = (Join-Path $PSScriptRoot '.signing'))
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 # Use environment configuration first; this fallback is the verified toolchain on this PC.
@@ -13,12 +13,12 @@ $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
 $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
 $tasks = @(':app:assembleDebug', ':app:lintDebug')
 if (-not $DebugBuild) {
-    $signing = Join-Path $root '.signing'
+    $signing = $SigningDirectory
     New-Item -ItemType Directory -Force -Path $signing | Out-Null
-    $key = Join-Path $signing 'cyn-android.jks'
+    $key = Join-Path $signing 'cyn-studio.jks'
     $secret = Join-Path $signing 'password.dpapi'
     if (-not (Test-Path $key) -or -not (Test-Path $secret)) {
-        throw 'Restore the ORIGINAL .signing/cyn-android.jks and password.dpapi from the original Windows account. A new key cannot update existing CYN installs. Use -DebugBuild only for development.'
+        throw 'Restore cyn-studio.jks and password.dpapi from the Studio signing backup; use -SigningDirectory. A replacement key cannot update Studio installs. Use -DebugBuild only for development.'
     }
     $secure = Get-Content -LiteralPath $secret | ConvertTo-SecureString
     $env:CYN_KEY_PASSWORD = [System.Net.NetworkCredential]::new('', $secure).Password
@@ -40,8 +40,8 @@ try {
     if (-not $DebugBuild) {
         $apk = Join-Path $root 'app\build\outputs\apk\release\app-release.apk'
         $certificate = & "$env:ANDROID_HOME\build-tools\35.0.0\apksigner.bat" verify --print-certs $apk
-        if ($LASTEXITCODE -ne 0 -or -not ($certificate -match 'certificate SHA-256 digest: 20698db6b762137a5e5199c0c5a6c728e8b90374d9dc76973c6ea21c005ee13d')) {
-            throw 'Release signature does not match the original CYN Android app. Do not distribute this APK as an update.'
+        if ($LASTEXITCODE -ne 0 -or -not ($certificate -match 'certificate SHA-256 digest: 045d9c122b2158d569c0ef8d10bbb08496a9f19e7397b702e99e9330c780bcb7')) {
+            throw 'Release signature does not match the registered CYN Studio Android app. Do not distribute this APK as an update.'
         }
     }
     $variant = if ($DebugBuild) { 'debug' } else { 'release' }

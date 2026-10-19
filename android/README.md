@@ -1,8 +1,16 @@
-# CYN Android 0.2.0 preview — Sound Studio
+# CYN Studio Android 0.2.0 preview
 
-Android 9+ on 64-bit ARM or x86. Package identity stays `io.github.oddfoxerr.cyn`,
-version code 4. Install a correctly signed release over the existing preview to
-keep settings and learning. Never replace the original signing key.
+Android 9+ on 64-bit ARM or x86. The app is named **CYN Studio**, package
+`io.github.oddfoxerr.cyn.studio`, version code 4. It installs alongside the older
+Cyn app because that app's original signing key could not be recovered. Keep the
+old app to preserve its settings and learning; Studio starts with separate data.
+Disable the old app's audio monitoring before enabling Studio to avoid competing
+effects. Future Studio releases retain this identity and signing key.
+
+Download `Cyn-Studio-Android-0.2.0-preview.apk` from the
+[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.0-preview),
+open it on your phone and confirm installation. Do not uninstall the old Cyn to
+install Studio.
 
 ## What changed
 
@@ -21,11 +29,12 @@ keep settings and learning. Never replace the original signing key.
   in `app/src/main/cpp/desktop/provenance.json`.
 - Local personal feedback supports all five effects during library playback, with
   desktop `.cynai.json` preference-model import/export and measured neural telemetry.
-- Automatic Android-channel release checks approximately every 12 hours, respecting
+- Automatic Studio-channel release checks approximately every 12 hours, respecting
   Android background scheduling. Wi-Fi/unmetered download by default; manual check
   may download on mobile data. APK size, SHA-256, package, increasing version code
   and current signing certificate must verify before install. Android confirms the
-  installation. Windows releases are never selected. Background checks can be disabled.
+  installation. Legacy Android and Windows releases are never selected. Background
+  checks can be disabled.
 
 ## Audio scope
 
@@ -60,30 +69,30 @@ Gradle dependencies: Media3 1.5.1, AndroidX Core 1.15.0, ONNX Runtime Android 1.
 The native engine and ONNX libraries support 16 KB page alignment.
 
 For release signing, provide `CYN_KEYSTORE` (absolute JKS path) and `CYN_KEY_PASSWORD`;
-the alias remains `cyn-android`. The original certificate SHA-256 is
-`20698db6b762137a5e5199c0c5a6c728e8b90374d9dc76973c6ea21c005ee13d`.
+the alias is `cyn-studio`. The registered Studio certificate SHA-256 is
+`045d9c122b2158d569c0ef8d10bbb08496a9f19e7397b702e99e9330c780bcb7`.
 Without that key, `assembleRelease` produces an unsigned APK that is **not** an
 installable update. Debug APKs are for testing and do not update production installs.
 
 GitHub Actions builds source, runs DSP/model/lint checks, retains build artifacts and
-publishes only after signature verification. Configure the existing original key in
-repository secrets `CYN_ANDROID_KEYSTORE_BASE64` and `CYN_ANDROID_KEY_PASSWORD`.
-The old key was created by `BUILD_ANDROID.ps1` in `.signing/cyn-android.jks`; its
-DPAPI password file is tied to the original Windows account. Do not commit keys.
+publishes only after signature and package verification. The registered Studio key
+is stored in encrypted repository secrets `CYN_STUDIO_ANDROID_KEYSTORE_BASE64` and
+`CYN_STUDIO_ANDROID_KEY_PASSWORD`. An access-restricted local signing backup is held
+outside the repository. Do not commit or include keys/passwords in source archives.
 
-On that original Windows account, with JDK 17 and GitHub CLI installed and signed
+On the account holding the Studio signing backup, with JDK 17 and GitHub CLI signed
 in to the repository owner, run from the updated repository:
 
 ```powershell
-.\android\scripts\configure_release_key.ps1 -Publish
+.\android\scripts\configure_release_key.ps1 -SigningDirectory 'C:\path\to\studio-signing-backup' -Publish
 ```
 
-The helper verifies the original certificate, stores the key and password in the
+The helper verifies the registered Studio certificate, stores the key and password in the
 two encrypted GitHub Actions secrets, then starts the checked release workflow.
-Use `-SigningDirectory 'C:\path\to\original\android\.signing'` if the original
-key lives in an older checkout. The helper never generates a new signing key and
-does not print either secret. It needs the actual original key files; source code
-and unsigned build artifacts cannot replace them.
+The backup contains `cyn-studio.jks`, `password.dpapi` and a protected recovery
+password for restoring access after a Windows-account change. Keep a secure copy
+outside this PC. The helper never generates a replacement key or prints secrets.
+Source code and unsigned build artifacts cannot replace the registered private key.
 
 ## Verification
 

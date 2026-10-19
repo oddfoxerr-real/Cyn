@@ -1,76 +1,63 @@
-# Android 0.2.0 preview validation — 2026-10-19
+# CYN Studio Android 0.2.0 validation — 2026-10-19
 
-The source adds a phone sound studio, persistent library, native PCM effects,
-desktop ONNX inference and verified automatic Android updates. Release publication
-requires all workflow gates plus the original Android signing certificate.
+## Studio identity and signing
 
-## Completed build and functional checks
+Studio uses application ID `io.github.oddfoxerr.cyn.studio`, launcher label
+`CYN Studio`, version code 4 and version name `0.2.0-preview`. It installs alongside
+legacy `io.github.oddfoxerr.cyn` because the original signing key was not recovered.
+The old app and its data remain intact. Studio starts with independent storage.
 
-[Workflow run 39256987103](https://github.com/oddfoxerr-real/Cyn/actions/runs/39256987103)
-checked application commit `416031cc36319998c0005b543549d1b3e73f3048`.
+The registered Studio certificate SHA-256 is
+`045d9c122b2158d569c0ef8d10bbb08496a9f19e7397b702e99e9330c780bcb7`.
+The private key is in encrypted GitHub Actions secrets and a restricted local
+backup outside the source checkout. No private key or password is shipped.
 
-- Native C++ DSP tests passed: exact settled bypass, 31/35/39 bands, mono/stereo,
-  silence, bounded boosted output, feature snapshots and both neural model windows.
-- Existing pure-Java learning and Android release tests: 285 assertions passed.
-- Java APEX preprocessing matches an independent NumPy STFT within 2e-5.
-- Actual desktop YAMNet and APEX model inference returned finite, correctly shaped
-  outputs. Weights are SHA-256 pinned by `scripts/prepare_models.py`.
-- Release, debug and instrumentation APK builds and Android lint passed with
-  ONNX Runtime 1.23.2.
-- Android 15 emulator instrumentation passed: **4 tests, 0 failures, 0 errors**.
-  This covered native/model loading, exact disabled PCM bypass, 44.1-to-48 kHz
-  library playback, seek/pause, persistent favorites and rapid page transitions.
-- Four phone-page captures were checked in touch mode after transitions completed.
-  Pixel assertions verified the header, mini-player text/play control and every
-  navigation tab on each page. The captured header and mini-player pixels are
-  identical across all four pages. The screenshots use Android PixelCopy to capture
-  CYN's actual window without unrelated emulator launcher dialogs.
-- Liquid transitions draw their bitmap mesh in a separate overlay view. Cancelled
-  transitions remove that view; Android retains bitmap ownership until rendering
-  has finished. Reduced motion skips the overlay.
-- Independent inspection of the earlier `4464fe9` unsigned APK confirmed that all
-  six native libraries across ARM64 and x86_64 have 16 KB ELF and APK alignment.
-  Both real desktop ONNX model assets were present. Native libraries and build
-  configuration are unchanged in `416031c`.
-- The Windows signing setup helper passed PowerShell parser validation. Its actual
-  key upload requires the original Windows account and has not been executed here.
+Studio accepts only `android-studio-v` releases and `Cyn-Studio-Android-*.apk`
+assets. Before installation it verifies the APK checksum, package, increasing
+version code and equality with the installed signing certificate. Legacy Android
+and Windows release channels are excluded.
 
-## Release status
+## Checks completed locally
 
-The workflow stopped at **Verify original signing key and sign update** because
-`CYN_ANDROID_KEYSTORE_BASE64` and `CYN_ANDROID_KEY_PASSWORD` were missing. Build,
-lint and device gates passed before that step. **No signed 0.2.0 APK was published.**
+- 288 pure-Java assertions passed, including learning, inference telemetry,
+  numeric release ordering, legacy channel exclusion and malformed release data.
+- Both Windows build/signing helpers passed PowerShell parser validation.
+- Git diff whitespace checks passed.
+- The new private key was opened and its public certificate verified before
+  uploading it to the repository's encrypted signing secrets.
 
-From the updated repository on the original Windows account, with JDK 17 and an
-authenticated GitHub CLI, run:
+## Publication gates
 
-```powershell
-.\android\scripts\configure_release_key.ps1 -Publish
-```
+The Studio release workflow runs all native DSP, Java learning, preprocessing,
+real ONNX inference, Android build and lint checks. Android 15 instrumentation
+covers native/model loading, disabled PCM bypass, 44.1-to-48 kHz library playback,
+seek/pause, persistent favorites, rapid page changes and four phone screenshots.
+A fifth test checks Studio's application identity, launcher name and private
+update FileProvider. Publication requires all five tests to pass.
 
-The helper verifies the original certificate, configures the encrypted repository
-secrets and starts the release workflow. It requires the existing
-`android/.signing/cyn-android.jks` and `password.dpapi`; use `-SigningDirectory`
-if those files are in an older checkout. A replacement key cannot update existing
-installations.
+The signed APK must pass apksigner certificate verification, 16 KB zip alignment,
+and an aapt package/version check. A SHA-256 file and corresponding-source archive
+are published with it. The workflow refuses to overwrite an existing release.
+The workflow result, rather than this pre-build document, establishes completion:
+https://github.com/oddfoxerr-real/Cyn/actions/workflows/android-release.yml
 
-## Reproducible release gates
+## Previous implementation evidence
 
-`.github/workflows/android-release.yml` builds from source, runs the checks above,
-then exercises Android 15 with real native/ONNX loading, 44.1-to-48 kHz playback,
-seek/pause, favorites, rapid navigation and four captured phone screens. Reports
-are retained with the run. A failed gate prevents publication.
+Before the Studio identity/signing change, workflow run 39256987103 checked
+application commit `416031cc36319998c0005b543549d1b3e73f3048`. Build, lint,
+285 host assertions and four Android 15 instrumentation tests passed. Its unsigned
+APK and test reports were recovered and their ZIP hashes verified. That run did
+not publish an APK because the legacy signing key was unavailable.
 
-The final certificate must be
-`20698db6b762137a5e5199c0c5a6c728e8b90374d9dc76973c6ea21c005ee13d`.
-Package `io.github.oddfoxerr.cyn`, version code 4, minimum API 28, target API 35.
-An unsigned build artifact is not an installable update.
+The Studio release reruns those gates with the new identity and updater tests;
+previous results alone are not used to authorize publication.
 
-## Remaining physical-device checks
+## Physical-device checks still needed
 
-Headphone/speaker listening, Bluetooth routes, power use and inference latency on
-real ARM phones; background update scheduling; installation over 0.1.2; TalkBack,
-large fonts and landscape; and third-party playback-session compatibility.
-Numerical, build and emulator checks do not establish perceptual Windows parity.
-Full neural processing is confined to CYN library playback. The existing Windows
-virtual driver and exact Windows DSP are not included in Android.
+Headphone/speaker listening, Bluetooth routes, battery use and inference latency
+on real ARM phones; background update scheduling; TalkBack, large fonts and
+landscape; and third-party playback-session compatibility. Emulator and numerical
+checks do not establish identical audible output to Windows. Full neural
+processing applies to CYN library playback; external players require compatible
+Android audio-effects sessions. Disable the old app's monitor before enabling
+Studio to avoid competing effects.

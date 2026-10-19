@@ -1,4 +1,4 @@
-CYN for Android 0.2.0 preview
+CYN Studio for Android 0.2.0 preview
 SPDX-License-Identifier: AGPL-3.0-or-later
 
 CYN Android additions: 2026 CYN contributors, AGPL-3.0-or-later.
