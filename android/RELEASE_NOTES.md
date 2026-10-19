@@ -1,6 +1,6 @@
-# CYN Studio Android 0.2.0 preview
+# CYN Studio Android 0.2.1 preview
 
-Download **Cyn-Studio-Android-0.2.0-preview.apk**, open it on your phone and confirm
+Download **Cyn-Studio-Android-0.2.1-preview.apk**, open it on your phone and confirm
 installation. Requires Android 9+ on a 64-bit ARM or x86 device.
 
 This installs as **CYN Studio** alongside the old **Cyn** app. The old signing key
@@ -8,6 +8,11 @@ was unavailable, so Studio has a new app identity and a preserved release key fo
 future updates. Your old app and its data remain intact; Studio starts with its own
 settings and learning. Turn off monitoring in old Cyn before enabling Studio.
 
+- Fixed the music-app connection button: it now distinguishes monitoring, no session,
+  incompatible sessions, controlled Android EQ and device-dependent compatibility mode.
+  Connecting no longer silently re-enables enhancement after switching it off.
+- Added a visible, explicitly confirmed experimental system-mix EQ option and clearer
+  diagnostics. This cannot bypass Android restrictions or guarantee Spotify/browser audio.
 - Redesigned phone studio, four new dark palettes, content-warp liquid transitions,
   reduced motion and persistent mini-player.
 - Audio library with multi-file import, device scan, search, favorites, queue,
