@@ -213,6 +213,73 @@ public final class AudioService extends Service {
     }
     private AudioAttributes attributes() { return new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build(); }
     @Override public IBinder onBind(Intent intent) { return new LocalBinder(); }
+    /** Start the Android playback visualizer only with the user's permission. */
+    void refreshVisualization() {
+        if(!monitor||!enabled||playing||
+           checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED) {
+            releaseOutputVisuals();
+            return;
+        }
+        if(outputVisuals!=null)return;
+        long now=SystemClock.elapsedRealtime();
+        if(now-visualRetryAt<7000)return;
+        visualRetryAt=now;
+        Visualizer visual=null;
+        try {
+            visual=new Visualizer(0);
+            visual.setCaptureSize(Math.min(1024,Visualizer.getCaptureSizeRange()[1]));
+            visual.setScalingMode(Visualizer.SCALING_MODE_AS_PLAYED);
+            visual.setDataCaptureListener(new Visualizer.OnDataCaptureListener() {
+                @Override public void onWaveFormDataCapture(Visualizer effect,byte[] wave,int samplingRate){
+                    if(effect!=outputVisuals)return;
+                    double[] levels=AudioFeatures.levels(wave);
+                    measuredRms=levels[0];
+                    measuredPeak=levels[1];
+                }
+                @Override public void onFftDataCapture(Visualizer effect,byte[] fft,int samplingRate){
+                    if(effect!=outputVisuals||!monitor||!enabled||playing||destroyed)return;
+                    float[] spectrum=AudioFeatures.spectrum(fft,samplingRate/1000);
+                    double rms=measuredRms,peak=measuredPeak;
+                    if(rms<.005)return;
+                    double[] features=AudioFeatures.fromFft(fft,samplingRate/1000,rms,peak);
+                    handler.post(()->{
+                        if(destroyed||effect!=outputVisuals||!monitor||!enabled||playing)return;
+                        long t=SystemClock.elapsedRealtime();
+                        Chain c=chains.get(legacy?0:activeSession);
+                        if(c!=null&&c.lastCapture>0&&t-c.lastCapture<500&&
+                           sessionSpectrumAt>0&&t-sessionSpectrumAt<500)return;
+                        sessionSpectrum=spectrum;
+                        sessionSpectrumAt=t;
+                        if(smart){
+                            PreferenceModel.Trace trace=learning.model.trace(features);
+                            liveTrace=trace;traceAt=t;traceSequence++;
+                            predictions=trace.outputs;
+                            neurons=trace.hidden;
+                            analysis="Live Android output-mix analysis · on-device";
+                            if(t-lastFrame>=240){
+                                lastFrame=t;
+                                frames.add(new Frame(features,(float)Math.min(1,rms*4)));
+                                while(frames.size()>240)frames.remove(0);
+                            }
+                        }else analysis="Live audio spectrum · AI disabled";
+                    });
+                }
+            },Math.min(4000,Visualizer.getMaxCaptureRate()),true,true);
+            outputVisuals=visual;
+            visual.setEnabled(true);
+            visualError="Waiting for audible Android output";
+        }catch(RuntimeException|LinkageError e){
+            if(visual!=null)try{visual.release();}catch(RuntimeException ignored){}
+            outputVisuals=null;
+            visualError="Android output-mix visualization unavailable";
+        }
+    }
+    private void releaseOutputVisuals(){
+        Visualizer old=outputVisuals;
+        outputVisuals=null;
+        measuredRms=0;measuredPeak=0;
+        if(old!=null)try{old.setEnabled(false);old.release();}catch(RuntimeException ignored){}
+    }
     @Override public int onStartCommand(Intent i,int flags,int startId) {
         if(i==null) { stopSelf(); return START_NOT_STICKY; }
         try {
