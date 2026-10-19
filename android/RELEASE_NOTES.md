@@ -1,3 +1,12 @@
+# CYN Studio v0.2.6-preview — Mechanical Update Splash
+
+- One prominent **UPDATE CYN** button in Style → Updates replaces the separate check/download and install actions.
+- Opening Update CYN displays a full-screen native two-tone 2D mechanical splash with clamp rails, cogs and dripping fill. Download fill tracks **actual byte progress**, while checking and verifying show activity without fabricated percentages.
+- A single context-sensitive action inside the splash handles retry/check/download or installation of a verified APK. Closing the splash never cancels an already running background download.
+- One **Automatic updates** toggle combines scheduled release checks and Wi-Fi-only downloads. Checks use Android JobScheduler and notify users when a newer APK is ready.
+- Releases are still validated against APK SHA-256, exact package name, monotonically newer version and the installed app's signing certificate; Android's permission and install confirmation remain required.
+- Respects reduced motion, preserves the existing application package and signing certificate, and leaves audio settings and personal learning untouched.
+
 # CYN Studio v0.2.5-preview — AI-driven slider thumbs
 
 - The outlined ring now stays at **your** manual sound setting. The physical draggable SeekBar thumb animates toward CYN's actually applied live AI target, then returns to your setting when AI turns off or its live target becomes unavailable.

@@ -228,7 +228,20 @@ public final class MainActivity extends Activity {
     }
     void labelFrames(boolean more){if(service.training){toast("Wait for training to finish");return;}List<AudioService.Frame> selected=timeline.selection();if(selected.isEmpty()){toast("Play a library track, then select a passage");return;}try{service.learning.label(selected,feedbackEffect,more);toast("Saved "+selected.size()+" frames");timeline.invalidate();}catch(Exception e){toast("Could not save feedback");}}
     void appearance(){add(content,label("Make it yours.",29,text));add(content,label("A quieter interface. A distinct personality.",13,hint));LinearLayout themes=section("Theme studio","");String[]names={"Midnight current","Deep tide","Ember dusk","Violet glass"};for(int i=0;i<names.length;i++){final int n=i;TextView b=button(names[i],()->{ui.edit().putInt("studio_theme",n).apply();build();});if(ui.getInt("studio_theme",0)==i)b.setTextColor(accent);add(themes,b);gap(themes,6);}toggle(themes,"Reduce motion",ui.getBoolean("reduce",false),on->{ui.edit().putBoolean("reduce",on).apply();reduced=on;});
-        LinearLayout updates=section("Updates","Version "+BuildConfig.VERSION_NAME+" · build "+BuildConfig.VERSION_CODE);toggle(updates,"Check automatically",UpdateManager.automatic(this),on->UpdateManager.automatic(this,on));toggle(updates,"Download on Wi-Fi",UpdateManager.downloads(this),on->UpdateManager.downloads(this,on));updateState=label(UpdateManager.message,13,accent);updateState.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(updates,updateState);add(updates,button("Check and download update",()->{notifications();UpdateManager.check(this,true,null);}));gap(updates,6);add(updates,button("Install downloaded update",()->UpdateManager.install(this)));add(updates,label("CYN verifies the download, package and signing certificate. Android asks you to confirm installation. Audio and learning data stay on your phone.",12,hint));
+        LinearLayout updates=section("Updates","Version "+BuildConfig.VERSION_NAME+" · build "+BuildConfig.VERSION_CODE);
+        toggle(updates,"Automatic updates · check and download on Wi-Fi",UpdateManager.automatic(this),on->{
+            UpdateManager.automatic(this,on);
+            toast(on?"Automatic Wi-Fi updates enabled":"Automatic updates disabled");
+        });
+        updateState=label(UpdateManager.message,13,accent);
+        updateState.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        add(updates,updateState);
+        TextView updateButton=button("UPDATE CYN",()->{
+            notifications();
+            UpdateSplash.show(this);
+        });
+        add(updates,updateButton);
+        add(updates,label("One button checks, downloads, verifies and installs. The splash follows real progress. Automatic updates check in the background and download on unmetered networks; Android still asks you to approve installation.",12,hint));
         LinearLayout about=section("CYN for Android","Built on the FxSound open-source foundation.");add(about,button("Audio diagnostics (local only)",()->showText("Audio diagnostics · privacy-safe",service.diagnostics()+"\nAI engine: "+service.desktopAi.status)));add(about,button("Source & release history",()->browser("https://github.com/oddfoxerr-real/Cyn/tree/codex/android/android")));add(about,button("Licenses & credits",()->{try{showText("Licenses & credits",asset("NOTICE.txt")+"\n\n"+asset("LICENSE.txt"));}catch(Exception e){toast("Could not open licenses");}}));add(about,label("The phone uses the same neural model weights and desktop mixer. Its audio renderer and effects are adapted for Android; identical sound to the Windows FxSound driver is not claimed.",12,hint));add(about,button("Stop CYN audio",()->{service.stopAll();update();}));
     }
     void offerLiveVisuals(){

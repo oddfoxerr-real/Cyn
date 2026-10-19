@@ -261,4 +261,60 @@ public class StudioTest {
         });
     }
 
+    @Test public void singleUpdateButtonAndMechanicalSplashContract()throws Exception {
+        MainActivity a=ready();
+        main(()->{
+            a.page=3;
+            a.build();
+            java.util.ArrayList<String> names=new java.util.ArrayList<>();
+            collectLabels(a.content,names);
+            assertEquals("One visible entry point controls CYN updates",
+                1,java.util.Collections.frequency(names,"UPDATE CYN"));
+            assertFalse("Old check and download button must be gone",
+                names.contains("Check and download update"));
+            assertFalse("Old second install button must be gone",
+                names.contains("Install downloaded update"));
+            assertTrue("Automatic update option must explain Wi-Fi behavior",
+                names.contains("Automatic updates · check and download on Wi-Fi"));
+        });
+        assertEquals("SEARCHING RELEASES",UpdateSplash.progressText(UpdateManager.CHECKING,-1));
+        assertEquals("VERIFYING APK",UpdateSplash.progressText(UpdateManager.VERIFYING,100));
+        assertEquals("UP TO DATE",UpdateSplash.progressText(UpdateManager.UP_TO_DATE,-1));
+        assertEquals("41%  •  DOWNLOADING",UpdateSplash.progressText(UpdateManager.DOWNLOADING,41));
+        assertEquals("INSTALL VERIFIED APK",UpdateSplash.actionText(UpdateManager.READY,true));
+        assertEquals("RETRY UPDATE",UpdateSplash.actionText(UpdateManager.FAILED,false));
+    }
+    private static void collectLabels(View root,java.util.List<String> values) {
+        if(root instanceof android.widget.TextView)values.add(
+            ((android.widget.TextView)root).getText().toString());
+        if(root instanceof android.view.ViewGroup){
+            android.view.ViewGroup group=(android.view.ViewGroup)root;
+            for(int i=0;i<group.getChildCount();i++)collectLabels(group.getChildAt(i),values);
+        }
+    }
+    @Test public void updateArtUsesMeasuredDownloadPercentageWithoutFakeFill()throws Exception{
+        MainActivity a=ready();
+        main(()->{
+            UpdateSplash.SplashArt art=new UpdateSplash.SplashArt(a,a.accent,true);
+            art.layout(0,0,440,780);
+            Bitmap bitmap=Bitmap.createBitmap(440,780,Bitmap.Config.ARGB_8888);
+            try {
+                android.graphics.Canvas canvas=new android.graphics.Canvas(bitmap);
+                art.state(UpdateManager.CHECKING,-1);
+                art.draw(canvas);
+                int color=bitmap.getPixel(190,370);
+                assertEquals("Checker stage has no fake filled transfer area",UpdateSplash.INK,color);
+                art.state(UpdateManager.DOWNLOADING,70);
+                art.draw(canvas);
+                // State change must draw without crashing even with reduced motion.
+                art.state(UpdateManager.VERIFYING,100);
+                art.draw(canvas);
+                art.state(UpdateManager.READY,100);
+                art.draw(canvas);
+                assertNotEquals("The mechanical art must draw its second tone",
+                    UpdateSplash.INK,bitmap.getPixel(220,370));
+            }finally{bitmap.recycle();}
+        });
+    }
+
 }

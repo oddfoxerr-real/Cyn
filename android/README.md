@@ -1,14 +1,14 @@
-# CYN Studio Android 0.2.5 preview
+# CYN Studio Android 0.2.6 preview
 
 Android 9+ on 64-bit ARM or x86. The app is named **CYN Studio**, package
-`io.github.oddfoxerr.cyn.studio`, version code 9. It installs alongside the older
+`io.github.oddfoxerr.cyn.studio`, version code 10. It installs alongside the older
 Cyn app because that app's original signing key could not be recovered. Keep the
 old app to preserve its settings and learning; Studio starts with separate data.
 Disable the old app's audio monitoring before enabling Studio to avoid competing
 effects. Future Studio releases retain this identity and signing key.
 
-Download `Cyn-Studio-Android-0.2.5-preview.apk` from the
-[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.5-preview),
+Download `Cyn-Studio-Android-0.2.6-preview.apk` from the
+[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.6-preview),
 open it on your phone and confirm installation. Do not uninstall the old Cyn to
 install Studio.
 
@@ -164,6 +164,10 @@ Physical-phone listening, Bluetooth routes, external-player compatibility, backg
 scheduling and install-over-old-version require device validation. No physical-phone
 or perceptual sound-quality result is implied by build or numerical tests.
 
-## 0.2.5 reversible Sound Control motion
+## 0.2.6 reversible Sound Control motion
 
 The coloured outlined ring anchors the user's saved manual setting. The **SeekBar thumb** follows current, actually applied AI DSP targets during local playback (and supported bass/clarity adjustments on compatible external sessions); it slides back to the ring on AI-off. This behavior covers Bass, Vocal clarity, Stereo width, Ambience, Dynamics and every EQ band (31/35/39). Output headroom has the same fixed manual ring but remains manual-only. Dragging the thumb adjusts and saves the user's own choice; AI updates never save the thumb's temporary position.
+
+## One-button update flow (0.2.6)
+
+Style → Updates has one **UPDATE CYN** action and one optional **Automatic updates** switch. Tapping Update opens the native mechanical two-tone dripping splash. The progress fill uses actual bytes downloaded (0–100); search and signature verification show non-quantified activity. The same screen offers INSTALL VERIFIED APK only when a newer signed APK has been downloaded and checked. Automatic mode uses periodic JobScheduler checks and downloads on unmetered connections; Android always requires user approval for installation. Dismissing the splash leaves an active download running, and a notification can take the user back to Updates when ready.
