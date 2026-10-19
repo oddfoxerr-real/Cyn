@@ -77,11 +77,11 @@ jobs:
       - name: Stage corresponding source and unsigned build
         run: |
           mkdir -p dist/android
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/android/Cyn-Studio-Android-0.2.3-preview-unsigned.apk
-          git archive --format=zip --output=dist/android/Cyn-Studio-Android-0.2.3-Source.zip HEAD android
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/android/Cyn-Studio-Android-0.2.4-preview-unsigned.apk
+          git archive --format=zip --output=dist/android/Cyn-Studio-Android-0.2.4-Source.zip HEAD android
       - uses: actions/upload-artifact@v4
         with:
-          name: Cyn-Studio-Android-0.2.3-validated-build
+          name: Cyn-Studio-Android-0.2.4-validated-build
           path: |
             dist/android/
             android/app/build/reports/lint-results-debug.*
@@ -100,25 +100,25 @@ jobs:
           keyfile="$RUNNER_TEMP/cyn-studio.jks"
           trap 'rm -f "$keyfile"' EXIT
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keyfile"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$keyfile" --ks-key-alias cyn-studio --ks-pass env:CYN_KEY_PASSWORD --key-pass env:CYN_KEY_PASSWORD --out dist/android/Cyn-Studio-Android-0.2.3-preview.apk dist/android/Cyn-Studio-Android-0.2.3-preview-unsigned.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/android/Cyn-Studio-Android-0.2.3-preview.apk > "$RUNNER_TEMP/cyn-cert.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$keyfile" --ks-key-alias cyn-studio --ks-pass env:CYN_KEY_PASSWORD --key-pass env:CYN_KEY_PASSWORD --out dist/android/Cyn-Studio-Android-0.2.4-preview.apk dist/android/Cyn-Studio-Android-0.2.4-preview-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/android/Cyn-Studio-Android-0.2.4-preview.apk > "$RUNNER_TEMP/cyn-cert.txt"
           grep -F 'certificate SHA-256 digest: 045d9c122b2158d569c0ef8d10bbb08496a9f19e7397b702e99e9330c780bcb7' "$RUNNER_TEMP/cyn-cert.txt"
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 dist/android/Cyn-Studio-Android-0.2.3-preview.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.3-preview.apk > "$RUNNER_TEMP/cyn-package.txt"
-          grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='7' versionName='0.2.3-preview'" "$RUNNER_TEMP/cyn-package.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 dist/android/Cyn-Studio-Android-0.2.4-preview.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.4-preview.apk > "$RUNNER_TEMP/cyn-package.txt"
+          grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='8' versionName='0.2.4-preview'" "$RUNNER_TEMP/cyn-package.txt"
           cd dist/android
-          sha256sum Cyn-Studio-Android-0.2.3-preview.apk > Cyn-Studio-Android-0.2.3-preview.apk.sha256
+          sha256sum Cyn-Studio-Android-0.2.4-preview.apk > Cyn-Studio-Android-0.2.4-preview.apk.sha256
       - name: Publish verified Android preview
         if: github.ref == 'refs/heads/codex/android'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag=android-studio-v0.2.3-preview
+          tag=android-studio-v0.2.4-preview
           if gh release view "$tag" >/dev/null 2>&1; then
             echo 'Release already exists; refusing to replace its assets.'
             exit 1
           fi
-          gh release create "$tag" --target "$GITHUB_SHA" --title 'CYN Studio Android 0.2.3 preview' --notes-file android/RELEASE_NOTES.md --draft --prerelease
-          gh release upload "$tag" dist/android/Cyn-Studio-Android-0.2.3-preview.apk dist/android/Cyn-Studio-Android-0.2.3-preview.apk.sha256 dist/android/Cyn-Studio-Android-0.2.3-Source.zip
+          gh release create "$tag" --target "$GITHUB_SHA" --title 'CYN Studio Android 0.2.4 preview' --notes-file android/RELEASE_NOTES.md --draft --prerelease
+          gh release upload "$tag" dist/android/Cyn-Studio-Android-0.2.4-preview.apk dist/android/Cyn-Studio-Android-0.2.4-preview.apk.sha256 dist/android/Cyn-Studio-Android-0.2.4-Source.zip
           gh release edit "$tag" --draft=false --prerelease --latest=false
