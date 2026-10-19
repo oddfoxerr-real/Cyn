@@ -59,6 +59,10 @@ public final class AudioService extends Service {
     private String visualError="Not started";
     float aiDeltaDb;
     int aiEqBands;
+    // Read on the UI thread: actual targets delivered to the native CYN engine.
+    final float[] appliedTargets=new float[48];
+    long appliedTargetAt;
+    boolean appliedAiFresh;
     boolean legacy;
     PreferenceModel.Trace neuralTrace() { return training?trainingTrace:enabled&&smart&&SystemClock.elapsedRealtime()-traceAt<900?liveTrace:null; }
     Chain displayedChain() { return chains.get(legacy?0:playing?playerSession:activeSession); }
@@ -118,6 +122,28 @@ public final class AudioService extends Service {
             "\nPersonal neural activity: "+(neuralTrace()!=null?"measured locally":"no recent activation data")+
             "\nVisualization: "+visualizationStatus()+
             "\nAudio remains on your device. These details are shown only in the app.";
+    }
+    /** Reports a measured control change, never an invented AI animation. */
+    float aiControlValue(String control,int band) {
+        if(!enabled||!smart)return Float.NaN;
+        if(playing) {
+            if(!appliedAiFresh||SystemClock.elapsedRealtime()-appliedTargetAt>1800)return Float.NaN;
+            switch(control) {
+                case "Bass":return appliedTargets[1];
+                case "Vocal clarity":return appliedTargets[2];
+                case "Stereo width":return appliedTargets[3]*100f;
+                case "Ambience":return appliedTargets[4]*100f;
+                case "Dynamics":return appliedTargets[5]*100f;
+                case "EQ":return band>=0&&band<bandCount?appliedTargets[9+band]:Float.NaN;
+                default:return Float.NaN;
+            }
+        }
+        if(!monitor||neuralTrace()==null)return Float.NaN;
+        Chain chain=chains.get(legacy?0:activeSession);
+        if(chain==null||!chain.controlsEq()||SystemClock.elapsedRealtime()-chain.lastCapture>1400)return Float.NaN;
+        if("Bass".equals(control))return (float)PreferenceModel.clamp(bass+chain.bassOffset,0,6);
+        if("Vocal clarity".equals(control))return (float)PreferenceModel.clamp(clarity+chain.clarityOffset,0,6);
+        return Float.NaN;
     }
     boolean hasSessionSpectrum() {
         return monitor&&enabled&&sessionSpectrumAt>0&&SystemClock.elapsedRealtime()-sessionSpectrumAt<1200;
@@ -452,6 +478,9 @@ public final class AudioService extends Service {
         }
         aiDeltaDb=fresh?changeDb:0;
         aiEqBands=fresh?changedBands:0;
+        System.arraycopy(p,0,appliedTargets,0,p.length);
+        appliedTargetAt=SystemClock.elapsedRealtime();
+        appliedAiFresh=fresh;
         if(playing)analysis=processingStatus();
         NativeEngine.controls(desktopAi.engine,p);
     }
