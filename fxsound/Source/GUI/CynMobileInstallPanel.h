@@ -9,7 +9,7 @@ class CynMobileInstallPanel final : public juce::Component
 {
 public:
     static constexpr const char* mobileReleases =
-        "https://github.com/oddfoxerr-real/Cyn/releases?q=android-studio";
+        "https://github.com/oddfoxerr-real/Cyn/releases/download/android-studio-v0.2.3-preview/Cyn-Studio-Android-0.2.3-preview.apk?utm_source";
     CynMobileInstallPanel()
     {
         setSize(372, 456);
@@ -19,20 +19,20 @@ public:
         heading.setFont(juce::Font(21.0f, juce::Font::bold));
         addAndMakeVisible(heading);
 
-        explanation.setText("Scan this QR code with your phone camera to find CYN Studio for Android.",
+        explanation.setText("Scan the QR code to download the Android v0.2.3 APK directly.",
                             juce::dontSendNotification);
         explanation.setJustificationType(juce::Justification::centred);
         explanation.setColour(juce::Label::textColourId, juce::Colour(0xffb9c9df));
         explanation.setFont(juce::Font(13.0f));
         addAndMakeVisible(explanation);
 
-        openButton.setButtonText("Open mobile releases");
+        openButton.setButtonText("Download Android APK");
         openButton.onClick = [] { juce::URL(mobileReleases).launchInDefaultBrowser(); };
         addAndMakeVisible(openButton);
         copyButton.setButtonText("Copy link");
         copyButton.onClick = [] { juce::SystemClipboard::copyTextToClipboard(mobileReleases); };
         addAndMakeVisible(copyButton);
-        footer.setText("QR downloads the mobile app. Secure PC-to-phone pairing is not active yet.",
+        footer.setText("Direct APK download · no PC-to-phone pairing.",
                        juce::dontSendNotification);
         footer.setColour(juce::Label::textColourId, juce::Colour(0xff90a5c0));
         footer.setJustificationType(juce::Justification::centred);
@@ -44,19 +44,19 @@ public:
     {
         heading.setBounds(14, 12, getWidth()-28, 36);
         explanation.setBounds(18, 48, getWidth()-36, 44);
-        openButton.setBounds(26, 365, getWidth()-52, 34);
-        copyButton.setBounds(26, 405, getWidth()-52, 31);
-        footer.setBounds(13, 328, getWidth()-26, 34);
+        openButton.setBounds(26, 370, getWidth()-52, 34);
+        copyButton.setBounds(26, 408, getWidth()-52, 31);
+        footer.setBounds(13, 340, getWidth()-26, 23);
     }
 
     void paint(juce::Graphics& g) override
     {
         g.fillAll(juce::Colour(0xff080d16));
-        constexpr int modules=37, border=4;
+        constexpr int modules=41, border=4;
         constexpr int total=modules+2*border;
-        constexpr float unit=5.22f;
+        constexpr float unit=5.0f;
         constexpr float left=(372-total*unit)*0.5f;
-        constexpr float top=93.0f;
+        constexpr float top=94.0f;
         g.setColour(juce::Colours::white);
         g.fillRoundedRectangle(left-5, top-5, total*unit+10, total*unit+10, 10);
         g.setColour(juce::Colour(0xff0e1b30));
@@ -82,14 +82,14 @@ public:
 private:
     static bool bit(int offset)
     {
-        // 37 x 37 QR matrix; seven leading padding bits in the packed bytes.
+        // 41x41 offline QR matrix. Packed row-major, MSB-first (3 pad bits at end).
+        // Generated from mobileReleases; QR was decoded back to the exact APK URL.
         constexpr const char* hex =
-            "01fd056387f82b7482a0dd60c77576e8e8712bb75d0f055d8253e52a0ff555555fc010255e013f9d5b49735a00a51f23b6136d05940d0087f1ff931161a065c370c4b1cef7f7fa071a46dcddd19aa4710faa9d92775cb5ae4641b8033e34f3f813f0ddcb3534b7392f1cfa4e5b13c17b0717eb363e188d838e67326ddb0ea63cac2dd3610519f400e93a58b7f6fcff5460a55a962775ba2d7f3bab0e4ee35d1ccfae4e08ab6082ffd8e01121";
-        const int bitIndex=offset+7;
-        const int digit=bitIndex/4;
-        const char c=hex[digit];
-        const int value=c>='0'&&c<='9' ? c-'0' : c-'a'+10;
-        return ((value>>(3-(bitIndex%4)))&1)!=0;
+            "fe0cff473fc151923a506e90a3482bb759482a25dba1afdcf2ec145a01e507faaaaaaafe0083386300fbd743ec5568a74cf5decfffe2adae5d9163a43092fdfd9b586a6414fc6d76c9f73b5250f1231c319ac75742fc0602a85a87fccdbb7206b4060852972b85e8ee1f41788367c85d65cf9f18e38909856974a237e64b7507ae6a3ca7dcd691d29d159fb775b27e24a8fc8ef06541b3f85f4e0a8618400109744e7710bac643fcfa00685e0745ffb0ea0e6a904062e1110baff49e8fa5d796eb443aeb2d32f1af05721f0722fecd5ad5160";
+        const int digit = offset / 4;
+        const char c = hex[digit];
+        const int nibble = c >= '0' && c <= '9' ? c - '0' : c - 'a' + 10;
+        return ((nibble >> (3 - offset % 4)) & 1) != 0;
     }
     juce::Label heading, explanation, footer;
     juce::TextButton openButton, copyButton;
