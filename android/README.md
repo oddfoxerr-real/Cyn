@@ -1,14 +1,14 @@
-# CYN Studio Android 0.2.4 preview
+# CYN Studio Android 0.2.5 preview
 
 Android 9+ on 64-bit ARM or x86. The app is named **CYN Studio**, package
-`io.github.oddfoxerr.cyn.studio`, version code 8. It installs alongside the older
+`io.github.oddfoxerr.cyn.studio`, version code 9. It installs alongside the older
 Cyn app because that app's original signing key could not be recovered. Keep the
 old app to preserve its settings and learning; Studio starts with separate data.
 Disable the old app's audio monitoring before enabling Studio to avoid competing
 effects. Future Studio releases retain this identity and signing key.
 
-Download `Cyn-Studio-Android-0.2.4-preview.apk` from the
-[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.4-preview),
+Download `Cyn-Studio-Android-0.2.5-preview.apk` from the
+[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.5-preview),
 open it on your phone and confirm installation. Do not uninstall the old Cyn to
 install Studio.
 
@@ -163,3 +163,7 @@ model loading, playback/resampling, seek/pause, and favorite persistence.
 Physical-phone listening, Bluetooth routes, external-player compatibility, background
 scheduling and install-over-old-version require device validation. No physical-phone
 or perceptual sound-quality result is implied by build or numerical tests.
+
+## 0.2.5 reversible Sound Control motion
+
+The coloured outlined ring anchors the user's saved manual setting. The **SeekBar thumb** follows current, actually applied AI DSP targets during local playback (and supported bass/clarity adjustments on compatible external sessions); it slides back to the ring on AI-off. This behavior covers Bass, Vocal clarity, Stereo width, Ambience, Dynamics and every EQ band (31/35/39). Output headroom has the same fixed manual ring but remains manual-only. Dragging the thumb adjusts and saves the user's own choice; AI updates never save the thumb's temporary position.
