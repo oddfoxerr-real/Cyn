@@ -60,6 +60,23 @@ Optional MCP compilation requires Go; see `BUILD_CYN.ps1 -WithMcp`.
 
 ## Credits and licensing
 
+**Original FxSound authorship:** FxSound LLC and the original contributors
+created the underlying FxSound DSP, driver and FxSound-derived sources. Their
+original copyrights and required notices remain in the corresponding files.
+
+**CYN modifications:** CYN's interface, AI features and other independent
+changes are modifications distributed by CYN contributors. They must not be
+misrepresented as original FxSound work or officially endorsed by FxSound.
+
+**License and no warranty:** The modified application is distributed under
+GNU AGPL-3.0-or-later; see the complete [LICENSE](LICENSE), retained source
+notices, and third-party component licenses. The license provides a no-warranty
+disclaimer and limits of liability to the extent permitted by law (sections
+15-17). Crediting FxSound does not transfer responsibility for CYN-specific
+changes to FxSound or eliminate a distributor's applicable legal obligations.
+
+
+
 Cyn is a modified community version of [FxSound](https://github.com/fxsound2/fxsound-app),
 not an official FxSound release. FxSound's DSP and virtual driver retain their
 original identity and notices. Source snapshot: `d8e7a23d37ed5939c2a3090a1c1756c7f2500b17`.
