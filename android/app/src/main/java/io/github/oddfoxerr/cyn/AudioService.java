@@ -48,6 +48,10 @@ public final class AudioService extends Service {
     private long lastFrame, traceAt;
     private PreferenceModel.Trace liveTrace, trainingTrace;
     int traceSequence;
+    volatile float[] sessionSpectrum=new float[31];
+    volatile long sessionSpectrumAt;
+    float aiDeltaDb;
+    int aiEqBands;
     boolean legacy;
     PreferenceModel.Trace neuralTrace() { return training?trainingTrace:enabled&&smart&&SystemClock.elapsedRealtime()-traceAt<900?liveTrace:null; }
     Chain displayedChain() { return chains.get(legacy?0:playing?playerSession:activeSession); }
@@ -95,11 +99,41 @@ public final class AudioService extends Service {
             (c==null?"":String.format(Locale.ROOT,"\nEQ offsets requested: bass %+.2f dB · clarity %+.2f dB",c.controlsEq()?PreferenceModel.clamp(bass+c.bassOffset,0,6)-bass:0,c.controlsEq()?PreferenceModel.clamp(clarity+c.clarityOffset,0,6)-clarity:0));
     }
     void clearTrace() { liveTrace=null; traceAt=0; Arrays.fill(predictions,0); Arrays.fill(neurons,0); }
+    /** Privacy-minimized local diagnostics: no manufacturer, model, app identities or session IDs. */
     String diagnostics() {
-        StringBuilder s=new StringBuilder("Cyn "+BuildConfig.VERSION_NAME+" ("+BuildConfig.VERSION_CODE+")\n"+Build.MANUFACTURER+" "+Build.MODEL+" · Android "+Build.VERSION.RELEASE+"\nMonitor: "+monitor+" · legacy output mix: "+legacy+" · detected external sessions: "+externalSessionCount()+" · controlled external EQs: "+controlledExternalEqCount()+"\n"+connectionState()+"\n"+connectionHint()+"\n"+neuralStatus());
-        for(Chain c:chains.values()) s.append("\n").append(c.description());
-        if(monitor&&!legacy&&externalSessionCount()==0) s.append("\nNo compatible third-party audio session received yet.");
-        return s.toString();
+        return "CYN Studio "+BuildConfig.VERSION_NAME+
+            "\nConnection: "+connectionState()+
+            "\nPlayback mode: "+processingStatus()+
+            "\nExternal effect sessions detected: "+externalSessionCount()+
+            "\nExternal EQ controls available: "+controlledExternalEqCount()+
+            "\nSystem mix compatibility: "+(legacy?"requested":"not requested")+
+            "\nLive session spectrum: "+(hasSessionSpectrum()?"receiving samples":"no recent samples")+
+            "\nPersonal neural activity: "+(neuralTrace()!=null?"measured locally":"no recent activation data")+
+            "\nAudio remains on your device. These details are shown only in the app.";
+    }
+    boolean hasSessionSpectrum() {
+        return monitor&&enabled&&sessionSpectrumAt>0&&SystemClock.elapsedRealtime()-sessionSpectrumAt<1200;
+    }
+    String processingStatus() {
+        if(!enabled)return "Enhancement off · original sound";
+        if(playing) {
+            if(!smart)return "CYN native DSP active · manual tuning";
+            DesktopAi.Result r=desktopAi.latest;
+            if(r==null||SystemClock.elapsedRealtime()-r.at>2500)
+                return "CYN native DSP active · waiting for AI analysis";
+            return String.format(Locale.ROOT,
+                "Neural decisions sent to CYN DSP · adjustment peak %.1f dB · %d EQ bands",
+                aiDeltaDb,aiEqBands);
+        }
+        if(monitor) {
+            if(legacy) return chains.containsKey(0)&&chains.get(0).controlsEq()
+                ?"Android system-mix EQ controlled · audio routing device-dependent"
+                :"Android system-mix EQ not controlled";
+            if(controlledExternalEqCount()>0)return "Android music-session EQ controlled · native neural DSP not in this audio path";
+            if(externalSessionCount()>0)return "Music session detected · EQ control unavailable";
+            return "Monitoring · waiting for compatible playback";
+        }
+        return "CYN idle · choose music or connect compatible audio";
     }
     void startLegacy() {
         for(Integer id:new ArrayList<>(chains.keySet())) detach(id);
@@ -181,7 +215,8 @@ public final class AudioService extends Service {
         return START_NOT_STICKY;
     }
     void stopMonitor() {
-        monitor=false; legacy=false; for(Integer id:new ArrayList<>(chains.keySet())) if(id!=playerSession) detach(id);
+        monitor=false; legacy=false; sessionSpectrum=new float[31]; sessionSpectrumAt=0;
+        for(Integer id:new ArrayList<>(chains.keySet())) if(id!=playerSession) detach(id);
         if(playing||preparing) foreground(); else { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); }
 
         status=connectionState();
@@ -276,7 +311,7 @@ public final class AudioService extends Service {
         if(playerSession>0) detach(playerSession); playerSession=-1;
         if(player!=null) { player.release(); player=null; } desktopAi.active=false;desktopAi.reset();playing=false; preparing=false; audio.abandonAudioFocusRequest(focus);
     }
-    void stopAll() { monitor=false; legacy=false; clearTrace(); releasePlayer(); for(Integer id:new ArrayList<>(chains.keySet())) detach(id); mediaSession.setActive(false); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); status="Stopped"; }
+    void stopAll() { monitor=false; legacy=false; sessionSpectrumAt=0; sessionSpectrum=new float[31]; clearTrace(); releasePlayer(); for(Integer id:new ArrayList<>(chains.keySet())) detach(id); mediaSession.setActive(false); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); status="Stopped"; }
     private void attach(int id,String owner) {
         if(id<0||(!legacy&&id==0)||(legacy&&id!=0)||chains.containsKey(id)) return;
         if(chains.size()>=8) { status="Too many audio sessions; close an unused player."; return; }
@@ -285,7 +320,10 @@ public final class AudioService extends Service {
     }
     private void detach(int id) {
         clearTrace(); Chain c=chains.remove(id); if(c!=null) c.close();
-        if(activeSession==id) { activeSession=chains.isEmpty()?-1:chains.keySet().iterator().next(); frames.clear(); }
+        if(activeSession==id) {
+            activeSession=chains.isEmpty()?-1:chains.keySet().iterator().next(); frames.clear();
+            sessionSpectrum=new float[31]; sessionSpectrumAt=0;
+        }
         if(monitor) { status=connectionState(); updateNotification(); }
     }
     void changed() {
@@ -316,7 +354,16 @@ public final class AudioService extends Service {
             if(r.at!=libraryTrace){libraryTrace=r.at;liveTrace=trace;traceAt=SystemClock.elapsedRealtime();traceSequence++;predictions=trace.outputs;neurons=trace.hidden;}
             if(r.at!=libraryFrame){libraryFrame=r.at;frames.add(new Frame(x,Math.min(1,r.features[11]*4)));while(frames.size()>240)frames.remove(0);}
         }
-        if(playing)analysis=enabled?(smart?desktopAi.status:"AI off · manual studio sound"):"CYN bypassed · original audio";
+        float changeDb=Math.max(Math.abs(p[1]-bass),Math.abs(p[2]-clarity));
+        int changedBands=0;
+        for(int b=0;b<bandCount;b++) {
+            float difference=Math.abs(p[9+b]-studioEq[b]);
+            changeDb=Math.max(changeDb,difference);
+            if(difference>.05f)changedBands++;
+        }
+        aiDeltaDb=fresh?changeDb:0;
+        aiEqBands=fresh?changedBands:0;
+        if(playing)analysis=processingStatus();
         NativeEngine.controls(desktopAi.engine,p);
     }
     void train() {
@@ -368,6 +415,14 @@ public final class AudioService extends Service {
                     @Override public void onFftDataCapture(Visualizer v,byte[] fft,int rate) {
                         if(destroyed||v!=visualizer||!smart||!enabled||chains.get(id)!=Chain.this) return;
                         lastCapture=SystemClock.elapsedRealtime();
+                        if(!playing&&(id==0||id==activeSession)) {
+                            if(rms>.01) {
+                                sessionSpectrum=AudioFeatures.spectrum(fft,rate/1000);
+                                sessionSpectrumAt=lastCapture;
+                            } else {
+                                sessionSpectrumAt=0;
+                            }
+                        }
                         double[] x=AudioFeatures.fromFft(fft,rate/1000,rms,peak);
                         PreferenceModel.Trace trace=learning.model.trace(x); double[] p=trace.outputs;
                         // Do not boost silence. The model does not control Android volume or routing.
