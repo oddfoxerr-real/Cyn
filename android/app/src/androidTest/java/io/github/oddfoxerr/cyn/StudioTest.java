@@ -151,4 +151,34 @@ public class StudioTest {
         });
     }
 
+    @Test public void connectVisualsExplainPermissionAndNeverInventActivity()throws Exception {
+        MainActivity a=ready();
+        main(()->{
+            AudioService audio=a.service;
+            boolean wasEnabled=audio.enabled;
+            boolean wasSmart=audio.smart;
+            try {
+                audio.stopMonitor();
+                audio.enabled=true;
+                audio.smart=true;
+                audio.changed();
+                assertFalse(audio.hasSessionSpectrum());
+                assertTrue(audio.visualizationStatus().contains("Connect CYN"));
+                audio.onStartCommand(new Intent(a,AudioService.class).setAction(AudioService.MONITOR),0,200);
+                assertTrue(audio.monitor);
+                assertNotNull(audio.visualizationStatus());
+                if(a.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)!=android.content.pm.PackageManager.PERMISSION_GRANTED)
+                    assertTrue("Visualizer must request permission rather than simulate measurements",
+                        audio.visualizationStatus().contains("permission"));
+                audio.stopMonitor();
+                assertFalse("Stopping CYN clears external visualization",audio.hasSessionSpectrum());
+            }finally{
+                audio.stopMonitor();
+                audio.enabled=wasEnabled;
+                audio.smart=wasSmart;
+                audio.changed();
+            }
+        });
+    }
+
 }

@@ -39,7 +39,7 @@ public final class MainActivity extends Activity {
     @Override public void onCreate(Bundle state){super.onCreate(state);ui=getSharedPreferences("ui",0);if(state!=null){page=state.getInt("page",0);query=state.getString("query","");onlyFavorites=state.getBoolean("favorites");}if(getIntent().getBooleanExtra("updates",false))page=3;build(false);bound=bindService(new Intent(this,AudioService.class),connection,BIND_AUTO_CREATE);UpdateManager.schedule(this);UpdateManager.check(this,false,null);}
     @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);state.putInt("page",page);state.putString("query",query);state.putBoolean("favorites",onlyFavorites);}
     @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);if(i.getBooleanExtra("updates",false)){page=3;build(false);}processControlIntent(i);}
-    void processControlIntent(Intent i){if(service!=null&&AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL.equals(i.getAction())){notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("session",i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1)));i.setAction(null);page=0;build(false);}}
+    void processControlIntent(Intent i){if(service!=null&&AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL.equals(i.getAction())){notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("session",i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1)));i.setAction(null);page=0;build(false);offerLiveVisuals();}}
     String asset(String name)throws IOException{try(InputStream in=getAssets().open(name)){return Streams.text(in);}}
     int dp(float v){return Math.round(v*getResources().getDisplayMetrics().density);}
     void palette(){reduced=ui.getBoolean("reduce",false)||!android.animation.ValueAnimator.areAnimatorsEnabled();int t=ui.getInt("studio_theme",0);int[][]colors={{0xff83b8ff,0xffaa8fff,0xff0c111c},{0xff65e4be,0xff7aa7ff,0xff071713},{0xffffad82,0xffea8da9,0xff190f10},{0xffc0a0ff,0xff86d9f3,0xff100d1b}};int[]c=colors[Math.floorMod(t,colors.length)];accent=c[0];secondary=c[1];card=c[2];}
@@ -84,16 +84,16 @@ public final class MainActivity extends Activity {
         externalStatus=label(service.connectionState()+"\n"+service.connectionHint(),12,hint);externalStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(external,externalStatus);
         powerButton=button(service.monitor?"Disconnect CYN":"Connect CYN",()->{
             if(service.monitor) service.stopMonitor();
-            else { notifications(); startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR)); }
+            else { notifications(); startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR)); offerLiveVisuals(); }
             update();
         });add(external,powerButton);
         add(external,button("Try device-wide EQ (experimental)",()->new AlertDialog.Builder(this)
             .setTitle("Try device-wide compatibility?")
             .setMessage("Android's legacy output-mix EQ works only on some phones. It can affect multiple apps, and obtaining effect control does not prove music is being processed. Compare sound with CYN off/on. Disconnect music apps to stop the attempt.")
-            .setPositiveButton("Try",(d,w)->{notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("legacy",true));})
+            .setPositiveButton("Try",(d,w)->{notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("legacy",true));offerLiveVisuals();})
             .setNegativeButton("Cancel",null).show()));
-        if(service.smart&&checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)
-            add(external,button("Allow live session analysis",this::requestAnalysis));
+        if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)
+            add(external,button("Enable live visuals",this::offerLiveVisuals));
         add(external,button("Connection details",this::connectionHelp));
     }
     void bands(int count){float[]old=service.studioEq.clone();int n=service.bandCount;for(int i=0;i<count;i++){float position=i*(n-1f)/(count-1);int lo=(int)position;service.studioEq[i]=old[lo]+(old[Math.min(n-1,lo+1)]-old[lo])*(position-lo);}service.bandCount=count;service.changed();build();}
@@ -140,16 +140,31 @@ public final class MainActivity extends Activity {
         LinearLayout updates=section("Updates","Version "+BuildConfig.VERSION_NAME+" · build "+BuildConfig.VERSION_CODE);toggle(updates,"Check automatically",UpdateManager.automatic(this),on->UpdateManager.automatic(this,on));toggle(updates,"Download on Wi-Fi",UpdateManager.downloads(this),on->UpdateManager.downloads(this,on));updateState=label(UpdateManager.message,13,accent);updateState.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(updates,updateState);add(updates,button("Check and download update",()->{notifications();UpdateManager.check(this,true,null);}));gap(updates,6);add(updates,button("Install downloaded update",()->UpdateManager.install(this)));add(updates,label("CYN verifies the download, package and signing certificate. Android asks you to confirm installation. Audio and learning data stay on your phone.",12,hint));
         LinearLayout about=section("CYN for Android","Built on the FxSound open-source foundation.");add(about,button("Audio diagnostics (local only)",()->showText("Audio diagnostics · privacy-safe",service.diagnostics()+"\nAI engine: "+service.desktopAi.status)));add(about,button("Source & release history",()->browser("https://github.com/oddfoxerr-real/Cyn/tree/codex/android/android")));add(about,button("Licenses & credits",()->{try{showText("Licenses & credits",asset("NOTICE.txt")+"\n\n"+asset("LICENSE.txt"));}catch(Exception e){toast("Could not open licenses");}}));add(about,label("The phone uses the same neural model weights and desktop mixer. Its audio renderer and effects are adapted for Android; identical sound to the Windows FxSound driver is not claimed.",12,hint));add(about,button("Stop CYN audio",()->{service.stopAll();update();}));
     }
-    void requestAnalysis(){service.smart=true;service.changed();if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)new AlertDialog.Builder(this).setTitle("Analyze a music app?").setMessage("Android requires microphone permission for session visualization. CYN reads the playback session, never the microphone. Library analysis does not need this permission.").setPositiveButton("Continue",(d,w)->requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},21)).setNegativeButton("Later",null).show();}
+    void offerLiveVisuals(){
+        if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED){
+            if(service!=null)service.refreshVisualization();
+            return;
+        }
+        new AlertDialog.Builder(this).setTitle("Enable CYN live visuals?")
+            .setMessage("To show a real-time spectrum and neural activity for music outside CYN, Android requires its microphone-labelled audio permission. CYN uses Android's playback Visualizer; it does not open the microphone, save music or upload audio. Some apps may still block analysis.")
+            .setPositiveButton("Enable",(d,w)->requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},21))
+            .setNegativeButton("Not now",null).show();
+    }
+    void requestAnalysis(){service.smart=true;service.changed();offerLiveVisuals();}
     void notifications(){if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},22);}
-    @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results){super.onRequestPermissionsResult(code,permissions,results);if(service==null)return;if(code==23&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)scan();service.changed();}
+    @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results){super.onRequestPermissionsResult(code,permissions,results);if(service==null)return;if(code==23&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)scan();
+        service.changed();
+        if(code==21&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED){
+            service.refreshVisualization();
+            toast("CYN live visuals enabled");
+        }}
     void update(){if(service==null)return;
         if(miniTitle!=null){setLabel(miniTitle,service.player==null?"Your library is ready":service.title);setLabel(miniState,service.player==null?"Choose a track to listen":service.playing?"Playing · "+time(service.position()):"Paused");}
         if(miniToggle!=null){setLabel(miniToggle,service.playing?"Ⅱ":"▶");miniToggle.setContentDescription(service.playing?"Pause current track":"Play current track");}
         if(playButton!=null)setLabel(playButton,service.playing?"Pause":"Play");
         if(connectionTitle!=null){setLabel(connectionTitle,!service.enabled?"Original sound":service.playing?"Your sound, live":service.monitor?service.connectionState():"Ready when you are");setLabel(connectionHint,service.playing?(service.smart?service.desktopAi.status:"AI off · manual sound controls"):service.connectionHint());}
-        if(externalStatus!=null)setLabel(externalStatus,service.connectionState()+"\n"+service.connectionHint());
-        if(processingDetails!=null)setLabel(processingDetails,service.processingStatus());
+        if(externalStatus!=null)setLabel(externalStatus,service.connectionState()+"\n"+service.connectionHint()+"\n"+service.visualizationStatus());
+        if(processingDetails!=null)setLabel(processingDetails,service.processingStatus()+"\n"+service.visualizationStatus());
         if(powerButton!=null)setLabel(powerButton,service.monitor?"Disconnect CYN":"Connect CYN");
         if(playLabel!=null)setLabel(playLabel,service.title);if(position!=null&&!seeking){position.setMax(Math.max(1,service.duration()));position.setProgress(service.position());}if(positionLabel!=null)setLabel(positionLabel,time(service.position())+" / "+time(service.duration()));
         if(liveStatus!=null){DesktopAi.Result r=service.desktopAi.latest;String state=!service.enabled?"CYN bypassed":!service.smart?"AI off":service.playing?service.desktopAi.status:service.player!=null?"Playback paused":service.monitor?service.analysis:"Play a library track for AI listening";if(r!=null&&service.playing&&service.smart&&service.enabled&&SystemClock.elapsedRealtime()-r.at<2500)state+="\nMusic "+Math.round(r.scene[0]*100)+"% · Speech "+Math.round(r.scene[1]*100)+"% · "+r.milliseconds+" ms inference";setLabel(liveStatus,state);}

@@ -1,14 +1,14 @@
-# CYN Studio Android 0.2.2 preview
+# CYN Studio Android 0.2.3 preview
 
 Android 9+ on 64-bit ARM or x86. The app is named **CYN Studio**, package
-`io.github.oddfoxerr.cyn.studio`, version code 6. It installs alongside the older
+`io.github.oddfoxerr.cyn.studio`, version code 7. It installs alongside the older
 Cyn app because that app's original signing key could not be recovered. Keep the
 old app to preserve its settings and learning; Studio starts with separate data.
 Disable the old app's audio monitoring before enabling Studio to avoid competing
 effects. Future Studio releases retain this identity and signing key.
 
-Download `Cyn-Studio-Android-0.2.2-preview.apk` from the
-[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.2-preview),
+Download `Cyn-Studio-Android-0.2.3-preview.apk` from the
+[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.3-preview),
 open it on your phone and confirm installation. Do not uninstall the old Cyn to
 install Studio.
 
@@ -35,6 +35,17 @@ install Studio.
   and current signing certificate must verify before install. Android confirms the
   installation. Legacy Android and Windows releases are never selected. Background
   checks can be disabled.
+
+## Connect CYN visuals
+
+CYN requests permission before displaying measured playback visualizations.
+When individual app sessions are unavailable, it tries Android's output-mix
+Visualizer. No device microphone is opened. External audio may still be
+unavailable on restricted or incompatible Android devices. The interface
+then reports the limitation rather than generating simulated activity.
+The visualizer stops on disconnect; model activity appears only when
+measured audio features are available. This does not bypass Android's
+third-party audio processing restrictions.
 
 ## CYN as a music AI assistant
 
