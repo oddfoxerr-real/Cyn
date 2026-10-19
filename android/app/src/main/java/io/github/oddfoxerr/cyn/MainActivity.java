@@ -71,7 +71,7 @@ public final class MainActivity extends Activity {
         mini.removeAllViews();LinearLayout m=row();LinearLayout info=column();miniTitle=label("Your library is ready",13,text);miniTitle.setSingleLine();miniTitle.setEllipsize(TextUtils.TruncateAt.END);miniState=label("Choose a track to listen",11,hint);add(info,miniTitle);add(info,miniState);m.addView(info,new LinearLayout.LayoutParams(0,-2,1));TextView toggle=button("▶",()->{if(service==null)return;if(service.player==null){page=2;build(true);}else if(service.playing)service.pause();else startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.TOGGLE));});miniToggle=toggle;toggle.setContentDescription("Play current track");m.addView(toggle,new LinearLayout.LayoutParams(dp(68),-2));add(mini,m);info.setOnClickListener(v->{page=2;build(true);});update();
     }
     void toggle(LinearLayout parent,String title,boolean checked,java.util.function.Consumer<Boolean> change){Switch s=new Switch(this);s.setText(title);s.setTextColor(text);s.setTextSize(14);s.setMinHeight(dp(52));s.setChecked(checked);s.setThumbTintList(ColorStateList.valueOf(accent));s.setOnCheckedChangeListener((b,on)->change.accept(on));add(parent,s);}
-    void slider(LinearLayout parent,String title,float value,float min,float max,String suffix,java.util.function.Consumer<Float> change){TextView caption=label(title+"   "+String.format(Locale.ROOT,"%.1f",value)+suffix,13,text);add(parent,caption);SeekBar bar=new SeekBar(this);bar.setMax(120);bar.setProgress(Math.round((value-min)/(max-min)*120));bar.setMinimumHeight(dp(48));bar.setProgressTintList(ColorStateList.valueOf(accent));bar.setThumbTintList(ColorStateList.valueOf(accent));bar.setContentDescription(title);bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int n,boolean user){if(user){float v=min+(max-min)*n/120;caption.setText(title+"   "+String.format(Locale.ROOT,"%.1f",v)+suffix);change.accept(v);}}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}});add(parent,bar);}
+    void slider(LinearLayout parent,String title,float value,float min,float max,String suffix,java.util.function.Consumer<Float> change){TextView caption=label(title+"   "+String.format(Locale.ROOT,"%.1f",value)+suffix,13,text);add(parent,caption);FoxSlider bar=new FoxSlider(this,reduced);bar.setMax(120);bar.setProgress(Math.round((value-min)/(max-min)*120));bar.setMinimumHeight(dp(62));bar.setProgressTintList(ColorStateList.valueOf(accent));bar.setThumbTintList(ColorStateList.valueOf(accent));bar.setContentDescription(title);bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int n,boolean user){if(user){float v=min+(max-min)*n/120;caption.setText(title+"   "+String.format(Locale.ROOT,"%.1f",v)+suffix);change.accept(v);}}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}});add(parent,bar);}
     /** The outlined circle is the user's baseline; the native seek thumb follows real AI DSP. */
     void smartSlider(LinearLayout parent,String key,int band,String labelText,float baseline,float min,float max,
                      String suffix,java.util.function.Consumer<Float> change){
@@ -80,7 +80,7 @@ public final class MainActivity extends Activity {
         AiControlMarker bar=new AiControlMarker(key,band,baseline,min,max,suffix);
         bar.setMax(120);
         bar.setProgress(bar.position(baseline));
-        bar.setMinimumHeight(dp(52));
+        bar.setMinimumHeight(dp(62));
         bar.setProgressTintList(ColorStateList.valueOf(accent));
         bar.setThumbTintList(ColorStateList.valueOf(accent));
         bar.setContentDescription(labelText+" · draggable AI position; ring is your manual setting");
@@ -104,7 +104,7 @@ public final class MainActivity extends Activity {
         bar.readout=aiLabel;
         liveControlMarkers.add(bar);
     }
-    final class AiControlMarker extends SeekBar {
+    final class AiControlMarker extends FoxSlider {
         final String key;
         final int band;
         final float minimum,maximum;
@@ -114,12 +114,12 @@ public final class MainActivity extends Activity {
         boolean touching;
         final Paint markerPaint=new Paint(Paint.ANTI_ALIAS_FLAG);
         AiControlMarker(String key,int band,float baseline,float min,float max,String suffix){
-            super(MainActivity.this);
+            super(MainActivity.this,reduced);
             this.key=key;this.band=band;minimum=min;maximum=max;
             manualValue=baseline;this.suffix=suffix;
             visualProgress=position(baseline);
             // The baseline ring must remain visible, including while the AI is off.
-            setMinimumHeight(dp(52));
+            setMinimumHeight(dp(62));
         }
         int position(float value){
             return Math.max(0,Math.min(120,Math.round((value-minimum)/(maximum-minimum)*120)));
@@ -242,7 +242,7 @@ public final class MainActivity extends Activity {
         });
         add(updates,updateButton);
         add(updates,label("One button checks, downloads, verifies and installs. The splash follows real progress. Automatic updates check in the background and download on unmetered networks; Android still asks you to approve installation.",12,hint));
-        LinearLayout about=section("CYN for Android","Built on the FxSound open-source foundation.");add(about,button("Audio diagnostics (local only)",()->showText("Audio diagnostics · privacy-safe",service.diagnostics()+"\nAI engine: "+service.desktopAi.status)));add(about,button("Source & release history",()->browser("https://github.com/oddfoxerr-real/Cyn/tree/codex/android/android")));add(about,button("Licenses & credits",()->{try{showText("Licenses & credits",asset("NOTICE.txt")+"\n\n"+asset("LICENSE.txt"));}catch(Exception e){toast("Could not open licenses");}}));add(about,label("The phone uses the same neural model weights and desktop mixer. Its audio renderer and effects are adapted for Android; identical sound to the Windows FxSound driver is not claimed.",12,hint));add(about,button("Stop CYN audio",()->{service.stopAll();update();}));
+        LinearLayout about=section("CYN for Android","Built on the FxSound open-source foundation.");add(about,button("Audio diagnostics (local only)",()->showText("Audio diagnostics · privacy-safe",service.diagnostics()+"\nAI engine: "+service.desktopAi.status)));add(about,button("Source & release history",()->browser("https://github.com/oddfoxerr-real/Cyn/tree/codex/android/android")));add(about,button("FxSound credits, licenses & no warranty",()->{try{showText("FxSound credits & licenses",asset("NOTICE.txt")+"\n\n"+asset("LICENSE.txt"));}catch(Exception e){toast("Could not open licenses");}}));add(about,label("The phone uses the same neural model weights and desktop mixer. Its audio renderer and effects are adapted for Android; identical sound to the Windows FxSound driver is not claimed.",12,hint));add(about,button("Stop CYN audio",()->{service.stopAll();update();}));
     }
     void offerLiveVisuals(){
         if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED){
