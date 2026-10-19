@@ -181,4 +181,26 @@ public class StudioTest {
         });
     }
 
+    @Test public void soundControlMarkersOnlyUseAppliedAiTargets()throws Exception {
+        MainActivity a=ready();
+        main(()->{
+            AudioService audio=a.service;
+            boolean originalSmart=audio.smart,originalEnabled=audio.enabled;
+            boolean originalPlaying=audio.playing;
+            try {
+                audio.playing=false;
+                audio.smart=false;
+                audio.changed();
+                assertTrue(Float.isNaN(audio.aiControlValue("Bass",-1)));
+                assertTrue(Float.isNaN(audio.aiControlValue("EQ",0)));
+                audio.smart=true; audio.enabled=false; audio.changed();
+                assertTrue(Float.isNaN(audio.aiControlValue("Vocal clarity",-1)));
+                assertTrue(Float.isNaN(audio.aiControlValue("Stereo width",-1)));
+            }finally {
+                audio.playing=originalPlaying;
+                audio.smart=originalSmart;audio.enabled=originalEnabled;audio.changed();
+            }
+        });
+    }
+
 }
