@@ -294,6 +294,7 @@ public final class AudioService extends Service {
                     if(id>0&&id!=playerSession) attach(id,"External playback");
                     status=connectionState();
                 }
+                refreshVisualization();
                 updateNotification();
             }
             else if("cyn.QUEUE".equals(action)) { foreground(); }
@@ -303,7 +304,7 @@ public final class AudioService extends Service {
         return START_NOT_STICKY;
     }
     void stopMonitor() {
-        monitor=false; legacy=false; sessionSpectrum=new float[31]; sessionSpectrumAt=0;
+        monitor=false; legacy=false; releaseOutputVisuals(); sessionSpectrum=new float[31]; sessionSpectrumAt=0; clearTrace();
         for(Integer id:new ArrayList<>(chains.keySet())) if(id!=playerSession) detach(id);
         if(playing||preparing) foreground(); else { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); }
 
@@ -399,7 +400,7 @@ public final class AudioService extends Service {
         if(playerSession>0) detach(playerSession); playerSession=-1;
         if(player!=null) { player.release(); player=null; } desktopAi.active=false;desktopAi.reset();playing=false; preparing=false; audio.abandonAudioFocusRequest(focus);
     }
-    void stopAll() { monitor=false; legacy=false; sessionSpectrumAt=0; sessionSpectrum=new float[31]; clearTrace(); releasePlayer(); for(Integer id:new ArrayList<>(chains.keySet())) detach(id); mediaSession.setActive(false); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); status="Stopped"; }
+    void stopAll() { monitor=false; legacy=false; releaseOutputVisuals(); sessionSpectrumAt=0; sessionSpectrum=new float[31]; clearTrace(); releasePlayer(); for(Integer id:new ArrayList<>(chains.keySet())) detach(id); mediaSession.setActive(false); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); status="Stopped"; }
     private void attach(int id,String owner) {
         if(id<0||(!legacy&&id==0)||(legacy&&id!=0)||chains.containsKey(id)) return;
         if(chains.size()>=8) { status="Too many audio sessions; close an unused player."; return; }
@@ -420,7 +421,7 @@ public final class AudioService extends Service {
         e.putFloat("ambience",ambience).putFloat("dynamics",dynamics).putFloat("headroom",headroom).putInt("bands",bandCount).putBoolean("apex",useApex).putBoolean("movie",movieMode);
         for(int i=0;i<39;i++)e.putFloat("studioEq"+i,studioEq[i]);e.apply();updateNativeControls();
         for(Chain c:chains.values()) { c.apply(); c.analyze(); }
-        if(monitor) { status=connectionState(); updateNotification(); }
+        if(monitor) { refreshVisualization(); status=connectionState(); updateNotification(); }
         if(!smart||!enabled) { clearTrace(); analysis="Analysis off · manual settings restored"; }
     }
     void updateNativeControls() {
@@ -473,6 +474,7 @@ public final class AudioService extends Service {
             if(destroyed) return;
             for(Chain c:chains.values()) { if(SystemClock.elapsedRealtime()-c.lastCapture>900) c.targetBass=c.targetClarity=0; c.bassOffset+=(c.targetBass-c.bassOffset)*.12; c.clarityOffset+=(c.targetClarity-c.clarityOffset)*.12; c.apply(); }
             updateNativeControls();
+            if(monitor)refreshVisualization();
             long now=SystemClock.elapsedRealtime();
             if(!playing&&now-traceAt>900) { clearTrace(); if(smart&&enabled) analysis="Waiting for session analysis · enable permission if needed"; }
             long cutoff=System.nanoTime()-60_000_000_000L; while(!frames.isEmpty()&&frames.get(0).id<cutoff) frames.remove(0);
@@ -491,7 +493,7 @@ public final class AudioService extends Service {
             try { enhancer=new LoudnessEnhancer(id); } catch(RuntimeException ignored) { }
         }
         void analyze() {
-            if(!smart||!enabled||checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED) {
+            if(!monitor||!enabled||checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED) {
                 if(visualizer!=null) { visualizer.release(); visualizer=null; }
                 targetBass=targetClarity=bassOffset=clarityOffset=0; return;
             }
@@ -501,7 +503,7 @@ public final class AudioService extends Service {
                 visualizer.setDataCaptureListener(new Visualizer.OnDataCaptureListener() {
                     @Override public void onWaveFormDataCapture(Visualizer v,byte[] wave,int rate) { double[] levels=AudioFeatures.levels(wave); rms=levels[0]; peak=levels[1]; }
                     @Override public void onFftDataCapture(Visualizer v,byte[] fft,int rate) {
-                        if(destroyed||v!=visualizer||!smart||!enabled||chains.get(id)!=Chain.this) return;
+                        if(destroyed||v!=visualizer||!monitor||!enabled||chains.get(id)!=Chain.this) return;
                         lastCapture=SystemClock.elapsedRealtime();
                         if(!playing&&(id==0||id==activeSession)) {
                             if(rms>.01) {
@@ -511,6 +513,7 @@ public final class AudioService extends Service {
                                 sessionSpectrumAt=0;
                             }
                         }
+                        if(!smart)return;
                         double[] x=AudioFeatures.fromFft(fft,rate/1000,rms,peak);
                         PreferenceModel.Trace trace=learning.model.trace(x); double[] p=trace.outputs;
                         // Do not boost silence. The model does not control Android volume or routing.
@@ -561,7 +564,7 @@ public final class AudioService extends Service {
         String description() { return owner+" · session "+id+"\n"+(controlsEq()?"EQ enabled and controlled":enabled?"EQ not active":"Enhancement disabled")+(virtualizer!=null?" · width":"")+(enhancer!=null?" · loudness":"")+(failure.isEmpty()?"":"\n"+failure); }
     }
     @Override public void onDestroy() {
-        destroyed=true; handler.removeCallbacksAndMessages(null); trainer.shutdownNow(); unregisterReceiver(receiver); releasePlayer();
+        destroyed=true; handler.removeCallbacksAndMessages(null); trainer.shutdownNow(); unregisterReceiver(receiver); releaseOutputVisuals(); releasePlayer();
         for(Chain c:chains.values()) c.close(); chains.clear(); mediaSession.release();desktopAi.closeAfterPlayer(); super.onDestroy();
     }
 }
