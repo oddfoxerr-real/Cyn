@@ -302,7 +302,7 @@ public class StudioTest {
                 android.graphics.Canvas canvas=new android.graphics.Canvas(bitmap);
                 art.state(UpdateManager.CHECKING,-1);
                 art.draw(canvas);
-                int color=bitmap.getPixel(220,449);
+                int color=bitmap.getPixel(190,370);
                 assertEquals("Checker stage has no fake filled transfer area",UpdateSplash.INK,color);
                 art.state(UpdateManager.DOWNLOADING,70);
                 art.draw(canvas);
@@ -312,7 +312,7 @@ public class StudioTest {
                 art.state(UpdateManager.READY,100);
                 art.draw(canvas);
                 assertNotEquals("The mechanical art must draw its second tone",
-                    UpdateSplash.INK,bitmap.getPixel(220,330));
+                    UpdateSplash.INK,bitmap.getPixel(220,370));
             }finally{bitmap.recycle();}
         });
     }
