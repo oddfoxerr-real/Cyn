@@ -4,6 +4,8 @@ import android.content.*;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.*;
+import android.view.PixelCopy;
+import android.view.View;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.rule.ActivityTestRule;
@@ -12,6 +14,8 @@ import org.junit.runner.RunWith;
 import java.io.*;
 import java.nio.*;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.*;
 @RunWith(AndroidJUnit4.class)
 public class StudioTest {
@@ -19,10 +23,24 @@ public class StudioTest {
     private void main(Runnable action){InstrumentationRegistry.getInstrumentation().runOnMainSync(action);}
     private int position(AudioService service){int[] value={0};main(()->value[0]=service.position());return value[0];}
     private MainActivity ready()throws Exception{MainActivity activity=rule.getActivity();long until=SystemClock.elapsedRealtime()+15000;while(activity.service==null&&SystemClock.elapsedRealtime()<until)Thread.sleep(100);assertNotNull(activity.service);return activity;}
+    private Bitmap captureWindow(MainActivity activity)throws Exception{
+        // Capture CYN's rendered surface, excluding unrelated emulator/launcher dialogs.
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        Bitmap[] image=new Bitmap[1];int[] result={PixelCopy.ERROR_UNKNOWN};
+        CountDownLatch copied=new CountDownLatch(1);
+        main(()->{
+            View decor=activity.getWindow().getDecorView();
+            image[0]=Bitmap.createBitmap(decor.getWidth(),decor.getHeight(),Bitmap.Config.ARGB_8888);
+            PixelCopy.request(activity.getWindow(),image[0],status->{result[0]=status;copied.countDown();},new Handler(Looper.getMainLooper()));
+        });
+        boolean complete=copied.await(10,TimeUnit.SECONDS);
+        if(!complete||result[0]!=PixelCopy.SUCCESS){image[0].recycle();fail("CYN window capture failed: "+(complete?result[0]:"timeout"));}
+        return image[0];
+    }
     @Test public void captureScreens()throws Exception{
         MainActivity a=ready();String output=InstrumentationRegistry.getArguments().getString("additionalTestOutputDir");File folder=output==null?new File(a.getExternalFilesDir(null),"qa"):new File(output);assertTrue(folder.isDirectory()||folder.mkdirs());
         for(int page=0;page<4;page++){final int p=page;main(()->{a.page=p;a.build(true);});Thread.sleep(800);
-            Bitmap screenshot=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();assertNotNull(screenshot);
+            Bitmap screenshot=captureWindow(a);
             try(FileOutputStream out=new FileOutputStream(new File(folder,"screen-"+page+".png"))){assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG,100,out));}finally{screenshot.recycle();}
         }
     }
