@@ -45,8 +45,9 @@ public final class AudioService extends Service {
     final float[] eq=new float[5];
     String title="Choose a song", status="Ready", analysis="Enable analysis to use Smart listening.";
     double[] predictions=new double[5], neurons=new double[12];
-    private long lastFrame, traceAt;
-    private PreferenceModel.Trace liveTrace, trainingTrace;
+    private long lastFrame;
+    private volatile long traceAt;
+    private volatile PreferenceModel.Trace liveTrace, trainingTrace;
     int traceSequence;
     volatile float[] sessionSpectrum=new float[31];
     volatile long sessionSpectrumAt;
@@ -127,9 +128,11 @@ public final class AudioService extends Service {
         }
         if(monitor) {
             if(legacy) return chains.containsKey(0)&&chains.get(0).controlsEq()
-                ?"Android system-mix EQ controlled · audio routing device-dependent"
+                ?(hasSessionSpectrum()?"System-mix EQ + live adaptive frequency control · routing varies by device":"System-mix EQ controlled · live analysis unavailable or disabled")
                 :"Android system-mix EQ not controlled";
-            if(controlledExternalEqCount()>0)return "Android music-session EQ controlled · native neural DSP not in this audio path";
+            if(controlledExternalEqCount()>0)return hasSessionSpectrum()
+                ?"Music-session EQ + live adaptive frequency control · native YAMNet unavailable in this route"
+                :"Android music-session EQ controlled · analysis unavailable or disabled";
             if(externalSessionCount()>0)return "Music session detected · EQ control unavailable";
             return "Monitoring · waiting for compatible playback";
         }
@@ -426,8 +429,17 @@ public final class AudioService extends Service {
                         double[] x=AudioFeatures.fromFft(fft,rate/1000,rms,peak);
                         PreferenceModel.Trace trace=learning.model.trace(x); double[] p=trace.outputs;
                         // Do not boost silence. The model does not control Android volume or routing.
-                        targetBass=rms>.01&&learning.model.ready[4]?(p[4]*2-1)*bass*sensitivity:0;
-                        targetClarity=rms>.01&&learning.model.ready[0]?(p[0]*2-1)*clarity*sensitivity:0;
+                        // External-player fallback: measured spectral balancing, not YAMNet.
+                        // Personal model decisions take precedence once the user has trained them.
+                        // Conservative bounded offsets avoid amplifying already strong frequency ranges.
+                        double low=Math.exp(x[0])+Math.exp(x[1]);
+                        double presence=Math.exp(x[4])+Math.exp(x[5]);
+                        double spectralBass=PreferenceModel.clamp((.20-low)*5.5,-.65,1.45)*sensitivity;
+                        double spectralClarity=PreferenceModel.clamp((.18-presence)*5,-.55,1.25)*sensitivity;
+                        targetBass=rms>.01?(learning.model.ready[4]?
+                            (p[4]*2-1)*Math.min(3,bass)*sensitivity:spectralBass):0;
+                        targetClarity=rms>.01?(learning.model.ready[0]?
+                            (p[0]*2-1)*Math.min(3,clarity)*sensitivity:spectralClarity):0;
                         if(!playing&&(id==0||id==activeSession)) {
                             if(rms>.01) { liveTrace=trace; traceAt=lastCapture; traceSequence++; } else clearTrace();
                             predictions=p; neurons=trace.hidden; analysis=rms>.01?"Live session analysis · features stay on this phone":"Waiting for audible audio";
