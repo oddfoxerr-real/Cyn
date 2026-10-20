@@ -16,8 +16,8 @@ final class LiquidPage extends FrameLayout {
     private ValueAnimator animator;
     LiquidPage(Context c){super(c);}
     boolean isTransitioning(){return overlay!=null;}
-    void change(View next,boolean motion){change(next,motion,0,Color.CYAN);}
-    void change(View next,boolean motion,int selectedMode,int accent){
+    void change(View next,boolean motion){change(next,motion,0,Color.CYAN,100);}
+    void change(View next,boolean motion,int selectedMode,int accent,int speedPercent){
         cancel();
         int mode=normalized(selectedMode);
         Bitmap outgoing=null;
@@ -32,7 +32,7 @@ final class LiquidPage extends FrameLayout {
         WarpOverlay current=new WarpOverlay(getContext(),outgoing,mode,accent);
         overlay=current;addView(current,new LayoutParams(-1,-1));
         animator=ValueAnimator.ofFloat(0,1);
-        animator.setDuration(mode==1?265:mode==2?340:mode==3?420:mode==4?490:470);
+        animator.setDuration(Math.round((mode==1?265:mode==2?340:mode==3?420:mode==4?490:470)*100.0/Math.max(50,Math.min(150,speedPercent))));
         animator.setInterpolator(new PathInterpolator(.2f,0,.2f,1));
         animator.addUpdateListener(a->{current.progress=(float)a.getAnimatedValue();current.invalidate();});
         animator.addListener(new AnimatorListenerAdapter(){
