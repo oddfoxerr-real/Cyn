@@ -1,0 +1,80 @@
+name: Publish APEX 10M Experimental Spatial Preview
+
+on:
+  push:
+    branches:
+      - feature/apex10m-spatial-reasoning
+    paths:
+      - "apex_engine/apex10m_*.py"
+      - "apex_engine/APEX10M_EXPERIMENTAL_RELEASE.md"
+      - ".github/workflows/publish-apex10m-experimental.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apex10m-experimental-release
+  cancel-in-progress: false
+
+jobs:
+  package-and-publish:
+    runs-on: windows-2022
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install offline audio preview build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.4 scipy==1.14.1 soundfile==0.12.1 pyinstaller==6.12.0
+          if ($LASTEXITCODE -ne 0) { throw "Dependencies failed" }
+      - name: Verify stereo WAV preview behavior
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests -p test_apex10m_preview.py -v
+          if ($LASTEXITCODE -ne 0) { throw "Preview test failed; refusing release" }
+          python -m compileall -q apex_engine/apex10m_preview_app.py apex_engine/apex10m_spatial.py
+          if ($LASTEXITCODE -ne 0) { throw "GUI compile failed; refusing release" }
+      - name: Build independent experimental Windows GUI
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name CYN-APEX-10M-Experimental --paths apex_engine --collect-binaries soundfile apex_engine/apex10m_preview_app.py
+          if ($LASTEXITCODE -ne 0) { throw "Windows EXE build failed" }
+          if (!(Test-Path dist/CYN-APEX-10M-Experimental.exe)) { throw "EXE missing" }
+      - name: Stage archive and checksums
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist/release | Out-Null
+          Copy-Item dist/CYN-APEX-10M-Experimental.exe dist/release/
+          Copy-Item LICENSE dist/release/LICENSE.txt
+          Copy-Item apex_engine/APEX10M_EXPERIMENTAL_RELEASE.md dist/release/README.md
+          Copy-Item apex_engine/APEX10M_ARCHITECTURE.md dist/release/APEX10M_ARCHITECTURE.md
+          Compress-Archive -Path dist/release/* -DestinationPath dist/CYN-APEX-10M-Experimental-Windows-x64.zip -Force
+          $hash = (Get-FileHash dist/CYN-APEX-10M-Experimental.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  CYN-APEX-10M-Experimental.exe" | Set-Content dist/CYN-APEX-10M-Experimental.sha256.txt -Encoding utf8
+          if (!(Test-Path dist/CYN-APEX-10M-Experimental-Windows-x64.zip)) { throw "ZIP missing" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: APEX-10M-Experimental-Windows-x64
+          path: |
+            dist/CYN-APEX-10M-Experimental.exe
+            dist/CYN-APEX-10M-Experimental-Windows-x64.zip
+            dist/CYN-APEX-10M-Experimental.sha256.txt
+          retention-days: 30
+      - name: Publish strictly prerelease (no stable CYN changes)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'apex-10m-experimental-v0.1.0'
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag dist/CYN-APEX-10M-Experimental.exe dist/CYN-APEX-10M-Experimental-Windows-x64.zip dist/CYN-APEX-10M-Experimental.sha256.txt --clobber
+          } else {
+            gh release create $tag dist/CYN-APEX-10M-Experimental.exe dist/CYN-APEX-10M-Experimental-Windows-x64.zip dist/CYN-APEX-10M-Experimental.sha256.txt --target "${{ github.sha }}" --title "CYN APEX 10M v0.1.0 — Experimental Spatial Preview" --notes-file apex_engine/APEX10M_EXPERIMENTAL_RELEASE.md --prerelease
+          }
+          if ($LASTEXITCODE -ne 0) { throw "GitHub experimental release publish failed" }
