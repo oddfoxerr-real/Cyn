@@ -1,9 +1,9 @@
-# CYN Studio Android 0.2.8 validation plan — 2026-10-19
+# CYN Studio Android 0.2.9 validation plan — 2026-10-19
 
 ## Studio identity and signing
 
 Studio uses application ID `io.github.oddfoxerr.cyn.studio`, launcher label
-`CYN Studio`, version code 12 and version name `0.2.8-preview`. It installs alongside
+`CYN Studio`, version code 13 and version name `0.2.9-preview`. It installs alongside
 legacy `io.github.oddfoxerr.cyn` because the original signing key was not recovered.
 The old app and its data remain intact. Studio starts with independent storage.
 
@@ -17,7 +17,7 @@ assets. Before installation it verifies the APK checksum, package, increasing
 version code and equality with the installed signing certificate. Legacy Android
 and Windows release channels are excluded.
 
-## 0.2.8 control-animation checks
+## 0.2.9 control-animation checks
 
 - In CYN Library, play audio with enabled Smart Listening: bass, clarity,
   stereo width, ambience, dynamics and EQ rings follow actual DSP target
@@ -29,7 +29,7 @@ and Windows release channels are excluded.
 - User dragging a manual slider must never be overwritten by AI target updates.
 - Verify reduced-motion disables smooth interpolation and that all EQ sizes work.
 
-## 0.2.8 visualization checks
+## 0.2.9 visualization checks
 
 - Connect CYN without audio permission: user is offered a clear opt-in.
 - External playback with consent: measured spectrum and neural visuals when
@@ -39,7 +39,7 @@ and Windows release channels are excluded.
 - Check reduced motion, training view, and local player are not regressed.
 - Verify on physical phones; emulator results cannot establish Spotify routing.
 
-## 0.2.8 validation requirements
+## 0.2.9 validation requirements
 
 - Verify spectrum is derived from measured FFT bins and silence has zero visual activity.
 - Verify local Connection details omit manufacturer, model, app names and session IDs.
@@ -50,7 +50,7 @@ and Windows release channels are excluded.
 - These tests cannot prove physical-device system-mix routing, headset quality or
   external Spotify compatibility. Verify on target devices before stable release.
 
-## 0.2.8 connection regression gate
+## 0.2.9 connection regression gate
 
 The Android 15 instrumentation suite adds an external-session test that starts
 monitoring while enhancement is off and asserts the on/off state is preserved.
@@ -109,7 +109,7 @@ processing applies to CYN library playback; external players require compatible
 Android audio-effects sessions. Disable the old app's monitor before enabling
 Studio to avoid competing effects.
 
-## 0.2.8 reversible thumb regression
+## 0.2.9 reversible thumb regression
 
 - Start a local library track with active inference: manual ring stays at baseline while physical SeekBar thumb moves toward applied AI DSP values.
 - Toggle Smart Listening or enhancement off; thumb returns smoothly to ring; ring does not move.
@@ -117,7 +117,7 @@ Studio to avoid competing effects.
 - Expand Space & dynamics to inspect stereo width, ambience, dynamics, and manual-only headroom; expand EQ to inspect every band for all 31, 35, and 39 configurations.
 - No fabricated controls for external audio; only bass/clarity on Android EQ-controlled sessions; no headroom AI target. Reduced motion must disable interpolation.
 
-## 0.2.8 splash and auto-update checks
+## 0.2.9 splash and auto-update checks
 
 - Under Style → Updates, verify exactly one update action (UPDATE CYN) and one automatic-update switch; prior two buttons are absent.
 - Opening Update CYN shows two-tone mechanical rails/gears and a dripping progress fill; reduced motion disables moving effects.
@@ -125,21 +125,29 @@ Studio to avoid competing effects.
 - Existing matching, newer, verified APK shows INSTALL VERIFIED APK; no APK should be installed without Android user permission/confirmation.
 - Background JobScheduler checks continue with automatic mode enabled, download only on unmetered networks, and notify when ready; disabled mode cancels the job.
 - Dismissing splash during active transfer does not stop the transfer. Reopening shows live stage.
-- Wrong signatures, hashes or package names are rejected. The final release workflow must verify version code 12, 0.2.8-preview.
+- Wrong signatures, hashes or package names are rejected. The final release workflow must verify version code 13, 0.2.9-preview.
 
-## 0.2.8 fox and license checks
+## 0.2.9 fox and license checks
 
 - Verify two-tone fox appears on AI-following Bass and EQ thumbs, in expanded Space & Dynamics and across all 31/35/39 EQ bands.
 - Move or drag a slider to trigger the fox's brief tail/bounce animation; stationary sliders should not force continuous repaint, and Reduce motion should eliminate movement.
 - Fox artwork must never change user baseline rings, AI sound targets, audio values, or training.
 - Verify the credits panel names FxSound LLC and its contributors as upstream authors while CYN modifications are separate and unofficial, retaining the complete AGPL license and third-party terms.
-- The final APK must have version code 12, versionName 0.2.8-preview and the established Studio signing certificate.
+- The final APK must have version code 13, versionName 0.2.9-preview and the established Studio signing certificate.
 
-## Material 3 redesign (0.2.8)
+## Material 3 redesign (0.2.9)
 
 - Screens use the Material 3 base theme and MaterialButton, MaterialCardView, MaterialSwitch, and MaterialAlertDialogBuilder rather than Android Material 1 widgets.
 - Navigation shows four labels and vector icons on the bottom rail, with a visible tonal selected state. Changing pages must preserve audio playback and respect reduced motion.
 - Cards, switches, buttons, accessible labels and dynamic text all fit narrow mobile screens; verify all four screenshot pages.
 - CYN's 4 theme palettes stay independent of wallpaper. Verify no DynamicColors calls, wallpaper permission or wallpaper listeners are added.
 - Fox/AI thumb motion, baseline rings, 31/35/39 EQ bands, connection control, mobile updater and license dialog remain functional.
-- The signed release has versionCode 12, versionName 0.2.8-preview, and the exact established Studio signing certificate.
+- The signed release has versionCode 12, versionName 0.2.9-preview, and the exact established Studio signing certificate.
+
+## 0.2.9 phone screenshot regression
+
+- At 360dp width, the Material bottom navigation must keep all four labels (Studio, AI, Library, Style) on **exactly one line** with a proper compact active indicator. No stacked "Stu/dio", "Libr/ary", "Styl/e" labels.
+- Selecting each destination highlights its icon and text without shifting other items or interrupting playback.
+- Sound Studio idle spectrum is compact enough to show Sound Controls earlier; connected/playing audio gets the full spectrum height and continues showing only measured input.
+- Keep native Material 3 cards/switches, fixed palette choices, fox sliders, update UI and all regressions passing.
+- APK versionCode 13, versionName 0.2.9-preview, original signing key and package.
