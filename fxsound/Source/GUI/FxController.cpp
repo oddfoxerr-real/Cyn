@@ -894,6 +894,17 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
         apex_worker_->startIfAvailable();
         dj_worker_=std::make_unique<CynDjWorker>(dfx_dsp_);
         smart_mode_=jlimit(0,1,settings_.getInt("cyn_ai_listening_mode",0));
+        // One-time migration from 2.0.74's misplaced Audio Settings toggle.
+        // Preserve the user's previous music engine for a reversible switch.
+        if(settings_.getBool("cyn_apex10m_spatial_preview",false)) {
+            const String previous=settings_.getString("cyn_active_ai_profile_music");
+            if(previous!="apex10m") {
+                settings_.setString("cyn_apex10m_previous_music_profile",
+                    previous.isEmpty()?"personal":previous);
+                settings_.setString("cyn_active_ai_profile_music","apex10m");
+            }
+            settings_.setBool("cyn_apex10m_spatial_preview",false);
+        }
         // Autonomous YAMNet + Balance is on for new installs; retain a saved opt-out.
         // Keep smart_enabled_ initially false so enabling captures the preset baseline.
         setSmartListening(settings_.getBool("ember_smart_listening", true));
@@ -3364,6 +3375,13 @@ bool FxController::selectAIProfile(const String& id,String& error) {
         settings_.setString("cyn_active_ai_profile_music",previous);
         dfx_dsp_.setApex10MSpatialPreview(0.0f);
         if(id==previous) {
+            if(id=="apex6m" && !apex6MReady()) {
+                // Never claim that a missing ONNX runtime has become active.
+                settings_.setString("cyn_active_ai_profile_music","apex10m");
+                if(smart_enabled_) captureSmartBaseline();
+                error=apex6MDiagnostic();
+                return false;
+            }
             if(smart_enabled_) captureSmartBaseline();
             smart_learning_message_="Previous Music AI restored; APEX 10M spatial stage disabled.";
             error.clear();return true;
