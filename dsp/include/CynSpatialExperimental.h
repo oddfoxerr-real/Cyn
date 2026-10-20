@@ -45,10 +45,13 @@ public:
                 1.0e-12f, midPower_));
             previousHigh_ = highpass_ * (previousHigh_ + side - previousSide_);
             previousSide_ = side;
-            const float coherence = std::clamp((corr + 0.3f) / 0.55f, 0.0f, 1.0f);
+            const bool unsafePhase = corr < -0.3f;
+            const float coherence = (leftPower_ + rightPower_ < 1.0e-9f || unsafePhase)
+                ? 0.0f : std::clamp((corr + 0.3f) / 0.55f, 0.0f, 1.0f);
             const float alreadyWide = std::clamp(1.25f - 0.5f * sideToMid, 0.0f, 1.0f);
             amount_ += smoothing_ * (0.20f * strength * coherence * alreadyWide - amount_);
-            const float extraSide = amount_ * previousHigh_;
+            const float extraSide = unsafePhase ? 0.0f : amount_ * previousHigh_;
+            if (std::fabs(extraSide) < 1.0e-9f) continue; // exact DSP bypass
             // Downstream safeguard: gain-reduce both channels together only
             // when our incremental stereo signal would push output above 0.999.
             float a = left + extraSide;
