@@ -17,7 +17,7 @@ public:
         setSize (790, 490);
         for (auto* component : std::initializer_list<juce::Component*> {
             &title_, &subtitle_, &list_, &description_, &status_,
-            &refresh_, &import_, &review_, &publish_, &close_ })
+            &refresh_, &import_, &review_, &publish_, &close_, &spatialStrength_ })
             addAndMakeVisible (component);
 
         title_.setText ("Cyn AI Hub", juce::dontSendNotification);
@@ -70,6 +70,16 @@ public:
             if (auto* window = findParentComponentOfClass<juce::DialogWindow>())
                 window->exitModalState (0);
         };
+        spatialStrength_.setSliderStyle(juce::Slider::LinearHorizontal);
+        spatialStrength_.setTextBoxStyle(juce::Slider::TextBoxRight,false,55,22);
+        spatialStrength_.setRange(0.0,100.0,1.0);
+        spatialStrength_.setValue(FxController::getInstance().getApex10MSpatialStrength(),juce::dontSendNotification);
+        spatialStrength_.setTooltip("APEX 10M experimental stereo spatial strength, percent");
+        spatialStrength_.onValueChange=[this] {
+            FxController::getInstance().setApex10MSpatialStrength(
+                static_cast<int>(spatialStrength_.getValue()));
+        };
+        spatialStrength_.setVisible(false);
         readBundledCatalogue();
         startTimer(400); // Live status: do not leave slow PCs stuck at "loading".
     }
@@ -82,7 +92,7 @@ public:
         // The dialog-only Close control must not be displayed as a dead button.
         close_.setVisible(!embedded);
         if(embedded) {
-            subtitle_.setText("Community models, local imports and APEX 6M — native and private.",
+            subtitle_.setText("Select exactly one AI: custom, APEX 6M or experimental APEX 10M.",
                               juce::dontSendNotification);
         }
         resized();
@@ -94,7 +104,9 @@ public:
         title_.setBounds (24, 15, w - 48, 40);
         subtitle_.setBounds (24, 52, w - 48, 24);
         list_.setBounds (24, 99, w / 2 - 30, h - 187);
-        description_.setBounds (w / 2 + 6, 99, w / 2 - 30, h - 187);
+        const bool spatial = selected()!=nullptr && selected()->nativeSpatial;
+        description_.setBounds (w / 2 + 6, 99, w / 2 - 30, h - (spatial ? 230 : 187));
+        spatialStrength_.setBounds(w / 2 + 12,h - 125,w / 2 - 44,30);
         status_.setBounds (24, h - 81, w - 48, 28);
         refresh_.setBounds (24, h - 45, 148, 32);
         import_.setBounds (184, h - 45, 145, 32);
@@ -115,7 +127,7 @@ private:
     {
         juce::String id, name, author, category, description, filename, researchUrl;
         int issue = 0;
-        bool researchOnly = false, nativeApex = false;
+        bool researchOnly = false, nativeApex = false, nativeSpatial = false;
     };
 
     bool pendingApexActivation_=false;
@@ -129,6 +141,7 @@ private:
     juce::ListBox list_;
     juce::TextEditor description_;
     juce::TextButton refresh_, import_, review_, publish_, close_;
+    juce::Slider spatialStrength_;
     std::vector<Profile> profiles_;
     int catalogueTotal_ = 0, catalogueRejected_ = 0, catalogueExternal_ = 0;
     bool busy_ = false;
@@ -139,6 +152,7 @@ private:
         const auto* item=selected();
         if(!item || !item->nativeApex) pendingApexActivation_=false;
         updateSelection();
+        resized();
     }
 
     void paintListBoxItem (int row, juce::Graphics& g, int width, int height,
@@ -170,9 +184,28 @@ private:
 
     void updateSelection()
     {
+        spatialStrength_.setVisible(selected()!=nullptr && selected()->nativeSpatial);
         if (const auto* p = selected())
         {
-            if (p->nativeApex)
+            if(p->nativeSpatial)
+            {
+                auto& ctrl=FxController::getInstance();
+                const bool active=ctrl.isApex10MSpatialEnabled();
+                description_.setText(
+                    "APEX 10M  /  EXPERIMENTAL SPATIAL DSP\n\n"
+                    "Primary Music AI selection, not a second simultaneous AI.\n"
+                    "Real-time stereo ambience is enhanced by phase-aware "
+                    "DSP. No 10M neural reasoning weights are trained or active.\n\n"
+                    + (active ? juce::String("ACTIVE MUSIC AI. Adjust spatial intensity below.\n\n")
+                              : juce::String("Select to replace the previous primary Music AI.\n\n"))
+                    + "YAMNet may continue as shared scene analysis, not a second selected AI. "
+                      "Spatial processing is stereo-only; no Atmos/object decoding or HRTF.\n"
+                      "Intensity: 0 to 100%, off by selecting a different AI.",
+                    juce::dontSendNotification);
+                spatialStrength_.setValue(ctrl.getApex10MSpatialStrength(),juce::dontSendNotification);
+                import_.setButtonText(active ? "Switch to previous AI" : "Activate selected AI");
+            }
+            else if (p->nativeApex)
             {
                 auto& ctrl = FxController::getInstance();
                 const bool installed = ctrl.apex6MInstalled();
@@ -288,6 +321,19 @@ private:
         catalogueTotal_ = submittedCount;
         catalogueRejected_ = submittedCount - static_cast<int> (collected.size());
         catalogueExternal_ = researchCount;
+        // Bundled built-in spatial experiment is selectable offline, and
+        // cannot be removed by a community catalogue refresh.
+        const bool present=std::any_of(collected.begin(),collected.end(),
+            [](const Profile& entry){return entry.id=="cyn-apex10m-experimental";});
+        if(!present) {
+            Profile spatial;
+            spatial.id="cyn-apex10m-experimental";
+            spatial.name="CYN APEX 10M · Experimental spatial";
+            spatial.author="CYN contributors";
+            spatial.category="Music AI / DSP preview";
+            spatial.nativeSpatial=true;
+            collected.push_back(spatial);
+        }
         profiles_ = std::move (collected);
         list_.updateContent();
         if (! profiles_.empty()) list_.selectRow (0);
@@ -302,7 +348,16 @@ private:
         if (! file.existsAsFile() || file.getSize() > maxCatalogueBytes
             || ! loadCatalogue (juce::JSON::parse (file)))
         {
-            status_.setText ("Community catalogue not bundled. You can still import local AI files.",
+            Profile spatial;
+            spatial.id="cyn-apex10m-experimental";
+            spatial.name="CYN APEX 10M · Experimental spatial";
+            spatial.author="CYN contributors";
+            spatial.category="Music AI / DSP preview";
+            spatial.nativeSpatial=true;
+            profiles_.push_back(spatial);
+            list_.updateContent();
+            list_.selectRow(0);
+            status_.setText ("Community catalogue unavailable; built-in APEX 10M preview is available.",
                              juce::dontSendNotification);
         }
         else
@@ -421,6 +476,35 @@ private:
         if (busy_) return;
         auto* item = selected();
         if (! item) return;
+        if (item->nativeSpatial)
+        {
+            auto& ctrl=FxController::getInstance();
+            juce::String error;
+            if(ctrl.isApex10MSpatialEnabled()) {
+                juce::String previous=ctrl.getSettings().getString("cyn_apex10m_previous_music_profile");
+                if(previous.isEmpty() || previous=="apex10m") previous="personal";
+                const bool ok=ctrl.selectAIProfile(previous,error);
+                status_.setText(ok ? "Previous Music AI selected; APEX 10M DSP stopped."
+                                   : "AI switch failed: "+error,juce::dontSendNotification);
+            } else {
+                if(!juce::AlertWindow::showOkCancelBox(
+                        juce::AlertWindow::QuestionIcon,"Activate experimental APEX 10M?",
+                        "Select as your ONE Music AI profile? The spatial effect runs "
+                        "deterministic DSP only; the additional neural weights are UNTRAINED.",
+                        "Select APEX 10M","Cancel")) return;
+                if(ctrl.getSmartListeningMode()!=0) ctrl.setSmartListeningMode(0);
+                if(ctrl.getSmartListeningMode()!=0) {
+                    status_.setText("Finish training before switching to Music AI.",juce::dontSendNotification);
+                    return;
+                }
+                const bool ok=ctrl.selectAIProfile("apex10m",error);
+                if(ok)ctrl.setSmartListening(true);
+                status_.setText(ok ? "APEX 10M experimental DSP selected in Music AI."
+                                   : "AI selection failed: "+error,juce::dontSendNotification);
+            }
+            updateSelection();
+            return;
+        }
         if (item->nativeApex)
         {
             auto& ctrl = FxController::getInstance();
