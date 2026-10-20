@@ -233,6 +233,10 @@ public:
 		file_logger_->logMessage(message);
 	}
 
+    bool isApex10MSpatialEnabled() { return settings_.getBool("cyn_apex10m_spatial_preview",false); }
+    int getApex10MSpatialStrength() { return jlimit(0,100,settings_.getInt("cyn_apex10m_spatial_strength",40)); }
+    void setApex10MSpatialEnabled(bool on);
+    void setApex10MSpatialStrength(int percent);
 	FxSound::Settings& getSettings() { return settings_; }
     CynAudioRepairService* getAudioRepair() { return audioRepair_.get(); }
 
