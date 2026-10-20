@@ -237,6 +237,10 @@ public:
     int getApex10MSpatialStrength() { return jlimit(0,100,settings_.getInt("cyn_apex10m_spatial_strength",40)); }
     void setApex10MSpatialEnabled(bool on);
     void setApex10MSpatialStrength(int percent);
+    float getApex10MSpatialActivity() {
+        return smart_enabled_ && isApex10MSpatialEnabled() && FxModel::getModel().getPowerState()
+            ? dfx_dsp_.getApex10MSpatialActivity() : 0.0f;
+    }
 	FxSound::Settings& getSettings() { return settings_; }
     CynAudioRepairService* getAudioRepair() { return audioRepair_.get(); }
 
