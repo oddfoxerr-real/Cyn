@@ -34,7 +34,8 @@ public final class AudioService extends Service {
     float ambience=0, dynamics=.2f, headroom=1;
     int bandCount=31;
     final float[] studioEq=new float[39];
-    boolean useApex, movieMode;
+    boolean useApex, movieMode, spatialPreviewEnabled;
+    float spatialPreviewStrength=0.4f;
     private long libraryFrame, libraryTrace;
     MediaSession mediaSession;
     AudioManager audio;
@@ -163,6 +164,7 @@ public final class AudioService extends Service {
     String processingStatus() {
         if(!enabled)return "Enhancement off · original sound";
         if(playing) {
+            if(spatialPreviewEnabled)return "APEX 10M experimental stereo DSP preview · untrained neural reasoning disabled";
             if(!smart)return "CYN native DSP active · manual tuning";
             DesktopAi.Result r=desktopAi.latest;
             if(r==null||SystemClock.elapsedRealtime()-r.at>2500)
@@ -208,6 +210,8 @@ public final class AudioService extends Service {
         ambience=prefs.getFloat("ambience",0);dynamics=prefs.getFloat("dynamics",.2f);headroom=prefs.getFloat("headroom",1);
         bandCount=prefs.getInt("bands",31);if(bandCount!=31&&bandCount!=35&&bandCount!=39)bandCount=31;
         useApex=prefs.getBoolean("apex",false);movieMode=prefs.getBoolean("movie",false);
+        spatialPreviewEnabled=prefs.getBoolean("spatial10m_preview",false);
+        spatialPreviewStrength=Math.max(0f,Math.min(1f,prefs.getFloat("spatial10m_strength",.4f)));
         for(int i=0;i<39;i++)studioEq[i]=prefs.getFloat("studioEq"+i,0);
         enabled=prefs.getBoolean("enabled",true); smart=prefs.getBoolean("smart",true); sensitivity=prefs.getFloat("sensitivity",.7f);
         bass=prefs.getFloat("bass",2); clarity=prefs.getFloat("clarity",1); width=prefs.getFloat("width",0); loudness=prefs.getFloat("loudness",0);
@@ -443,7 +447,7 @@ public final class AudioService extends Service {
         if(monitor) { status=connectionState(); updateNotification(); }
     }
     void changed() {
-        SharedPreferences.Editor e=prefs.edit().putBoolean("enabled",enabled).putBoolean("smart",smart).putFloat("sensitivity",sensitivity).putFloat("bass",bass).putFloat("clarity",clarity).putFloat("width",width).putFloat("loudness",loudness);
+        SharedPreferences.Editor e=prefs.edit().putBoolean("spatial10m_preview",spatialPreviewEnabled).putFloat("spatial10m_strength",spatialPreviewStrength).putBoolean("enabled",enabled).putBoolean("smart",smart).putFloat("sensitivity",sensitivity).putFloat("bass",bass).putFloat("clarity",clarity).putFloat("width",width).putFloat("loudness",loudness);
         for(int i=0;i<5;i++) e.putFloat("eq"+i,eq[i]);
         e.putFloat("ambience",ambience).putFloat("dynamics",dynamics).putFloat("headroom",headroom).putInt("bands",bandCount).putBoolean("apex",useApex).putBoolean("movie",movieMode);
         for(int i=0;i<39;i++)e.putFloat("studioEq"+i,studioEq[i]);e.apply();updateNativeControls();
@@ -484,6 +488,9 @@ public final class AudioService extends Service {
         appliedAiFresh=fresh;
         if(playing)analysis=processingStatus();
         NativeEngine.controls(desktopAi.engine,p);
+        // Only PCM from CYN library playback passes through this native processor.
+        // Android external-app sessions cannot use this effect through the EQ API.
+        NativeEngine.spatialPreview(desktopAi.engine,enabled&&spatialPreviewEnabled?spatialPreviewStrength:0f);
     }
     void train() {
         if(training) return; training=true; trainingEpoch=0; trainingTrace=null;
