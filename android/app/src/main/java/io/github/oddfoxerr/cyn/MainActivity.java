@@ -22,7 +22,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     AudioService service;
     final Handler handler=new Handler(Looper.getMainLooper());
     final ExecutorService filesWorker=Executors.newSingleThreadExecutor();
-    LinearLayout shell,content,nav,mini,libraryRows;
+    LinearLayout shell,content,mini,libraryRows;
+    com.google.android.material.bottomnavigation.BottomNavigationView nav;
     LiquidPage pages;
     SharedPreferences ui;
     TextView liveStatus,learningStatus,playLabel,positionLabel,powerButton,connectionTitle,connectionHint,externalStatus,processingDetails,playButton,miniTitle,miniState,miniToggle,updateState;
@@ -89,29 +90,42 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             LinearLayout header=row();header.setPadding(dp(22),dp(10),dp(22),dp(6));TextView brand=label("CYN",27,text);brand.setTypeface(null,Typeface.BOLD);brand.setLetterSpacing(.09f);header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));TextView badge=label("SOUND STUDIO",10,hint);badge.setLetterSpacing(.12f);header.addView(badge);add(shell,header);
             pages=new LiquidPage(this);shell.addView(pages,new LinearLayout.LayoutParams(-1,0,1));
             mini=column();mini.setPadding(dp(18),dp(10),dp(18),dp(10));mini.setBackground(shape(androidx.core.graphics.ColorUtils.blendARGB(card,accent,.09f),26));LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(-1,-2);mp.setMargins(dp(12),dp(4),dp(12),0);shell.addView(mini,mp);
-            nav=row();nav.setPadding(dp(9),dp(7),dp(9),dp(9));nav.setBackgroundColor(bg);add(shell,nav);
+            nav=new com.google.android.material.bottomnavigation.BottomNavigationView(this);
+            nav.setBackgroundColor(bg);
+            nav.setElevation(0);
+            nav.setItemIconSize(dp(24));
+            nav.setItemHorizontalTranslationEnabled(false);
+            nav.setLabelVisibilityMode(com.google.android.material.navigation.NavigationBarView.LABEL_VISIBILITY_LABELED);
+            nav.setItemActiveIndicatorEnabled(true);
+            nav.setItemActiveIndicatorWidth(dp(65));
+            nav.setItemActiveIndicatorHeight(dp(32));
+            nav.setOnItemSelectedListener(item->{
+                int target=item.getItemId();
+                if(page!=target){page=target;build(true);}
+                return true;
+            });
+            add(shell,nav);
         }
         getWindow().setStatusBarColor(bg);getWindow().setNavigationBarColor(bg);
         ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(bg);scroll.setFillViewport(true);scroll.setClipToPadding(false);content=column();int side=getResources().getConfiguration().screenWidthDp>=700?60:18;content.setPadding(dp(side),dp(12),dp(side),dp(24));scroll.addView(content);
         if(service==null)add(content,label("Connecting to your sound…",20,text));else if(page==0)music();else if(page==1)learning();else if(page==2)files();else appearance();
-        pages.change(scroll,transition&&!reduced);nav.removeAllViews();String[]titles={"Studio","AI","Library","Style"};
-        int[]icons={R.drawable.ic_cyn_studio,R.drawable.ic_cyn_ai,R.drawable.ic_cyn_library,R.drawable.ic_cyn_style};
-        for(int i=0;i<4;i++){
-            final int target=i;boolean selected=page==i;
-            com.google.android.material.button.MaterialButton b=(com.google.android.material.button.MaterialButton)
-                button(titles[i],()->{if(page!=target){page=target;build(true);}});
-            int foreground=selected?accent:hint;
-            b.setTextSize(11);b.setTextColor(foreground);b.setSelected(selected);
-            b.setIcon(getDrawable(icons[i]));b.setIconTint(ColorStateList.valueOf(foreground));
-            b.setIconSize(dp(20));b.setIconPadding(dp(4));
-            b.setIconGravity(com.google.android.material.button.MaterialButton.ICON_GRAVITY_TEXT_TOP);
-            b.setCornerRadius(dp(24));
-            b.setStrokeWidth(0);
-            b.setBackgroundTintList(ColorStateList.valueOf(selected?
-                androidx.core.graphics.ColorUtils.blendARGB(card,accent,.18f):bg));
-            LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(0,dp(72),1);
-            np.setMargins(dp(2),0,dp(2),0);nav.addView(b,np);
-        }
+        pages.change(scroll,transition&&!reduced);
+        // Real Material 3 bottom navigation: icon/label are independently measured.
+        // Never place icon above text *inside* a MaterialButton: that squeezed
+        // Studio/Library/Style into multiple lines on 360 dp phones.
+        nav.getMenu().clear();
+        String[] titles={"Studio","AI","Library","Style"};
+        int[] icons={R.drawable.ic_cyn_studio,R.drawable.ic_cyn_ai,
+                     R.drawable.ic_cyn_library,R.drawable.ic_cyn_style};
+        for(int i=0;i<4;i++)nav.getMenu().add(0,i,i,titles[i]).setIcon(icons[i]);
+        ColorStateList tabColors=new ColorStateList(
+            new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},
+            new int[]{accent,hint});
+        nav.setItemIconTintList(tabColors);
+        nav.setItemTextColor(tabColors);
+        nav.setItemActiveIndicatorColor(ColorStateList.valueOf(
+            androidx.core.graphics.ColorUtils.blendARGB(card,accent,.2f)));
+        nav.setSelectedItemId(page);
         mini.removeAllViews();LinearLayout m=row();LinearLayout info=column();miniTitle=label("Your library is ready",13,text);miniTitle.setSingleLine();miniTitle.setEllipsize(TextUtils.TruncateAt.END);miniState=label("Choose a track to listen",11,hint);add(info,miniTitle);add(info,miniState);m.addView(info,new LinearLayout.LayoutParams(0,-2,1));TextView toggle=button("▶",()->{if(service==null)return;if(service.player==null){page=2;build(true);}else if(service.playing)service.pause();else startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.TOGGLE));});miniToggle=toggle;toggle.setContentDescription("Play current track");m.addView(toggle,new LinearLayout.LayoutParams(dp(68),-2));add(mini,m);info.setOnClickListener(v->{page=2;build(true);});update();
     }
     void toggle(LinearLayout parent,String title,boolean checked,java.util.function.Consumer<Boolean> change){
@@ -230,7 +244,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     }
     void music(){
         add(content,label("CYN · Smart Listening",29,text));add(content,label("Your music AI assistant · adaptive sound and live processing.",14,hint));
-        LinearLayout hero=section("SOUND STUDIO","");hero.setBackground(gradient(26));connectionTitle=label("",19,text);connectionTitle.setTypeface(null,Typeface.BOLD);add(hero,connectionTitle);spectrum=new Spectrum();hero.addView(spectrum,new LinearLayout.LayoutParams(-1,dp(148)));connectionHint=label("",12,hint);add(hero,connectionHint);processingDetails=label(service.processingStatus(),12,accent);processingDetails.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(hero,processingDetails);
+        LinearLayout hero=section("SOUND STUDIO","");hero.setBackground(gradient(26));connectionTitle=label("",19,text);connectionTitle.setTypeface(null,Typeface.BOLD);add(hero,connectionTitle);spectrum=new Spectrum();hero.addView(spectrum,new LinearLayout.LayoutParams(-1,dp(service.playing||service.monitor?148:92)));connectionHint=label("",12,hint);add(hero,connectionHint);processingDetails=label(service.processingStatus(),12,accent);processingDetails.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(hero,processingDetails);
         toggle(hero,"CYN enhancement",service.enabled,on->{service.enabled=on;service.changed();});
         LinearLayout c=section("Sound controls","For library playback and compatible music sessions.");smartSlider(c,"Bass",-1,"Bass",service.bass,0,12," dB",v->{service.bass=v;service.changed();});smartSlider(c,"Vocal clarity",-1,"Vocal clarity",service.clarity,0,8," dB",v->{service.clarity=v;service.changed();});
         category(c,"Space & dynamics · live AI sliders",body->{smartSlider(body,"Stereo width",-1,"Stereo width",service.width,0,100,"%",v->{service.width=v;service.changed();});smartSlider(body,"Ambience",-1,"Ambience",service.ambience*100,0,100,"%",v->{service.ambience=v/100;service.changed();});smartSlider(body,"Dynamics",-1,"Dynamics",service.dynamics*100,0,100,"%",v->{service.dynamics=v/100;service.changed();});smartSlider(body,"Output headroom",-1,"Output headroom",service.headroom,.3f,6," dB",v->{service.headroom=v;service.changed();});add(body,label("Ambience, dynamics and the full EQ process CYN library playback. Other apps use the effects their audio session supports.",12,hint));});
