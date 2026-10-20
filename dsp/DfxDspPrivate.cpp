@@ -207,7 +207,7 @@ int DfxDspPrivate::setSignalFormat(int i_bps, int i_nch, int i_srate, int i_vali
 
 void DfxDspPrivate::setApex10MSpatialPreview(float strength)
 {
-    spatial_preview_strength_.store(std::isfinite(strength) ? std::clamp(strength, 0.0f, 1.0f) : 0.0f,
+    spatial_preview_strength_.store(std::isfinite(strength) ? CynSpatialExperimental::clampSample(strength, 0.0f, 1.0f) : 0.0f,
         std::memory_order_relaxed);
 }
 
