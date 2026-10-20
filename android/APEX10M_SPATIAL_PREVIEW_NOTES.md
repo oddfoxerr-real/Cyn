@@ -1,13 +1,20 @@
-# CYN Studio Android 0.2.12 preview — APEX 10M Spatial Experiment
+# CYN Studio Android 0.2.13 preview — APEX 10M Spatial Experiment
 
 This Android prerelease adds an optional APEX 10M experimental stereo spatial
 processing mode to the **native PCM audio path for music played inside CYN's
 library**. The same experimental spatial concept is available for Windows via
 the separate APEX 10M desktop spatial WAV preview release.
 
+## Fixed in 0.2.13
+- APEX 10M now appears in **AI Hub** alongside Base AI and APEX 6M, rather than as a misplaced Sound Studio toggle.
+- One primary AI can be selected at a time using a radio group. Legacy independent toggles are migrated safely, preferring the experimental spatial profile if both were previously enabled.
+- Changing to Base AI or APEX 6M immediately disables APEX 10M processing.
+- Shared YAMNet scene analysis and content focus are supporting controls, not extra selected AIs.
+- Spatial intensity is now configured inside AI Hub and respects the Smart Listening master switch.
+
 ## Using the spatial preview
-Open CYN Studio → Studio → **APEX 10M · Experimental spatial**.
-Enable **Experimental stereo enhancement** and adjust **Spatial intensity**
+Open CYN Studio → AI → **APEX 10M · Experimental spatial DSP preview**.
+Choose it as the sole primary AI and adjust **Spatial intensity**
 (start at 40%). Listen to a track using CYN's **Library** tab.
 
 The effect selectively increases existing high-frequency stereo side detail;
@@ -31,11 +38,11 @@ persist locally on-device.
 
 ## Install and compatibility
 APK uses the existing `io.github.oddfoxerr.cyn.studio` identity,
-Android versionCode 16 and versionName 0.2.12-preview. A verified match
+Android versionCode 17 and versionName 0.2.13-preview. A verified match
 to the existing CYN Studio signing certificate is required before publishing.
 The APK is released with a SHA-256 checksum and source archive.
 
-Experimental mode is OFF by default, and existing AI, EQ, Library, Themes,
+APEX 10M is OFF by default on fresh installs, and existing AI, EQ, Library, Themes,
 device connection and update settings remain available. This builds on the
 existing Android Studio 0.2.11 source branch without changing Windows stable.
 
