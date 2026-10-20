@@ -93,7 +93,13 @@ public:
             {FxThemeMode::LiquidTitanium,"Liquid Titanium"},
             {FxThemeMode::JadeCircuit,"Jade Circuit"},
             {FxThemeMode::SolarInk,"Solar Ink"},
-            {FxThemeMode::PolarMist,"Polar Mist"}})
+            {FxThemeMode::PolarMist,"Polar Mist"},
+            {FxThemeMode::Obsidian,"Liquid Obsidian"},
+            {FxThemeMode::Emerald,"Emerald Canopy"},
+            {FxThemeMode::DeepSea,"Deep Ocean"},
+            {FxThemeMode::NeonTokyo,"Neon Tokyo"},
+            {FxThemeMode::Synthwave,"Synthwave Rose"},
+            {FxThemeMode::Sakura,"Sakura Bloom"}})
             themePicker_.addItem(item.second,(int)item.first+1);
         themePicker_.setSelectedId((int)themeMode_+1,juce::dontSendNotification);
         themePicker_.onChange=[this] {
@@ -109,6 +115,30 @@ public:
             settings.getInt("cyn_dj_touch_style_eq",legacyStyle));
         flowerCount_=juce::jlimit(2,4,
             settings.getInt("cyn_dj_touch_flower_count",4));
+        pageStyle_=juce::jlimit(0,5,settings.getInt("cyn_page_switch_style",0));
+        pageSpeed_=juce::jlimit(60,160,settings.getInt("cyn_page_switch_speed",100));
+        static const char* pageNames[]={
+            "Liquid ripple","Material fade","Horizontal glide",
+            "Iris reveal","Prism sweep","Instant"
+        };
+        for(int i=0;i<6;++i)pageStylePicker_.addItem(pageNames[i],i+1);
+        pageStylePicker_.setSelectedId(pageStyle_+1,juce::dontSendNotification);
+        pageStylePicker_.setTooltip("How actual Sound Studio pages transform when switching tabs");
+        pageStylePicker_.onChange=[this] {
+            pageStyle_=juce::jlimit(0,5,pageStylePicker_.getSelectedId()-1);
+            repaint();
+        };
+        pageSpeedSlider_.setSliderStyle(juce::Slider::LinearHorizontal);
+        pageSpeedSlider_.setTextBoxStyle(juce::Slider::TextBoxRight,false,82,26);
+        pageSpeedSlider_.setRange(.60,1.60,.05);
+        pageSpeedSlider_.setTextValueSuffix("x");
+        pageSpeedSlider_.setValue(pageSpeed_/100.0,juce::dontSendNotification);
+        pageSpeedSlider_.onValueChange=[this] {
+            pageSpeed_=juce::jlimit(60,160,
+                juce::roundToInt(pageSpeedSlider_.getValue()*100.0));
+        };
+        addAndMakeVisible(pageStylePicker_);
+        addAndMakeVisible(pageSpeedSlider_);
         closeStyle_ = CynCloseMotion::clampStyle(settings.getInt(
             "cyn_close_motion_style", CynCloseMotion::defaultStyle));
         closeSpeedPercent_ = CynCloseMotion::clampSpeed(settings.getInt(
@@ -247,6 +277,8 @@ public:
             controller.getSettings().setInt("cyn_dj_touch_flower_count",flowerCount_);
             controller.getSettings().setInt("cyn_dj_touch_style",effectsTouchStyle_);
             // Save the visual motion choice with Apply, without changing playback.
+            controller.getSettings().setInt("cyn_page_switch_style",pageStyle_);
+            controller.getSettings().setInt("cyn_page_switch_speed",pageSpeed_);
             controller.getSettings().setInt("cyn_close_motion_style",closeStyle_);
             controller.getSettings().setInt("cyn_close_motion_speed_pct",closeSpeedPercent_);
             controller.getSettings().setInt("cyn_button_motion_style",buttonMotion_);
@@ -286,6 +318,8 @@ public:
         buttonHighlightPicker_.setBounds(282,510,345,34);
         buttonSpeedSlider_.setBounds(272,574,365,34);
         buttonIntensitySlider_.setBounds(272,638,365,34);
+        pageStylePicker_.setBounds(218,425,370,33);
+        pageSpeedSlider_.setBounds(207,476,390,33);
         closeStylePicker_.setBounds(218,574,370,33);
         closeSpeedSlider_.setBounds(207,640,390,34);
         replayMotion_.setBounds(w-225,537,125,33);
@@ -447,6 +481,8 @@ private:
             &flowerPicker_, &importTouch_ })
             c->setVisible(!show);
         themePicker_.setVisible(!show);
+        pageStylePicker_.setVisible(show);
+        pageSpeedSlider_.setVisible(show);
         closeStylePicker_.setVisible(show);
         closeSpeedSlider_.setVisible(show);
         replayMotion_.setVisible(show);
@@ -465,7 +501,7 @@ private:
         for(auto* ctl:std::initializer_list<juce::Component*>{
             &effectsTouchPicker_,&eqTouchPicker_,
             &flowerPicker_,&importTouch_,&closeStylePicker_,
-            &closeSpeedSlider_,&replayMotion_}) ctl->setVisible(false);
+            &pageStylePicker_,&pageSpeedSlider_,&closeSpeedSlider_,&replayMotion_}) ctl->setVisible(false);
         for(auto* ctl:std::initializer_list<juce::Component*>{
             &buttonMotionPicker_,&buttonHighlightPicker_,&buttonSpeedSlider_,
             &buttonIntensitySlider_,&buttonDemo_}) ctl->setVisible(true);
@@ -525,7 +561,7 @@ private:
         const auto muted=Colour(FXCOLOR(HintText)).withAlpha(1.0f);
         const auto accent=Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f);
         const auto backdrop=Colour(FXCOLOR(WindowBackground)).withAlpha(1.0f);
-        const juce::Rectangle<float> area(92.0f,138.0f,(float)getWidth()-184.0f,367.0f);
+        const juce::Rectangle<float> area(92.0f,138.0f,(float)getWidth()-184.0f,245.0f);
         const double duration=CynCloseMotion::durationForSpeed(closeSpeedPercent_);
         const double elapsed=Time::getMillisecondCounterHiRes()-motionPreviewStart_;
         // Pause between replays so even very fast styles are easy to assess.
@@ -539,8 +575,12 @@ private:
         g.drawText("WINDOW ANIMATIONS",92,112,500,26,Justification::centredLeft);
         g.setColour(muted);
         g.setFont(Font(12.0f));
-        g.drawText("A live sample of the selected motion. Audio continues when the real app hides to tray.",
-                   92,515,getWidth()-184,22,Justification::centredLeft);
+        g.drawText("Visual preview only. Audio and DSP are unaffected by page motion.",
+                   92,380,getWidth()-184,20,Justification::centredLeft);
+        g.setColour(fg);
+        g.setFont(Font(13.0f,Font::bold));
+        g.drawText("PAGE SWITCH",92,424,115,33,Justification::centredLeft);
+        g.drawText("PAGE SPEED",92,476,115,33,Justification::centredLeft);
         g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(.93f));
         g.fillRoundedRectangle(area.expanded(1.0f),18.0f);
         {
@@ -679,7 +719,9 @@ private:
     juce::ComboBox buttonMotionPicker_,buttonHighlightPicker_;
     juce::Slider buttonSpeedSlider_,buttonIntensitySlider_;
     juce::ComboBox effectsTouchPicker_,eqTouchPicker_,flowerPicker_;
-    juce::ComboBox closeStylePicker_,themePicker_;
+    juce::ComboBox closeStylePicker_,themePicker_,pageStylePicker_;
+    juce::Slider pageSpeedSlider_;
+    int pageStyle_=0,pageSpeed_=100;
     FxThemeMode themeMode_=FxThemeMode::DarkMesh;
     juce::Slider closeSpeedSlider_;
     juce::File customChoice_;
