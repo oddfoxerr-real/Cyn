@@ -877,10 +877,10 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 		}
 
 		setPowerState(settings_.getBool("power"));
+        // APEX 10M is a single selected Music AI slot, never a second toggle.
         dfx_dsp_.setApex10MSpatialPreview(
-            settings_.getBool("cyn_apex10m_spatial_preview",false)
-                ? jlimit(0,100,settings_.getInt("cyn_apex10m_spatial_strength",40)) / 100.0f
-                : 0.0f);
+            getActiveAIProfileId()=="apex10m" && smart_mode_==0
+                ? getApex10MSpatialStrength()/100.0f : 0.0f);
 
 		initPresets();
 
@@ -3297,6 +3297,9 @@ void FxController::setSmartListeningMode(int mode)
     smart_mode_=mode;
     if(smart_enabled_) captureSmartBaseline();
     settings_.setInt("cyn_ai_listening_mode",mode);
+    dfx_dsp_.setApex10MSpatialPreview(
+        mode==0 && getActiveAIProfileId()=="apex10m"
+            ? getApex10MSpatialStrength()/100.0f : 0.0f);
     smart_learning_message_=mode==1 ?
         "Movie AI is separate. Label dialogue, music and effects with More / Less." :
         "Music AI selected. Your music training remains independent.";
@@ -3321,8 +3324,10 @@ std::vector<FxController::AIProfileOption> FxController::getAvailableAIProfiles(
     };
     append(File::getSpecialLocation(File::currentExecutableFile).getSiblingFile("CynAiProfiles"),"bundled:");
     append(File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Cyn/AIModels"),"imported:");
-    if(smart_mode_==0 && apex6MInstalled())
-        choices.push_back({"apex6m","CYN APEX 6M (Full ONNX · Live Neural EQ)"});
+    if(smart_mode_==0) {
+        if(apex6MInstalled()) choices.push_back({"apex6m","CYN APEX 6M (Full ONNX · Live Neural EQ)"});
+        choices.push_back({"apex10m","CYN APEX 10M Experimental (Spatial DSP; neural untrained)"});
+    }
     return choices;
 }
 String FxController::getActiveAIProfileId() {
@@ -3340,6 +3345,29 @@ bool FxController::selectAIProfile(const String& id,String& error) {
         }
         error.clear();return true;
     }
+    if(id=="apex10m") {
+        if(smart_mode_!=0) {error="APEX 10M spatial preview requires Music AI mode.";return false;}
+        settings_.setString("cyn_apex10m_previous_music_profile",getActiveAIProfileId());
+        if(smart_enabled_) restoreSmartBaseline();
+        settings_.setString("cyn_active_ai_profile_music","apex10m");
+        if(smart_enabled_) captureSmartBaseline();
+        dfx_dsp_.setApex10MSpatialPreview(getApex10MSpatialStrength()/100.0f);
+        smart_learning_message_="APEX 10M selected: experimental stereo spatial DSP; untrained neural head is OFF.";
+        error.clear();return true;
+    }
+    if(smart_mode_==0 && getActiveAIProfileId()=="apex10m") {
+        const String old=settings_.getString("cyn_apex10m_previous_music_profile");
+        const String previous=(old.isEmpty() || old=="apex10m")?"personal":old;
+        if(smart_enabled_) restoreSmartBaseline();
+        settings_.setString("cyn_active_ai_profile_music",previous);
+        dfx_dsp_.setApex10MSpatialPreview(0.0f);
+        if(id==previous) {
+            if(smart_enabled_) captureSmartBaseline();
+            smart_learning_message_="Previous Music AI restored; APEX 10M spatial stage disabled.";
+            error.clear();return true;
+        }
+        if(smart_enabled_) captureSmartBaseline();
+    }
     // The full APEX ONNX model is a distinct runtime, NOT a 209-weight .cynai.
     // Leave private learning and the previous model untouched.
     if(id=="apex6m") {
@@ -3356,6 +3384,7 @@ bool FxController::selectAIProfile(const String& id,String& error) {
         settings_.setString("cyn_apex_previous_music_profile",getActiveAIProfileId());
         if(smart_enabled_) restoreSmartBaseline();
         settings_.setString("cyn_active_ai_profile_music","apex6m");
+        dfx_dsp_.setApex10MSpatialPreview(0.0f);
         if(smart_enabled_) captureSmartBaseline();
         smart_learning_message_="APEX 6M neural Music AI selected: ONNX + adaptive live DSP.";
         error.clear();return true;
@@ -4235,13 +4264,20 @@ void FxController::setSmoothAnimations(bool value)
 
 void FxController::setApex10MSpatialEnabled(bool on)
 {
-    settings_.setBool("cyn_apex10m_spatial_preview",on);
-    dfx_dsp_.setApex10MSpatialPreview(on?getApex10MSpatialStrength()/100.0f:0.0f);
+    // Compatibility entrypoint: old settings toggles must use AI selection too.
+    String error;
+    if(on) selectAIProfile("apex10m",error);
+    else if(getActiveAIProfileId()=="apex10m") {
+        String previous=settings_.getString("cyn_apex10m_previous_music_profile");
+        if(previous.isEmpty() || previous=="apex10m") previous="personal";
+        selectAIProfile(previous,error);
+    }
 }
 
 void FxController::setApex10MSpatialStrength(int percent)
 {
     const int safe=jlimit(0,100,percent);
     settings_.setInt("cyn_apex10m_spatial_strength",safe);
-    dfx_dsp_.setApex10MSpatialPreview(isApex10MSpatialEnabled()?safe/100.0f:0.0f);
+    dfx_dsp_.setApex10MSpatialPreview(
+        getActiveAIProfileId()=="apex10m" && smart_mode_==0 ? safe/100.0f : 0.0f);
 }
