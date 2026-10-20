@@ -365,4 +365,51 @@ public class StudioTest {
         assertTrue(license.contains("GNU AFFERO GENERAL PUBLIC LICENSE"));
     }
 
+    @Test public void material3ControlsAndFixedCynPalettes()throws Exception{
+        MainActivity a=ready();
+        main(()->{
+            for(int screen=0;screen<4;screen++){
+                a.page=screen;a.build();
+                assertEquals(4,a.nav.getChildCount());
+                for(int tab=0;tab<4;tab++){
+                    View nav=a.nav.getChildAt(tab);
+                    assertTrue("Bottom tabs are Material 3 buttons",nav instanceof com.google.android.material.button.MaterialButton);
+                    assertNotNull("Each Material 3 tab has a vector icon",
+                        ((com.google.android.material.button.MaterialButton)nav).getIcon());
+                    assertEquals(screen==tab,nav.isSelected());
+                }
+                assertTrue("Each page contains Material 3 card surfaces",
+                    containsMaterialCard(a.content));
+            }
+            // Style has native Material 3 switches, not legacy platform widgets.
+            assertTrue("Theme and automatic updates use Material 3 switches",
+                containsMaterialSwitch(a.content));
+            int old=a.ui.getInt("studio_theme",0);
+            try{
+                a.ui.edit().putInt("studio_theme",1).commit();a.palette();
+                assertEquals("CYN Deep tide uses a fixed color, not wallpaper color",0xff65e4be,a.accent);
+                a.ui.edit().putInt("studio_theme",2).commit();a.palette();
+                assertEquals("CYN Ember dusk keeps its own preset hue",0xffffad82,a.accent);
+            }finally{
+                a.ui.edit().putInt("studio_theme",old).commit();a.palette();a.build();
+            }
+        });
+    }
+    private static boolean containsMaterialCard(View v){
+        if(v instanceof com.google.android.material.card.MaterialCardView)return true;
+        if(v instanceof android.view.ViewGroup){
+            android.view.ViewGroup g=(android.view.ViewGroup)v;
+            for(int i=0;i<g.getChildCount();i++)if(containsMaterialCard(g.getChildAt(i)))return true;
+        }
+        return false;
+    }
+    private static boolean containsMaterialSwitch(View v){
+        if(v instanceof com.google.android.material.materialswitch.MaterialSwitch)return true;
+        if(v instanceof android.view.ViewGroup){
+            android.view.ViewGroup g=(android.view.ViewGroup)v;
+            for(int i=0;i<g.getChildCount();i++)if(containsMaterialSwitch(g.getChildAt(i)))return true;
+        }
+        return false;
+    }
+
 }
