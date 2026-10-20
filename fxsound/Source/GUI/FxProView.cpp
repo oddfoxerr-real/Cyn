@@ -388,7 +388,8 @@ void FxProView::timerCallback()
     const auto now=Time::getMillisecondCounterHiRes();
     if(transition_image_.isValid() && transition_to_image_.isValid()) {
         if(FxTheme::isReducedMotion() ||
-           now-transition_start_>=CynUiMotion::pageDurationMs) {
+           now-transition_start_>=CynUiMotion::pageDurationMs*100.0/
+                juce::jlimit(60,160,FxController::getInstance().getSettings().getInt("cyn_page_switch_speed",100))) {
             transition_image_=Image();
             transition_to_image_=Image();
         }
@@ -1140,10 +1141,12 @@ void FxProView::paintOverChildren(Graphics& g)
             jmax(0,getWidth()-240),getHeight());
         const float p=CynUiMotion::progress(
             Time::getMillisecondCounterHiRes()-transition_start_,
-            CynUiMotion::pageDurationMs);
+            CynUiMotion::pageDurationMs*100.0/
+                juce::jlimit(60,160,FxController::getInstance().getSettings().getInt("cyn_page_switch_speed",100)));
         if(p<1.0f) {
             CynLiquidScreen::render(g,transition_image_,transition_to_image_,
-                content,p,transition_direction_,Colour(FXCOLOR(SliderTrack)));
+                content,p,transition_direction_,Colour(FXCOLOR(SliderTrack)),
+                juce::jlimit(0,5,FxController::getInstance().getSettings().getInt("cyn_page_switch_style",0)));
             return;
         }
     }
