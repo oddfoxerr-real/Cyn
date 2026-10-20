@@ -325,7 +325,7 @@ private:
         // Bundled built-in spatial experiment is selectable offline, and
         // cannot be removed by a community catalogue refresh.
         const bool present=std::any_of(collected.begin(),collected.end(),
-            [](const Profile& entry){return entry.id=="cyn-apex10m-experimental";});
+            [](const Profile& entry){return entry.nativeSpatial;});
         if(!present) {
             Profile spatial;
             spatial.id="cyn-apex10m-experimental";
@@ -333,7 +333,7 @@ private:
             spatial.author="CYN contributors";
             spatial.category="Music AI / DSP preview";
             spatial.nativeSpatial=true;
-            collected.push_back(spatial);
+            collected.insert(collected.begin(),spatial);
         }
         profiles_ = std::move (collected);
         list_.updateContent();
