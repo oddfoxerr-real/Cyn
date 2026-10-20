@@ -74,6 +74,45 @@ public class StudioTest {
         }
     }
     @Test public void screensAndRapidTransitions()throws Exception{MainActivity a=ready();for(int page:new int[]{0,2,1,3,2,0,3,1}){final int p=page;main(()->{a.page=p;a.build(true);});}Thread.sleep(600);main(()->{assertEquals(4,a.nav.getMenu().size());assertTrue(a.pages.getChildCount()==1);assertNotNull(a.content);});}
+    @Test public void rapidBottomTabTapsKeepFinalSelection()throws Exception {
+        MainActivity a=ready();
+        final com.google.android.material.bottomnavigation.BottomNavigationView[] original={null};
+        main(()->{
+            a.page=0;
+            a.build(false);
+            original[0]=a.nav;
+            assertEquals(4,a.nav.getMenu().size());
+            // Real item clicks, including repeated taps before a posted transition.
+            for(int target:new int[]{1,3,2,0,3,1,2}){
+                View item=a.nav.findViewById(target);
+                assertNotNull("Tab view must be touchable: "+target,item);
+                assertTrue("Tab tap must dispatch: "+target,item.performClick());
+            }
+        });
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        main(()->{
+            assertSame("The bottom navigation must not be reconstructed",original[0],a.nav);
+            assertEquals("Final rapid tap controls the content",2,a.page);
+            assertEquals("Final rapid tap stays highlighted",2,a.nav.getSelectedItemId());
+            assertTrue(a.nav.getMenu().getItem(2).isChecked());
+            assertEquals(4,a.nav.getMenu().size());
+        });
+        for(int target:new int[]{0,1,3,2,0}){
+            main(()->{
+                View item=a.nav.findViewById(target);
+                assertNotNull(item);
+                assertTrue(item.performClick());
+            });
+            InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+            main(()->{
+                assertSame(original[0],a.nav);
+                assertEquals("Tap must open correct page",target,a.page);
+                assertEquals("Selected tab must match page",target,a.nav.getSelectedItemId());
+                assertTrue("Selected menu item remains checked",a.nav.getMenu().findItem(target).isChecked());
+                assertEquals(4,a.nav.getMenu().size());
+            });
+        }
+    }
     @Test public void fullModelsAndBypass()throws Exception{
         MainActivity a=ready();DesktopAi ai=new DesktopAi(a);NativeEngine.configure(ai.engine,2);
         ByteBuffer pcm=ByteBuffer.allocateDirect(48000*4).order(ByteOrder.nativeOrder());for(int i=0;i<48000;i++){short value=(short)(8000*Math.sin(2*Math.PI*440*i/48000));pcm.putShort(value).putShort(value);}byte[]expected=new byte[pcm.capacity()];pcm.rewind();pcm.get(expected);pcm.rewind();NativeEngine.process(ai.engine,pcm,pcm.capacity());byte[]actual=new byte[pcm.capacity()];pcm.rewind();pcm.get(actual);assertArrayEquals(expected,actual);

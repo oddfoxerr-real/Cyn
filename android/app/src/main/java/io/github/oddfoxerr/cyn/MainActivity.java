@@ -99,9 +99,24 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             nav.setItemActiveIndicatorEnabled(true);
             nav.setItemActiveIndicatorWidth(dp(65));
             nav.setItemActiveIndicatorHeight(dp(32));
+            // Build the menu once: clearing a live menu during a selection callback
+            // can uncheck the destination before Material finishes dispatching it.
+            String[] navigationTitles={"Studio","AI","Library","Style"};
+            int[] navigationIcons={R.drawable.ic_cyn_studio,R.drawable.ic_cyn_ai,
+                    R.drawable.ic_cyn_library,R.drawable.ic_cyn_style};
+            for(int i=0;i<navigationTitles.length;i++)
+                nav.getMenu().add(0,i,i,navigationTitles[i]).setIcon(navigationIcons[i]);
             nav.setOnItemSelectedListener(item->{
                 int target=item.getItemId();
-                if(page!=target){page=target;build(true);}
+                if(target<0||target>=4)return false;
+                if(page!=target){
+                    page=target;
+                    // Let BottomNavigationView finish selecting the item before
+                    // rebuilding the content. A newer tap supersedes a queued one.
+                    nav.post(()->{
+                        if(!isFinishing()&&!isDestroyed()&&page==target)build(true);
+                    });
+                }
                 return true;
             });
             add(shell,nav);
@@ -110,14 +125,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(bg);scroll.setFillViewport(true);scroll.setClipToPadding(false);content=column();int side=getResources().getConfiguration().screenWidthDp>=700?60:18;content.setPadding(dp(side),dp(12),dp(side),dp(24));scroll.addView(content);
         if(service==null)add(content,label("Connecting to your sound…",20,text));else if(page==0)music();else if(page==1)learning();else if(page==2)files();else appearance();
         pages.change(scroll,transition&&!reduced);
-        // Real Material 3 bottom navigation: icon/label are independently measured.
-        // Never place icon above text *inside* a MaterialButton: that squeezed
-        // Studio/Library/Style into multiple lines on 360 dp phones.
-        nav.getMenu().clear();
-        String[] titles={"Studio","AI","Library","Style"};
-        int[] icons={R.drawable.ic_cyn_studio,R.drawable.ic_cyn_ai,
-                     R.drawable.ic_cyn_library,R.drawable.ic_cyn_style};
-        for(int i=0;i<4;i++)nav.getMenu().add(0,i,i,titles[i]).setIcon(icons[i]);
+        // Reuse the stable Material menu: just update palette and selection.
+        // Reconstructing menu views mid-tap caused intermittent missed selections.
         ColorStateList tabColors=new ColorStateList(
             new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},
             new int[]{accent,hint});
@@ -125,7 +134,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         nav.setItemTextColor(tabColors);
         nav.setItemActiveIndicatorColor(ColorStateList.valueOf(
             androidx.core.graphics.ColorUtils.blendARGB(card,accent,.2f)));
-        nav.setSelectedItemId(page);
+        if(nav.getSelectedItemId()!=page)nav.setSelectedItemId(page);
         mini.removeAllViews();LinearLayout m=row();LinearLayout info=column();miniTitle=label("Your library is ready",13,text);miniTitle.setSingleLine();miniTitle.setEllipsize(TextUtils.TruncateAt.END);miniState=label("Choose a track to listen",11,hint);add(info,miniTitle);add(info,miniState);m.addView(info,new LinearLayout.LayoutParams(0,-2,1));TextView toggle=button("▶",()->{if(service==null)return;if(service.player==null){page=2;build(true);}else if(service.playing)service.pause();else startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.TOGGLE));});miniToggle=toggle;toggle.setContentDescription("Play current track");m.addView(toggle,new LinearLayout.LayoutParams(dp(68),-2));add(mini,m);info.setOnClickListener(v->{page=2;build(true);});update();
     }
     void toggle(LinearLayout parent,String title,boolean checked,java.util.function.Consumer<Boolean> change){

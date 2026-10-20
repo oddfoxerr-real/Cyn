@@ -1,14 +1,14 @@
-# CYN Studio Android 0.2.9 preview
+# CYN Studio Android 0.2.10 preview
 
 Android 9+ on 64-bit ARM or x86. The app is named **CYN Studio**, package
-`io.github.oddfoxerr.cyn.studio`, version code 13. It installs alongside the older
+`io.github.oddfoxerr.cyn.studio`, version code 14. It installs alongside the older
 Cyn app because that app's original signing key could not be recovered. Keep the
 old app to preserve its settings and learning; Studio starts with separate data.
 Disable the old app's audio monitoring before enabling Studio to avoid competing
 effects. Future Studio releases retain this identity and signing key.
 
-Download `Cyn-Studio-Android-0.2.9-preview.apk` from the
-[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.9-preview),
+Download `Cyn-Studio-Android-0.2.10-preview.apk` from the
+[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.10-preview),
 open it on your phone and confirm installation. Do not uninstall the old Cyn to
 install Studio.
 

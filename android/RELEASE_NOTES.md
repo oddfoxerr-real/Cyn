@@ -1,3 +1,10 @@
+# CYN Studio v0.2.10-preview — Reliable Bottom Navigation
+
+- Keeps Material 3 bottom navigation items mounted instead of clearing and recreating the menu whenever the page changes.
+- Completes each selected-tab click before switching page content; rapid consecutive taps cannot overwrite the final selection.
+- Preserves the one-line Studio, AI, Library and Style labels, selected indicator, current theme colors and accessibility.
+- Adds real navigation item-click regression coverage for rapid taps and repeated tab changes. Sound processing, AI selection, library, and updates are unchanged.
+
 # CYN Studio v0.2.9-preview — Material Navigation Hotfix
 
 - Fixes the user-reported phone screenshot where the MaterialButton bottom navigation split **Studio**, **Library**, and **Style** into two or three lines and oversized selected tab.
