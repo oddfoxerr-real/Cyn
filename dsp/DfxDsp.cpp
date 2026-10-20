@@ -32,6 +32,11 @@ DfxDsp::~DfxDsp()
 	delete data_;
 }
 
+void DfxDsp::setApex10MSpatialPreview(float strength)
+{
+    data_->setApex10MSpatialPreview(strength);
+}
+
 void DfxDsp::powerOn(bool on)
 {
 	data_->powerOn(on);
