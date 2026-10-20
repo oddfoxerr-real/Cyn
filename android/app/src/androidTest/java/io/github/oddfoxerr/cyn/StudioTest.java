@@ -68,11 +68,12 @@ public class StudioTest {
             try{
                 try(FileOutputStream out=new FileOutputStream(new File(folder,"screen-"+page+".png"))){assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG,100,out));}
                 assertTextVisible(screenshot,a.shell.getChildAt(0));assertTextVisible(screenshot,a.miniTitle);assertTextVisible(screenshot,a.miniToggle);
-                for(int tab=0;tab<4;tab++)assertTextVisible(screenshot,a.nav.getChildAt(tab));
+                assertTextVisible(screenshot,a.nav);
+                assertEquals("All bottom navigation destinations remain visible",4,a.nav.getMenu().size());
             }finally{screenshot.recycle();}
         }
     }
-    @Test public void screensAndRapidTransitions()throws Exception{MainActivity a=ready();for(int page:new int[]{0,2,1,3,2,0,3,1}){final int p=page;main(()->{a.page=p;a.build(true);});}Thread.sleep(600);main(()->{assertEquals(4,a.nav.getChildCount());assertTrue(a.pages.getChildCount()==1);assertNotNull(a.content);});}
+    @Test public void screensAndRapidTransitions()throws Exception{MainActivity a=ready();for(int page:new int[]{0,2,1,3,2,0,3,1}){final int p=page;main(()->{a.page=p;a.build(true);});}Thread.sleep(600);main(()->{assertEquals(4,a.nav.getMenu().size());assertTrue(a.pages.getChildCount()==1);assertNotNull(a.content);});}
     @Test public void fullModelsAndBypass()throws Exception{
         MainActivity a=ready();DesktopAi ai=new DesktopAi(a);NativeEngine.configure(ai.engine,2);
         ByteBuffer pcm=ByteBuffer.allocateDirect(48000*4).order(ByteOrder.nativeOrder());for(int i=0;i<48000;i++){short value=(short)(8000*Math.sin(2*Math.PI*440*i/48000));pcm.putShort(value).putShort(value);}byte[]expected=new byte[pcm.capacity()];pcm.rewind();pcm.get(expected);pcm.rewind();NativeEngine.process(ai.engine,pcm,pcm.capacity());byte[]actual=new byte[pcm.capacity()];pcm.rewind();pcm.get(actual);assertArrayEquals(expected,actual);
@@ -370,13 +371,15 @@ public class StudioTest {
         main(()->{
             for(int screen=0;screen<4;screen++){
                 a.page=screen;a.build();
-                assertEquals(4,a.nav.getChildCount());
+                assertTrue("The navigation uses native Material BottomNavigationView",
+                    a.nav instanceof com.google.android.material.bottomnavigation.BottomNavigationView);
+                assertEquals(4,a.nav.getMenu().size());
+                assertEquals("Selected tab follows current page",screen,a.nav.getSelectedItemId());
+                String[] names={"Studio","AI","Library","Style"};
                 for(int tab=0;tab<4;tab++){
-                    View nav=a.nav.getChildAt(tab);
-                    assertTrue("Bottom tabs are Material 3 buttons",nav instanceof com.google.android.material.button.MaterialButton);
-                    assertNotNull("Each Material 3 tab has a vector icon",
-                        ((com.google.android.material.button.MaterialButton)nav).getIcon());
-                    assertEquals(screen==tab,nav.isSelected());
+                    android.view.MenuItem item=a.nav.getMenu().getItem(tab);
+                    assertEquals(names[tab],item.getTitle().toString());
+                    assertNotNull("Each tab has a vector icon",item.getIcon());
                 }
                 assertTrue("Each page contains Material 3 card surfaces",
                     containsMaterialCard(a.content));
@@ -408,6 +411,35 @@ public class StudioTest {
         if(v instanceof android.view.ViewGroup){
             android.view.ViewGroup g=(android.view.ViewGroup)v;
             for(int i=0;i<g.getChildCount();i++)if(containsMaterialSwitch(g.getChildAt(i)))return true;
+        }
+        return false;
+    }
+
+    @Test public void bottomLabelsDoNotWrapOnNarrowPhone()throws Exception {
+        MainActivity a=ready();
+        main(()->{
+            a.page=0;a.build();
+            int width=a.dp(360);
+            int w=View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY);
+            int h=View.MeasureSpec.makeMeasureSpec(a.dp(80),View.MeasureSpec.EXACTLY);
+            a.nav.measure(w,h);a.nav.layout(0,0,width,a.dp(80));
+            assertEquals(4,a.nav.getMenu().size());
+            String[] labels={"Studio","AI","Library","Style"};
+            for(String label:labels)
+                assertTrue("Material nav must display label on one line: "+label,
+                    containsSingleLineLabel(a.nav,label));
+        });
+    }
+    private static boolean containsSingleLineLabel(View v,String title){
+        if(v.getVisibility()!=View.VISIBLE)return false;
+        if(v instanceof android.widget.TextView){
+            android.widget.TextView t=(android.widget.TextView)v;
+            if(title.equals(t.getText().toString())&&t.getLineCount()==1)return true;
+        }
+        if(v instanceof android.view.ViewGroup){
+            android.view.ViewGroup group=(android.view.ViewGroup)v;
+            for(int i=0;i<group.getChildCount();i++)
+                if(containsSingleLineLabel(group.getChildAt(i),title))return true;
         }
         return false;
     }
