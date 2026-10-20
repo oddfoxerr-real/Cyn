@@ -158,6 +158,55 @@ public class StudioTest {
         });
     }
 
+    @Test public void favoriteIconTracksPersistedLibraryState()throws Exception {
+        MainActivity a=ready();
+        Uri uri=Uri.parse("content://media/external/audio/media/778812");
+        main(()->{
+            try{
+                a.service.library.merge(Collections.singletonList(new AudioLibrary.Track(uri,"Favorite QA","Artist","Album",5000,false)));
+                a.page=2;a.query="Favorite QA";a.onlyFavorites=false;a.build();
+                View view=a.libraryRows.findViewWithTag(uri.toString());
+                assertTrue("A native favorite icon must be visible",view instanceof androidx.appcompat.widget.AppCompatImageButton);
+                assertFalse(view.isSelected());
+                assertTrue(view.performClick());
+                View selected=a.libraryRows.findViewWithTag(uri.toString());
+                assertNotNull(selected);
+                assertTrue("Heart must render filled after tapping",selected.isSelected());
+                assertEquals("Remove favorite Favorite QA",selected.getContentDescription());
+                assertTrue("Favorite must survive disk reload",
+                    new AudioLibrary(a).all().stream().anyMatch(t->t.uri.equals(uri)&&t.favorite));
+                assertTrue(selected.performClick());
+                assertFalse("Tapping again removes favorite",a.libraryRows.findViewWithTag(uri.toString()).isSelected());
+            }catch(Exception e){throw new AssertionError(e);}
+            finally{
+                try{a.service.library.remove(uri);}catch(Exception ignored){}
+                a.query="";a.onlyFavorites=false;a.build();
+            }
+        });
+    }
+    @Test public void pcmSpectrumUsesAudioSamplesNotNeuralInference()throws Exception {
+        PcmSpectrum spectrum=new PcmSpectrum();
+        try{
+            spectrum.setActive(true);
+            java.nio.ByteBuffer signal=java.nio.ByteBuffer.allocateDirect(4096*4).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+            for(int i=0;i<4096;i++){
+                short value=(short)(13000*Math.sin(2*Math.PI*440*i/48000));
+                signal.putShort(value).putShort(value);
+            }
+            signal.flip();spectrum.capture(signal,2);
+            assertEquals("Capture cannot consume the audio processor's input",0,signal.position());
+            long deadline=SystemClock.elapsedRealtime()+1600;
+            float max=0;
+            while(SystemClock.elapsedRealtime()<deadline&&max<.05f){
+                Thread.sleep(40);
+                PcmSpectrum.Frame frame=spectrum.latest();
+                for(float band:frame.bands)max=Math.max(max,band);
+            }
+            assertTrue("Actual 440 Hz PCM must produce live FFT bands",max>.05f);
+            spectrum.setActive(false);
+            for(float band:spectrum.latest().bands)assertEquals(0f,band,0);
+        }finally{spectrum.close();}
+    }
     @Test public void spectrumUsesOnlyMeasuredBinsAndSilenceDecays()throws Exception {
         byte[] silent=new byte[1024];
         float[] empty=AudioFeatures.spectrum(silent,48000);

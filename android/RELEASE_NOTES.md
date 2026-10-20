@@ -1,3 +1,12 @@
+# CYN Studio v0.2.11-preview — Live Visuals & Favorite Hearts
+
+- Separate Sound Studio's live spectrum from slower YAMNet/APEX inference: a small, bounded 4096-sample FFT now analyzes the actual decoded 48 kHz PCM stream on a dedicated low-priority worker about 25 times per second.
+- Animate the 31-band spectrum at display refresh rate with independent rise/fall easing; never display invented movement when audio is silent or missing.
+- Increase external Android playback Visualizer's capture request from 4 Hz to up to 20 Hz, respecting the device's allowed maximum.
+- Replace the clipped 48dp text-heart MaterialButton with a proper 48dp touch-target vector icon, filled/tinted when favorited and outlined when not. Saving failures roll back the favorite state.
+- Add emulator tests for a live PCM sine wave, clearing on pause, and favorite toggling and persistence.
+- Preserve all existing audio enhancement, AI models, slider behaviors, saved settings and Material 3 navigation.
+
 # CYN Studio v0.2.10-preview — Reliable Bottom Navigation
 
 - Keeps Material 3 bottom navigation items mounted instead of clearing and recreating the menu whenever the page changes.

@@ -297,7 +297,17 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     }
     List<AudioLibrary.Track> filteredTracks(){ArrayList<AudioLibrary.Track> list=new ArrayList<>();String q=query.toLowerCase(Locale.ROOT);for(AudioLibrary.Track t:service.library.all())if((!onlyFavorites||t.favorite)&&(t.title+" "+t.artist+" "+t.album).toLowerCase(Locale.ROOT).contains(q))list.add(t);return list;}
     void renderTracks(){if(libraryRows==null)return;libraryRows.removeAllViews();List<AudioLibrary.Track> tracks=filteredTracks();if(tracks.isEmpty()){LinearLayout empty=column();empty.setPadding(dp(14),dp(20),dp(14),dp(20));add(empty,label(libraryBusy?"Reading your music…":"Room for your next favorite.",19,text));add(empty,label(query.isEmpty()?"Add files or scan your phone to bring your music into CYN.":"No tracks match this search.",13,hint));add(libraryRows,empty);return;}
-        for(int i=0;i<Math.min(visibleTracks,tracks.size());i++){AudioLibrary.Track t=tracks.get(i);final int index=i;LinearLayout r=row();r.setPadding(dp(12),dp(8),dp(8),dp(8));r.setBackground(shape(card,18));TextView art=label(t.title.substring(0,1).toUpperCase(Locale.ROOT),20,accent);art.setGravity(Gravity.CENTER);art.setBackground(gradient(14));r.addView(art,new LinearLayout.LayoutParams(dp(48),dp(48)));LinearLayout words=column();words.setPadding(dp(12),0,dp(4),0);TextView title=label(t.title,14,text);title.setMaxLines(2);title.setEllipsize(TextUtils.TruncateAt.END);add(words,title);add(words,label(t.artist+" · "+time((int)t.duration),11,hint));r.addView(words,new LinearLayout.LayoutParams(0,-2,1));TextView favorite=button(t.favorite?"♥":"♡",()->{try{service.library.favorite(t.uri);renderTracks();}catch(Exception e){toast("Could not save favorite");}});favorite.setContentDescription((t.favorite?"Remove favorite ":"Favorite ")+t.title);r.addView(favorite,new LinearLayout.LayoutParams(dp(48),-2));words.setOnClickListener(v->playTrack(tracks,index));r.setOnClickListener(v->playTrack(tracks,index));r.setFocusable(true);r.setContentDescription("Play "+t.title+" by "+t.artist);r.setOnLongClickListener(v->{new AlertDialog.Builder(this).setTitle(t.title).setItems(new String[]{"Play now","Remove from CYN library"},(d,n)->{if(n==0)playTrack(tracks,index);else try{service.library.remove(t.uri);renderTracks();}catch(Exception e){toast("Could not remove track");}}).show();return true;});add(libraryRows,r);gap(libraryRows,8);}
+        for(int i=0;i<Math.min(visibleTracks,tracks.size());i++){AudioLibrary.Track t=tracks.get(i);final int index=i;LinearLayout r=row();r.setPadding(dp(12),dp(8),dp(8),dp(8));r.setBackground(shape(card,18));TextView art=label(t.title.substring(0,1).toUpperCase(Locale.ROOT),20,accent);art.setGravity(Gravity.CENTER);art.setBackground(gradient(14));r.addView(art,new LinearLayout.LayoutParams(dp(48),dp(48)));LinearLayout words=column();words.setPadding(dp(12),0,dp(4),0);TextView title=label(t.title,14,text);title.setMaxLines(2);title.setEllipsize(TextUtils.TruncateAt.END);add(words,title);add(words,label(t.artist+" · "+time((int)t.duration),11,hint));r.addView(words,new LinearLayout.LayoutParams(0,-2,1));androidx.appcompat.widget.AppCompatImageButton favorite=new androidx.appcompat.widget.AppCompatImageButton(this);
+            favorite.setImageResource(t.favorite?R.drawable.ic_favorite_filled:R.drawable.ic_favorite_outline);
+            favorite.setImageTintList(ColorStateList.valueOf(t.favorite?accent:hint));
+            favorite.setBackground(new RippleDrawable(ColorStateList.valueOf(androidx.core.graphics.ColorUtils.setAlphaComponent(accent,50)),shape(card,16),null));
+            favorite.setPadding(dp(11),dp(11),dp(11),dp(11));
+            favorite.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            favorite.setSelected(t.favorite);
+            favorite.setTag(t.uri.toString());
+            favorite.setContentDescription((t.favorite?"Remove favorite ":"Favorite ")+t.title);
+            favorite.setOnClickListener(v->{try{service.library.favorite(t.uri);renderTracks();}catch(Exception e){toast("Could not save favorite");}});
+            r.addView(favorite,new LinearLayout.LayoutParams(dp(48),dp(48)));words.setOnClickListener(v->playTrack(tracks,index));r.setOnClickListener(v->playTrack(tracks,index));r.setFocusable(true);r.setContentDescription("Play "+t.title+" by "+t.artist);r.setOnLongClickListener(v->{new AlertDialog.Builder(this).setTitle(t.title).setItems(new String[]{"Play now","Remove from CYN library"},(d,n)->{if(n==0)playTrack(tracks,index);else try{service.library.remove(t.uri);renderTracks();}catch(Exception e){toast("Could not remove track");}}).show();return true;});add(libraryRows,r);gap(libraryRows,8);}
         if(tracks.size()>visibleTracks)add(libraryRows,button("Show more tracks",()->{visibleTracks+=60;renderTracks();}));
     }
     void playTrack(List<AudioLibrary.Track> queue,int index){notifications();startForegroundService(new Intent(this,AudioService.class).setAction("cyn.QUEUE"));service.playQueue(queue,index);update();}
@@ -389,28 +399,19 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             super.onDraw(canvas);
             if(service==null)return;
             float w=getWidth(),h=getHeight();
-            DesktopAi.Result r=service.desktopAi.latest;
-            long now=SystemClock.elapsedRealtime();
-            boolean library=service.playing&&service.enabled&&r!=null&&now-r.at<2500;
+            PcmSpectrum.Frame pcm=service.pcmSpectrum.latest();
+            boolean library=service.playing&&pcm!=null&&System.nanoTime()-pcm.atNanos<350_000_000L;
             boolean external=!library&&service.hasSessionSpectrum();
-            float[] externalBands=external?service.sessionSpectrum:null;
-            float spectralPeak=-12;
-            if(library)for(int i=0;i<8;i++)spectralPeak=Math.max(spectralPeak,r.features[i]);
-            float volume=library?(float)Math.min(1,Math.sqrt(Math.max(0,r.features[11])*7)):0;
+            float[] audioBands=library?pcm.bands:external?service.sessionSpectrum:null;
             float spacing=w/31f;
             boolean fading=false;
             paint.setStrokeCap(Paint.Cap.ROUND);
             paint.setStrokeWidth(Math.max(dp(2),spacing*.52f));
             for(int i=0;i<31;i++){
                 float goal=0;
-                if(library){
-                    float position=i*7f/30;
-                    int first=(int)position,second=Math.min(7,first+1);
-                    float level=r.features[first]+(r.features[second]-r.features[first])*(position-first);
-                    goal=(float)Math.sqrt(Math.exp(Math.max(-20,level-spectralPeak)))*volume;
-                }else if(externalBands!=null&&i<externalBands.length)goal=externalBands[i];
+                if(audioBands!=null&&i<audioBands.length)goal=audioBands[i];
                 goal=Math.max(0,Math.min(1,goal));
-                levels[i]+=(goal-levels[i])*(reduced?1:.23f);
+                levels[i]+=(goal-levels[i])*(reduced?1:goal>levels[i]?.34f:.17f);
                 if(levels[i]>.015f)fading=true;
                 float height=Math.max(dp(1),levels[i]*h*.72f);
                 paint.setColor(androidx.core.graphics.ColorUtils.blendARGB(accent,secondary,i/30f));
@@ -436,7 +437,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 canvas.drawText("Waiting for measured audio",w*.5f,h*.5f+dp(28),paint);
                 paint.setTextAlign(Paint.Align.LEFT);
             }
-            if(!reduced&&(library||external||fading)&&isAttachedToWindow())postInvalidateDelayed(40);
+            if(!reduced&&(library||external||fading)&&isAttachedToWindow())postInvalidateOnAnimation();
         }
     }
     final class Timeline extends View {

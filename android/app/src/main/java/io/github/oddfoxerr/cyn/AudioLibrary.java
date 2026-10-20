@@ -21,7 +21,15 @@ final class AudioLibrary {
     private final ArrayList<Track> tracks=new ArrayList<>();
     AudioLibrary(Context c){context=c.getApplicationContext();try(InputStream in=new AtomicFile(new File(context.getFilesDir(),"library.json")).openRead()){JSONArray all=new JSONArray(Streams.text(in));for(int i=0;i<all.length();i++){JSONObject t=all.getJSONObject(i);Uri u=Uri.parse(t.getString("uri"));if("content".equals(u.getScheme()))tracks.add(new Track(u,t.getString("title"),t.optString("artist","Unknown artist"),t.optString("album",""),t.optLong("duration"),t.optBoolean("favorite")));}}catch(Exception ignored){}}
     synchronized List<Track> all(){return new ArrayList<>(tracks);}
-    synchronized void favorite(Uri uri)throws Exception{for(Track t:tracks)if(t.uri.equals(uri))t.favorite=!t.favorite;save();}
+    synchronized void favorite(Uri uri)throws Exception{
+        for(Track t:tracks)if(t.uri.equals(uri)){
+            boolean previous=t.favorite;
+            t.favorite=!previous;
+            try{save();}catch(Exception e){t.favorite=previous;throw e;}
+            return;
+        }
+        throw new FileNotFoundException("Track no longer exists in the library");
+    }
     synchronized void remove(Uri uri)throws Exception{tracks.removeIf(t->t.uri.equals(uri));save();}
     synchronized void merge(Collection<Track> incoming)throws Exception{LinkedHashMap<String,Track> map=new LinkedHashMap<>();for(Track t:tracks)map.put(t.uri.toString(),t);for(Track t:incoming){Track old=map.get(t.uri.toString());if(old!=null)t.favorite=old.favorite;map.put(t.uri.toString(),t);}tracks.clear();tracks.addAll(map.values());tracks.sort(Comparator.comparing(t->t.title.toLowerCase(Locale.ROOT)));save();}
     private void save()throws Exception{JSONArray a=new JSONArray();for(Track t:tracks)a.put(t.json());AtomicFile file=new AtomicFile(new File(context.getFilesDir(),"library.json"));FileOutputStream out=null;try{out=file.startWrite();out.write(a.toString().getBytes(StandardCharsets.UTF_8));file.finishWrite(out);}catch(Exception e){if(out!=null)file.failWrite(out);throw e;}}

@@ -49,6 +49,7 @@ public final class AudioService extends Service {
     private volatile long traceAt;
     private volatile PreferenceModel.Trace liveTrace, trainingTrace;
     int traceSequence;
+    final PcmSpectrum pcmSpectrum=new PcmSpectrum();
     volatile float[] sessionSpectrum=new float[31];
     volatile long sessionSpectrumAt;
     // Visualizer(0) may provide permitted output-mix measurements even if the
@@ -290,7 +291,7 @@ public final class AudioService extends Service {
                         }else analysis="Live audio spectrum · AI disabled";
                     });
                 }
-            },Math.min(4000,Visualizer.getMaxCaptureRate()),true,true);
+            },Math.min(20000,Visualizer.getMaxCaptureRate()),true,true);
             outputVisuals=visual;
             visual.setEnabled(true);
             visualError="Waiting for audible Android output";
@@ -372,7 +373,7 @@ public final class AudioService extends Service {
             androidx.media3.exoplayer.DefaultRenderersFactory factory=new androidx.media3.exoplayer.DefaultRenderersFactory(this){
                 @Override protected androidx.media3.exoplayer.audio.AudioSink buildAudioSink(Context context,boolean floatOutput,boolean playbackParameters){
                     androidx.media3.common.audio.SonicAudioProcessor resampler=new androidx.media3.common.audio.SonicAudioProcessor();resampler.setOutputSampleRateHz(48000);
-                    return new androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context).setEnableFloatOutput(false).setAudioProcessors(new androidx.media3.common.audio.AudioProcessor[]{resampler,new CynAudioProcessor(desktopAi.engine)}).build();
+                    return new androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context).setEnableFloatOutput(false).setAudioProcessors(new androidx.media3.common.audio.AudioProcessor[]{resampler,new CynAudioProcessor(desktopAi.engine,pcmSpectrum)}).build();
                 }
             };
             player=new androidx.media3.exoplayer.ExoPlayer.Builder(this,factory).build();
@@ -385,9 +386,9 @@ public final class AudioService extends Service {
                 @Override public void onPlaybackStateChanged(int state){
                     if(player!=current)return;preparing=state==androidx.media3.common.Player.STATE_BUFFERING;
                     if(state==androidx.media3.common.Player.STATE_READY){preparing=false;updateSession();}
-                    if(state==androidx.media3.common.Player.STATE_ENDED){playing=false;desktopAi.active=false;audio.abandonAudioFocusRequest(focus);updateSession();updateNotification();if(!monitor)stopForeground(STOP_FOREGROUND_DETACH);}
+                    if(state==androidx.media3.common.Player.STATE_ENDED){playing=false;pcmSpectrum.setActive(false);desktopAi.active=false;audio.abandonAudioFocusRequest(focus);updateSession();updateNotification();if(!monitor)stopForeground(STOP_FOREGROUND_DETACH);}
                 }
-                @Override public void onIsPlayingChanged(boolean value){if(player!=current)return;playing=value;updateNativeControls();updateSession();updateNotification();}
+                @Override public void onIsPlayingChanged(boolean value){if(player!=current)return;playing=value;pcmSpectrum.setActive(value);updateNativeControls();updateSession();updateNotification();}
                 @Override public void onMediaItemTransition(androidx.media3.common.MediaItem item,int reason){if(item!=null&&item.mediaMetadata.title!=null)title=item.mediaMetadata.title.toString();frames.clear();clearTrace();desktopAi.reset();updateSession();updateNotification();}
                 @Override public void onPlayerError(androidx.media3.common.PlaybackException error){status="Cannot play this track · "+error.getErrorCodeName();playing=false;preparing=false;desktopAi.active=false;audio.abandonAudioFocusRequest(focus);updateSession();updateNotification();if(!monitor)stopForeground(STOP_FOREGROUND_DETACH);}
             });
@@ -413,7 +414,7 @@ public final class AudioService extends Service {
     void pause() {
         resumeOnFocus=false;
         if(player!=null) { try { player.pause(); } catch(IllegalStateException ignored) { } }
-        playing=false; audio.abandonAudioFocusRequest(focus); updateSession(); updateNotification(); if(!monitor) stopForeground(STOP_FOREGROUND_DETACH);desktopAi.active=false;desktopAi.reset();
+        playing=false;pcmSpectrum.setActive(false); audio.abandonAudioFocusRequest(focus); updateSession(); updateNotification(); if(!monitor) stopForeground(STOP_FOREGROUND_DETACH);desktopAi.active=false;desktopAi.reset();
     }
     int position() { try { return player!=null?(int)Math.max(0,player.getCurrentPosition()):0; } catch(Exception e) { return 0; } }
     int duration() { try { return player!=null?(int)Math.max(0,player.getDuration()):0; } catch(Exception e) { return 0; } }
@@ -424,7 +425,7 @@ public final class AudioService extends Service {
     }
     private void releasePlayer() {
         if(playerSession>0) detach(playerSession); playerSession=-1;
-        if(player!=null) { player.release(); player=null; } desktopAi.active=false;desktopAi.reset();playing=false; preparing=false; audio.abandonAudioFocusRequest(focus);
+        if(player!=null) { player.release(); player=null; } pcmSpectrum.setActive(false);desktopAi.active=false;desktopAi.reset();playing=false; preparing=false; audio.abandonAudioFocusRequest(focus);
     }
     void stopAll() { monitor=false; legacy=false; releaseOutputVisuals(); sessionSpectrumAt=0; sessionSpectrum=new float[31]; clearTrace(); releasePlayer(); for(Integer id:new ArrayList<>(chains.keySet())) detach(id); mediaSession.setActive(false); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); status="Stopped"; }
     private void attach(int id,String owner) {
@@ -563,7 +564,7 @@ public final class AudioService extends Service {
                             if(rms>.01&&lastCapture-lastFrame>=240) { lastFrame=lastCapture; frames.add(new Frame(x,(float)Math.min(1,rms*4))); while(frames.size()>240) frames.remove(0); }
                         }
                     }
-                },Math.min(4000,Visualizer.getMaxCaptureRate()),true,true); visualizer.setEnabled(true);
+                },Math.min(20000,Visualizer.getMaxCaptureRate()),true,true); visualizer.setEnabled(true);
             } catch(RuntimeException e) { if(visualizer!=null) { visualizer.release(); visualizer=null; } analysis="Analysis unavailable for this session; manual effects still work."; }
         }
         void apply() {
@@ -594,6 +595,6 @@ public final class AudioService extends Service {
     }
     @Override public void onDestroy() {
         destroyed=true; handler.removeCallbacksAndMessages(null); trainer.shutdownNow(); unregisterReceiver(receiver); releaseOutputVisuals(); releasePlayer();
-        for(Chain c:chains.values()) c.close(); chains.clear(); mediaSession.release();desktopAi.closeAfterPlayer(); super.onDestroy();
+        for(Chain c:chains.values()) c.close(); chains.clear(); pcmSpectrum.close();mediaSession.release();desktopAi.closeAfterPlayer(); super.onDestroy();
     }
 }
