@@ -371,12 +371,12 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         updateState=label(UpdateManager.message,13,accent);
         updateState.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         add(updates,updateState);
-        TextView updateButton=button("UPDATE CYN",()->{
+        TextView updateButton=button("Open update center",()->{
             notifications();
             UpdateSplash.show(this);
         });
         primaryAction(updateButton);add(updates,updateButton);
-        add(updates,label("One button checks, downloads, verifies and installs. The splash follows real progress. Automatic updates check in the background and download on unmetered networks; Android still asks you to approve installation.",12,hint));
+        add(updates,label("Material-style updater · official release checks, live progress and verified installs. Automatic updates download on unmetered networks; installation always needs your approval.",12,hint));
         LinearLayout about=section("CYN for Android","Built on the FxSound open-source foundation.");add(about,button("Audio diagnostics (local only)",()->showText("Audio diagnostics · privacy-safe",service.diagnostics()+"\nAI engine: "+service.desktopAi.status)));add(about,button("Source & release history",()->browser("https://github.com/oddfoxerr-real/Cyn/tree/codex/android/android")));add(about,button("FxSound credits, licenses & no warranty",()->{try{showText("FxSound credits & licenses",asset("NOTICE.txt")+"\n\n"+asset("LICENSE.txt"));}catch(Exception e){toast("Could not open licenses");}}));add(about,label("The phone uses the same neural model weights and desktop mixer. Its audio renderer and effects are adapted for Android; identical sound to the Windows FxSound driver is not claimed.",12,hint));add(about,button("Stop CYN audio",()->{service.stopAll();update();}));
     }
     void offerLiveVisuals(){
