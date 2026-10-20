@@ -29,7 +29,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     TextView liveStatus,learningStatus,playLabel,positionLabel,powerButton,connectionTitle,connectionHint,externalStatus,processingDetails,playButton,miniTitle,miniState,miniToggle,updateState;
     SeekBar position;
     final ArrayList<AiControlMarker> liveControlMarkers=new ArrayList<>();
-    Timeline timeline;NeuralView neural;Spectrum spectrum;
+    Timeline timeline;NeuralView neural;Spectrum spectrum;ApexSpatialBrainView brainScan;
     int page=0,feedbackEffect=4,visibleTracks=60;
     int bg=0xff090d14,card=0xff121b2b,text=0xffedf3ff,hint=0xffb9c7da,accent=0xff83b8ff,secondary=0xffaa8fff,outline=0xff2b3a50;
     boolean bound,seeking,reduced,libraryBusy,onlyFavorites;
@@ -44,7 +44,33 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     void processControlIntent(Intent i){if(service!=null&&AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL.equals(i.getAction())){notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("session",i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1)));i.setAction(null);page=0;build(false);offerLiveVisuals();}}
     String asset(String name)throws IOException{try(InputStream in=getAssets().open(name)){return Streams.text(in);}}
     int dp(float v){return Math.round(v*getResources().getDisplayMetrics().density);}
-    void palette(){reduced=ui.getBoolean("reduce",false)||!android.animation.ValueAnimator.areAnimatorsEnabled();int t=ui.getInt("studio_theme",0);int[][]colors={{0xff83b8ff,0xffaa8fff,0xff0c111c},{0xff65e4be,0xff7aa7ff,0xff071713},{0xffffad82,0xffea8da9,0xff190f10},{0xffc0a0ff,0xff86d9f3,0xff100d1b}};int[]c=colors[Math.floorMod(t,colors.length)];accent=c[0];secondary=c[1];bg=0xff090d14;card=androidx.core.graphics.ColorUtils.blendARGB(bg,c[2],.87f);outline=androidx.core.graphics.ColorUtils.blendARGB(card,accent,.19f);}
+    static final String[] THEME_NAMES={
+        "Midnight • electric blue","Deep tide • sea glass","Ember dusk • copper pink",
+        "Violet glass • iris","Obsidian ink • silver","Jade pulse • lime",
+        "Rose noir • blush","Solar graphite • amber","Arctic mist • frost",
+        "Neon city • magenta","Sapphire circuit • cobalt"
+    };
+    // Accent, secondary, dark background, translucent-surface tone.
+    static final int[][] THEME_COLORS={
+        {0xff83b8ff,0xffaa8fff,0xff090d14,0xff121b2b},
+        {0xff65e4be,0xff7aa7ff,0xff061713,0xff102a24},
+        {0xffffad82,0xffea8da9,0xff170e11,0xff302027},
+        {0xffc0a0ff,0xff86d9f3,0xff100c1b,0xff241b39},
+        {0xffd9e0ea,0xff91b0c5,0xff07090c,0xff171b23},
+        {0xff8befae,0xffc5ea7d,0xff07140e,0xff19291c},
+        {0xffff91b9,0xffe4a0ed,0xff180b14,0xff32202b},
+        {0xffffc577,0xff93b6cc,0xff12110e,0xff292821},
+        {0xff99e5ff,0xffa8bdff,0xff07151b,0xff152b38},
+        {0xffff74dc,0xff7ea9ff,0xff16091d,0xff301a39},
+        {0xff76aaff,0xff63ecd5,0xff080f24,0xff192341}
+    };
+    void palette(){
+        reduced=ui.getBoolean("reduce",false)||!android.animation.ValueAnimator.areAnimatorsEnabled();
+        int t=Math.floorMod(ui.getInt("studio_theme",0),THEME_COLORS.length);
+        int[] colors=THEME_COLORS[t];
+        accent=colors[0];secondary=colors[1];bg=colors[2];card=colors[3];
+        outline=androidx.core.graphics.ColorUtils.blendARGB(card,accent,.21f);
+    }
     GradientDrawable shape(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));d.setStroke(dp(1),outline);return d;}
     GradientDrawable gradient(int radius){GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{androidx.core.graphics.ColorUtils.blendARGB(bg,accent,.22f),androidx.core.graphics.ColorUtils.blendARGB(bg,secondary,.22f)});d.setCornerRadius(dp(radius));return d;}
     TextView label(String value,int size,int color){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(color);t.setPadding(0,dp(4),0,dp(4));t.setFontFeatureSettings("kern");return t;}
@@ -60,7 +86,26 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         b.setInsetTop(0);b.setInsetBottom(0);
         b.setBackgroundTintList(ColorStateList.valueOf(androidx.core.graphics.ColorUtils.blendARGB(card,accent,.07f)));
         b.setStrokeWidth(dp(1));b.setStrokeColor(ColorStateList.valueOf(outline));
-        b.setFocusable(true);b.setOnClickListener(v->{v.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);action.run();});
+        b.setFocusable(true);
+        final int motion=ui==null?0:ui.getInt("button_motion",0);
+        if(motion>0&&!reduced){
+            b.setOnTouchListener((v,event)->{
+                switch(event.getActionMasked()){
+                    case MotionEvent.ACTION_DOWN:
+                        if(motion==1) v.animate().scaleX(.975f).scaleY(.975f).setDuration(100).start();
+                        else if(motion==2) v.animate().translationY(-dp(3)).setDuration(130).start();
+                        else if(motion==3) v.animate().scaleX(1.035f).scaleY(1.035f).setDuration(135).start();
+                        break;
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        v.animate().scaleX(1f).scaleY(1f).translationY(0f)
+                            .setDuration(motion==3?220:145).start();
+                        break;
+                }
+                return false;
+            });
+        }
+        b.setOnClickListener(v->{v.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);action.run();});
         return b;
     }
     void primaryAction(TextView view){
@@ -85,7 +130,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         if(!description.isEmpty())add(c,label(description,13,hint));gap(c,10);return c;
     }
     void build(){build(false);}
-    void build(boolean transition){if(isFinishing()||isDestroyed())return;palette();liveControlMarkers.clear();liveStatus=learningStatus=playLabel=positionLabel=powerButton=connectionTitle=connectionHint=externalStatus=processingDetails=playButton=updateState=null;position=null;timeline=null;neural=null;spectrum=null;libraryRows=null;
+    void build(boolean transition){if(isFinishing()||isDestroyed())return;palette();liveControlMarkers.clear();liveStatus=learningStatus=playLabel=positionLabel=powerButton=connectionTitle=connectionHint=externalStatus=processingDetails=playButton=updateState=null;position=null;timeline=null;neural=null;spectrum=null;brainScan=null;libraryRows=null;
         if(shell==null){shell=column();shell.setBackgroundColor(bg);setContentView(shell);if(Build.VERSION.SDK_INT>=29)shell.setForceDarkAllowed(false);shell.setOnApplyWindowInsetsListener((v,insets)->{if(Build.VERSION.SDK_INT>=30){Insets e=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());v.setPadding(e.left,e.top,e.right,e.bottom);}else v.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets;});shell.requestApplyInsets();
             LinearLayout header=row();header.setPadding(dp(22),dp(10),dp(22),dp(6));TextView brand=label("CYN",27,text);brand.setTypeface(null,Typeface.BOLD);brand.setLetterSpacing(.09f);header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));TextView badge=label("SOUND STUDIO",10,hint);badge.setLetterSpacing(.12f);header.addView(badge);add(shell,header);
             pages=new LiquidPage(this);shell.addView(pages,new LinearLayout.LayoutParams(-1,0,1));
@@ -124,7 +169,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         getWindow().setStatusBarColor(bg);getWindow().setNavigationBarColor(bg);
         ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(bg);scroll.setFillViewport(true);scroll.setClipToPadding(false);content=column();int side=getResources().getConfiguration().screenWidthDp>=700?60:18;content.setPadding(dp(side),dp(12),dp(side),dp(24));scroll.addView(content);
         if(service==null)add(content,label("Connecting to your sound…",20,text));else if(page==0)music();else if(page==1)learning();else if(page==2)files();else appearance();
-        pages.change(scroll,transition&&!reduced);
+        pages.change(scroll,transition&&!reduced,
+            ui.getInt("page_transition",0),accent,ui.getInt("transition_speed",100));
         // Reuse the stable Material menu: just update palette and selection.
         // Reconstructing menu views mid-tap caused intermittent missed selections.
         ColorStateList tabColors=new ColorStateList(
@@ -354,7 +400,21 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         });
         slider(engine,"Sensitivity",service.sensitivity*100,0,100,"%",v->{service.sensitivity=v/100;service.changed();});
         liveStatus=label("",13,accent);add(engine,liveStatus);
-        LinearLayout network=section("Personal neural activity","Measured activations from your preference model.");neural=new NeuralView();network.addView(neural,new LinearLayout.LayoutParams(-1,dp(220)));
+        if(AiSelection.APEX_10M.equals(service.aiProfile)){
+            LinearLayout network=section("APEX 10M • Spatial brain scan",
+                "A rotating 3D-style scan of measured native stereo processing. The neural 10M reasoning head remains untrained and inactive.");
+            brainScan=new ApexSpatialBrainView(this,new ApexSpatialBrainView.Signal(){
+                @Override public float activity(){return service==null?0f:service.apexSpatialActivity();}
+                @Override public boolean enabled(){return service!=null&&service.playing&&service.enabled&&service.smart&&service.spatialPreviewEnabled;}
+                @Override public boolean reduced(){return reduced;}
+            },accent,secondary);
+            network.addView(brainScan,new LinearLayout.LayoutParams(-1,dp(265)));
+            add(network,label("Rotation and glow follow real processed stereo-side energy; silence and bypass pause the scan.",12,hint));
+        }else{
+            LinearLayout network=section("Personal neural activity","Measured activations from your preference model.");
+            neural=new NeuralView();
+            network.addView(neural,new LinearLayout.LayoutParams(-1,dp(220)));
+        }
         LinearLayout c=section("Teach your sound","Select a passage, then tell CYN what you want more or less of.");timeline=new Timeline();c.addView(timeline,new LinearLayout.LayoutParams(-1,dp(130)));buttons(c,new String[]{"Last 5 seconds","Live timeline"},new Runnable[]{()->timeline.selectRecent(),()->timeline.resume()});gap(c,8);
         category(c,"Training target",body->{String[] names={"Clarity","Ambience","Width","Dynamics","Bass"};for(int i=0;i<5;i++){final int n=i;add(body,button(names[i],()->{feedbackEffect=n;toast("Training "+names[n]);timeline.invalidate();}));}});buttons(c,new String[]{"Less here","More here"},new Runnable[]{()->labelFrames(false),()->labelFrames(true)});learningStatus=label("",12,accent);add(c,learningStatus);add(c,button("Train personal model",()->service.train()));
         category(c,"Model tools",body->{add(body,button("Import desktop preference model",()->startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE),30)));add(body,button("Export personal model",()->startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("application/json").putExtra(Intent.EXTRA_TITLE,"CYN-phone-preferences.cynai.json"),31)));add(body,button("Reset personal learning",()->new AlertDialog.Builder(this).setTitle("Reset personal learning?").setMessage("Your saved labels and personal weights will be removed.").setPositiveButton("Reset",(d,w)->{if(service.training){toast("Wait for training to finish");return;}try{service.learning.reset();}catch(Exception e){toast("Could not reset model");}}).setNegativeButton("Cancel",null).show()));});
@@ -362,7 +422,63 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         add(c,button("Analyze a compatible external app",this::requestAnalysis));
     }
     void labelFrames(boolean more){if(service.training){toast("Wait for training to finish");return;}List<AudioService.Frame> selected=timeline.selection();if(selected.isEmpty()){toast("Play a library track, then select a passage");return;}try{service.learning.label(selected,feedbackEffect,more);toast("Saved "+selected.size()+" frames");timeline.invalidate();}catch(Exception e){toast("Could not save feedback");}}
-    void appearance(){add(content,label("Make it yours.",29,text));add(content,label("A quieter interface. A distinct personality.",13,hint));LinearLayout themes=section("Theme studio","");String[]names={"Midnight current","Deep tide","Ember dusk","Violet glass"};for(int i=0;i<names.length;i++){final int n=i;TextView b=button(names[i],()->{ui.edit().putInt("studio_theme",n).apply();build();});if(ui.getInt("studio_theme",0)==i)b.setTextColor(accent);add(themes,b);gap(themes,6);}toggle(themes,"Reduce motion",ui.getBoolean("reduce",false),on->{ui.edit().putBoolean("reduce",on).apply();reduced=on;});
+    void appearance(){
+        add(content,label("Make it yours.",29,text));
+        add(content,label("Material surfaces, characterful palettes and your choice of motion.",13,hint));
+        LinearLayout themes=section("Theme Studio","11 distinct palettes. Tap a theme to apply it throughout CYN.");
+        for(int i=0;i<THEME_NAMES.length;i++){
+            final int selected=i;
+            int[] palette=THEME_COLORS[i];
+            LinearLayout swatch=row();
+            View accentChip=new View(this);
+            GradientDrawable chip=new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{palette[0],palette[1]});
+            chip.setCornerRadius(dp(13));accentChip.setBackground(chip);
+            LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(dp(34),dp(34));
+            cp.setMargins(0,0,dp(10),0);
+            swatch.addView(accentChip,cp);
+            TextView select=button(THEME_NAMES[i]+(ui.getInt("studio_theme",0)==i?"  ✓":""),()->{
+                ui.edit().putInt("studio_theme",selected).apply();
+                build(true);
+            });
+            if(ui.getInt("studio_theme",0)==i)primaryAction(select);
+            swatch.addView(select,new LinearLayout.LayoutParams(0,dp(52),1));
+            add(themes,swatch);
+            gap(themes,7);
+        }
+        LinearLayout motions=section("Page transitions","The actual outgoing page animates as the next page appears.");
+        for(int i=0;i<LiquidPage.MODES.length;i++){
+            final int selected=i;
+            TextView option=button(LiquidPage.MODES[i]+(ui.getInt("page_transition",0)==i?"  ✓":""),()->{
+                ui.edit().putInt("page_transition",selected).apply();build(true);
+            });
+            if(ui.getInt("page_transition",0)==i)primaryAction(option);
+            add(motions,option);gap(motions,6);
+        }
+        LinearLayout speed=section("Motion timing","Used for page transitions. Disable motion to skip all page animations.");
+        String[] speedLabels={"Relaxed","Balanced","Snappy"};
+        int[] speeds={70,100,145};
+        for(int i=0;i<3;i++){
+            int target=speeds[i];
+            TextView choice=button(speedLabels[i]+(ui.getInt("transition_speed",100)==target?"  ✓":""),()->{
+                ui.edit().putInt("transition_speed",target).apply();build();
+            });
+            if(ui.getInt("transition_speed",100)==target)primaryAction(choice);
+            add(speed,choice);gap(speed,6);
+        }
+        LinearLayout controls=section("Button interactions","Pick a consistent button response. All controls remain fully clickable.");
+        String[] modes={"Material ripple","Soft press","Floating lift","Elastic pop"};
+        for(int i=0;i<modes.length;i++){
+            int selected=i;
+            TextView choice=button(modes[i]+(ui.getInt("button_motion",0)==i?"  ✓":""),()->{
+                ui.edit().putInt("button_motion",selected).apply();build();
+            });
+            if(ui.getInt("button_motion",0)==i)primaryAction(choice);
+            add(controls,choice);gap(controls,6);
+        }
+        toggle(controls,"Reduce motion",ui.getBoolean("reduce",false),on->{
+            ui.edit().putBoolean("reduce",on).apply();reduced=on;build();
+        });
         LinearLayout updates=section("Updates","Version "+BuildConfig.VERSION_NAME+" · build "+BuildConfig.VERSION_CODE);
         toggle(updates,"Automatic updates · check and download on Wi-Fi",UpdateManager.automatic(this),on->{
             UpdateManager.automatic(this,on);
@@ -408,7 +524,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         if(playLabel!=null)setLabel(playLabel,service.title);if(position!=null&&!seeking){position.setMax(Math.max(1,service.duration()));position.setProgress(service.position());}if(positionLabel!=null)setLabel(positionLabel,time(service.position())+" / "+time(service.duration()));
         if(liveStatus!=null){DesktopAi.Result r=service.desktopAi.latest;String state=!service.enabled?"CYN bypassed":!service.smart?"AI off":service.playing?service.desktopAi.status:service.player!=null?"Playback paused":service.monitor?service.analysis:"Play a library track for AI listening";if(r!=null&&service.playing&&service.smart&&service.enabled&&SystemClock.elapsedRealtime()-r.at<2500)state+="\nMusic "+Math.round(r.scene[0]*100)+"% · Speech "+Math.round(r.scene[1]*100)+"% · "+r.milliseconds+" ms inference";setLabel(liveStatus,state);}
         if(learningStatus!=null){int more=0,less=0;for(PreferenceModel.Example e:service.learning.examples)if(e.effect==feedbackEffect){if(e.more)more++;else less++;}setLabel(learningStatus,new String[]{"Clarity","Ambience","Width","Dynamics","Bass"}[feedbackEffect]+" · "+more+" More / "+less+" Less\n"+(service.training?"Training "+service.trainingEpoch+" / 240":service.learning.message));}
-        if(updateState!=null)setLabel(updateState,UpdateManager.message);for(AiControlMarker marker:liveControlMarkers)marker.sync();if(timeline!=null)timeline.invalidate();if(neural!=null)neural.invalidate();if(spectrum!=null)spectrum.invalidate();
+        if(updateState!=null)setLabel(updateState,UpdateManager.message);for(AiControlMarker marker:liveControlMarkers)marker.sync();if(timeline!=null)timeline.invalidate();if(neural!=null)neural.invalidate();if(brainScan!=null)brainScan.invalidate();if(spectrum!=null)spectrum.invalidate();
     }
     void setLabel(TextView view,String value){if(!value.contentEquals(view.getText()))view.setText(value);}
     final Runnable refresh=new Runnable(){public void run(){update();handler.postDelayed(this,250);}};
