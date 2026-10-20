@@ -1,3 +1,12 @@
+# CYN Studio v0.2.9-preview — Material Navigation Hotfix
+
+- Fixes the user-reported phone screenshot where the MaterialButton bottom navigation split **Studio**, **Library**, and **Style** into two or three lines and oversized selected tab.
+- Replaces the manually assembled MaterialButton tabs with Google's native **BottomNavigationView**, which independently lays out Material 3 active indicator, icon and single-line label for all four destinations.
+- Keeps the same CYN tonal selection colors and icons; equal-width destinations, stable labels on ~360 dp-wide phones.
+- Tightens the inactive Sound Studio spectrum area to expose the sound controls sooner; visualizer expands again when playback or live connection is active. No fake audio activity is drawn.
+- Preserves audio DSP, baseline/AI fox sliders, library, all themes, update flow, permissions and accessibility.
+- Adds a targeted 360 dp phone layout regression test and retains all prior screen, music and AI tests.
+
 # CYN Studio v0.2.8-preview — Material 3 Redesign
 
 - Rebuilds CYN Mobile's shared UI on Google's Material 3 Android components: **MaterialButton**, **MaterialCardView**, **MaterialSwitch**, and **MaterialAlertDialogBuilder**, with a Material 3 DayNight base theme.
