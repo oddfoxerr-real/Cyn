@@ -89,3 +89,14 @@ be assumed to combine correctly merely because source code is available.
 python -m pip install torch numpy scipy
 python -m unittest discover -s tests -p test_apex10m.py -v
 ```
+
+### Test the conservative stereo DSP stage (not neural inference)
+
+```bash
+python -m pip install numpy scipy soundfile
+python apex_engine/apex10m_preview.py input.wav output.wav --strength 0.4
+```
+
+This runnable CLI never loads random spatial model weights; it only tests
+the high-frequency stereo-side enhancement independently of CYN playback.
+Compare the resulting WAV against the original at matched loudness.
