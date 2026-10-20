@@ -118,9 +118,6 @@ private:
 		Label output_preference_title_;
 		FxOutputPreference output_preference_;
 		ToggleButton prioritize_new_output_toggle_;
-        ToggleButton apex10m_spatial_toggle_;
-        Slider apex10m_spatial_strength_;
-        Label apex10m_spatial_hint_;
 
 		TextButton reset_presets_button_;
 
