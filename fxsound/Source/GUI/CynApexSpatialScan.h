@@ -15,7 +15,6 @@ public:
     CynApexSpatialScan(){
         setOpaque(false);
         setInterceptsMouseClicks(false,false);
-        setAccessible(false);
     }
     void visibilityChanged() override {
         if(isShowing()&&!FxTheme::isReducedMotion()) startTimerHz(25);
