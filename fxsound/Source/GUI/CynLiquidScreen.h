@@ -6,7 +6,7 @@
 namespace CynLiquidScreen {
 inline void render(juce::Graphics& g, const juce::Image& outgoing,
                    const juce::Image& incoming,juce::Rectangle<int> bounds,
-                   float rawProgress,int direction,juce::Colour accent)
+                   float rawProgress,int direction,juce::Colour accent,int style=0)
 {
     if(!outgoing.isValid() || !incoming.isValid() || bounds.isEmpty() ||
        rawProgress>=1.0f) return;
@@ -14,10 +14,56 @@ inline void render(juce::Graphics& g, const juce::Image& outgoing,
     g.reduceClipRegion(bounds);
     g.drawImageAt(outgoing,bounds.getX(),bounds.getY());
     const float t=juce::jlimit(0.0f,1.0f,rawProgress);
-    const float eased=t*t*(3.0f-2.0f*t);
+    // Modes 1–5 operate on the actual old/new page snapshots.
+    // Never fake progress with a separate transition overlay.
+    if(style==5) {
+        g.drawImageAt(incoming,bounds.getX(),bounds.getY());return;
+    }
+    if(style==1) { // Material crossfade
+        g.setOpacity(t);
+        g.drawImageAt(incoming,bounds.getX(),bounds.getY());
+        return;
+    }
+    const auto left=(float)bounds.getX(),top=(float)bounds.getY();
     const float w=(float)bounds.getWidth(),h=(float)bounds.getHeight();
+    if(style==2) { // Directional glide
+        juce::Graphics::ScopedSaveState slide(g);
+        const float shift=(1.0f-t)*w*.20f*(direction>=0?1.0f:-1.0f);
+        g.setOpacity(juce::jlimit(0.0f,1.0f,t*1.9f));
+        g.addTransform(juce::AffineTransform::translation(shift,0));
+        g.drawImageAt(incoming,bounds.getX(),bounds.getY());
+        return;
+    }
+    if(style==3) { // Radial reveal
+        juce::Graphics::ScopedSaveState iris(g);
+        juce::Path clip;
+        const float radius=std::sqrt(w*w+h*h)*t;
+        clip.addEllipse(left+w*.5f-radius,top+h*.52f-radius,radius*2.0f,radius*2.0f);
+        g.reduceClipRegion(clip);
+        g.drawImageAt(incoming,bounds.getX(),bounds.getY());
+        return;
+    }
+    if(style==4) { // Prismatic vertical flow
+        juce::Graphics::ScopedSaveState prism(g);
+        juce::Path reveal;
+        const float front=t*w;
+        const float origin=direction>=0?left:left+w;
+        reveal.startNewSubPath(origin,top);
+        reveal.lineTo(direction>=0?left+front:left+w-front,top);
+        for(int i=1;i<=40;i++){
+            const float yy=h*i/40.0f;
+            const float wrinkle=std::sin(i*.47f+t*9.0f)*w*.038f*
+                std::sin(juce::MathConstants<float>::pi*t);
+            const float x=direction>=0?left+front+wrinkle:left+w-front-wrinkle;
+            reveal.lineTo(x,top+yy);
+        }
+        reveal.lineTo(origin,top+h);reveal.closeSubPath();
+        g.reduceClipRegion(reveal);
+        g.drawImageAt(incoming,bounds.getX(),bounds.getY());
+        return;
+    }
+    const float eased=t*t*(3.0f-2.0f*t);
     const float envelope=std::sin(juce::MathConstants<float>::pi*t);
-    const float left=(float)bounds.getX(),top=(float)bounds.getY();
     // A single connected flowing boundary, not rectangular wipe tiles.
     auto front=[&](float y) {
         const float v=y/juce::jmax(1.0f,h);
