@@ -52,12 +52,14 @@ public:
         previousHigh_ = highpass * (previousHigh_ + side - previousSide_);
         previousSide_ = side;
 
-        const float coherence = std::clamp((correlation + 0.3f) / 0.55f, 0.0f, 1.0f);
+        const bool unsafePhase = correlation < -0.3f;
+        const float coherence = (powerLeft_ + powerRight_ < 1.0e-9f || unsafePhase)
+            ? 0.0f : std::clamp((correlation + 0.3f) / 0.55f, 0.0f, 1.0f);
         const float widthGate = std::clamp(1.25f - 0.5f * sideToMid, 0.0f, 1.0f);
         const float target = 0.2f * strength * coherence * widthGate;
         // ~10 ms smoothing avoids clicks when toggling mid-track.
         smoothedAmount_ += (target - smoothedAmount_) * 0.002f;
-        const float addedSide = smoothedAmount_ * previousHigh_;
+        const float addedSide = unsafePhase ? 0.0f : smoothedAmount_ * previousHigh_;
         left += addedSide;
         right -= addedSide;
     }
