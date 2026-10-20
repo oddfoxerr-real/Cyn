@@ -1,4 +1,14 @@
-# CYN Studio Android 0.2.14 preview — APEX 10M Spatial Experiment
+## Theme Studio + spatial scan — 0.2.15
+
+- Eleven distinct Material-inspired palettes across CYN Mobile (not just accent changes).
+- Five actual page-reveal animations: Liquid ripple, Material fade, Horizontal glide, Iris reveal and Prism sweep, plus Instant.
+- Relaxed/Balanced/Snappy page-transition speed presets.
+- Material ripple, soft press, floating lift and elastic button interactions.
+- Reduce Motion respects user preference and Android system animator settings.
+- APEX 10M AI Hub now contains a rotating projected 3D brain scan that responds **only to measured spatial DSP output** and pauses during silence, bypass or disabled playback.
+- The extra APEX 10M neural reasoning head remains **untrained and inactive**. The scan does not claim to show its neural activations.
+
+# CYN Studio Android 0.2.15 preview — APEX 10M Spatial Experiment
 
 This Android prerelease adds an optional APEX 10M experimental stereo spatial
 processing mode to the **native PCM audio path for music played inside CYN's
@@ -44,7 +54,7 @@ persist locally on-device.
 
 ## Install and compatibility
 APK uses the existing `io.github.oddfoxerr.cyn.studio` identity,
-Android versionCode 18 and versionName 0.2.14-preview. A verified match
+Android versionCode 19 and versionName 0.2.14-preview. A verified match
 to the existing CYN Studio signing certificate is required before publishing.
 The APK is released with a SHA-256 checksum and source archive.
 
