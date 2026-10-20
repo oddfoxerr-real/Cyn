@@ -1,11 +1,11 @@
-# CYN Windows 2.0.74 — APEX 10M Experimental Spatial DSP
+# CYN Windows 2.0.75 — APEX 10M Experimental Spatial DSP
 
 **Experimental prerelease.** This build adds a real-time, opt-in stereo spatial
 DSP preview to the native Windows CYN audio processing path while keeping the
 existing FxSound equalizer, neural APEX 6M, YAMNet, AI Hub, themes, and driver.
 
-### Enable
-Open **CYN Settings → Audio → APEX 10M spatial (EXPERIMENTAL)**. The adjacent
+### Fixed in this preview\n- APEX 10M is listed directly in the AI Hub alongside APEX 6M and saved Music AI profiles.\n- Selecting APEX 10M switches the active primary AI rather than stacking it on another selected engine.\n- Spatial intensity is configured in AI Hub, not Audio Settings.\n- Smart Listening master off or leaving APEX 10M stops its experimental spatial processor.\n\n### Enable
+Open **CYN → AI Hub → CYN APEX 10M · Experimental spatial** and select it. The AI Hub
 0–100 slider controls the intensity (default 40%). The setting persists locally.
 
 The spatial processor operates after existing FX and DJ processing on 32-bit
