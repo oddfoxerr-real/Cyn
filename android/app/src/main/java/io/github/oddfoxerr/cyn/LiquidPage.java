@@ -102,7 +102,7 @@ final class LiquidPage extends FrameLayout {
                 canvas.drawBitmap(outgoing,0,0,paint);
                 canvas.restoreToCount(save);
                 prism.setColor(accent);
-                prism.setAlpha(Math.round(100*Math.sin(Math.PI*t)));
+                prism.setAlpha((int)Math.round(100*Math.sin(Math.PI*t)));
                 prism.setStyle(Paint.Style.STROKE);
                 prism.setStrokeWidth(Math.max(2,w*.009f));
                 canvas.drawPath(edge,prism);
