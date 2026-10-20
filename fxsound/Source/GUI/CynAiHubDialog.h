@@ -3,6 +3,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include <vector>
+#include <algorithm>
 #include <memory>
 #include "FxTheme.h"
 #include "FxController.h"
