@@ -8,6 +8,7 @@
 #include "FxTheme.h"
 #include "FxController.h"
 #include "CynAiHubCataloguePolicy.h"
+#include "CynApexSpatialScan.h"
 
 class CynAiHubContent final : public juce::Component, private juce::ListBoxModel, private juce::Timer
 {
@@ -18,7 +19,7 @@ public:
         setSize (790, 490);
         for (auto* component : std::initializer_list<juce::Component*> {
             &title_, &subtitle_, &list_, &description_, &status_,
-            &refresh_, &import_, &review_, &publish_, &close_, &spatialStrength_ })
+            &refresh_, &import_, &review_, &publish_, &close_, &spatialStrength_, &spatialScan_ })
             addAndMakeVisible (component);
 
         title_.setText ("Cyn AI Hub", juce::dontSendNotification);
@@ -81,6 +82,7 @@ public:
                 static_cast<int>(spatialStrength_.getValue()));
         };
         spatialStrength_.setVisible(false);
+        spatialScan_.setVisible(false);
         readBundledCatalogue();
         startTimer(400); // Live status: do not leave slow PCs stuck at "loading".
     }
@@ -106,7 +108,8 @@ public:
         subtitle_.setBounds (24, 52, w - 48, 24);
         list_.setBounds (24, 99, w / 2 - 30, h - 187);
         const bool spatial = selected()!=nullptr && selected()->nativeSpatial;
-        description_.setBounds (w / 2 + 6, 99, w / 2 - 30, h - (spatial ? 230 : 187));
+        description_.setBounds (w / 2 + 6, 99, w / 2 - 30, spatial ? 111 : h - 187);
+        spatialScan_.setBounds(w / 2 + 12,213,w / 2 - 44,juce::jmax(90,h-346));
         spatialStrength_.setBounds(w / 2 + 12,h - 125,w / 2 - 44,30);
         status_.setBounds (24, h - 81, w - 48, 28);
         refresh_.setBounds (24, h - 45, 148, 32);
@@ -143,6 +146,7 @@ private:
     juce::TextEditor description_;
     juce::TextButton refresh_, import_, review_, publish_, close_;
     juce::Slider spatialStrength_;
+    CynApexSpatialScan spatialScan_;
     std::vector<Profile> profiles_;
     int catalogueTotal_ = 0, catalogueRejected_ = 0, catalogueExternal_ = 0;
     bool busy_ = false;
@@ -186,6 +190,7 @@ private:
     void updateSelection()
     {
         spatialStrength_.setVisible(selected()!=nullptr && selected()->nativeSpatial);
+        spatialScan_.setVisible(selected()!=nullptr && selected()->nativeSpatial);
         if (const auto* p = selected())
         {
             if(p->nativeSpatial)
