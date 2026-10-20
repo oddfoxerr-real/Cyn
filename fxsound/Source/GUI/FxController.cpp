@@ -877,6 +877,10 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 		}
 
 		setPowerState(settings_.getBool("power"));
+        dfx_dsp_.setApex10MSpatialPreview(
+            settings_.getBool("cyn_apex10m_spatial_preview",false)
+                ? jlimit(0,100,settings_.getInt("cyn_apex10m_spatial_strength",40)) / 100.0f
+                : 0.0f);
 
 		initPresets();
 
@@ -4227,4 +4231,17 @@ void FxController::setSmoothAnimations(bool value)
     FxTheme::setSmoothAnimations(value);
     settings_.setBool("cyn_smooth_animations", value);
     if (main_window_) main_window_->sendLookAndFeelChange();
+}
+
+void FxController::setApex10MSpatialEnabled(bool on)
+{
+    settings_.setBool("cyn_apex10m_spatial_preview",on);
+    dfx_dsp_.setApex10MSpatialPreview(on?getApex10MSpatialStrength()/100.0f:0.0f);
+}
+
+void FxController::setApex10MSpatialStrength(int percent)
+{
+    const int safe=jlimit(0,100,percent);
+    settings_.setInt("cyn_apex10m_spatial_strength",safe);
+    dfx_dsp_.setApex10MSpatialPreview(isApex10MSpatialEnabled()?safe/100.0f:0.0f);
 }
