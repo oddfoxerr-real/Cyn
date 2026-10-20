@@ -3,140 +3,277 @@ package io.github.oddfoxerr.cyn;
 
 import android.app.Dialog;
 import android.content.Context;
-import android.graphics.Canvas;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Path;
+import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
+import androidx.core.graphics.ColorUtils;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.progressindicator.LinearProgressIndicator;
 
 /**
- * Two-tone mechanical splash, drawn as real vector geometry.
- * Movement is visual only; status and fill are always sourced from UpdateManager.
+ * Material 3-inspired, on-brand, accessible update screen.
+ * Every update phase and percentage comes from UpdateManager, never animation.
+ * No network activity is run on the UI thread; pressing Install delegates to
+ * Android's normal user-approved package installer.
  */
 final class UpdateSplash {
-    static final int INK=0xff090f17;
     private UpdateSplash(){}
 
     static String actionText(int stage,boolean ready){
-        if(ready)return "INSTALL VERIFIED APK";
-        if(stage==UpdateManager.FAILED)return "RETRY UPDATE";
-        if(stage==UpdateManager.UP_TO_DATE)return "CHECK AGAIN";
-        if(stage==UpdateManager.AVAILABLE)return "DOWNLOAD NOW";
-        return "CHECK FOR UPDATE";
+        if(ready)return "Install verified update";
+        if(stage==UpdateManager.FAILED)return "Retry update";
+        if(stage==UpdateManager.UP_TO_DATE)return "Check again";
+        if(stage==UpdateManager.AVAILABLE)return "Download update";
+        return "Check for updates";
     }
 
     static String progressText(int stage,int percent){
         if(stage==UpdateManager.DOWNLOADING && percent>=0)
-            return Math.min(100,percent)+"%  •  DOWNLOADING";
-        if(stage==UpdateManager.VERIFYING)return "VERIFYING APK";
-        if(stage==UpdateManager.READY)return "VERIFIED  •  READY";
-        if(stage==UpdateManager.CHECKING)return "SEARCHING RELEASES";
-        if(stage==UpdateManager.UP_TO_DATE)return "UP TO DATE";
-        if(stage==UpdateManager.AVAILABLE)return "UPDATE FOUND";
-        if(stage==UpdateManager.FAILED)return "CHECK FAILED";
-        return "STANDBY";
+            return Math.min(100,Math.max(0,percent))+"% downloaded";
+        if(stage==UpdateManager.VERIFYING)return "Verifying package";
+        if(stage==UpdateManager.READY)return "Verified and ready";
+        if(stage==UpdateManager.CHECKING)return "Checking releases";
+        if(stage==UpdateManager.UP_TO_DATE)return "You're up to date";
+        if(stage==UpdateManager.AVAILABLE)return "Update available";
+        if(stage==UpdateManager.FAILED)return "Check interrupted";
+        return "Ready to check";
     }
 
     static void show(MainActivity activity){show(activity,true);}
 
-    // false is used by instrumentation, so it can render without network requests.
+    // runCheck=false supports visual/instrumented review without network requests.
     static void show(MainActivity activity,boolean runCheck){
         if(activity.isFinishing()||activity.isDestroyed())return;
         final int accent=activity.accent;
-        final boolean reduce=activity.reduced;
+        final int foreground=activity.text;
+        final int secondary=activity.hint;
+        final int surface=activity.card;
+        final int background=activity.bg;
+        final int border=activity.outline;
+
         final Dialog dialog=new Dialog(activity);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         FrameLayout root=new FrameLayout(activity);
-        root.setBackgroundColor(INK);
-        SplashArt art=new SplashArt(activity,accent,reduce);
-        root.addView(art,new FrameLayout.LayoutParams(-1,-1));
+        root.setBackgroundColor(background);
 
-        LinearLayout layout=new LinearLayout(activity);
-        layout.setGravity(Gravity.CENTER_HORIZONTAL);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(activity.dp(26),activity.dp(26),activity.dp(26),activity.dp(31));
+        ScrollView scroll=new ScrollView(activity);
+        scroll.setFillViewport(true);
+        scroll.setClipToPadding(false);
+        scroll.setVerticalScrollBarEnabled(false);
+        LinearLayout page=new LinearLayout(activity);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setGravity(Gravity.CENTER_HORIZONTAL);
+        page.setPadding(activity.dp(20),activity.dp(42),activity.dp(20),activity.dp(32));
+        scroll.addView(page,new ScrollView.LayoutParams(-1,-2));
+        root.addView(scroll,new FrameLayout.LayoutParams(-1,-1));
 
-        TextView title=text(activity,"CYN / SYSTEM UPDATE",22,accent,true);
-        title.setLetterSpacing(.12f);
-        layout.addView(title,new LinearLayout.LayoutParams(-1,activity.dp(42)));
-        TextView sub=text(activity,"MECHANICAL UPDATE SYSTEM  //  LOCAL SIGNATURE CHECK",11,accent,false);
-        layout.addView(sub,new LinearLayout.LayoutParams(-1,activity.dp(34)));
+        // The hero uses the current CYN palette, independent of wallpaper colors.
+        MaterialCardView hero=new MaterialCardView(activity);
+        hero.setCardBackgroundColor(ColorUtils.blendARGB(surface,accent,.12f));
+        hero.setRadius(activity.dp(28));
+        hero.setStrokeWidth(activity.dp(1));
+        hero.setStrokeColor(ColorUtils.blendARGB(border,accent,.25f));
+        hero.setCardElevation(0);
+        LinearLayout header=new LinearLayout(activity);
+        header.setOrientation(LinearLayout.VERTICAL);
+        header.setPadding(activity.dp(23),activity.dp(24),activity.dp(23),activity.dp(22));
+        hero.addView(header,new FrameLayout.LayoutParams(-1,-2));
 
-        View space=new View(activity);
-        layout.addView(space,new LinearLayout.LayoutParams(1,0,1));
+        TextView eyebrow=text(activity,"CYN  /  UPDATES",11,accent,true);
+        eyebrow.setLetterSpacing(.13f);
+        add(header,eyebrow);
+        space(header,12);
+        TextView title=text(activity,"A better listening experience.",26,foreground,true);
+        title.setLineSpacing(activity.dp(1),1f);
+        add(header,title);
+        space(header,8);
+        add(header,text(activity,
+            "Official releases, checked securely and installed with your permission.",
+            13,secondary,false));
+        space(header,20);
 
-        TextView phase=text(activity,"STANDBY",15,accent,true);
-        phase.setLetterSpacing(.14f);
-        layout.addView(phase,new LinearLayout.LayoutParams(-1,activity.dp(35)));
-        TextView status=text(activity,UpdateManager.message,13,accent,false);
-        status.setMinHeight(activity.dp(54));
+        // Explicit version metadata instead of generic animated filler.
+        LinearLayout versions=new LinearLayout(activity);
+        versions.setOrientation(LinearLayout.HORIZONTAL);
+        versions.setGravity(Gravity.CENTER_VERTICAL);
+        add(header,versions);
+        LinearLayout local=column(activity);
+        versions.addView(local,new LinearLayout.LayoutParams(0,-2,1));
+        add(local,text(activity,"INSTALLED",10,secondary,true));
+        add(local,text(activity,"v"+BuildConfig.VERSION_NAME,15,foreground,true));
+        LinearLayout candidate=column(activity);
+        versions.addView(candidate,new LinearLayout.LayoutParams(0,-2,1));
+        add(candidate,text(activity,"LATEST FOUND",10,secondary,true));
+        TextView targetVersion=text(activity,"Checking…",15,foreground,true);
+        add(candidate,targetVersion);
+
+        LinearLayout.LayoutParams heroParams=new LinearLayout.LayoutParams(-1,-2);
+        heroParams.bottomMargin=activity.dp(16);
+        page.addView(hero,heroParams);
+
+        MaterialCardView body=new MaterialCardView(activity);
+        body.setCardBackgroundColor(surface);
+        body.setRadius(activity.dp(28));
+        body.setStrokeWidth(activity.dp(1));
+        body.setStrokeColor(border);
+        body.setCardElevation(0);
+        LinearLayout panel=column(activity);
+        panel.setPadding(activity.dp(22),activity.dp(22),activity.dp(22),activity.dp(24));
+        body.addView(panel,new FrameLayout.LayoutParams(-1,-2));
+        add(page,body);
+
+        TextView stageTitle=text(activity,"Ready to check",21,foreground,true);
+        add(panel,stageTitle);
+        space(panel,5);
+        TextView status=text(activity,UpdateManager.message,13,secondary,false);
         status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        layout.addView(status,new LinearLayout.LayoutParams(-1,-2));
+        status.setMinHeight(activity.dp(42));
+        add(panel,status);
+        space(panel,20);
 
-        TextView action=text(activity,"CHECK FOR UPDATE",14,INK,true);
-        action.setGravity(Gravity.CENTER);
-        action.setMinimumHeight(activity.dp(53));
-        action.setClickable(true);
-        action.setFocusable(true);
-        GradientDrawable fill=new GradientDrawable();
-        fill.setColor(accent);
-        fill.setCornerRadius(activity.dp(6));
-        action.setBackground(fill);
-        LinearLayout.LayoutParams actionParams=new LinearLayout.LayoutParams(-1,activity.dp(56));
-        actionParams.topMargin=activity.dp(12);
-        layout.addView(action,actionParams);
+        // Material progress indicator, determinate only for actual byte progress.
+        LinearProgressIndicator bar=new LinearProgressIndicator(activity);
+        bar.setIndicatorColor(accent);
+        bar.setTrackColor(ColorUtils.blendARGB(surface,accent,.16f));
+        bar.setTrackThickness(activity.dp(7));
+        bar.setTrackCornerRadius(activity.dp(4));
+        add(panel,bar);
+        space(panel,8);
+        LinearLayout metarow=new LinearLayout(activity);
+        metarow.setGravity(Gravity.CENTER_VERTICAL);
+        add(panel,metarow);
+        TextView detail=text(activity,"Ready",12,secondary,false);
+        metarow.addView(detail,new LinearLayout.LayoutParams(0,-2,1));
+        TextView percent=text(activity,"",12,accent,true);
+        metarow.addView(percent);
+        space(panel,20);
 
-        TextView notes=text(activity,
-            "AUTO-CHECK ON WI-FI  /  VERIFIED APK  /  ANDROID CONFIRMS INSTALL",10,accent,false);
-        notes.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams notesParams=new LinearLayout.LayoutParams(-1,activity.dp(56));
-        layout.addView(notes,notesParams);
-        root.addView(layout,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout steps=new LinearLayout(activity);
+        steps.setOrientation(LinearLayout.HORIZONTAL);
+        add(panel,steps);
+        String[] captions={"1 · Check","2 · Download","3 · Verify","4 · Install"};
+        TextView[] checkpoints=new TextView[4];
+        for(int i=0;i<4;i++){
+            TextView checkpoint=text(activity,captions[i],11,secondary,i==0);
+            checkpoint.setGravity(Gravity.CENTER);
+            checkpoint.setMinHeight(activity.dp(39));
+            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,activity.dp(39),1);
+            if(i>0)p.leftMargin=activity.dp(5);
+            steps.addView(checkpoint,p);
+            checkpoints[i]=checkpoint;
+        }
+        space(panel,24);
 
-        TextView close=text(activity,"×",30,accent,false);
-        close.setGravity(Gravity.CENTER);
-        close.setContentDescription("Close update screen");
-        close.setClickable(true);
-        close.setFocusable(true);
-        FrameLayout.LayoutParams closeParams=new FrameLayout.LayoutParams(activity.dp(56),activity.dp(56),Gravity.TOP|Gravity.END);
-        root.addView(close,closeParams);
+        MaterialButton action=new MaterialButton(activity);
+        action.setText("Check for updates");
+        action.setTextSize(14);
+        action.setAllCaps(false);
+        action.setTypeface(null,Typeface.BOLD);
+        action.setCornerRadius(activity.dp(23));
+        action.setInsetTop(0);
+        action.setInsetBottom(0);
+        action.setMinimumHeight(activity.dp(54));
+        action.setBackgroundTintList(ColorStateList.valueOf(accent));
+        action.setTextColor(background);
+        action.setStrokeWidth(0);
+        add(panel,action);
+        space(panel,12);
+        add(panel,text(activity,
+            "Downloads are SHA-256 checked and matched to CYN's installed signing certificate. Android confirms installation.",
+            12,secondary,false));
+
+        MaterialButton close=new MaterialButton(activity);
+        close.setText("Done");
+        close.setTextSize(13);
+        close.setAllCaps(false);
+        close.setCornerRadius(activity.dp(22));
+        close.setInsetTop(0);
+        close.setInsetBottom(0);
+        close.setBackgroundTintList(ColorStateList.valueOf(surface));
+        close.setTextColor(foreground);
+        close.setStrokeWidth(activity.dp(1));
+        close.setStrokeColor(ColorStateList.valueOf(border));
+        LinearLayout.LayoutParams closeParams=new LinearLayout.LayoutParams(-1,activity.dp(50));
+        closeParams.topMargin=activity.dp(14);
+        page.addView(close,closeParams);
         close.setOnClickListener(v->dialog.dismiss());
 
         Handler handler=new Handler(Looper.getMainLooper());
         Runnable[] ticker=new Runnable[1];
+        int[] previous=new int[]{Integer.MIN_VALUE,Integer.MIN_VALUE,-1};
         ticker[0]=()->{
             if(!dialog.isShowing())return;
             int stage=UpdateManager.stage;
             boolean ready=UpdateManager.ready(activity);
-            int percent=UpdateManager.progress;
-            art.state(stage,percent);
+            int visibleStage=ready?UpdateManager.READY:stage;
+            int progress=UpdateManager.progress;
+            boolean busy=UpdateManager.busy();
+            // Keep the layout and screen reader calm when a download updates quickly.
+            if(previous[0]!=visibleStage||previous[1]!=progress||previous[2]!=(busy?1:0)){
+                previous[0]=visibleStage;previous[1]=progress;previous[2]=busy?1:0;
+                stageTitle.setText(progressText(visibleStage,progress));
+                int active=visibleStage==UpdateManager.DOWNLOADING?1:
+                    visibleStage==UpdateManager.VERIFYING?2:
+                    visibleStage==UpdateManager.READY?3:
+                    visibleStage==UpdateManager.UP_TO_DATE?3:0;
+                for(int i=0;i<checkpoints.length;i++){
+                    TextView chip=checkpoints[i];
+                    boolean selected=i==active;
+                    chip.setTextColor(selected?background:secondary);
+                    GradientDrawable bg=new GradientDrawable();
+                    bg.setColor(selected?accent:ColorUtils.blendARGB(surface,accent,.09f));
+                    bg.setCornerRadius(activity.dp(13));
+                    chip.setBackground(bg);
+                    chip.setTypeface(null,selected?Typeface.BOLD:Typeface.NORMAL);
+                }
+                if(visibleStage==UpdateManager.CHECKING||visibleStage==UpdateManager.VERIFYING){
+                    bar.setIndeterminate(true);
+                }else{
+                    bar.setIndeterminate(false);
+                    bar.setProgressCompat(visibleStage==UpdateManager.READY||visibleStage==UpdateManager.UP_TO_DATE?100:
+                        visibleStage==UpdateManager.DOWNLOADING?Math.max(0,Math.min(100,progress)):0,false);
+                }
+                percent.setText(visibleStage==UpdateManager.DOWNLOADING&&progress>=0?
+                    Math.min(100,progress)+"%":
+                    visibleStage==UpdateManager.READY||visibleStage==UpdateManager.UP_TO_DATE?"100%":"");
+                detail.setText(visibleStage==UpdateManager.READY?"Verified · ready to install":
+                    visibleStage==UpdateManager.VERIFYING?"Authenticating update":
+                    visibleStage==UpdateManager.DOWNLOADING?"Receiving APK":
+                    visibleStage==UpdateManager.FAILED?"Check your connection and retry":
+                    visibleStage==UpdateManager.UP_TO_DATE?"No newer release available":
+                    visibleStage==UpdateManager.CHECKING?"Contacting official releases":"Encrypted HTTPS download");
+                action.setEnabled(!busy);
+                action.setText(busy?"Working…":actionText(stage,ready));
+                action.setAlpha(busy?.65f:1f);
+            }
             String message=UpdateManager.message;
             if(!message.contentEquals(status.getText()))status.setText(message);
-            String phaseLabel=progressText(ready?UpdateManager.READY:stage,percent);
-            if(!phaseLabel.contentEquals(phase.getText()))phase.setText(phaseLabel);
-            boolean working=UpdateManager.busy();
-            action.setVisibility(working?View.INVISIBLE:View.VISIBLE);
-            if(!working)action.setText(actionText(stage,ready));
-            handler.postDelayed(ticker[0],100);
+            String candidateVersion=UpdateManager.availableVersion(activity);
+            String display=candidateVersion.isEmpty()?"Not found yet":"v"+candidateVersion;
+            if(!display.contentEquals(targetVersion.getText()))targetVersion.setText(display);
+            handler.postDelayed(ticker[0],160);
         };
         action.setOnClickListener(v->{
             if(UpdateManager.busy())return;
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
             if(UpdateManager.ready(activity)){
                 UpdateManager.install(activity);
-                return;
+            }else{
+                UpdateManager.check(activity,true,null);
             }
-            UpdateManager.check(activity,true,null);
             ticker[0].run();
         });
         dialog.setOnDismissListener(d->handler.removeCallbacks(ticker[0]));
@@ -144,132 +281,33 @@ final class UpdateSplash {
         dialog.show();
         Window window=dialog.getWindow();
         if(window!=null){
-            window.setBackgroundDrawable(new ColorDrawable(INK));
+            window.setBackgroundDrawable(new ColorDrawable(background));
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.setStatusBarColor(INK);
-            window.setNavigationBarColor(INK);
+            window.setStatusBarColor(background);
+            window.setNavigationBarColor(background);
             window.setLayout(-1,-1);
         }
-        if(runCheck&&!UpdateManager.busy()&&!UpdateManager.ready(activity))
+        if(runCheck&&!UpdateManager.busy()&&!UpdateManager.ready(activity)){
             UpdateManager.check(activity,true,null);
+        }
         ticker[0].run();
     }
 
-    private static TextView text(Context context,String value,int sp,int color,boolean bold){
+    private static LinearLayout column(Context context){
+        LinearLayout l=new LinearLayout(context);l.setOrientation(LinearLayout.VERTICAL);return l;
+    }
+    private static void add(LinearLayout parent,View child){
+        parent.addView(child,new LinearLayout.LayoutParams(-1,-2));
+    }
+    private static void space(LinearLayout parent,int dp){
+        parent.addView(new View(parent.getContext()),new LinearLayout.LayoutParams(1,
+            Math.round(dp*parent.getResources().getDisplayMetrics().density)));
+    }
+    private static TextView text(Context context,String content,int size,int color,boolean bold){
         TextView t=new TextView(context);
-        t.setText(value);t.setTextSize(sp);t.setTextColor(color);
-        if(bold)t.setTypeface(null,android.graphics.Typeface.BOLD);
+        t.setText(content);t.setTextSize(size);t.setTextColor(color);
+        if(bold)t.setTypeface(null,Typeface.BOLD);
         t.setGravity(Gravity.CENTER_VERTICAL);
         return t;
-    }
-
-    static final class SplashArt extends View {
-        private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Path liquid=new Path();
-        private final int accent;
-        private final boolean reduced;
-        private int stage=UpdateManager.IDLE;
-        private int progress=-1;
-        SplashArt(Context context,int color,boolean reduced){
-            super(context);accent=color;this.reduced=reduced;
-            setContentDescription("Two-tone mechanical update splash. Progress and verification are announced below.");
-            setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
-        }
-        void state(int nextStage,int nextProgress){
-            if(stage!=nextStage||progress!=nextProgress){
-                stage=nextStage;progress=nextProgress;invalidate();
-            }
-        }
-        private void line(Canvas c,float x1,float y1,float x2,float y2,float thickness,int alpha){
-            p.setColor(accent);p.setAlpha(alpha);p.setStrokeWidth(thickness);
-            p.setStyle(Paint.Style.STROKE);c.drawLine(x1,y1,x2,y2,p);
-            p.setStyle(Paint.Style.FILL);
-        }
-        @Override protected void onDraw(Canvas c){
-            super.onDraw(c);
-            c.drawColor(INK);
-            float w=getWidth(),h=getHeight();
-            if(w<=0||h<=0)return;
-            float unit=Math.min(w,h), top=h*.22f, bottom=h*.65f;
-            boolean busy=stage==UpdateManager.CHECKING||stage==UpdateManager.DOWNLOADING||stage==UpdateManager.VERIFYING;
-            float time=reduced||!busy?0:(SystemClock.uptimeMillis()%4000)/1000f;
-            p.setColor(accent);
-            p.setStyle(Paint.Style.STROKE);
-            p.setStrokeWidth(unit*.004f);p.setAlpha(185);
-            c.drawRect(w*.075f,top,w*.925f,bottom,p);
-            c.drawRect(w*.11f,top+unit*.028f,w*.89f,bottom-unit*.028f,p);
-            p.setStyle(Paint.Style.FILL);
-            // Two mechanical guide rails and flat cut-out teeth (no gradients or fake progress).
-            for(int side=0;side<2;side++){
-                float x=side==0?w*.085f:w*.915f;
-                for(int t=0;t<11;t++){
-                    float y=top+unit*.018f+t*(bottom-top-unit*.035f)/10;
-                    p.setAlpha(t%2==0?185:80);
-                    c.drawRect(x-unit*.012f,y,x+unit*.012f,y+unit*.008f,p);
-                }
-            }
-            // Rotating press cogs are stage indicators, not a fabricated percentage.
-            for(int wheel=0;wheel<2;wheel++){
-                float cx=w*(wheel==0?.22f:.78f),cy=top+unit*.095f;
-                float radius=unit*.041f;
-                p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(unit*.006f);p.setAlpha(230);
-                c.drawCircle(cx,cy,radius,p);c.drawCircle(cx,cy,radius*.42f,p);
-                p.setStyle(Paint.Style.FILL);
-                for(int t=0;t<12;t++){
-                    double a=t*Math.PI/6+time*(wheel==0?1.6:-1.6);
-                    float x1=cx+(float)Math.cos(a)*radius*1.03f,y1=cy+(float)Math.sin(a)*radius*1.03f;
-                    float x2=cx+(float)Math.cos(a)*radius*1.34f,y2=cy+(float)Math.sin(a)*radius*1.34f;
-                    line(c,x1,y1,x2,y2,unit*.009f,190);
-                }
-            }
-            float left=w*.15f,right=w*.85f;
-            float barY=top+(bottom-top)*.54f;
-            float barHeight=unit*.092f;
-            p.setColor(accent);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(unit*.004f);p.setAlpha(210);
-            c.drawRect(left,barY,right,barY+barHeight,p);
-            p.setStyle(Paint.Style.FILL);
-            float fill=stage==UpdateManager.READY?1:
-                stage==UpdateManager.DOWNLOADING&&progress>=0?Math.min(1,Math.max(0,progress/100f)):0;
-            float filled=(right-left)*fill;
-            if(filled>0){
-                // A mechanical, two-tone liquid front. Drips are clipped to the frame.
-                int save=c.save();c.clipRect(left,barY,right,barY+barHeight+unit*.1f);
-                liquid.reset();liquid.moveTo(left,barY);
-                liquid.lineTo(left+filled,barY);
-                float tip=left+filled;
-                liquid.lineTo(tip,barY+barHeight);
-                for(int i=4;i>=0;i--){
-                    float x=left+filled*i/5f;
-                    float drip=(i%2==0?.09f:.035f)*unit;
-                    if(reduced||!busy)drip=unit*.022f;
-                    else drip*=.5f+.5f*(float)Math.sin(time*3+i*1.1);
-                    liquid.lineTo(x,barY+barHeight+drip);
-                    liquid.lineTo(x-unit*.012f,barY+barHeight);
-                }
-                liquid.lineTo(left,barY+barHeight);liquid.close();
-                p.setColor(accent);p.setAlpha(238);c.drawPath(liquid,p);
-                c.restoreToCount(save);
-            }
-            if(stage==UpdateManager.CHECKING || stage==UpdateManager.VERIFYING){
-                // Moving scanner conveys activity without pretending to know download %.
-                float phase=(time%2f)/2f;
-                float x=left+(right-left)*(reduced?.5f:phase);
-                line(c,x,barY-unit*.015f,x,barY+barHeight+unit*.025f,unit*.014f,230);
-            }
-            // Hinged mechanical clamp arms travel during real work.
-            float movement=busy&&!reduced?(float)Math.sin(time*4f)*unit*.014f:0;
-            p.setColor(accent);p.setAlpha(245);
-            c.drawRect(w*.18f,top+unit*.18f+movement,w*.82f,top+unit*.195f+movement,p);
-            c.drawRect(w*.23f,bottom-unit*.073f-movement,w*.77f,bottom-unit*.057f-movement,p);
-            // Physical segmented ruler for completed fractions (not simulated).
-            int count=16;
-            for(int i=0;i<count;i++){
-                float x=left+i*(right-left)/count;
-                p.setAlpha(fill>=(i+1f)/count?230:45);
-                c.drawRect(x,barY+barHeight+unit*.13f,x+(right-left)/count-unit*.008f,
-                    barY+barHeight+unit*.145f,p);
-            }
-            if(busy&&!reduced)postInvalidateDelayed(33);
-        }
     }
 }
