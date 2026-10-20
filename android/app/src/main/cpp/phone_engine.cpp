@@ -10,6 +10,7 @@
 #include "desktop/CynFlagshipMixer.h"
 #include "desktop/CynApexFlowHybrid.h"
 #include "desktop/CynSmartRange.h"
+#include "CynSpatialExperimental.h"
 
 namespace {
 constexpr int maxBands=39;
@@ -29,6 +30,8 @@ struct Engine {
     SourceAudioAnalyzer analyzer;
     uint64_t yamWindow=0,apexWindow=0;
     std::array<std::atomic<float>,48> parameters{};
+    std::atomic<float> spatialPreviewStrength{0.0f};
+    CynSpatialExperimental spatialPreview;
     std::atomic<unsigned> serial{0};
     std::array<float,48> p{};
     std::array<Biquad,maxBands> filters{};
@@ -41,7 +44,7 @@ struct Engine {
     void reset(int ch) {
         channels=ch;analyzer.setFormat(0,0,0);analyzer.setFormat(32,ch,48000);
         for(auto& f:filters) { f.reset(); }
-        delay={};delayIndex=0;countdown=0;wet=0;level=1;
+        delay={};delayIndex=0;countdown=0;wet=0;level=1;spatialPreview.reset();
     }
     void refresh() {
         for(int retry=0;retry<3;retry++) {
@@ -83,7 +86,10 @@ struct Engine {
                     x+=echo*clamp(p[4],0,1)*.20f;
                     out[c]=x;
                 }
-                if(channels==2){const float mid=(out[0]+out[1])*.5f,side=(out[0]-out[1])*.5f*(1+clamp(p[3],0,1)*.55f);out[0]=mid+side;out[1]=mid-side;}
+                if(channels==2){const float mid=(out[0]+out[1])*.5f,side=(out[0]-out[1])*.5f*(1+clamp(p[3],0,1)*.55f);out[0]=mid+side;out[1]=mid-side;
+                    // Explicit opt-in: existing stereo ambience only, not trained neural APEX 10M.
+                    spatialPreview.process(out[0],out[1],spatialPreviewStrength.load(std::memory_order_relaxed));
+                }
                 delayIndex=(delayIndex+1)%11000;
                 const float peak=std::max(std::abs(out[0]),std::abs(out[channels-1]));
                 const float limiting=peak>ceiling?ceiling/std::max(peak,1e-9f):1;
@@ -108,6 +114,9 @@ JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_destroy(JNIEnv*
 JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_configure(JNIEnv*,jclass,jlong p,jint ch){if(ch==1||ch==2)engine(p)->reset(ch);}
 JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_process(JNIEnv* env,jclass,jlong p,jobject buffer,jint bytes){auto* data=static_cast<int16_t*>(env->GetDirectBufferAddress(buffer));if(data&&bytes>=0&&bytes<=env->GetDirectBufferCapacity(buffer))engine(p)->process(data,bytes/2);}
 JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_controls(JNIEnv* env,jclass,jlong p,jfloatArray data){if(env->GetArrayLength(data)!=48)return;std::array<float,48>v{};env->GetFloatArrayRegion(data,0,48,v.data());auto* e=engine(p);e->serial.fetch_add(1,std::memory_order_acq_rel);for(int i=0;i<48;i++)e->parameters[i].store(clamp(v[i],-100,100),std::memory_order_relaxed);const int bands=static_cast<int>(v[8]);e->parameters[8].store(bands==35?35:bands==39?39:31);e->serial.fetch_add(1,std::memory_order_release);}
+JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_spatialPreview(JNIEnv*,jclass,jlong handle,jfloat strength){
+    if(handle)engine(handle)->spatialPreviewStrength.store(clamp(strength,0.0f,1.0f),std::memory_order_relaxed);
+}
 JNIEXPORT jfloatArray JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_features(JNIEnv* env,jclass,jlong p){const auto a=engine(p)->analyzer.snapshot();std::array<float,12>v{};std::copy(a.values.begin(),a.values.end(),v.begin());v[11]=a.rms;return array(env,v.data(),12);}
 JNIEXPORT jfloatArray JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_yamnetWindow(JNIEnv* env,jclass,jlong p){std::array<float,15600>w{};auto*e=engine(p);if(!e->analyzer.copyYamNetWindow(w,e->yamWindow))return nullptr;return array(env,w.data(),w.size());}
 JNIEXPORT jfloatArray JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_apexWindow(JNIEnv* env,jclass,jlong p){std::array<float,48000>w{};auto*e=engine(p);if(!e->analyzer.copyApexWindow(w,e->apexWindow))return nullptr;return array(env,w.data(),w.size());}
