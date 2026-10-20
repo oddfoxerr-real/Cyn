@@ -879,7 +879,7 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 		setPowerState(settings_.getBool("power"));
         // APEX 10M is a single selected Music AI slot, never a second toggle.
         dfx_dsp_.setApex10MSpatialPreview(
-            getActiveAIProfileId()=="apex10m" && smart_mode_==0
+            smart_enabled_ && getActiveAIProfileId()=="apex10m" && smart_mode_==0
                 ? getApex10MSpatialStrength()/100.0f : 0.0f);
 
 		initPresets();
@@ -3202,6 +3202,8 @@ void FxController::setSmartListening(bool enabled)
 {
     if(enabled!=smart_enabled_) { if(enabled) captureSmartBaseline(); else restoreSmartBaseline(); smart_enabled_=enabled; }
     settings_.setBool("ember_smart_listening",enabled); // Retain the old preference when upgrading.
+    dfx_dsp_.setApex10MSpatialPreview(enabled && smart_mode_==0 &&
+        getActiveAIProfileId()=="apex10m" ? getApex10MSpatialStrength()/100.0f : 0.0f);
 }
 void FxController::setSmartPresetCycling(bool enabled)
 {
@@ -3298,7 +3300,7 @@ void FxController::setSmartListeningMode(int mode)
     if(smart_enabled_) captureSmartBaseline();
     settings_.setInt("cyn_ai_listening_mode",mode);
     dfx_dsp_.setApex10MSpatialPreview(
-        mode==0 && getActiveAIProfileId()=="apex10m"
+        smart_enabled_ && mode==0 && getActiveAIProfileId()=="apex10m"
             ? getApex10MSpatialStrength()/100.0f : 0.0f);
     smart_learning_message_=mode==1 ?
         "Movie AI is separate. Label dialogue, music and effects with More / Less." :
@@ -3351,7 +3353,7 @@ bool FxController::selectAIProfile(const String& id,String& error) {
         if(smart_enabled_) restoreSmartBaseline();
         settings_.setString("cyn_active_ai_profile_music","apex10m");
         if(smart_enabled_) captureSmartBaseline();
-        dfx_dsp_.setApex10MSpatialPreview(getApex10MSpatialStrength()/100.0f);
+        dfx_dsp_.setApex10MSpatialPreview(smart_enabled_?getApex10MSpatialStrength()/100.0f:0.0f);
         smart_learning_message_="APEX 10M selected: experimental stereo spatial DSP; untrained neural head is OFF.";
         error.clear();return true;
     }
@@ -4279,5 +4281,5 @@ void FxController::setApex10MSpatialStrength(int percent)
     const int safe=jlimit(0,100,percent);
     settings_.setInt("cyn_apex10m_spatial_strength",safe);
     dfx_dsp_.setApex10MSpatialPreview(
-        getActiveAIProfileId()=="apex10m" && smart_mode_==0 ? safe/100.0f : 0.0f);
+        smart_enabled_ && getActiveAIProfileId()=="apex10m" && smart_mode_==0 ? safe/100.0f : 0.0f);
 }
