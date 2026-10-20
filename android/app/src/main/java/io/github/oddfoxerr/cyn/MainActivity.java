@@ -409,7 +409,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 @Override public boolean reduced(){return reduced;}
             },accent,secondary);
             network.addView(brainScan,new LinearLayout.LayoutParams(-1,dp(265)));
-            add(network,label("Rotation and glow follow real processed stereo-side energy; silence and bypass pause the scan.",12,hint));
+            add(network,label("Visible nodes and pathways form a 3D-style illustrative brain. Brighter pulses reflect measured stereo DSP activity; the untrained 10M neural model is not running.",12,hint));
         }else{
             LinearLayout network=section("Personal neural activity","Measured activations from your preference model.");
             neural=new NeuralView();
