@@ -102,6 +102,8 @@ struct Engine {
                     pcm[offset+i+c]=static_cast<int16_t>(std::round(clamp(x,-.999969f,.999969f)*32768));
                 }
             }
+            spatialActivity.store(spatialPreviewStrength.load(std::memory_order_relaxed)>0.0f
+                ? spatialPreview.activity() : 0.0f,std::memory_order_relaxed);
             offset+=n;
         }
     }
@@ -115,6 +117,9 @@ JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_destroy(JNIEnv*
 JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_configure(JNIEnv*,jclass,jlong p,jint ch){if(ch==1||ch==2)engine(p)->reset(ch);}
 JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_process(JNIEnv* env,jclass,jlong p,jobject buffer,jint bytes){auto* data=static_cast<int16_t*>(env->GetDirectBufferAddress(buffer));if(data&&bytes>=0&&bytes<=env->GetDirectBufferCapacity(buffer))engine(p)->process(data,bytes/2);}
 JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_controls(JNIEnv* env,jclass,jlong p,jfloatArray data){if(env->GetArrayLength(data)!=48)return;std::array<float,48>v{};env->GetFloatArrayRegion(data,0,48,v.data());auto* e=engine(p);e->serial.fetch_add(1,std::memory_order_acq_rel);for(int i=0;i<48;i++)e->parameters[i].store(clamp(v[i],-100,100),std::memory_order_relaxed);const int bands=static_cast<int>(v[8]);e->parameters[8].store(bands==35?35:bands==39?39:31);e->serial.fetch_add(1,std::memory_order_release);}
+JNIEXPORT jfloat JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_spatialActivity(JNIEnv*,jclass,jlong handle){
+    return handle?engine(handle)->spatialActivity.load(std::memory_order_relaxed):0.0f;
+}
 JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_spatialPreview(JNIEnv*,jclass,jlong handle,jfloat strength){
     if(handle)engine(handle)->spatialPreviewStrength.store(clamp(strength,0.0f,1.0f),std::memory_order_relaxed);
 }
