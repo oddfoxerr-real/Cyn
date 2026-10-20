@@ -27,6 +27,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "slout.h"
 #include "SourceAudioAnalyzer.h"
 #include "CynDjEffects.h"
+#include "CynSpatialExperimental.h"
+#include <atomic>
 
 struct dfxg_section_type {
 	realtype value;
@@ -107,6 +109,7 @@ public:
     void getEqBandFrequencyRange(int band_num, float* min_freq, float* max_freq);
 	float getEqBandBoostCut(int band_num);
 	void setEqBandBoostCut(int band_num, float boost);
+    void setApex10MSpatialPreview(float strength);
 	void powerOn(bool on);
 	bool isPowerOn();
 	float getEffectValue(DfxDsp::Effect effect);
@@ -117,6 +120,9 @@ public:
     void getSpectrumBandValues(float* rp_band_values, int i_array_size);
     SourceAudioAnalyzer source_analyzer_;
     CynDjEffects dj_;
+    CynSpatialExperimental spatial_preview_;
+    std::atomic<float> spatial_preview_strength_{0.0f};
+    std::atomic<bool> spatial_preview_powered_{false};
 
 	bool being_destroyed_ = false;
 private:
