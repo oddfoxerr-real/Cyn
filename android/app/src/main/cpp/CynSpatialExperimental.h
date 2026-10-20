@@ -40,7 +40,7 @@ public:
         midPower_ += smoothing * (middle * middle - midPower_);
         sidePower_ += smoothing * (side * side - sidePower_);
         const float correlation = crossPower_ /
-            std::sqrt(std::max(1.0e-10f, powerLeft_ * powerRight_));
+            std::sqrt(std::max(1.0e-24f, powerLeft_ * powerRight_));
         const float sideToMid = std::sqrt(sidePower_ /
             std::max(midPower_, 1.0e-10f));
 
