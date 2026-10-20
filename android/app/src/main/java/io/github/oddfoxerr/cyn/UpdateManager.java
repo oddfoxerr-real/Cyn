@@ -27,6 +27,11 @@ final class UpdateManager {
     static volatile String message="Ready to check for updates";
     static volatile int progress=-1;
     static boolean busy(){return BUSY.get();}
+    static String availableVersion(Context context){
+        String candidate=prefs(context).getString("version","");
+        return AndroidRelease.number(candidate)>AndroidRelease.number(BuildConfig.VERSION_NAME)
+            ?candidate:"";
+    }
     private static SharedPreferences prefs(Context c){return c.getSharedPreferences("updates",0);}
     static boolean automatic(Context c){return prefs(c).getBoolean("automatic",true);}
     static boolean downloads(Context c){return prefs(c).getBoolean("download",true);}
