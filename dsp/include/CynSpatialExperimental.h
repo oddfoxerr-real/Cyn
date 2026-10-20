@@ -8,12 +8,15 @@
 
 class CynSpatialExperimental final {
 public:
+    static float clampSample(float value,float low,float high) noexcept {
+        return value<low?low:(value>high?high:value);
+    }
     void setFormat(int bits, int channels, int rate) noexcept {
         valid_ = bits == 32 && channels == 2 && rate >= 8000 && rate <= 192000;
         if (rate >= 8000) {
             const float rc = 1.0f / (2.0f * 3.14159265f * 220.0f);
             highpass_ = rc / (rc + 1.0f / static_cast<float>(rate));
-            smoothing_ = std::min(1.0f, 48000.0f / static_cast<float>(rate) * 0.002f);
+            smoothing_ = std::fmin(1.0f, 48000.0f / static_cast<float>(rate) * 0.002f);
         }
         reset();
     }
@@ -25,12 +28,12 @@ public:
     void process(float* pcm, int frames, float desiredStrength) noexcept {
         if (!valid_ || !pcm || frames <= 0) return;
         const float strength = std::isfinite(desiredStrength)
-            ? std::clamp(desiredStrength, 0.0f, 1.0f) : 0.0f;
+            ? clampSample(desiredStrength, 0.0f, 1.0f) : 0.0f;
         for (int i = 0; i < frames; ++i) {
             float& left = pcm[i * 2], &right = pcm[i * 2 + 1];
             if (!std::isfinite(left) || !std::isfinite(right)) continue;
-            const float l = std::clamp(left, -4.0f, 4.0f);
-            const float r = std::clamp(right, -4.0f, 4.0f);
+            const float l = clampSample(left, -4.0f, 4.0f);
+            const float r = clampSample(right, -4.0f, 4.0f);
             const float mid = (l + r) * 0.5f;
             const float side = (l - r) * 0.5f;
             constexpr float alpha = 0.0005f;
@@ -39,16 +42,16 @@ public:
             cross_ += alpha * (l * r - cross_);
             midPower_ += alpha * (mid * mid - midPower_);
             sidePower_ += alpha * (side * side - sidePower_);
-            const float corr = cross_ / std::sqrt(std::max(
+            const float corr = cross_ / std::sqrt(std::fmax(
                 1.0e-24f, leftPower_ * rightPower_));
-            const float sideToMid = std::sqrt(sidePower_ / std::max(
+            const float sideToMid = std::sqrt(sidePower_ / std::fmax(
                 1.0e-12f, midPower_));
             previousHigh_ = highpass_ * (previousHigh_ + side - previousSide_);
             previousSide_ = side;
             const bool unsafePhase = corr < -0.3f;
             const float coherence = (leftPower_ + rightPower_ < 1.0e-9f || unsafePhase)
-                ? 0.0f : std::clamp((corr + 0.3f) / 0.55f, 0.0f, 1.0f);
-            const float alreadyWide = std::clamp(1.25f - 0.5f * sideToMid, 0.0f, 1.0f);
+                ? 0.0f : clampSample((corr + 0.3f) / 0.55f, 0.0f, 1.0f);
+            const float alreadyWide = clampSample(1.25f - 0.5f * sideToMid, 0.0f, 1.0f);
             amount_ += smoothing_ * (0.20f * strength * coherence * alreadyWide - amount_);
             const float extraSide = unsafePhase ? 0.0f : amount_ * previousHigh_;
             if (std::fabs(extraSide) < 1.0e-9f) continue; // exact DSP bypass
@@ -56,7 +59,7 @@ public:
             // when our incremental stereo signal would push output above 0.999.
             float a = left + extraSide;
             float b = right - extraSide;
-            const float peak = std::max(std::fabs(a), std::fabs(b));
+            const float peak = std::fmax(std::fabs(a), std::fabs(b));
             if (peak > 0.999f) {
                 const float scale = 0.999f / peak;
                 a *= scale;
