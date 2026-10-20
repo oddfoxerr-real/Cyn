@@ -77,7 +77,13 @@ public:
             case FxThemeMode::LiquidTitanium:
             case FxThemeMode::JadeCircuit:
             case FxThemeMode::SolarInk:
-            case FxThemeMode::PolarMist: break;
+            case FxThemeMode::PolarMist:
+            case FxThemeMode::Obsidian:
+            case FxThemeMode::Emerald:
+            case FxThemeMode::DeepSea:
+            case FxThemeMode::NeonTokyo:
+            case FxThemeMode::Synthwave:
+            case FxThemeMode::Sakura: break;
             default: themeMode_=FxThemeMode::DarkMesh; break;
         }
         for(const auto& item : std::initializer_list<std::pair<FxThemeMode,const char*>>{
