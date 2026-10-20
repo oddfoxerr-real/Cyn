@@ -8,11 +8,13 @@ on:
       - 'dsp/**'
       - 'fxsound/**'
       - 'tests/cyn_apex10m_spatial_test.cpp'
+      - 'fxsound/Source/GUI/CynLiquidScreen.h'
+      - 'fxsound/Source/GUI/CynApexSpatialScan.h'
       - 'tests/CynUpdateMaterialSmoke.ps1'
       - 'CynUpdateWindow.xaml'
       - 'CynUpdater.ps1'
       - 'Installer/Cyn/Cyn.iss'
-      - 'RELEASE_NOTES_2.0.76.md'
+      - 'RELEASE_NOTES_2.0.77.md'
       - '.github/workflows/windows-apex10m-experimental.yml'
   workflow_dispatch:
 
@@ -54,29 +56,29 @@ jobs:
         run: |
           .\BUILD_INSTALLER.ps1
           if ($LASTEXITCODE -ne 0) { throw 'Installer failed' }
-          $exe='dist/Cyn-Setup-2.0.76-x64.exe'
+          $exe='dist/Cyn-Setup-2.0.77-x64.exe'
           if (!(Test-Path $exe) -or !(Test-Path "$exe.sha256")) { throw 'Installer or checksum missing' }
           $actual=(Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
           $expected=(Get-Content "$exe.sha256" -Raw).Trim().ToLowerInvariant()
           if ($actual -ne $expected) { throw 'Incorrect installer hash' }
           if (!(Test-Path dist/Cyn-Windows-x64.zip)) { throw 'Portable Cyn missing' }
-          Copy-Item dist/Cyn-Windows-x64.zip dist/Cyn-APEX10M-Spatial-Experimental-2.0.76-Portable.zip
+          Copy-Item dist/Cyn-Windows-x64.zip dist/Cyn-APEX10M-Spatial-Experimental-2.0.77-Portable.zip
       - name: Publish experimental assets to workflow artifacts
         uses: actions/upload-artifact@v4
         with:
           name: CYN-Windows-APEX10M-Spatial-Experimental
           path: |
-            dist/Cyn-Setup-2.0.76-x64.exe
-            dist/Cyn-Setup-2.0.76-x64.exe.sha256
-            dist/Cyn-APEX10M-Spatial-Experimental-2.0.76-Portable.zip
+            dist/Cyn-Setup-2.0.77-x64.exe
+            dist/Cyn-Setup-2.0.77-x64.exe.sha256
+            dist/Cyn-APEX10M-Spatial-Experimental-2.0.77-Portable.zip
           retention-days: 30
       - name: Publish experimental prerelease without marking stable
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag='apex-10m-windows-native-experimental-v2.0.76'
+          $tag='apex-10m-windows-native-experimental-v2.0.77'
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) { throw 'Experimental tag already exists; refusing asset overwrite' }
-          gh release create $tag 'dist/Cyn-Setup-2.0.76-x64.exe' 'dist/Cyn-Setup-2.0.76-x64.exe.sha256' 'dist/Cyn-APEX10M-Spatial-Experimental-2.0.76-Portable.zip' --target "${{ github.sha }}" --title 'CYN Windows 2.0.76 — APEX 10M Spatial Experimental' --notes-file RELEASE_NOTES_2.0.76.md --prerelease --latest=false
+          gh release create $tag 'dist/Cyn-Setup-2.0.77-x64.exe' 'dist/Cyn-Setup-2.0.77-x64.exe.sha256' 'dist/Cyn-APEX10M-Spatial-Experimental-2.0.77-Portable.zip' --target "${{ github.sha }}" --title 'CYN Windows 2.0.77 — APEX 10M Spatial Experimental' --notes-file RELEASE_NOTES_2.0.77.md --prerelease --latest=false
           if ($LASTEXITCODE -ne 0) { throw 'GitHub experimental release failed' }
