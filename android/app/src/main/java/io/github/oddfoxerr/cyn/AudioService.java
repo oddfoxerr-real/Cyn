@@ -506,7 +506,7 @@ public final class AudioService extends Service {
         NativeEngine.controls(desktopAi.engine,p);
         // Only PCM from CYN library playback passes through this native processor.
         // Android external-app sessions cannot use this effect through the EQ API.
-        NativeEngine.spatialPreview(desktopAi.engine,enabled&&spatialPreviewEnabled?spatialPreviewStrength:0f);
+        NativeEngine.spatialPreview(desktopAi.engine,enabled&&smart&&spatialPreviewEnabled?spatialPreviewStrength:0f);
     }
     void train() {
         if(training) return; training=true; trainingEpoch=0; trainingTrace=null;
