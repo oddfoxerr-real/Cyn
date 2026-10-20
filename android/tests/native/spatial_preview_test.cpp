@@ -40,6 +40,11 @@ int main() {
         assert(std::fabs(aL - center) < 1e-6f);
         assert(std::fabs(aR + center) < 1e-6f);
     }
+    // Scan telemetry must be connected to true spatial output, not an animated clock.
+    assert(effect.activity()>0.0f && effect.activity()<=1.0f);
+    assert(bypass.activity()==0.0f);
+    assert(mono.activity()==0.0f);
+    assert(antiPhase.activity()<1.0e-4f);
     assert(stereoDifference > 1.0);
     assert(stereoDifference > bassDifference * 1.5);
     std::cout << "PASS: APEX 10M stereo ambience preview, exact bypass/mono, anti-phase guard, center preserved, bass protected\n";
