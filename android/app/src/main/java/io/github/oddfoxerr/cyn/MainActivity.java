@@ -257,10 +257,6 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         toggle(hero,"CYN enhancement",service.enabled,on->{service.enabled=on;service.changed();});
         LinearLayout c=section("Sound controls","For library playback and compatible music sessions.");smartSlider(c,"Bass",-1,"Bass",service.bass,0,12," dB",v->{service.bass=v;service.changed();});smartSlider(c,"Vocal clarity",-1,"Vocal clarity",service.clarity,0,8," dB",v->{service.clarity=v;service.changed();});
         category(c,"Space & dynamics · live AI sliders",body->{smartSlider(body,"Stereo width",-1,"Stereo width",service.width,0,100,"%",v->{service.width=v;service.changed();});smartSlider(body,"Ambience",-1,"Ambience",service.ambience*100,0,100,"%",v->{service.ambience=v/100;service.changed();});smartSlider(body,"Dynamics",-1,"Dynamics",service.dynamics*100,0,100,"%",v->{service.dynamics=v/100;service.changed();});smartSlider(body,"Output headroom",-1,"Output headroom",service.headroom,.3f,6," dB",v->{service.headroom=v;service.changed();});add(body,label("Ambience, dynamics and the full EQ process CYN library playback. Other apps use the effects their audio session supports.",12,hint));});
-        LinearLayout spatial=section("APEX 10M · Experimental spatial","Enhances existing high-frequency stereo ambience during CYN library playback only. This is a deterministic DSP preview; the 10M neural reasoning head is not trained or active.");
-        toggle(spatial,"Enable experimental stereo enhancement",service.spatialPreviewEnabled,on->{service.spatialPreviewEnabled=on;service.changed();});
-        slider(spatial,"Spatial intensity",service.spatialPreviewStrength*100,0,100,"%",v->{service.spatialPreviewStrength=v/100;service.changed();});
-        add(spatial,label("Preserves centered voices and low bass; reduces widening for out-of-phase material. Does not decode Dolby Atmos, object audio, or process other music apps.",12,hint));
         category(c,service.bandCount+"-band equalizer · live AI sliders",body->{buttons(body,new String[]{"31","35","39"},new Runnable[]{()->bands(31),()->bands(35),()->bands(39)});gap(body,8);for(int i=0;i<service.bandCount;i++){final int n=i;float hz=(float)(20*Math.pow(1000,i/(double)(service.bandCount-1)));smartSlider(body,"EQ",n,hz<1000?Math.round(hz)+" Hz":String.format(Locale.ROOT,"%.1f kHz",hz/1000),service.studioEq[i],-12,12," dB",v->{service.studioEq[n]=v;service.changed();});}add(body,button("Reset equalizer",()->{Arrays.fill(service.studioEq,0);service.changed();build();}));});
         category(c,"Listening presets",body->{buttons(body,new String[]{"Balanced","Impact","Dialogue"},new Runnable[]{()->preset(2,1,.2f),()->preset(5,1,.45f),()->preset(1,3,.15f)});});
         LinearLayout external=section("Connect CYN","Enable real-time sound control for compatible music apps. Android determines which audio sessions accept enhancement.");
@@ -320,7 +316,44 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     void scan(){if(libraryBusy)return;libraryBusy=true;renderTracks();AudioLibrary library=service.library;filesWorker.execute(()->{try{List<AudioLibrary.Track> found=library.scan();library.merge(found);handler.post(()->{libraryBusy=false;toast(found.size()+" songs found");if(page==2)build();});}catch(Exception e){handler.post(()->{libraryBusy=false;toast("Music access unavailable. You can still add files.");renderTracks();});}});}
     void learning(){
         add(content,label("Intelligence, in tune.",29,text));add(content,label("Desktop neural models. Private on your phone.",13,hint));
-        LinearLayout engine=section("Neural engine","");toggle(engine,"Smart listening",service.smart,on->{service.smart=on;service.changed();});toggle(engine,"Full APEX 6M + YAMNet",service.useApex,on->{service.useApex=on;service.changed();});toggle(engine,"Dialogue / movie mode",service.movieMode,on->{service.movieMode=on;service.changed();});slider(engine,"Sensitivity",service.sensitivity*100,0,100,"%",v->{service.sensitivity=v/100;service.changed();});liveStatus=label("",13,accent);add(engine,liveStatus);add(engine,label("YAMNet identifies the scene. APEX adds the same learned spectral guidance used by PC CYN. Full processing runs on library tracks; external-app sessions use Android's available effects.",12,hint));
+        LinearLayout engine=section("AI Hub · choose one engine","Selecting a different AI replaces the previous primary engine. Shared audio analysis is not a second selectable AI.");
+        toggle(engine,"Smart Listening (master switch)",service.smart,on->{service.smart=on;service.changed();});
+        android.widget.RadioGroup aiChoices=new android.widget.RadioGroup(this);
+        aiChoices.setOrientation(android.widget.RadioGroup.VERTICAL);
+        String[] profileIds={AiSelection.BASIC,AiSelection.APEX_6M,AiSelection.APEX_10M};
+        String[] profileLabels={"CYN Base AI · YAMNet + personal preferences","APEX 6M · existing neural spectral guidance","APEX 10M · Experimental spatial DSP preview"};
+        int selectedViewId=View.NO_ID;
+        for(int i=0;i<profileIds.length;i++){
+            com.google.android.material.radiobutton.MaterialRadioButton option=new com.google.android.material.radiobutton.MaterialRadioButton(this);
+            int viewId=View.generateViewId();option.setId(viewId);
+            option.setTag(profileIds[i]);option.setText(profileLabels[i]);
+            option.setTextColor(text);option.setTextSize(14);option.setMinHeight(dp(54));
+            option.setContentDescription(profileLabels[i]);
+            option.setButtonTintList(ColorStateList.valueOf(accent));
+            aiChoices.addView(option,new android.widget.RadioGroup.LayoutParams(-1,-2));
+            if(service.aiProfile.equals(profileIds[i]))selectedViewId=viewId;
+        }
+        if(selectedViewId!=View.NO_ID)aiChoices.check(selectedViewId);
+        aiChoices.setOnCheckedChangeListener((group,id)->{
+            android.view.View selected=group.findViewById(id);
+            if(selected==null)return;
+            Object tag=selected.getTag();
+            if(tag instanceof String && !service.aiProfile.equals(tag)){
+                service.selectAiProfile((String)tag);
+                build();
+            }
+        });
+        add(engine,aiChoices);
+        add(engine,label("Only one primary AI profile can be selected. APEX 10M currently uses experimental live spatial DSP; its additional neural reasoning weights have not been trained.",12,hint));
+        if(AiSelection.APEX_10M.equals(service.aiProfile)){
+            slider(engine,"Spatial intensity",service.spatialPreviewStrength*100,0,100,"%",v->{service.spatialPreviewStrength=v/100;service.changed();});
+            add(engine,label("Enhances existing stereo ambience on CYN library playback. No Dolby Atmos/object decoding, positional source reconstruction, or external-app PCM access.",12,hint));
+        }
+        category(engine,"Content focus (not another AI)",body->{
+            toggle(body,"Dialogue / movie tuning",service.movieMode,on->{service.movieMode=on;service.changed();});
+        });
+        slider(engine,"Sensitivity",service.sensitivity*100,0,100,"%",v->{service.sensitivity=v/100;service.changed();});
+        liveStatus=label("",13,accent);add(engine,liveStatus);
         LinearLayout network=section("Personal neural activity","Measured activations from your preference model.");neural=new NeuralView();network.addView(neural,new LinearLayout.LayoutParams(-1,dp(220)));
         LinearLayout c=section("Teach your sound","Select a passage, then tell CYN what you want more or less of.");timeline=new Timeline();c.addView(timeline,new LinearLayout.LayoutParams(-1,dp(130)));buttons(c,new String[]{"Last 5 seconds","Live timeline"},new Runnable[]{()->timeline.selectRecent(),()->timeline.resume()});gap(c,8);
         category(c,"Training target",body->{String[] names={"Clarity","Ambience","Width","Dynamics","Bass"};for(int i=0;i<5;i++){final int n=i;add(body,button(names[i],()->{feedbackEffect=n;toast("Training "+names[n]);timeline.invalidate();}));}});buttons(c,new String[]{"Less here","More here"},new Runnable[]{()->labelFrames(false),()->labelFrames(true)});learningStatus=label("",12,accent);add(c,learningStatus);add(c,button("Train personal model",()->service.train()));
