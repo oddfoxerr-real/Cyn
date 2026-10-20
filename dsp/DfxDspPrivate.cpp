@@ -187,6 +187,9 @@ int DfxDspPrivate::processAudio(short int *si_input_samples, short int *si_outpu
 		return(NOT_OKAY);
 
 	dj_.process(reinterpret_cast<float*>(si_output_samples), i_num_sample_sets);
+    spatial_preview_.process(reinterpret_cast<float*>(si_output_samples), i_num_sample_sets,
+        spatial_preview_powered_.load(std::memory_order_relaxed)
+        ? spatial_preview_strength_.load(std::memory_order_relaxed) : 0.0f);
 	return OKAY;
 }
 
@@ -194,6 +197,7 @@ int DfxDspPrivate::setSignalFormat(int i_bps, int i_nch, int i_srate, int i_vali
 {
 	source_analyzer_.setFormat(i_bps, i_nch, i_srate);
 	dj_.setFormat(i_bps, i_nch, i_srate);
+    spatial_preview_.setFormat(i_bps, i_nch, i_srate);
 	if (dfxpUniversalSetSignalFormat(dfxp_handle_, i_bps, i_nch, i_srate, i_valid_bits) != OKAY)
 		return(NOT_OKAY);
 
@@ -201,8 +205,15 @@ int DfxDspPrivate::setSignalFormat(int i_bps, int i_nch, int i_srate, int i_vali
 }
 
 
+void DfxDspPrivate::setApex10MSpatialPreview(float strength)
+{
+    spatial_preview_strength_.store(std::isfinite(strength) ? std::clamp(strength, 0.0f, 1.0f) : 0.0f,
+        std::memory_order_relaxed);
+}
+
 void DfxDspPrivate::powerOn(bool on)
 {
+    spatial_preview_powered_.store(on, std::memory_order_relaxed);
     dj_.power(on);
 	if (on)
 	{
