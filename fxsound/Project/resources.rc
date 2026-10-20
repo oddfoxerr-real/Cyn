@@ -18,9 +18,9 @@ BEGIN
       VALUE "CompanyName",  "FxSound LLC\0"
       VALUE "LegalCopyright",  "Copyright (C) 2026 FxSound LLC\0"
       VALUE "FileDescription",  "Cyn Personal Audio\0"
-      VALUE "FileVersion",  "2.0.75.0\0"
+      VALUE "FileVersion",  "2.0.76.0\0"
       VALUE "ProductName",  "Cyn\0"
-      VALUE "ProductVersion",  "2.0.75.0\0"
+      VALUE "ProductVersion",  "2.0.76.0\0"
     END
   END
 
