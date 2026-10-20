@@ -79,8 +79,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/android
-          git archive --format=zip --output=dist/android/Cyn-Studio-Android-0.2.15-Source.zip HEAD android
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/android/Cyn-Studio-Android-0.2.15-preview-unsigned.apk
+          git archive --format=zip --output=dist/android/Cyn-Studio-Android-0.2.16-Source.zip HEAD android
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/android/Cyn-Studio-Android-0.2.16-preview-unsigned.apk
       - name: Sign using existing registered CYN Studio certificate
         shell: bash
         env:
@@ -95,21 +95,21 @@ jobs:
           keyfile="$RUNNER_TEMP/cyn-studio.jks"
           trap 'rm -f "$keyfile"' EXIT
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keyfile"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$keyfile" --ks-key-alias cyn-studio --ks-pass env:CYN_KEY_PASSWORD --key-pass env:CYN_KEY_PASSWORD --out dist/android/Cyn-Studio-Android-0.2.15-preview.apk dist/android/Cyn-Studio-Android-0.2.15-preview-unsigned.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/android/Cyn-Studio-Android-0.2.15-preview.apk > "$RUNNER_TEMP/cyn-apex10m-cert.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$keyfile" --ks-key-alias cyn-studio --ks-pass env:CYN_KEY_PASSWORD --key-pass env:CYN_KEY_PASSWORD --out dist/android/Cyn-Studio-Android-0.2.16-preview.apk dist/android/Cyn-Studio-Android-0.2.16-preview-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/android/Cyn-Studio-Android-0.2.16-preview.apk > "$RUNNER_TEMP/cyn-apex10m-cert.txt"
           grep -F 'certificate SHA-256 digest: 045d9c122b2158d569c0ef8d10bbb08496a9f19e7397b702e99e9330c780bcb7' "$RUNNER_TEMP/cyn-apex10m-cert.txt"
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 dist/android/Cyn-Studio-Android-0.2.15-preview.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.15-preview.apk > "$RUNNER_TEMP/cyn-apex10m-package.txt"
-          grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='19' versionName='0.2.15-preview'" "$RUNNER_TEMP/cyn-apex10m-package.txt"
-          (cd dist/android && sha256sum Cyn-Studio-Android-0.2.15-preview.apk > Cyn-Studio-Android-0.2.15-preview.apk.sha256)
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 dist/android/Cyn-Studio-Android-0.2.16-preview.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.16-preview.apk > "$RUNNER_TEMP/cyn-apex10m-package.txt"
+          grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='20' versionName='0.2.16-preview'" "$RUNNER_TEMP/cyn-apex10m-package.txt"
+          (cd dist/android && sha256sum Cyn-Studio-Android-0.2.16-preview.apk > Cyn-Studio-Android-0.2.16-preview.apk.sha256)
       - name: Upload verified experimental Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: CYN-Android-APEX10M-Experimental-v0.2.15
+          name: CYN-Android-APEX10M-Experimental-v0.2.16
           path: |
-            dist/android/Cyn-Studio-Android-0.2.15-preview.apk
-            dist/android/Cyn-Studio-Android-0.2.15-preview.apk.sha256
-            dist/android/Cyn-Studio-Android-0.2.15-Source.zip
+            dist/android/Cyn-Studio-Android-0.2.16-preview.apk
+            dist/android/Cyn-Studio-Android-0.2.16-preview.apk.sha256
+            dist/android/Cyn-Studio-Android-0.2.16-Source.zip
           retention-days: 30
       - name: Publish experimental Android prerelease only
         shell: bash
@@ -117,15 +117,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag=android-studio-v0.2.15-preview
+          tag=android-studio-v0.2.16-preview
           if gh release view "$tag" >/dev/null 2>&1; then
             echo 'Release tag already exists; refuse to replace binaries'
             exit 1
           fi
           gh release create "$tag" --target "$GITHUB_SHA" \
-            --title 'CYN Studio Android 0.2.15 · APEX 10M Spatial Experimental' \
+            --title 'CYN Studio Android 0.2.16 · APEX 10M Spatial Experimental' \
             --notes-file android/APEX10M_SPATIAL_PREVIEW_NOTES.md \
             --prerelease --latest=false \
-            dist/android/Cyn-Studio-Android-0.2.15-preview.apk \
-            dist/android/Cyn-Studio-Android-0.2.15-preview.apk.sha256 \
-            dist/android/Cyn-Studio-Android-0.2.15-Source.zip
+            dist/android/Cyn-Studio-Android-0.2.16-preview.apk \
+            dist/android/Cyn-Studio-Android-0.2.16-preview.apk.sha256 \
+            dist/android/Cyn-Studio-Android-0.2.16-Source.zip
