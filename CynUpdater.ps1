@@ -68,6 +68,30 @@ $progressText=$window.FindName('ProgressText')
 $percentText=$window.FindName('PercentText')
 $actionButton=$window.FindName('ActionButton')
 $laterButton=$window.FindName('LaterButton')
+$currentVersionText=$window.FindName('CurrentVersionText')
+$latestVersionText=$window.FindName('LatestVersionText')
+$dragSurface=$window.FindName('DragSurface')
+$progressSteps=@('StepCheck','StepDownload','StepVerify','StepInstall') |
+    ForEach-Object { $window.FindName($_) }
+$script:activeStepBrush=New-Object Windows.Media.SolidColorBrush (
+    [Windows.Media.ColorConverter]::ConvertFromString('#31565A'))
+$script:inactiveStepBrush=New-Object Windows.Media.SolidColorBrush (
+    [Windows.Media.ColorConverter]::ConvertFromString('#273846'))
+$currentVersionText.Text='v'+$CurrentVersion
+$dragSurface.Add_MouseLeftButtonDown({
+    if ($_.LeftButton -eq [Windows.Input.MouseButtonState]::Pressed) {
+        $window.DragMove()
+    }
+})
+function Set-StageIndex([int]$index) {
+    for($i=0;$i -lt $progressSteps.Count;$i++) {
+        $progressSteps[$i].Background=if($i -eq $index) {
+            $script:activeStepBrush
+        } else {
+            $script:inactiveStepBrush
+        }
+    }
+}
 
 $cache=Join-Path $env:LOCALAPPDATA 'Cyn\Updates'
 New-Item -ItemType Directory -Path $cache -Force | Out-Null
@@ -95,6 +119,8 @@ function Update-Label([string]$title,[string]$detail) {
 }
 function Show-Error([string]$message) {
     $script:phase='error'
+    $downloadProgress.IsIndeterminate=$false
+    $progressText.Text='Update could not be completed'
     Update-Label 'Update interrupted' $message
     $actionButton.Content='Close'
     $actionButton.IsEnabled=$true
@@ -105,6 +131,10 @@ function Show-Ready([string]$version,[string]$path) {
     $script:newVersion=$version
     $script:installerPath=$path
     Update-Label 'Ready to install' ("Cyn "+$version+" downloaded and verified.")
+    $latestVersionText.Text='v'+$version
+    $downloadProgress.IsIndeterminate=$false
+    $downloadProgress.Value=100
+    Set-StageIndex 3
     $actionButton.Content='Install & restart'
     $actionButton.IsEnabled=$true
     $laterButton.Visibility='Visible'
@@ -127,21 +157,10 @@ function Defer-CurrentUpdate {
     }
 }
 function Spark-Reveal {
-    $samples=@(
-        @('ParticleA','X',-146),@('ParticleB','Y',128),
-        @('ParticleC','X',170),@('ParticleD','Y',-118)
-    )
-    foreach($sample in $samples) {
-        $target=$window.FindName($sample[0])
-        if ($null -eq $target) { continue }
-        $property=if($sample[1] -eq 'X'){[Windows.Media.TranslateTransform]::XProperty}else{[Windows.Media.TranslateTransform]::YProperty}
-        $animation=New-Object Windows.Media.Animation.DoubleAnimation
-        $animation.From=0.0
-        $animation.To=[double]$sample[2]
-        $animation.Duration=[Windows.Duration]::new([TimeSpan]::FromMilliseconds(950))
-        $animation.FillBehavior=[Windows.Media.Animation.FillBehavior]::HoldEnd
-        $target.BeginAnimation($property,$animation)
-    }
+    # The last step is a genuine completed installer, not a simulated animation.
+    Set-StageIndex 3
+    $downloadProgress.IsIndeterminate=$false
+    $downloadProgress.Value=100
 }
 
 $actionButton.Add_Click({
@@ -151,6 +170,7 @@ $actionButton.Add_Click({
         $script:exitRequestedAt=[datetime]::UtcNow
         $actionButton.IsEnabled=$false
         $laterButton.Visibility='Collapsed'
+        Set-StageIndex 3
         Update-Label 'Preparing installation' 'Safely saving audio settings and closing Cyn...'
         $cyn=Join-Path $PSScriptRoot 'Cyn.exe'
         if (Test-Path -LiteralPath $cyn) {
@@ -191,6 +211,8 @@ $clock.Add_Tick({
             try {
                 $script:installProcess=Start-Process -FilePath $script:installerPath -Verb RunAs -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -PassThru
                 $script:phase='installing'
+                Set-StageIndex 3
+                $downloadProgress.IsIndeterminate=$true
                 Update-Label 'Installing Cyn' 'Windows is applying the verified update...'
                 $progressText.Text='Installation in progress'
                 $percentText.Text=''
@@ -232,10 +254,15 @@ $clock.Add_Tick({
             $phase=[string]$data.phase
             $detail=[string]$data.message
             if ($phase -eq 'checking') {
+                Set-StageIndex 0
+                $downloadProgress.IsIndeterminate=$true
                 Update-Label 'Checking for updates' $detail
                 $progressText.Text='Contacting GitHub'
             } elseif ($phase -eq 'downloading') {
                 $script:phase='downloading'
+                Set-StageIndex 1
+                $downloadProgress.IsIndeterminate=$false
+                if([string]$data.version) { $latestVersionText.Text='v'+[string]$data.version }
                 Update-Label 'Downloading update' $detail
                 $pct=[int]$data.percent
                 $downloadProgress.Value=$pct
@@ -247,13 +274,18 @@ $clock.Add_Tick({
                 } else { $progressText.Text='Receiving installer bytes...' }
             } elseif ($phase -eq 'verifying') {
                 $script:phase='verifying'
+                Set-StageIndex 2
+                $downloadProgress.IsIndeterminate=$true
+                if([string]$data.version) { $latestVersionText.Text='v'+[string]$data.version }
                 Update-Label 'Verifying update' 'Checking the downloaded SHA-256 hash...'
-                $downloadProgress.Value=100
                 $progressText.Text='Integrity check'
             } elseif ($phase -eq 'ready') {
                 Show-Ready ([string]$data.version) ([string]$data.installer)
             } elseif ($phase -eq 'current') {
                 $script:phase='current'
+                Set-StageIndex 0
+                $downloadProgress.IsIndeterminate=$false
+                $latestVersionText.Text='Up to date'
                 Update-Label 'Already up to date' $detail
                 $progressText.Text='No update required'
                 $actionButton.Content='Close'
