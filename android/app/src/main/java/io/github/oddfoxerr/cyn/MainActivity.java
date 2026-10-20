@@ -38,9 +38,9 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         @Override public void onServiceConnected(ComponentName name,IBinder binder){service=((AudioService.LocalBinder)binder).service();build(false);processControlIntent(getIntent());}
         @Override public void onServiceDisconnected(ComponentName name){service=null;build(false);}
     };
-    @Override public void onCreate(Bundle state){super.onCreate(state);ui=getSharedPreferences("ui",0);if(state!=null){page=state.getInt("page",0);query=state.getString("query","");onlyFavorites=state.getBoolean("favorites");}if(getIntent().getBooleanExtra("updates",false))page=3;build(false);bound=bindService(new Intent(this,AudioService.class),connection,BIND_AUTO_CREATE);UpdateManager.schedule(this);UpdateManager.check(this,false,null);}
+    @Override public void onCreate(Bundle state){super.onCreate(state);ui=getSharedPreferences("ui",0);if(state!=null){page=state.getInt("page",0);query=state.getString("query","");onlyFavorites=state.getBoolean("favorites");}if(getIntent().getBooleanExtra("updates",false))page=4;build(false);bound=bindService(new Intent(this,AudioService.class),connection,BIND_AUTO_CREATE);UpdateManager.schedule(this);UpdateManager.check(this,false,null);}
     @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);state.putInt("page",page);state.putString("query",query);state.putBoolean("favorites",onlyFavorites);}
-    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);if(i.getBooleanExtra("updates",false)){page=3;build(false);}processControlIntent(i);}
+    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);if(i.getBooleanExtra("updates",false)){page=4;build(false);}processControlIntent(i);}
     void processControlIntent(Intent i){if(service!=null&&AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL.equals(i.getAction())){notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("session",i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1)));i.setAction(null);page=0;build(false);offerLiveVisuals();}}
     String asset(String name)throws IOException{try(InputStream in=getAssets().open(name)){return Streams.text(in);}}
     int dp(float v){return Math.round(v*getResources().getDisplayMetrics().density);}
@@ -146,14 +146,14 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             nav.setItemActiveIndicatorHeight(dp(32));
             // Build the menu once: clearing a live menu during a selection callback
             // can uncheck the destination before Material finishes dispatching it.
-            String[] navigationTitles={"Studio","AI","Library","Style"};
+            String[] navigationTitles={"Studio","AI","Library","Style","Updates"};
             int[] navigationIcons={R.drawable.ic_cyn_studio,R.drawable.ic_cyn_ai,
-                    R.drawable.ic_cyn_library,R.drawable.ic_cyn_style};
+                    R.drawable.ic_cyn_library,R.drawable.ic_cyn_style,R.drawable.ic_cyn_updates};
             for(int i=0;i<navigationTitles.length;i++)
                 nav.getMenu().add(0,i,i,navigationTitles[i]).setIcon(navigationIcons[i]);
             nav.setOnItemSelectedListener(item->{
                 int target=item.getItemId();
-                if(target<0||target>=4)return false;
+                if(target<0||target>=5)return false;
                 if(page!=target){
                     page=target;
                     // Let BottomNavigationView finish selecting the item before
@@ -168,7 +168,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         }
         getWindow().setStatusBarColor(bg);getWindow().setNavigationBarColor(bg);
         ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(bg);scroll.setFillViewport(true);scroll.setClipToPadding(false);content=column();int side=getResources().getConfiguration().screenWidthDp>=700?60:18;content.setPadding(dp(side),dp(12),dp(side),dp(24));scroll.addView(content);
-        if(service==null)add(content,label("Connecting to your sound…",20,text));else if(page==0)music();else if(page==1)learning();else if(page==2)files();else appearance();
+        if(service==null)add(content,label("Connecting to your sound…",20,text));else if(page==0)music();else if(page==1)learning();else if(page==2)files();else if(page==3)appearance();else updatesPage();
         pages.change(scroll,transition&&!reduced,
             ui.getInt("page_transition",0),accent,ui.getInt("transition_speed",100));
         // Reuse the stable Material menu: just update palette and selection.
@@ -479,6 +479,10 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         toggle(controls,"Reduce motion",ui.getBoolean("reduce",false),on->{
             ui.edit().putBoolean("reduce",on).apply();reduced=on;build();
         });
+    }
+    void updatesPage(){
+        add(content,label("Updates & about",29,text));
+        add(content,label("Version management stays in Updates, separate from Theme Studio.",13,hint));
         LinearLayout updates=section("Updates","Version "+BuildConfig.VERSION_NAME+" · build "+BuildConfig.VERSION_CODE);
         toggle(updates,"Automatic updates · check and download on Wi-Fi",UpdateManager.automatic(this),on->{
             UpdateManager.automatic(this,on);
