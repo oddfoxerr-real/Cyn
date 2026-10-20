@@ -1,3 +1,12 @@
+# CYN Studio v0.2.8-preview — Material 3 Redesign
+
+- Rebuilds CYN Mobile's shared UI on Google's Material 3 Android components: **MaterialButton**, **MaterialCardView**, **MaterialSwitch**, and **MaterialAlertDialogBuilder**, with a Material 3 DayNight base theme.
+- Modern compact bottom navigation with four original vector icons, tonal selection, and matching labels for Studio, AI, Library and Style.
+- Larger rounded cards, tonal surfaces, tactile elevated-looking action buttons, ergonomic switch rows and roomy touch targets. The main Connect CYN and Update CYN actions use a distinct primary filled button.
+- Four **fixed CYN palettes** remain selectable. **No wallpaper-driven or dynamic colors**, location services or wallpaper permissions.
+- Preserves CYN's real audio controls, draggable fox sliders, AI baseline rings, native library, liquid page transition, local models, update flow and source/license notices.
+- Reduces motion if the user's Reduce motion preference is on, and keeps screen-state navigation and ongoing playback unchanged.
+
 # CYN Studio v0.2.7-preview — Fox Sliders & FxSound Credits
 
 - A stylized small vector fox rides every manual and AI-controlled slider thumb, including Bass, Vocal clarity, Space & Dynamics, all 31/35/39-band EQ sliders, and AI sensitivity. The fox bounces and wags its tail when actual slider positions move; it never fabricates AI activity or changes sound values.
