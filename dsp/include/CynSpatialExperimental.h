@@ -5,6 +5,7 @@
 // Safe for no-allocation real-time float PCM processing after FxSound DSP.
 #include <algorithm>
 #include <cmath>
+#include <atomic>
 
 class CynSpatialExperimental final {
 public:
@@ -24,11 +25,15 @@ public:
         previousSide_ = previousHigh_ = 0.0f;
         leftPower_ = rightPower_ = cross_ = midPower_ = sidePower_ = 0.0f;
         amount_ = 0.0f;
+        measured_ = 0.0f;
+        activity_.store(0.0f,std::memory_order_relaxed);
     }
+    float activity() const noexcept { return activity_.load(std::memory_order_relaxed); }
     void process(float* pcm, int frames, float desiredStrength) noexcept {
         if (!valid_ || !pcm || frames <= 0) return;
         const float strength = std::isfinite(desiredStrength)
             ? clampSample(desiredStrength, 0.0f, 1.0f) : 0.0f;
+        if(strength==0.0f){activity_.store(0.0f,std::memory_order_relaxed);return;}
         for (int i = 0; i < frames; ++i) {
             float& left = pcm[i * 2], &right = pcm[i * 2 + 1];
             if (!std::isfinite(left) || !std::isfinite(right)) continue;
@@ -54,6 +59,8 @@ public:
             const float alreadyWide = clampSample(1.25f - 0.5f * sideToMid, 0.0f, 1.0f);
             amount_ += smoothing_ * (0.20f * strength * coherence * alreadyWide - amount_);
             const float extraSide = unsafePhase ? 0.0f : amount_ * previousHigh_;
+            const float actual=clampSample(std::fabs(extraSide)*24.0f,0.0f,1.0f);
+            measured_+=(actual-measured_)*0.0008f;
             if (std::fabs(extraSide) < 1.0e-9f) continue; // exact DSP bypass
             // Downstream safeguard: gain-reduce both channels together only
             // when our incremental stereo signal would push output above 0.999.
@@ -67,8 +74,11 @@ public:
             }
             left = a; right = b;
         }
+        activity_.store(measured_,std::memory_order_relaxed);
     }
 private:
+    std::atomic<float> activity_{0.0f};
+    float measured_=0.0f;
     bool valid_ = false;
     float highpass_ = 0.97f, smoothing_ = 0.002f;
     float previousSide_ = 0.0f, previousHigh_ = 0.0f;
