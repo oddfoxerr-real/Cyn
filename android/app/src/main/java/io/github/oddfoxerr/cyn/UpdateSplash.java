@@ -228,7 +228,7 @@ final class UpdateSplash {
                 int active=visibleStage==UpdateManager.DOWNLOADING?1:
                     visibleStage==UpdateManager.VERIFYING?2:
                     visibleStage==UpdateManager.READY?3:
-                    visibleStage==UpdateManager.UP_TO_DATE?3:0;
+                    visibleStage==UpdateManager.UP_TO_DATE?0:0;
                 for(int i=0;i<checkpoints.length;i++){
                     TextView chip=checkpoints[i];
                     boolean selected=i==active;
@@ -243,12 +243,12 @@ final class UpdateSplash {
                     bar.setIndeterminate(true);
                 }else{
                     bar.setIndeterminate(false);
-                    bar.setProgressCompat(visibleStage==UpdateManager.READY||visibleStage==UpdateManager.UP_TO_DATE?100:
+                    bar.setProgressCompat(visibleStage==UpdateManager.READY?100:
                         visibleStage==UpdateManager.DOWNLOADING?Math.max(0,Math.min(100,progress)):0,false);
                 }
                 percent.setText(visibleStage==UpdateManager.DOWNLOADING&&progress>=0?
                     Math.min(100,progress)+"%":
-                    visibleStage==UpdateManager.READY||visibleStage==UpdateManager.UP_TO_DATE?"100%":"");
+                    visibleStage==UpdateManager.READY?"100%":"");
                 detail.setText(visibleStage==UpdateManager.READY?"Verified · ready to install":
                     visibleStage==UpdateManager.VERIFYING?"Authenticating update":
                     visibleStage==UpdateManager.DOWNLOADING?"Receiving APK":
