@@ -18,7 +18,7 @@ permissions:
 
 concurrency:
   group: cyn-windows-native-apex10m-experimental
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   windows:
