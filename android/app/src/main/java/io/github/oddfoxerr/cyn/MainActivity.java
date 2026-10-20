@@ -102,7 +102,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 button(titles[i],()->{if(page!=target){page=target;build(true);}});
             int foreground=selected?accent:hint;
             b.setTextSize(11);b.setTextColor(foreground);b.setSelected(selected);
-            b.setIcon(getDrawable(icons[i]));b.setIconTintList(ColorStateList.valueOf(foreground));
+            b.setIcon(getDrawable(icons[i]));b.setIconTint(ColorStateList.valueOf(foreground));
             b.setIconSize(dp(20));b.setIconPadding(dp(4));
             b.setIconGravity(com.google.android.material.button.MaterialButton.ICON_GRAVITY_TEXT_TOP);
             b.setCornerRadius(dp(24));
