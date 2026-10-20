@@ -37,6 +37,12 @@ int main() {
         assert(std::fabs((audio[n*2]+audio[n*2+1])-(reference[n*2]+reference[n*2+1]))<1e-5f);
         delta+=std::fabs(audio[n*2]-reference[n*2]);
     }
+    assert(spatial.activity()>0.0f && spatial.activity()<=1.0f &&
+        "3D scan must use actual processed stereo output");
+    assert(bypass.activity()==0.0f && monoStage.activity()==0.0f &&
+        "Inactive or mono audio must not report neural-like activity");
+    assert(antiphaseStage.activity()<1.0e-4f &&
+        "Anti-phase guard must also gate scan output");
     assert(delta>1 && "Stereo enhancement did not affect existing high-frequency side detail");
     CynSpatialExperimental unsupported; unsupported.setFormat(16,2,48000);
     audio=reference; unsupported.process(audio.data(),frames,1.0f);assert(audio==reference);
