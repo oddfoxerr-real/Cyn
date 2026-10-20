@@ -1,14 +1,23 @@
-## Theme Studio + spatial scan — 0.2.15
+## Theme Studio + spatial scan — 0.2.16
 
 - Eleven distinct Material-inspired palettes across CYN Mobile (not just accent changes).
 - Five actual page-reveal animations: Liquid ripple, Material fade, Horizontal glide, Iris reveal and Prism sweep, plus Instant.
 - Relaxed/Balanced/Snappy page-transition speed presets.
 - Material ripple, soft press, floating lift and elastic button interactions.
 - Reduce Motion respects user preference and Android system animator settings.
-- APEX 10M AI Hub now contains a rotating projected 3D brain scan that responds **only to measured spatial DSP output** and pauses during silence, bypass or disabled playback.
+- APEX 10M AI Hub now contains an illuminated projected 3D brain-style scan: static illustrative lights stay visible, while moving pulses respond **only to measured spatial DSP output**.
 - The extra APEX 10M neural reasoning head remains **untrained and inactive**. The scan does not claim to show its neural activations.
 
-# CYN Studio Android 0.2.15 preview — APEX 10M Spatial Experiment
+## Brain scan visibility fix — v0.2.16
+
+- Visible neuron-like nodes, connection paths and small static lights even in standby, rather than an almost empty spinning wireframe.
+- 3D perspective layers with foreground and background brightness, color accents and soft node halos.
+- Audio-driven highlight pulses travelling along the spatial lattice, a stereo-activity scan line and clearer LIVE/STANDBY labelling.
+- The lattice and stationary lights are **illustrative only**. Moving pulses and extra illumination depend on **measured native stereo DSP output**, never simulated AI inference.
+- Lightweight Android Canvas renderer with preallocated 3D projection buffers, no cloud calls or extra model weights.
+- Keeps existing 11 themes, page transitions, AI-only category placement and separate Updates section.
+
+# CYN Studio Android 0.2.16 preview — APEX 10M Spatial Experiment
 
 This Android prerelease adds an optional APEX 10M experimental stereo spatial
 processing mode to the **native PCM audio path for music played inside CYN's
@@ -54,7 +63,7 @@ persist locally on-device.
 
 ## Install and compatibility
 APK uses the existing `io.github.oddfoxerr.cyn.studio` identity,
-Android versionCode 19 and versionName 0.2.14-preview. A verified match
+Android versionCode 20 and versionName 0.2.16-preview. A verified match
 to the existing CYN Studio signing certificate is required before publishing.
 The APK is released with a SHA-256 checksum and source archive.
 
