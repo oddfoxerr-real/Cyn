@@ -1,11 +1,17 @@
-# CYN Studio Android 0.2.13 preview — APEX 10M Spatial Experiment
+# CYN Studio Android 0.2.14 preview — APEX 10M Spatial Experiment
 
 This Android prerelease adds an optional APEX 10M experimental stereo spatial
 processing mode to the **native PCM audio path for music played inside CYN's
 library**. The same experimental spatial concept is available for Windows via
 the separate APEX 10M desktop spatial WAV preview release.
 
-## Fixed in 0.2.13
+## Update Center redesign in 0.2.14
+- Material 3-inspired update screen matching the active CYN theme.
+- Installed/available versions, step-by-step update status, exact download percentages, clear retry/ready states.
+- One primary update action, signed APK verification, and Android-owned install confirmation.
+- No fabricated progress: checking and verification are indeterminate; data transfer progress uses real bytes.
+
+## Fixed in 0.2.14
 - APEX 10M now appears in **AI Hub** alongside Base AI and APEX 6M, rather than as a misplaced Sound Studio toggle.
 - One primary AI can be selected at a time using a radio group. Legacy independent toggles are migrated safely, preferring the experimental spatial profile if both were previously enabled.
 - Changing to Base AI or APEX 6M immediately disables APEX 10M processing.
@@ -38,7 +44,7 @@ persist locally on-device.
 
 ## Install and compatibility
 APK uses the existing `io.github.oddfoxerr.cyn.studio` identity,
-Android versionCode 17 and versionName 0.2.13-preview. A verified match
+Android versionCode 18 and versionName 0.2.14-preview. A verified match
 to the existing CYN Studio signing certificate is required before publishing.
 The APK is released with a SHA-256 checksum and source archive.
 
