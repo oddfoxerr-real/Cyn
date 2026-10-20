@@ -401,15 +401,15 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         slider(engine,"Sensitivity",service.sensitivity*100,0,100,"%",v->{service.sensitivity=v/100;service.changed();});
         liveStatus=label("",13,accent);add(engine,liveStatus);
         if(AiSelection.APEX_10M.equals(service.aiProfile)){
-            LinearLayout network=section("APEX 10M • Spatial brain scan",
-                "A rotating 3D-style scan of measured native stereo processing. The neural 10M reasoning head remains untrained and inactive.");
+            LinearLayout network=section("APEX 10M • Neural-style network mesh",
+                "A holographic brain-shaped network with connected nodes and neon activity bursts. The neural 10M reasoning head remains untrained and inactive.");
             brainScan=new ApexSpatialBrainView(this,new ApexSpatialBrainView.Signal(){
                 @Override public float activity(){return service==null?0f:service.apexSpatialActivity();}
                 @Override public boolean enabled(){return service!=null&&service.playing&&service.enabled&&service.smart&&service.spatialPreviewEnabled;}
                 @Override public boolean reduced(){return reduced;}
             },accent,secondary);
-            network.addView(brainScan,new LinearLayout.LayoutParams(-1,dp(265)));
-            add(network,label("Visible nodes and pathways form a 3D-style illustrative brain. Brighter pulses reflect measured stereo DSP activity; the untrained 10M neural model is not running.",12,hint));
+            network.addView(brainScan,new LinearLayout.LayoutParams(-1,dp(334)));
+            add(network,label("Each activity burst lights up a different neon-coloured route through the branching mesh. Pulse timing follows live spatial DSP output, not invented AI thoughts.",12,hint));
         }else{
             LinearLayout network=section("Personal neural activity","Measured activations from your preference model.");
             neural=new NeuralView();
