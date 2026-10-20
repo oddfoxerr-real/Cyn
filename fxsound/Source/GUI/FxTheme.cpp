@@ -618,6 +618,12 @@ void FxTheme::setThemeMode(FxThemeMode theme_mode)
         case FxThemeMode::JadeCircuit:
         case FxThemeMode::SolarInk:
         case FxThemeMode::PolarMist:
+        case FxThemeMode::Obsidian:
+        case FxThemeMode::Emerald:
+        case FxThemeMode::DeepSea:
+        case FxThemeMode::NeonTokyo:
+        case FxThemeMode::Synthwave:
+        case FxThemeMode::Sakura:
             theme_mode_=theme_mode; break;
         default: theme_mode_=FxThemeMode::DarkMesh; break;
     }
