@@ -233,7 +233,7 @@ public:
 		file_logger_->logMessage(message);
 	}
 
-    bool isApex10MSpatialEnabled() { return settings_.getBool("cyn_apex10m_spatial_preview",false); }
+    bool isApex10MSpatialEnabled() { return smart_mode_==0 && getActiveAIProfileId()=="apex10m"; }
     int getApex10MSpatialStrength() { return jlimit(0,100,settings_.getInt("cyn_apex10m_spatial_strength",40)); }
     void setApex10MSpatialEnabled(bool on);
     void setApex10MSpatialStrength(int percent);
