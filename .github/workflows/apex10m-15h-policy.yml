@@ -1,0 +1,195 @@
+name: APEX 10M 15h Real Spatial Policy Training
+
+on:
+  push:
+    branches: [feature/apex10m-15h-training]
+    paths:
+      - 'apex_engine/train_apex10m_policy.py'
+      - 'apex_engine/APEX10M_15H_TRAINING.md'
+      - 'scripts/run_apex10m_stage.sh'
+      - 'tests/test_apex10m_training.py'
+      - '.github/workflows/apex10m-15h-policy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apex10m-15hour-compute
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU PyTorch
+        run: python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+      - name: Verify gradients and checkpoint resume
+        run: python -m unittest discover -s tests -p 'test_apex10m_training.py' -v
+      - name: Run genuine gradient-training preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          python apex_engine/train_apex10m_policy.py --target-total-seconds 6 --max-steps 3 --checkpoint /tmp/apex-preflight.pt --report /tmp/apex-preflight.json
+          python - <<'PY'
+          import json
+          info=json.load(open('/tmp/apex-preflight.json'))
+          assert info["real_gradient_updates"]>=3
+          assert info["measured_training_seconds"]>0
+          assert info["neural_playback_enabled"] is False
+          print('PASS real training, validation metrics and checkpoints')
+          PY
+      - name: Prepare isolated synthetic-only recovery release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! gh release view apex10m-spatial-policy-15h-synthetic-v1 >/dev/null 2>&1; then
+            gh release create apex10m-spatial-policy-15h-synthetic-v1 --target "$GITHUB_SHA" --prerelease --latest=false --title "APEX 10M Spatial Head — 15h Synthetic Training (NOT FOR PLAYBACK)" --notes-file apex_engine/APEX10M_15H_TRAINING.md
+          fi
+
+  train_1:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU PyTorch
+        run: python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+      - name: Resume real spatial-head training to cumulative 18000 seconds
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/run_apex10m_stage.sh 18000
+      - name: Preserve optimizer, model, RNG state and validation metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apex10m-training-stage-1
+          path: |
+            train-state/apex10m-policy.pt
+            train-state/apex10m-policy-metrics.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  train_2:
+    needs: train_1
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU PyTorch
+        run: python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+      - name: Recover successful preceding stage
+        uses: actions/download-artifact@v4
+        with:
+          name: apex10m-training-stage-1
+          path: train-state
+      - name: Resume real spatial-head training to cumulative 36000 seconds
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/run_apex10m_stage.sh 36000
+      - name: Preserve optimizer, model, RNG state and validation metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apex10m-training-stage-2
+          path: |
+            train-state/apex10m-policy.pt
+            train-state/apex10m-policy-metrics.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  train_3:
+    needs: train_2
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU PyTorch
+        run: python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+      - name: Recover successful preceding stage
+        uses: actions/download-artifact@v4
+        with:
+          name: apex10m-training-stage-2
+          path: train-state
+      - name: Resume real spatial-head training to cumulative 54000 seconds
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/run_apex10m_stage.sh 54000
+      - name: Preserve optimizer, model, RNG state and validation metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: apex10m-training-stage-3
+          path: |
+            train-state/apex10m-policy.pt
+            train-state/apex10m-policy-metrics.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  evaluate:
+    needs: train_3
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU PyTorch
+        run: python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+      - uses: actions/download-artifact@v4
+        with:
+          name: apex10m-training-stage-3
+          path: train-state
+      - name: Verify actual 15h compute and synthetic metrics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, torch, math
+          state=torch.load('train-state/apex10m-policy.pt',map_location='cpu',weights_only=True)
+          report=json.load(open('train-state/apex10m-policy-metrics.json'))
+          assert state['training_seconds']>=54000, 'Training must really reach 15h'
+          assert state['steps']>0 and state['synthetic_only']
+          assert not state['live_playback_approved']
+          assert not report['quality_validated_on_real_audio']
+          for name,v in state['validation'].items():
+              assert math.isfinite(v) and 0<=v<2, (name,v)
+          print(f"COMPLETED real gradient compute {state['training_seconds']/3600:.4f}h")
+          print(f"REAL OPTIMIZER UPDATES: {state['steps']}")
+          print('SYNTHETIC BOOTSTRAP. Real music listening and safety tests still required.')
+          PY
+      - name: Publish synthetic-only metrics without enabling playback
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release upload apex10m-spatial-policy-15h-synthetic-v1 train-state/apex10m-policy-metrics.json --clobber
+      - name: Preserve experimental review checkpoint
+        uses: actions/upload-artifact@v4
+        with:
+          name: apex10m-15hour-spatial-policy-review
+          path: |
+            train-state/apex10m-policy.pt
+            train-state/apex10m-policy-metrics.json
+          retention-days: 90
