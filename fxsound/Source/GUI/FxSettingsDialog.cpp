@@ -212,23 +212,6 @@ FxSettingsDialog::AudioSettingsPane::AudioSettingsPane() :
 	prioritize_new_output_toggle_.setToggleState(FxController::getInstance().isNewOutputPrioritized(), NotificationType::dontSendNotification);
 	prioritize_new_output_toggle_.onClick = [this]() { FxController::getInstance().setNewOutputPrioritized(prioritize_new_output_toggle_.getToggleState()); };
 
-    auto& apexController=FxController::getInstance();
-    apex10m_spatial_toggle_.setToggleState(apexController.isApex10MSpatialEnabled(),NotificationType::dontSendNotification);
-    apex10m_spatial_toggle_.setMouseCursor(MouseCursor::PointingHandCursor);
-    apex10m_spatial_toggle_.setColour(ToggleButton::textColourId,getLookAndFeel().findColour(TextButton::textColourOnId));
-    apex10m_spatial_toggle_.setWantsKeyboardFocus(true);
-    apex10m_spatial_toggle_.onClick=[this](){FxController::getInstance().setApex10MSpatialEnabled(apex10m_spatial_toggle_.getToggleState());};
-    apex10m_spatial_strength_.setSliderStyle(Slider::LinearHorizontal);
-    apex10m_spatial_strength_.setTextBoxStyle(Slider::TextBoxRight,false,55,22);
-    apex10m_spatial_strength_.setRange(0.0,100.0,1.0);
-    apex10m_spatial_strength_.setValue(apexController.getApex10MSpatialStrength(),NotificationType::dontSendNotification);
-    apex10m_spatial_strength_.setTooltip("Experimental stereo-side ambience intensity (0 to 100 percent)");
-    apex10m_spatial_strength_.onValueChange=[this](){FxController::getInstance().setApex10MSpatialStrength(static_cast<int>(apex10m_spatial_strength_.getValue()));};
-    apex10m_spatial_hint_.setText("DSP preview only · 10M neural weights untrained",NotificationType::dontSendNotification);
-    apex10m_spatial_hint_.setJustificationType(Justification::centredLeft);
-    apex10m_spatial_hint_.setColour(Label::textColourId,getLookAndFeel().findColour(TextButton::textColourOnId).withAlpha(0.72f));
-    apex10m_spatial_hint_.setFont(Font(11.0f));
-
 	auto preset_modified = false;
 	auto preset_count = FxModel::getModel().getPresetCount();
 	for (auto i = 0; i < preset_count; i++)
@@ -253,9 +236,6 @@ FxSettingsDialog::AudioSettingsPane::AudioSettingsPane() :
 	addAndMakeVisible(&output_preference_title_);
 	addAndMakeVisible(&output_preference_);
 	addAndMakeVisible(&prioritize_new_output_toggle_);
-    addAndMakeVisible(&apex10m_spatial_toggle_);
-    addAndMakeVisible(&apex10m_spatial_strength_);
-    addAndMakeVisible(&apex10m_spatial_hint_);
 	addAndMakeVisible(&reset_presets_button_);
 }
 
@@ -282,14 +262,8 @@ void FxSettingsDialog::AudioSettingsPane::resized()
 	auto group_height = prioritize_new_output_toggle_.getBottom() - group_y + GROUP_MARGIN;
 	output_preference_bounds_ = juce::Rectangle<float>(group_x, group_y, group_width, group_height);
 
-    y = prioritize_new_output_toggle_.getBottom() + 6;
-    apex10m_spatial_toggle_.setBounds(X_MARGIN,y,width,TOGGLE_BUTTON_HEIGHT);
-    y = apex10m_spatial_toggle_.getBottom();
-    apex10m_spatial_strength_.setBounds(X_MARGIN,y,width,29);
-    y = apex10m_spatial_strength_.getBottom();
-    apex10m_spatial_hint_.setBounds(X_MARGIN,y,width,17);
-    y = apex10m_spatial_hint_.getBottom()+4;
-    resizeResetButton(X_MARGIN,y);
+	y = prioritize_new_output_toggle_.getBottom() + 30;
+	resizeResetButton(X_MARGIN, y);
 }
 
 void FxSettingsDialog::AudioSettingsPane::paint(Graphics& g)
@@ -314,7 +288,6 @@ void FxSettingsDialog::AudioSettingsPane::setText()
 	output_preference_title_.setText(TRANS("Output Device Preference"), NotificationType::dontSendNotification);
 
 	prioritize_new_output_toggle_.setButtonText(TRANS("Prioritize new output devices"));
-    apex10m_spatial_toggle_.setButtonText("APEX 10M spatial (EXPERIMENTAL)");
 
 	reset_presets_button_.setButtonText(TRANS("Reset presets to factory defaults"));
 	resizeResetButton(reset_presets_button_.getX(), reset_presets_button_.getY());
