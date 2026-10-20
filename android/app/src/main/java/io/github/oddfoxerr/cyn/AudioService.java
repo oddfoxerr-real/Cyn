@@ -162,6 +162,10 @@ public final class AudioService extends Service {
             :"Live audio spectrum · enable Smart Listening for neural activity";
         return "Waiting for playback measurements · "+visualError;
     }
+    float apexSpatialActivity(){
+        if(!playing||!enabled||!smart||!spatialPreviewEnabled||desktopAi==null||desktopAi.engine==0)return 0f;
+        return Math.max(0f,Math.min(1f,NativeEngine.spatialActivity(desktopAi.engine)));
+    }
     String processingStatus() {
         if(!enabled)return "Enhancement off · original sound";
         if(playing) {
