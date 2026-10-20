@@ -74,6 +74,7 @@ public:
     void getEqBandFrequencyRange(int band_num, float* min_freq, float* max_freq);
 	float getEqBandBoostCut(int band_num);
 	void setEqBandBoostCut(int band_num, float boost);
+    void setApex10MSpatialPreview(float strength);
 	void powerOn(bool on);
 	bool isPowerOn();
 	float getEffectValue(Effect effect);
