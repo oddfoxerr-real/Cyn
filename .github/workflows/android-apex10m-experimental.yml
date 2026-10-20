@@ -39,7 +39,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
+          # Large NDK downloads occasionally fail with a corrupt temporary ZIP.
+          # Retry the pinned artifacts; never silently switch toolchain versions.
+          installed=0
+          for attempt in 1 2 3; do
+            if sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'; then
+              installed=1
+              break
+            fi
+            echo "::warning::Android SDK installation attempt $attempt failed; retrying pinned NDK."
+            rm -rf "$ANDROID_HOME/.temp" "$ANDROID_HOME/ndk/27.2.12479018"
+            sleep $((attempt * 4))
+          done
+          test "$installed" -eq 1
           python -m pip install numpy==2.2.6 onnxruntime==1.23.2
           python android/scripts/prepare_models.py
       - name: Validate mobile PCM DSP and APEX spatial safeguards
