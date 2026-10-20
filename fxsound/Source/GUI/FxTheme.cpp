@@ -883,6 +883,8 @@ const char* FxTheme::getThemeName(int i)
         case FxThemeMode::Emerald: return "Emerald";
         case FxThemeMode::DeepSea: return "Deep Sea";
         case FxThemeMode::NeonTokyo: return "Neon Tokyo";
+        case FxThemeMode::Synthwave: return "Synthwave Rose";
+        case FxThemeMode::Sakura: return "Sakura Bloom";
         case FxThemeMode::CharcoalDesktop: return "Graphite";
         default: return "Dark Theme";
     }
