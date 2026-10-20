@@ -18,7 +18,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import org.json.*;
 
-public final class MainActivity extends Activity {
+public final class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     AudioService service;
     final Handler handler=new Handler(Looper.getMainLooper());
     final ExecutorService filesWorker=Executors.newSingleThreadExecutor();
@@ -30,7 +30,7 @@ public final class MainActivity extends Activity {
     final ArrayList<AiControlMarker> liveControlMarkers=new ArrayList<>();
     Timeline timeline;NeuralView neural;Spectrum spectrum;
     int page=0,feedbackEffect=4,visibleTracks=60;
-    int bg=0xff030509,card=0xff0c111c,text=0xffedf3ff,hint=0xffa4b3cc,accent=0xff83b8ff,secondary=0xffaa8fff,outline=0xff1b263b;
+    int bg=0xff090d14,card=0xff121b2b,text=0xffedf3ff,hint=0xffb9c7da,accent=0xff83b8ff,secondary=0xffaa8fff,outline=0xff2b3a50;
     boolean bound,seeking,reduced,libraryBusy,onlyFavorites;
     String query="";
     final ServiceConnection connection=new ServiceConnection(){
@@ -43,7 +43,7 @@ public final class MainActivity extends Activity {
     void processControlIntent(Intent i){if(service!=null&&AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL.equals(i.getAction())){notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("session",i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1)));i.setAction(null);page=0;build(false);offerLiveVisuals();}}
     String asset(String name)throws IOException{try(InputStream in=getAssets().open(name)){return Streams.text(in);}}
     int dp(float v){return Math.round(v*getResources().getDisplayMetrics().density);}
-    void palette(){reduced=ui.getBoolean("reduce",false)||!android.animation.ValueAnimator.areAnimatorsEnabled();int t=ui.getInt("studio_theme",0);int[][]colors={{0xff83b8ff,0xffaa8fff,0xff0c111c},{0xff65e4be,0xff7aa7ff,0xff071713},{0xffffad82,0xffea8da9,0xff190f10},{0xffc0a0ff,0xff86d9f3,0xff100d1b}};int[]c=colors[Math.floorMod(t,colors.length)];accent=c[0];secondary=c[1];card=c[2];}
+    void palette(){reduced=ui.getBoolean("reduce",false)||!android.animation.ValueAnimator.areAnimatorsEnabled();int t=ui.getInt("studio_theme",0);int[][]colors={{0xff83b8ff,0xffaa8fff,0xff0c111c},{0xff65e4be,0xff7aa7ff,0xff071713},{0xffffad82,0xffea8da9,0xff190f10},{0xffc0a0ff,0xff86d9f3,0xff100d1b}};int[]c=colors[Math.floorMod(t,colors.length)];accent=c[0];secondary=c[1];bg=0xff090d14;card=androidx.core.graphics.ColorUtils.blendARGB(bg,c[2],.87f);outline=androidx.core.graphics.ColorUtils.blendARGB(card,accent,.19f);}
     GradientDrawable shape(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));d.setStroke(dp(1),outline);return d;}
     GradientDrawable gradient(int radius){GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{androidx.core.graphics.ColorUtils.blendARGB(bg,accent,.22f),androidx.core.graphics.ColorUtils.blendARGB(bg,secondary,.22f)});d.setCornerRadius(dp(radius));return d;}
     TextView label(String value,int size,int color){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(color);t.setPadding(0,dp(4),0,dp(4));t.setFontFeatureSettings("kern");return t;}
@@ -51,26 +51,79 @@ public final class MainActivity extends Activity {
     LinearLayout row(){LinearLayout l=new LinearLayout(this);l.setGravity(Gravity.CENTER_VERTICAL);return l;}
     void add(LinearLayout parent,View v){parent.addView(v,new LinearLayout.LayoutParams(-1,-2));}
     void gap(LinearLayout l,int height){l.addView(new View(this),new LinearLayout.LayoutParams(1,dp(height)));}
-    TextView button(String title,Runnable action){TextView b=label(title,14,text);b.setGravity(Gravity.CENTER);b.setMinHeight(dp(48));b.setPadding(dp(12),dp(10),dp(12),dp(10));b.setBackground(new RippleDrawable(ColorStateList.valueOf(0x3383b8ff),shape(card,16),null));b.setFocusable(true);b.setClickable(true);b.setAccessibilityDelegate(new View.AccessibilityDelegate(){@Override public void onInitializeAccessibilityNodeInfo(View host,android.view.accessibility.AccessibilityNodeInfo info){super.onInitializeAccessibilityNodeInfo(host,info);info.setClassName(Button.class.getName());}});b.setOnClickListener(v->{v.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);action.run();});return b;}
+    TextView button(String title,Runnable action){
+        com.google.android.material.button.MaterialButton b=new com.google.android.material.button.MaterialButton(this);
+        b.setText(title);b.setTextSize(13);b.setTextColor(text);b.setAllCaps(false);
+        b.setTypeface(null,Typeface.BOLD);b.setGravity(Gravity.CENTER);
+        b.setMinHeight(dp(52));b.setMinimumHeight(dp(52));b.setCornerRadius(dp(20));
+        b.setInsetTop(0);b.setInsetBottom(0);
+        b.setBackgroundTintList(ColorStateList.valueOf(androidx.core.graphics.ColorUtils.blendARGB(card,accent,.07f)));
+        b.setStrokeWidth(dp(1));b.setStrokeColor(ColorStateList.valueOf(outline));
+        b.setFocusable(true);b.setOnClickListener(v->{v.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);action.run();});
+        return b;
+    }
+    void primaryAction(TextView view){
+        if(view instanceof com.google.android.material.button.MaterialButton){
+            com.google.android.material.button.MaterialButton b=(com.google.android.material.button.MaterialButton)view;
+            b.setBackgroundTintList(ColorStateList.valueOf(accent));b.setTextColor(bg);
+            b.setStrokeWidth(0);b.setCornerRadius(dp(23));
+        }
+    }
     LinearLayout buttons(LinearLayout parent,String[] labels,Runnable[] actions){LinearLayout r=row();for(int i=0;i<labels.length;i++){TextView b=button(labels[i],actions[i]);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.setMargins(dp(3),0,dp(3),0);r.addView(b,lp);}add(parent,r);return r;}
     void animateRows(LinearLayout l){if(reduced)return;for(int i=0;i<l.getChildCount();i++){View v=l.getChildAt(i);v.setAlpha(0);v.setTranslationY(dp(8));v.animate().alpha(1).translationY(0).setDuration(220).setStartDelay(Math.min(i,5)*25L).start();}}
-    LinearLayout section(String title,String description){LinearLayout c=column();c.setPadding(dp(18),dp(16),dp(18),dp(16));c.setBackground(shape(card,24));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,dp(8),0,dp(8));content.addView(c,lp);TextView h=label(title,18,text);h.setTypeface(null,Typeface.BOLD);add(c,h);if(!description.isEmpty())add(c,label(description,13,hint));gap(c,8);return c;}
+    LinearLayout section(String title,String description){
+        com.google.android.material.card.MaterialCardView surface=new com.google.android.material.card.MaterialCardView(this);
+        surface.setCardBackgroundColor(card);surface.setRadius(dp(28));surface.setCardElevation(0);
+        surface.setStrokeWidth(dp(1));surface.setStrokeColor(outline);surface.setUseCompatPadding(false);
+        surface.setClipToOutline(true);
+        LinearLayout c=column();c.setPadding(dp(20),dp(18),dp(20),dp(20));
+        surface.addView(c,new android.widget.FrameLayout.LayoutParams(-1,-2));
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,dp(9),0,dp(9));
+        content.addView(surface,lp);
+        TextView h=label(title,19,text);h.setTypeface(null,Typeface.BOLD);add(c,h);
+        if(!description.isEmpty())add(c,label(description,13,hint));gap(c,10);return c;
+    }
     void build(){build(false);}
     void build(boolean transition){if(isFinishing()||isDestroyed())return;palette();liveControlMarkers.clear();liveStatus=learningStatus=playLabel=positionLabel=powerButton=connectionTitle=connectionHint=externalStatus=processingDetails=playButton=updateState=null;position=null;timeline=null;neural=null;spectrum=null;libraryRows=null;
         if(shell==null){shell=column();shell.setBackgroundColor(bg);setContentView(shell);if(Build.VERSION.SDK_INT>=29)shell.setForceDarkAllowed(false);shell.setOnApplyWindowInsetsListener((v,insets)->{if(Build.VERSION.SDK_INT>=30){Insets e=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());v.setPadding(e.left,e.top,e.right,e.bottom);}else v.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets;});shell.requestApplyInsets();
-            LinearLayout header=row();header.setPadding(dp(22),dp(10),dp(22),dp(6));TextView brand=label("CYN",23,text);brand.setTypeface(null,Typeface.BOLD);brand.setLetterSpacing(.15f);header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));TextView badge=label("SOUND STUDIO",10,hint);badge.setLetterSpacing(.12f);header.addView(badge);add(shell,header);
+            LinearLayout header=row();header.setPadding(dp(22),dp(10),dp(22),dp(6));TextView brand=label("CYN",27,text);brand.setTypeface(null,Typeface.BOLD);brand.setLetterSpacing(.09f);header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));TextView badge=label("SOUND STUDIO",10,hint);badge.setLetterSpacing(.12f);header.addView(badge);add(shell,header);
             pages=new LiquidPage(this);shell.addView(pages,new LinearLayout.LayoutParams(-1,0,1));
-            mini=column();mini.setPadding(dp(18),dp(10),dp(18),dp(10));mini.setBackground(shape(card,20));LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(-1,-2);mp.setMargins(dp(12),dp(4),dp(12),0);shell.addView(mini,mp);
-            nav=row();nav.setPadding(dp(10),dp(8),dp(10),dp(8));add(shell,nav);
+            mini=column();mini.setPadding(dp(18),dp(10),dp(18),dp(10));mini.setBackground(shape(androidx.core.graphics.ColorUtils.blendARGB(card,accent,.09f),26));LinearLayout.LayoutParams mp=new LinearLayout.LayoutParams(-1,-2);mp.setMargins(dp(12),dp(4),dp(12),0);shell.addView(mini,mp);
+            nav=row();nav.setPadding(dp(9),dp(7),dp(9),dp(9));nav.setBackgroundColor(bg);add(shell,nav);
         }
         getWindow().setStatusBarColor(bg);getWindow().setNavigationBarColor(bg);
         ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(bg);scroll.setFillViewport(true);scroll.setClipToPadding(false);content=column();int side=getResources().getConfiguration().screenWidthDp>=700?60:18;content.setPadding(dp(side),dp(12),dp(side),dp(24));scroll.addView(content);
         if(service==null)add(content,label("Connecting to your sound…",20,text));else if(page==0)music();else if(page==1)learning();else if(page==2)files();else appearance();
         pages.change(scroll,transition&&!reduced);nav.removeAllViews();String[]titles={"Studio","AI","Library","Style"};
-        for(int i=0;i<4;i++){final int target=i;TextView b=button(titles[i],()->{if(page!=target){page=target;build(true);}});b.setTextColor(page==i?text:hint);if(page==i)b.setBackground(gradient(18));b.setSelected(page==i);b.setTypeface(null,page==i?Typeface.BOLD:Typeface.NORMAL);LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(0,-2,1);np.setMargins(dp(3),0,dp(3),0);nav.addView(b,np);}
+        int[]icons={R.drawable.ic_cyn_studio,R.drawable.ic_cyn_ai,R.drawable.ic_cyn_library,R.drawable.ic_cyn_style};
+        for(int i=0;i<4;i++){
+            final int target=i;boolean selected=page==i;
+            com.google.android.material.button.MaterialButton b=(com.google.android.material.button.MaterialButton)
+                button(titles[i],()->{if(page!=target){page=target;build(true);}});
+            int foreground=selected?accent:hint;
+            b.setTextSize(11);b.setTextColor(foreground);b.setSelected(selected);
+            b.setIcon(getDrawable(icons[i]));b.setIconTint(ColorStateList.valueOf(foreground));
+            b.setIconSize(dp(20));b.setIconPadding(dp(4));
+            b.setIconGravity(com.google.android.material.button.MaterialButton.ICON_GRAVITY_TEXT_TOP);
+            b.setCornerRadius(dp(24));
+            b.setStrokeWidth(0);
+            b.setBackgroundTintList(ColorStateList.valueOf(selected?
+                androidx.core.graphics.ColorUtils.blendARGB(card,accent,.18f):bg));
+            LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(0,dp(72),1);
+            np.setMargins(dp(2),0,dp(2),0);nav.addView(b,np);
+        }
         mini.removeAllViews();LinearLayout m=row();LinearLayout info=column();miniTitle=label("Your library is ready",13,text);miniTitle.setSingleLine();miniTitle.setEllipsize(TextUtils.TruncateAt.END);miniState=label("Choose a track to listen",11,hint);add(info,miniTitle);add(info,miniState);m.addView(info,new LinearLayout.LayoutParams(0,-2,1));TextView toggle=button("▶",()->{if(service==null)return;if(service.player==null){page=2;build(true);}else if(service.playing)service.pause();else startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.TOGGLE));});miniToggle=toggle;toggle.setContentDescription("Play current track");m.addView(toggle,new LinearLayout.LayoutParams(dp(68),-2));add(mini,m);info.setOnClickListener(v->{page=2;build(true);});update();
     }
-    void toggle(LinearLayout parent,String title,boolean checked,java.util.function.Consumer<Boolean> change){Switch s=new Switch(this);s.setText(title);s.setTextColor(text);s.setTextSize(14);s.setMinHeight(dp(52));s.setChecked(checked);s.setThumbTintList(ColorStateList.valueOf(accent));s.setOnCheckedChangeListener((b,on)->change.accept(on));add(parent,s);}
+    void toggle(LinearLayout parent,String title,boolean checked,java.util.function.Consumer<Boolean> change){
+        com.google.android.material.materialswitch.MaterialSwitch s=new com.google.android.material.materialswitch.MaterialSwitch(this);
+        s.setText(title);s.setTextColor(text);s.setTextSize(14);s.setMinHeight(dp(56));
+        s.setPadding(dp(2),dp(5),dp(3),dp(5));
+        s.setThumbTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},
+            new int[]{bg,hint}));
+        s.setTrackTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},
+            new int[]{accent,outline}));
+        s.setChecked(checked);s.setOnCheckedChangeListener((b,on)->change.accept(on));add(parent,s);
+    }
     void slider(LinearLayout parent,String title,float value,float min,float max,String suffix,java.util.function.Consumer<Float> change){TextView caption=label(title+"   "+String.format(Locale.ROOT,"%.1f",value)+suffix,13,text);add(parent,caption);FoxSlider bar=new FoxSlider(this,reduced);bar.setMax(120);bar.setProgress(Math.round((value-min)/(max-min)*120));bar.setMinimumHeight(dp(62));bar.setProgressTintList(ColorStateList.valueOf(accent));bar.setThumbTintList(ColorStateList.valueOf(accent));bar.setContentDescription(title);bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int n,boolean user){if(user){float v=min+(max-min)*n/120;caption.setText(title+"   "+String.format(Locale.ROOT,"%.1f",v)+suffix);change.accept(v);}}public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}});add(parent,bar);}
     /** The outlined circle is the user's baseline; the native seek thumb follows real AI DSP. */
     void smartSlider(LinearLayout parent,String key,int band,String labelText,float baseline,float min,float max,
@@ -162,7 +215,19 @@ public final class MainActivity extends Activity {
             canvas.drawCircle(centerX,centerY,dp(2.5f),markerPaint);
         }
     }
-    void category(LinearLayout parent,String title,java.util.function.Consumer<LinearLayout> fill){LinearLayout body=column();body.setVisibility(View.GONE);fill.accept(body);TextView header=button(title+"  ›",()->{boolean open=body.getVisibility()!=View.VISIBLE;body.setVisibility(open?View.VISIBLE:View.GONE);if(open)animateRows(body);});add(parent,header);add(parent,body);gap(parent,8);}
+    void category(LinearLayout parent,String title,java.util.function.Consumer<LinearLayout> fill){
+        LinearLayout body=column();body.setVisibility(View.GONE);fill.accept(body);
+        final TextView[] header=new TextView[1];
+        header[0]=button(title+"  ⌄",()->{
+            boolean open=body.getVisibility()!=View.VISIBLE;
+            body.setVisibility(open?View.VISIBLE:View.GONE);
+            header[0].setText(title+(open?"  ⌃":"  ⌄"));
+            header[0].setContentDescription((open?"Collapse ":"Expand ")+title);
+            if(open)animateRows(body);
+        });
+        header[0].setContentDescription("Expand "+title);
+        add(parent,header[0]);add(parent,body);gap(parent,9);
+    }
     void music(){
         add(content,label("CYN · Smart Listening",29,text));add(content,label("Your music AI assistant · adaptive sound and live processing.",14,hint));
         LinearLayout hero=section("SOUND STUDIO","");hero.setBackground(gradient(26));connectionTitle=label("",19,text);connectionTitle.setTypeface(null,Typeface.BOLD);add(hero,connectionTitle);spectrum=new Spectrum();hero.addView(spectrum,new LinearLayout.LayoutParams(-1,dp(148)));connectionHint=label("",12,hint);add(hero,connectionHint);processingDetails=label(service.processingStatus(),12,accent);processingDetails.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(hero,processingDetails);
@@ -177,8 +242,8 @@ public final class MainActivity extends Activity {
             if(service.monitor) service.stopMonitor();
             else { notifications(); startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR)); offerLiveVisuals(); }
             update();
-        });add(external,powerButton);
-        add(external,button("Try device-wide EQ (experimental)",()->new AlertDialog.Builder(this)
+        });primaryAction(powerButton);add(external,powerButton);
+        add(external,button("Try device-wide EQ (experimental)",()->new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle("Try device-wide compatibility?")
             .setMessage("Android's legacy output-mix EQ works only on some phones. It can affect multiple apps, and obtaining effect control does not prove music is being processed. Compare sound with CYN off/on. Disconnect music apps to stop the attempt.")
             .setPositiveButton("Try",(d,w)->{notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("legacy",true));offerLiveVisuals();})
@@ -240,7 +305,7 @@ public final class MainActivity extends Activity {
             notifications();
             UpdateSplash.show(this);
         });
-        add(updates,updateButton);
+        primaryAction(updateButton);add(updates,updateButton);
         add(updates,label("One button checks, downloads, verifies and installs. The splash follows real progress. Automatic updates check in the background and download on unmetered networks; Android still asks you to approve installation.",12,hint));
         LinearLayout about=section("CYN for Android","Built on the FxSound open-source foundation.");add(about,button("Audio diagnostics (local only)",()->showText("Audio diagnostics · privacy-safe",service.diagnostics()+"\nAI engine: "+service.desktopAi.status)));add(about,button("Source & release history",()->browser("https://github.com/oddfoxerr-real/Cyn/tree/codex/android/android")));add(about,button("FxSound credits, licenses & no warranty",()->{try{showText("FxSound credits & licenses",asset("NOTICE.txt")+"\n\n"+asset("LICENSE.txt"));}catch(Exception e){toast("Could not open licenses");}}));add(about,label("The phone uses the same neural model weights and desktop mixer. Its audio renderer and effects are adapted for Android; identical sound to the Windows FxSound driver is not claimed.",12,hint));add(about,button("Stop CYN audio",()->{service.stopAll();update();}));
     }

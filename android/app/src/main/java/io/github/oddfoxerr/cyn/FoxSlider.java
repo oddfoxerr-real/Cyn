@@ -7,13 +7,13 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.os.SystemClock;
-import android.widget.SeekBar;
+import androidx.appcompat.widget.AppCompatSeekBar;
 
 /**
  * Decorative vector fox riding the real SeekBar thumb.
  * No audio control, model, or user preference is written by this class.
  */
-class FoxSlider extends SeekBar {
+class FoxSlider extends AppCompatSeekBar {
     private static final int FUR=0xffed914f;
     private static final int FUR_DARK=0xffb65b37;
     private static final int CREAM=0xffffecd5;
