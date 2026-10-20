@@ -37,6 +37,11 @@ void DfxDsp::setApex10MSpatialPreview(float strength)
     data_->setApex10MSpatialPreview(strength);
 }
 
+float DfxDsp::getApex10MSpatialActivity() const
+{
+    return data_->spatial_preview_.activity();
+}
+
 void DfxDsp::powerOn(bool on)
 {
 	data_->powerOn(on);
