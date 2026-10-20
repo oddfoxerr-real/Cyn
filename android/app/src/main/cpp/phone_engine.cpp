@@ -32,6 +32,7 @@ struct Engine {
     std::array<std::atomic<float>,48> parameters{};
     std::atomic<float> spatialPreviewStrength{0.0f};
     CynSpatialExperimental spatialPreview;
+    std::atomic<float> spatialActivity{0.0f};
     std::atomic<unsigned> serial{0};
     std::array<float,48> p{};
     std::array<Biquad,maxBands> filters{};
@@ -44,7 +45,7 @@ struct Engine {
     void reset(int ch) {
         channels=ch;analyzer.setFormat(0,0,0);analyzer.setFormat(32,ch,48000);
         for(auto& f:filters) { f.reset(); }
-        delay={};delayIndex=0;countdown=0;wet=0;level=1;spatialPreview.reset();
+        delay={};delayIndex=0;countdown=0;wet=0;level=1;spatialPreview.reset();spatialActivity.store(0.0f,std::memory_order_relaxed);
     }
     void refresh() {
         for(int retry=0;retry<3;retry++) {
