@@ -17,6 +17,7 @@ public:
         previousHigh_ = 0.0f;
         powerLeft_ = powerRight_ = crossPower_ = sidePower_ = midPower_ = 0.0f;
         smoothedAmount_ = 0.0f;
+        activity_ = 0.0f;
     }
 
     void process(float& left, float& right, float desiredStrength) noexcept {
@@ -62,9 +63,15 @@ public:
         const float addedSide = unsafePhase ? 0.0f : smoothedAmount_ * previousHigh_;
         left += addedSide;
         right -= addedSide;
+        // Actual incremental spatial output, not an animated fake network value.
+        const float measured = std::clamp(std::fabs(addedSide) * 24.0f,0.0f,1.0f);
+        activity_ += (measured-activity_)*0.0008f;
     }
 
+float activity() const noexcept {return activity_;}
+
 private:
+    float activity_=0.0f;
     float previousSide_ = 0.0f, previousHigh_ = 0.0f;
     float powerLeft_ = 0.0f, powerRight_ = 0.0f, crossPower_ = 0.0f;
     float sidePower_ = 0.0f, midPower_ = 0.0f;
