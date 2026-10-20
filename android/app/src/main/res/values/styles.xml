@@ -1,11 +1,25 @@
 <resources>
-    <style name="CynTheme" parent="android:style/Theme.Material.NoActionBar">
-        <item name="android:fontFamily">sans</item>
+    <!-- Fixed CYN theme tokens: Material 3 components, no wallpaper color extraction. -->
+    <style name="CynTheme" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:fontFamily">sans-serif</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowActionModeOverlay">true</item>
-        <item name="android:colorAccent">#83b8ff</item>
-        <item name="android:windowBackground">#030509</item>
-        <item name="android:navigationBarColor">#030509</item>
-        <item name="android:statusBarColor">#030509</item>
+        <item name="android:colorAccent">#83B8FF</item>
+        <item name="android:windowBackground">#090D14</item>
+        <item name="android:navigationBarColor">#090D14</item>
+        <item name="android:statusBarColor">#090D14</item>
+        <item name="colorPrimary">#83B8FF</item>
+        <item name="colorOnPrimary">#07131F</item>
+        <item name="colorPrimaryContainer">#243851</item>
+        <item name="colorOnPrimaryContainer">#D9E8FF</item>
+        <item name="colorSecondary">#AA8FFF</item>
+        <item name="colorOnSecondary">#1B142E</item>
+        <item name="colorSurface">#121B2B</item>
+        <item name="colorOnSurface">#EDF3FF</item>
+        <item name="colorSurfaceVariant">#1D293D</item>
+        <item name="colorOnSurfaceVariant">#BBC9DB</item>
+        <item name="colorOutline">#526077</item>
+        <item name="colorError">#FFB4AB</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>
