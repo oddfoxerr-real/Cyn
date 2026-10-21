@@ -166,8 +166,67 @@ public final class AudioService extends Service {
             :"Live audio spectrum · enable Smart Listening for neural activity";
         return "Waiting for playback measurements · "+visualError;
     }
-    float[] apexVisualTelemetry(){return apexVisual;}
-    long apexDecisionTimestamp(){return apexDecisionAt;}
+    // Connected-app visual telemetry comes from the already permission-gated
+    // AudioVisualizer FFT and the real 11->12->5 CYN personal neural model.
+    // No PCM access or APEX10M inference is claimed on an external-app route.
+    static final class MindSample {
+        final float[] channels,hidden,connections,outputs;
+        final long at;
+        MindSample(float[] channels,float[] hidden,float[] connections,float[] outputs,long at) {
+            this.channels=channels;
+            this.hidden=hidden;
+            this.connections=connections;
+            this.outputs=outputs;
+            this.at=at;
+        }
+    }
+    private volatile MindSample connectedMind;
+    private double previousMindRms,previousMindBass;
+    private synchronized void publishConnectedMind(double[] fftFeatures,double rms,
+            PreferenceModel.Trace trace,long at) {
+        if(!monitor||!enabled||!smart||playing||rms<=.01||trace==null)return;
+        double low= Math.exp(fftFeatures[0])+Math.exp(fftFeatures[1]);
+        double mid= Math.exp(fftFeatures[3])+Math.exp(fftFeatures[4])+
+            Math.exp(fftFeatures[5]);
+        float bass=(float)PreferenceModel.clamp(low*2.2,0,1);
+        float kick=(float)PreferenceModel.clamp(
+            Math.max(0,rms-previousMindRms)*7.0+
+            Math.max(0,low-previousMindBass)*4.0,0,1);
+        float spectrum=(float)PreferenceModel.clamp(mid*2,0,1);
+        float neural=0;
+        float[] hidden=new float[12],connections=new float[60],outputs=new float[5];
+        for(int i=0;i<12;i++) {
+            hidden[i]=(float)PreferenceModel.clamp(trace.hidden[i],-1,1);
+            neural+=Math.abs(hidden[i])/12.0f;
+        }
+        for(int i=0;i<60;i++)
+            connections[i]=(float)PreferenceModel.clamp(trace.outputConnections[i],-1,1);
+        for(int i=0;i<5;i++)
+            outputs[i]=(float)PreferenceModel.clamp(trace.outputs[i],0,1);
+        // A single volatile immutable snapshot keeps the 12 hidden activations
+        // and 60 real weighted paths in step with the displayed audio frame.
+        connectedMind=new MindSample(
+            new float[]{bass,kick,spectrum,neural},hidden,connections,outputs,at);
+        previousMindRms=rms; previousMindBass=low;
+    }
+    boolean mindConnected(){return playing||monitor;}
+    boolean mindExternal(){
+        return !playing&&monitor&&enabled&&smart&&hasSessionSpectrum()
+            &&connectedMind!=null
+            &&SystemClock.elapsedRealtime()-connectedMind.at<1200;
+    }
+    boolean mindLive(){
+        return playing&&enabled&&smart&&spatialPreviewEnabled||mindExternal();
+    }
+    float[] mindHidden(){return mindExternal()?connectedMind.hidden:null;}
+    float[] mindConnections(){return mindExternal()?connectedMind.connections:null;}
+    float[] mindOutputs(){return mindExternal()?connectedMind.outputs:null;}
+    float[] apexVisualTelemetry(){
+        return mindExternal()?connectedMind.channels:playing?apexVisual:null;
+    }
+    long apexDecisionTimestamp(){
+        return mindExternal()?connectedMind.at:playing?apexDecisionAt:0;
+    }
     private void updateApexVisualTelemetry(){
         if(!playing||!enabled||!smart||!spatialPreviewEnabled||desktopAi==null){
             apexVisual=new float[]{0,0,0,0};
@@ -325,6 +384,7 @@ public final class AudioService extends Service {
                         if(smart){
                             PreferenceModel.Trace trace=learning.model.trace(features);
                             liveTrace=trace;traceAt=t;traceSequence++;
+                            publishConnectedMind(features,rms,trace,t);
                             predictions=trace.outputs;
                             neurons=trace.hidden;
                             analysis="Live Android output-mix analysis · on-device";
@@ -376,7 +436,7 @@ public final class AudioService extends Service {
         return START_NOT_STICKY;
     }
     void stopMonitor() {
-        monitor=false; legacy=false; releaseOutputVisuals(); sessionSpectrum=new float[31]; sessionSpectrumAt=0; clearTrace();
+        monitor=false; legacy=false; releaseOutputVisuals(); connectedMind=null; sessionSpectrum=new float[31]; sessionSpectrumAt=0; clearTrace();
         for(Integer id:new ArrayList<>(chains.keySet())) if(id!=playerSession) detach(id);
         if(playing||preparing) foreground(); else { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); }
 
@@ -472,7 +532,7 @@ public final class AudioService extends Service {
         if(playerSession>0) detach(playerSession); playerSession=-1;
         if(player!=null) { player.release(); player=null; } pcmSpectrum.setActive(false);desktopAi.active=false;desktopAi.reset();playing=false; preparing=false; audio.abandonAudioFocusRequest(focus);
     }
-    void stopAll() { monitor=false; legacy=false; releaseOutputVisuals(); sessionSpectrumAt=0; sessionSpectrum=new float[31]; clearTrace(); releasePlayer(); for(Integer id:new ArrayList<>(chains.keySet())) detach(id); mediaSession.setActive(false); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); status="Stopped"; }
+    void stopAll() { monitor=false; legacy=false; connectedMind=null; releaseOutputVisuals(); sessionSpectrumAt=0; sessionSpectrum=new float[31]; clearTrace(); releasePlayer(); for(Integer id:new ArrayList<>(chains.keySet())) detach(id); mediaSession.setActive(false); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); status="Stopped"; }
     private void attach(int id,String owner) {
         if(id<0||(!legacy&&id==0)||(legacy&&id!=0)||chains.containsKey(id)) return;
         if(chains.size()>=8) { status="Too many audio sessions; close an unused player."; return; }
@@ -640,7 +700,10 @@ public final class AudioService extends Service {
                         targetClarity=rms>.01?(learning.model.ready[0]?
                             (p[0]*2-1)*Math.min(3,clarity)*sensitivity:spectralClarity):0;
                         if(!playing&&(id==0||id==activeSession)) {
-                            if(rms>.01) { liveTrace=trace; traceAt=lastCapture; traceSequence++; } else clearTrace();
+                            if(rms>.01) {
+                                liveTrace=trace; traceAt=lastCapture; traceSequence++;
+                                publishConnectedMind(x,rms,trace,lastCapture);
+                            } else clearTrace();
                             predictions=p; neurons=trace.hidden; analysis=rms>.01?"Live session analysis · features stay on this phone":"Waiting for audible audio";
                             if(rms>.01&&lastCapture-lastFrame>=240) { lastFrame=lastCapture; frames.add(new Frame(x,(float)Math.min(1,rms*4))); while(frames.size()>240) frames.remove(0); }
                         }
