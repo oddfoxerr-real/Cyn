@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check frozen 37.33% ONNX model is real inference and has documented shapes."""
+"""Check frozen new APEX 10M experimental release ONNX is real inference and has documented shapes."""
 import hashlib
 import json
 from pathlib import Path
@@ -12,7 +12,9 @@ manifest = json.loads((root / "apex10m-partial-manifest.json").read_text())
 weights = root / "apex10m-partial-policy.onnx"
 assert hashlib.sha256(weights.read_bytes()).hexdigest() == manifest["onnx_sha256"]
 assert manifest["trained_spatial_head_parameters"] == 3693992
-assert 37.3 <= manifest["frozen_percent_of_15h"] <= 37.4
+assert 66.66 <= manifest["frozen_percent_of_15h"] <= 100.0
+assert manifest["name"] == "APEX 10M experimental spatial-policy head (synthetic-only)"
+assert manifest["real_optimizer_updates"] >= 633480
 assert not manifest["trained_on_real_music"] and not manifest["neural_playback_approved"]
 session = ort.InferenceSession(str(weights),providers=["CPUExecutionProvider"])
 assert [i.name for i in session.get_inputs()] == ["features"]
