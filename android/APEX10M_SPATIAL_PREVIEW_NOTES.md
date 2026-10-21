@@ -1,4 +1,15 @@
-# CYN Studio Android 0.2.19 — APEX 10M Experimental Release
+# CYN Studio Android 0.2.20 — Connected AI 3D Mind Map
+
+- The rotating CYN mind map works when CYN is connected to a compatible external app, not only during CYN Library playback.
+- Uses the app's already permission-gated Android Visualizer FFT; as connected music changes, measured bass, transient/kick proxy, and spectrum activity trigger 3D pulses.
+- Shows the **real 12 hidden neuron activations and 60 learned weighted paths** from CYN's local Personal AI in the connected-audio mode. Light levels and pathway brightness reflect those measured calculations.
+- The map appears in AI Hub for any primary AI profile when CYN is connected.
+- Connected mode displays CYN NEURAL; CYN Library APEX 10M mode retains native spatial DSP and the frozen 37.33%-trained ONNX controller.
+- Without Android's playback-analysis permission or when the audio app does not expose a usable session, the map rotates at idle and displays Waiting for Audio. It never invents activity.
+- All inference and visualization remain on device. No additional privileges, network audio capture, recording storage, or background monitoring are added.
+- This release does **not** claim that APEX 10M can process other apps' stereo PCM or run its 10M ONNX policy on external audio. Connected-app effects depend on Android's supported audio session EQ.
+
+# CYN Studio Android 0.2.20 — APEX 10M Experimental Release
 
 The APEX 10M radio choice is now labelled as a released experimental AI version, not as a separate "Try frozen" add-on. Selecting APEX 10M explicitly activates its bundled 37.33%-trained spatial controller. A simple "APEX 10M neural control" switch supports comparisons with classic spatial DSP.
 
@@ -15,7 +26,7 @@ The APEX 10M radio choice is now labelled as a released experimental AI version,
 
 The bundled ONNX weights are the immutable frozen 37.33% checkpoint of the 3,693,992-parameter spatial head, from a 15-hour synthetic-training target. The original training job is separate. This release does not add trained weights for the original APEX 6M base and does not demonstrate better perceptual quality on real songs. The learned policy can only reduce the conservative stereo effect and is only applied to music played in CYN Library; independent phase/bass controls and fail-closed conditions remain. Android's ordinary verified APK install process still applies.
 
-# CYN Studio Android 0.2.19 — Frozen APEX 10M 37.33% Neural Test
+# CYN Studio Android 0.2.20 — Frozen APEX 10M 37.33% Neural Test
 
 **Experimental preview only. Not validated on real music.**
 
@@ -37,7 +48,7 @@ Bundled weights are checked against the immutable preview release's manifest and
 
 **Limits:** Real-music perceptual quality, large-scale audio reasoning, spatial localization, low-end improvement, and gaming/binaural positioning remain unverified. This does not train or enable the complete combined 10M neural system as a production model. Use the experimental comparison toggle only for listening tests, not as a default claim of improved sound.
 
-# CYN Mobile 0.2.19 — Cinematic APEX network mesh
+# CYN Mobile 0.2.20 — Cinematic APEX network mesh
 
 - Replaced the rotating wire sphere with a brain-shaped **300-node branching 3D network mesh**.
 - Always-visible dendrite paths, coloured neuron hubs, corpus-callosum bridges and front/back depth.
@@ -46,7 +57,7 @@ Bundled weights are checked against the immutable preview release's manifest and
 - Lightweight cached geometry, batched primitives, and reduced-motion behaviour; visual stays strictly in AI Hub.
 - No Windows/PC changes in this mobile-only release.
 
-## Theme Studio + spatial scan — 0.2.19
+## Theme Studio + spatial scan — 0.2.20
 
 - Eleven distinct Material-inspired palettes across CYN Mobile (not just accent changes).
 - Five actual page-reveal animations: Liquid ripple, Material fade, Horizontal glide, Iris reveal and Prism sweep, plus Instant.
@@ -56,7 +67,7 @@ Bundled weights are checked against the immutable preview release's manifest and
 - APEX 10M AI Hub now contains an illuminated projected 3D brain-style scan: static illustrative lights stay visible, while moving pulses respond **only to measured spatial DSP output**.
 - The extra APEX 10M neural reasoning head remains **untrained and inactive**. The scan does not claim to show its neural activations.
 
-## Brain scan visibility fix — v0.2.19
+## Brain scan visibility fix — v0.2.20
 
 - Visible neuron-like nodes, connection paths and small static lights even in standby, rather than an almost empty spinning wireframe.
 - 3D perspective layers with foreground and background brightness, color accents and soft node halos.
@@ -65,7 +76,7 @@ Bundled weights are checked against the immutable preview release's manifest and
 - Lightweight Android Canvas renderer with preallocated 3D projection buffers, no cloud calls or extra model weights.
 - Keeps existing 11 themes, page transitions, AI-only category placement and separate Updates section.
 
-# CYN Studio Android 0.2.19 preview — APEX 10M Spatial Experiment
+# CYN Studio Android 0.2.20 preview — APEX 10M Spatial Experiment
 
 This Android prerelease adds an optional APEX 10M experimental stereo spatial
 processing mode to the **native PCM audio path for music played inside CYN's
@@ -111,7 +122,7 @@ persist locally on-device.
 
 ## Install and compatibility
 APK uses the existing `io.github.oddfoxerr.cyn.studio` identity,
-Android versionCode 23 and versionName 0.2.19-preview. A verified match
+Android versionCode 24 and versionName 0.2.20-preview. A verified match
 to the existing CYN Studio signing certificate is required before publishing.
 The APK is released with a SHA-256 checksum and source archive.
 
