@@ -393,7 +393,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         add(engine,label("One primary AI at a time. APEX 10M is the current experimental neural-spatial release.",12,hint));
         if(AiSelection.APEX_10M.equals(service.aiProfile)){
             slider(engine,"Spatial intensity",service.spatialPreviewStrength*100,0,100,"%",v->{service.spatialPreviewStrength=v/100;service.changed();});
-            add(engine,label("APEX 10M  ·  NEW TRAINED RELEASE",12,accent));
+            add(engine,label("APEX 10M  ·  95.97% TRAINED",12,accent));
             toggle(engine,"APEX 10M neural control",service.partialNeuralPreview,on->{
                 service.partialNeuralPreview=on;
                 service.desktopAi.partialPolicy=null;
