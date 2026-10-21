@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 final class UpdateManager {
     private static final String API="https://api.github.com/repos/oddfoxerr-real/Cyn/releases?per_page=100&page=";
+    private static final String RELEASES_WEB="https://github.com/oddfoxerr-real/Cyn/releases";
     private static final ExecutorService IO=Executors.newSingleThreadExecutor();
     private static final AtomicBoolean BUSY=new AtomicBoolean();
     // Stages are reported by the real updater, not the splash animation.
@@ -83,9 +84,9 @@ final class UpdateManager {
     private static HttpURLConnection connect(String address)throws Exception{
         URL url=new URL(address);
         for(int redirects=0;redirects<6;redirects++){
-            if(!allowed(url))throw new IOException("Untrusted update host");HttpURLConnection c=(HttpURLConnection)url.openConnection();c.setConnectTimeout(15000);c.setReadTimeout(30000);c.setInstanceFollowRedirects(false);c.setRequestProperty("User-Agent","Cyn-Android/"+BuildConfig.VERSION_NAME);int code=c.getResponseCode();
+            if(!allowed(url))throw new IOException("Untrusted update host");HttpURLConnection c=(HttpURLConnection)url.openConnection();c.setConnectTimeout(15000);c.setReadTimeout(30000);c.setInstanceFollowRedirects(false);c.setRequestProperty("User-Agent","Cyn-Android/"+BuildConfig.VERSION_NAME);c.setRequestProperty("Accept","application/vnd.github+json");c.setRequestProperty("X-GitHub-Api-Version","2022-11-28");int code=c.getResponseCode();
             if(code>=300&&code<400){String location=c.getHeaderField("Location");c.disconnect();if(location==null)throw new IOException("Invalid redirect");url=new URL(url,location);continue;}
-            if(code!=200){c.disconnect();throw new IOException("GitHub returned "+code);}return c;
+            if(code!=200){String remaining=c.getHeaderField("X-RateLimit-Remaining");String retry=c.getHeaderField("Retry-After");c.disconnect();if(code==403||code==429){throw new IOException("GitHub API blocked this check (HTTP "+code+(("0".equals(remaining))?"; rate limit reached":"")+(retry!=null?"; retry after "+retry+"s":"")+"). Open GitHub Releases or retry later.");}throw new IOException("GitHub returned "+code);}return c;
         }throw new IOException("Too many redirects");
     }
     private static byte[] read(String url,int max)throws Exception{HttpURLConnection c=connect(url);try(InputStream in=c.getInputStream();ByteArrayOutputStream out=new ByteArrayOutputStream()){byte[]b=new byte[8192];int n;while((n=in.read(b))!=-1){if(out.size()+n>max)throw new IOException("Response too large");out.write(b,0,n);}return out.toByteArray();}finally{c.disconnect();}}
