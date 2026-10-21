@@ -35,7 +35,7 @@ def verify_manifest(path):
             raise ValueError("Full SHA-256 of audio is required")
         actual=hashlib.sha256(source.read_bytes()).hexdigest()
         if actual!=expected:raise ValueError("Audio checksum does not match manifest")
-        yield source
+        yield source,item['license']
 
 def features(audio,rate):
     """20 real 100-ms frames, approximate native CYN feature ordering."""
@@ -92,19 +92,22 @@ def main():
     p.add_argument("--output",required=True,type=Path)
     args=p.parse_args()
     vectors=[]
-    for source in verify_manifest(args.manifest):
+    licenses=[]
+    for source,license_id in verify_manifest(args.manifest):
         audio,rate=sf.read(source,always_2d=True,dtype="float32")
         if audio.shape[1]==1:audio=np.repeat(audio,2,axis=1)
         elif audio.shape[1]!=2:continue
         # Up to 6 deterministic 2s chunks per song, no sample upload.
         for offset in range(0,min(len(audio)-int(rate*2)+1,int(rate*30)),int(rate*4)):
             block=features(audio[offset:offset+int(rate*2)],rate)
-            if block is not None:vectors.append(block)
+            if block is not None:
+                vectors.append(block)
+                licenses.append(license_id)
     if not vectors:raise RuntimeError("No 2-second audio frames found")
     manifest=json.loads(args.manifest.read_text())
     args.output.parent.mkdir(parents=True,exist_ok=True)
     np.savez_compressed(args.output,features=np.stack(vectors),
-        licenses=np.asarray([manifest["items"][0]["license"]]*len(vectors)),
+        licenses=np.asarray(licenses),
         sources=np.asarray([manifest["source"]]*len(vectors)))
     print(f"Prepared {len(vectors)} verified local Slakh windows; no audio redistributed")
 
