@@ -354,11 +354,22 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                         publicResults.removeAllViews();
                         if(found.isEmpty()){add(publicResults,label("No public tracks found.",13,hint));return;}
                         for(PublicMusic.Song song:found){
-                            add(publicResults,button(song.title+" · "+song.artist+"  ▶",()->{
+                            LinearLayout trackRow=row();
+                            TextView play=button("▶  "+song.title+" · "+song.artist,()->{
                                 if(service==null){toast("Audio engine connecting");return;}
                                 try{playTrack(java.util.Collections.singletonList(song.asTrack()),0);}
                                 catch(RuntimeException e){toast("Unable to start stream");}
+                            });
+                            trackRow.addView(play,new LinearLayout.LayoutParams(0,-2,1));
+                            add(trackRow,button("＋",()->{
+                                if(service==null){toast("Audio engine connecting");return;}
+                                filesWorker.execute(()->{
+                                    try{service.library.merge(java.util.Collections.singletonList(song.asTrack()));
+                                        handler.post(()->{toast("Added to your Library");if(page==2)renderTracks();});
+                                    }catch(Exception e){handler.post(()->toast("Could not save track"));}
+                                });
                             }));
+                            add(publicResults,trackRow);
                         }
                     });
                 }catch(Exception e){handler.post(()->{if(page==2&&publicResults.isAttachedToWindow()){publicResults.removeAllViews();add(publicResults,label("Online search unavailable. Check your connection.",13,hint));}});}
