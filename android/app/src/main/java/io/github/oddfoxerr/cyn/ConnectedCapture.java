@@ -123,12 +123,13 @@ final class ConnectedCapture {
             try { recorder.stop(); } catch (RuntimeException ignored) { }
             recorder.release();
             spectrum.close();
-            // Release native state only after the capture writer has stopped.
-            ai.closeAfterPlayer();
             main.post(() -> {
                 projection.unregisterCallback(callback);
                 projection.stop();
-                onStopped.run();
+                // Clear the service's route on its own thread before scheduling
+                // native destruction. A UI tick may still be reading telemetry.
+                try { onStopped.run(); }
+                finally { ai.closeAfterPlayer(); }
             });
         }
     }
