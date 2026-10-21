@@ -263,7 +263,10 @@ public final class AudioService extends Service {
         }
     }
     float apexSpatialActivity(){
-        if(!playing||!enabled||!smart||!spatialPreviewEnabled||desktopAi==null||desktopAi.engine==0)return 0f;
+        if(!playing||!enabled||!smart||desktopAi==null||desktopAi.engine==0)return 0f;
+        if(AiSelection.AUDONIC.equals(aiProfile))
+            return Math.max(0f,Math.min(1f,NativeEngine.audonicActivity(desktopAi.engine)));
+        if(!spatialPreviewEnabled)return 0f;
         return Math.max(0f,Math.min(1f,NativeEngine.spatialActivity(desktopAi.engine)));
     }
     String processingStatus() {
