@@ -66,6 +66,9 @@ public final class AudioService extends Service {
                 connectedCapture=null;
                 projectionForeground=false;
                 captureStatus="Playback sharing stopped · enable Connect AI to restart";
+                // Revoked consent invalidates all AI decisions immediately.
+                appliedAiFresh=false;
+                connectedMind=null;
                 clearTrace();
                 updateNativeControls();
                 for(Chain chain:chains.values())chain.apply();
@@ -806,9 +809,13 @@ public final class AudioService extends Service {
             // sole external session. Never apply a mixed signal's AI to multiple unrelated players.
             // A captured external mix must never drive Library's own session.
             // Connect applies AI only to an eligible external effect session.
-            boolean externalRoute=id!=playerSession&&(legacy?id==0:id>0);
-            boolean shared=externalRoute&&capturedAudioFresh()&&smart&&appliedAiFresh&&(legacy||externalSessionCount()==1);
-            boolean spatialShared=externalRoute&&capturedAudioFresh()&&smart&&(legacy||externalSessionCount()==1);
+            // Never send mix-wide neural decisions to unrelated audio sessions.
+            // A system-mix route is eligible only when explicitly selected;
+            // otherwise exactly one active external session must be targeted.
+            boolean externalRoute=legacy?id==0:
+                id>0&&id!=playerSession&&id==activeSession&&externalSessionCount()==1;
+            boolean spatialShared=externalRoute&&capturedAudioFresh()&&smart;
+            boolean shared=spatialShared&&appliedAiFresh;
             float[] targets=appliedTargets.clone();
             if(!shared) {
                 targets[1]=bass+(float)(smart?bassOffset:0);
