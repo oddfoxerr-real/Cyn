@@ -141,7 +141,7 @@ jobs:
             dist/android/Cyn-Studio-Android-0.2.23-Source.zip
           retention-days: 30
       - name: Publish experimental Android prerelease only
-        if: inputs.publish
+        if: github.ref == 'refs/heads/fix/android-connect-isolated-20261021' || inputs.publish
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
