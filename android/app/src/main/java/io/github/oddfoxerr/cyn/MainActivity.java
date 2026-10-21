@@ -413,13 +413,23 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         slider(engine,"Sensitivity",service.sensitivity*100,0,100,"%",v->{service.sensitivity=v/100;service.changed();});
         liveStatus=label("",13,accent);add(engine,liveStatus);
         if(AiSelection.APEX_10M.equals(service.aiProfile)){
-            LinearLayout network=section("APEX 10M • Live brain network",
-                "Bass · Kick · Spatial · Neural activity");
+            LinearLayout network=section("CYN • 3D mind map",
+                "Live AI activity across CYN Library and connected audio");
             brainScan=new ApexSpatialBrainView(this,new ApexSpatialBrainView.Signal(){
-                @Override public float activity(){return service==null?0f:service.apexSpatialActivity();}
+                @Override public float activity(){
+                    if(service==null)return 0f;
+                    float[] values=service.apexVisualTelemetry();
+                    return service.mindExternal()&&values!=null&&values.length>=4
+                        ?values[2]:service.apexSpatialActivity();
+                }
                 @Override public float[] channels(){return service==null?null:service.apexVisualTelemetry();}
                 @Override public long decisionAt(){return service==null?0:service.apexDecisionTimestamp();}
-                @Override public boolean enabled(){return service!=null&&service.playing&&service.enabled&&service.smart&&service.spatialPreviewEnabled;}
+                @Override public boolean enabled(){return service!=null&&service.mindLive();}
+                @Override public boolean connected(){return service!=null&&service.mindConnected();}
+                @Override public boolean external(){return service!=null&&service.mindExternal();}
+                @Override public float[] hidden(){return service==null?null:service.mindHidden();}
+                @Override public float[] connections(){return service==null?null:service.mindConnections();}
+                @Override public float[] outputs(){return service==null?null:service.mindOutputs();}
                 @Override public boolean reduced(){return reduced;}
             },accent,secondary);
             network.addView(brainScan,new LinearLayout.LayoutParams(-1,dp(334)));
