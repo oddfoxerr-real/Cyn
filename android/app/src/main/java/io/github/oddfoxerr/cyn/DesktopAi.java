@@ -24,7 +24,7 @@ final class DesktopAi {
     }
     volatile boolean partialEnabled;
     volatile PartialPolicy partialPolicy;
-    volatile String partialStatus="Off · normal APEX 10M spatial preview";
+    volatile String partialStatus="Ready for APEX 10M neural control";
     private OrtSession partialSession;
     private String partialHash;
     private long partialRetryAt;
@@ -129,8 +129,8 @@ final class DesktopAi {
             float gain=Math.min(.70f,(.10f+.60f*spatial)*(1-.45f*bass)*(1-.45f*kick)*coherence);
             if(partialEnabled&&active&&!closed&&epoch==generation) {
                 partialPolicy=new PartialPolicy(gain,spatial,bass,kick);
-                partialStatus="37% learned policy · "+(SystemClock.elapsedRealtime()-started)+
-                    " ms · spatial "+Math.round(spatial*100)+"% · guard "+Math.round(gain*100)+"%";
+                partialStatus="Inference "+(SystemClock.elapsedRealtime()-started)+
+                    " ms · spatial "+Math.round(spatial*100)+"% · control "+Math.round(gain*100)+"%";
             }
         }catch(Exception|LinkageError ex){
             partialPolicy=null;
@@ -141,9 +141,13 @@ final class DesktopAi {
     private void infer(){
         if(closed)return;
         if(!active){latest=null;partialPolicy=null;previousScene=null;previousEmbedding=null;return;}
+        // APEX 10M inference is independent of YAMNet availability. The
+        // previous placement after scene classification delayed or prevented
+        // neural-triggered animations when scene analysis was unavailable.
+        final long epoch=generation;
+        inferPartial(epoch);
         if(SystemClock.elapsedRealtime()<retryAt)return;
         try{
-            long epoch=generation;
             if(workerGeneration!=epoch){previousScene=null;previousEmbedding=null;workerGeneration=epoch;}
             float[] f=NativeEngine.features(engine);if(f[11]<.0001f){latest=null;status="Waiting for audible audio";return;}
             float[] wave=NativeEngine.yamnetWindow(engine);if(wave==null)return;
@@ -169,7 +173,6 @@ final class DesktopAi {
                 }
             }
             if(active&&!closed&&epoch==generation){latest=new Result(f,s,decisions,goals,SystemClock.elapsedRealtime()-started);status=(apexEnabled?"APEX 6M + YAMNet":"YAMNet")+" · running locally";}
-            inferPartial(epoch);
         }catch(Exception|LinkageError e){latest=null;partialPolicy=null;status="AI unavailable: "+e.getClass().getSimpleName()+" · manual sound remains active";retryAt=SystemClock.elapsedRealtime()+15000;}
     }
     void closeAfterPlayer(){closed=true;active=false;worker.execute(()->{try{if(yamnet!=null)yamnet.close();if(apex!=null)apex.close();if(partialSession!=null)partialSession.close();}catch(Exception ignored){}finally{NativeEngine.destroy(engine);}});worker.shutdown();}
