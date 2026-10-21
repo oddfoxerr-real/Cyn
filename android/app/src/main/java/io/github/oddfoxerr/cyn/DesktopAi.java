@@ -96,13 +96,13 @@ final class DesktopAi {
                     while((n=in.read(b))!=-1){if(out.size()+n>8192)throw new IOException("Manifest too large");out.write(b,0,n);}
                     manifest=new JSONObject(out.toString(StandardCharsets.UTF_8.name()));
                 }
-                if(!"APEX 10M partial spatial policy head (synthetic-only)".equals(manifest.optString("name"))
+                if(!"APEX 10M experimental spatial-policy head (synthetic-only)".equals(manifest.optString("name"))
                     ||manifest.optBoolean("trained_on_real_music",true)
                     ||manifest.optBoolean("neural_playback_approved",true)
-                    ||manifest.optDouble("frozen_percent_of_15h")<33.0
-                    ||manifest.optDouble("frozen_percent_of_15h")>50.0
+                    ||manifest.optDouble("frozen_percent_of_15h")<66.66
+                    ||manifest.optDouble("frozen_percent_of_15h")>100.0
                     ||manifest.optLong("trained_spatial_head_parameters")!=3693992L)
-                    throw new IOException("Partial-model manifest not approved for experimental A/B");
+                    throw new IOException("APEX release checkpoint metadata verification failed");
                 partialHash=manifest.getString("onnx_sha256");
                 if(!partialHash.matches("[0-9a-fA-F]{64}"))
                     throw new IOException("Unverified partial ONNX checksum");
@@ -134,7 +134,7 @@ final class DesktopAi {
             }
         }catch(Exception|LinkageError ex){
             partialPolicy=null;
-            partialStatus="Partial model unavailable: "+ex.getClass().getSimpleName()+" · safe bypass";
+            partialStatus="Neural engine unavailable: "+ex.getClass().getSimpleName()+" · safe bypass";
             partialRetryAt=SystemClock.elapsedRealtime()+15000;
         }
     }
