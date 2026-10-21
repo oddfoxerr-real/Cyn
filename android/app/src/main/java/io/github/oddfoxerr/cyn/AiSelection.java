@@ -6,11 +6,13 @@ final class AiSelection {
     static final String BASIC = "basic";
     static final String APEX_6M = "apex6m";
     static final String APEX_10M = "apex10m";
+    static final String AUDONIC = "audonic";
     private AiSelection() {}
 
     static String normalize(String value) {
         if (APEX_6M.equals(value)) return APEX_6M;
         if (APEX_10M.equals(value)) return APEX_10M;
+        if (AUDONIC.equals(value)) return AUDONIC;
         return BASIC;
     }
 

@@ -19,7 +19,7 @@ final class AudioLibrary {
     }
     private final Context context;
     private final ArrayList<Track> tracks=new ArrayList<>();
-    AudioLibrary(Context c){context=c.getApplicationContext();try(InputStream in=new AtomicFile(new File(context.getFilesDir(),"library.json")).openRead()){JSONArray all=new JSONArray(Streams.text(in));for(int i=0;i<all.length();i++){JSONObject t=all.getJSONObject(i);Uri u=Uri.parse(t.getString("uri"));if("content".equals(u.getScheme()))tracks.add(new Track(u,t.getString("title"),t.optString("artist","Unknown artist"),t.optString("album",""),t.optLong("duration"),t.optBoolean("favorite")));}}catch(Exception ignored){}}
+    AudioLibrary(Context c){context=c.getApplicationContext();try(InputStream in=new AtomicFile(new File(context.getFilesDir(),"library.json")).openRead()){JSONArray all=new JSONArray(Streams.text(in));for(int i=0;i<all.length();i++){JSONObject t=all.getJSONObject(i);Uri u=Uri.parse(t.getString("uri"));if("content".equals(u.getScheme())||("https".equals(u.getScheme())&&"api.audius.co".equals(u.getHost())&&u.getPath()!=null&&u.getPath().matches("/v1/tracks/[^/]+/stream")))tracks.add(new Track(u,t.getString("title"),t.optString("artist","Unknown artist"),t.optString("album",""),t.optLong("duration"),t.optBoolean("favorite")));}}catch(Exception ignored){}}
     synchronized List<Track> all(){return new ArrayList<>(tracks);}
     synchronized void favorite(Uri uri)throws Exception{
         for(Track t:tracks)if(t.uri.equals(uri)){

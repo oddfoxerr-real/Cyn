@@ -11,6 +11,7 @@
 #include "desktop/CynApexFlowHybrid.h"
 #include "desktop/CynSmartRange.h"
 #include "CynSpatialExperimental.h"
+#include "AudonicMischief.h"
 
 namespace {
 constexpr int maxBands=39;
@@ -32,6 +33,10 @@ struct Engine {
     std::array<std::atomic<float>,48> parameters{};
     std::atomic<float> spatialPreviewStrength{0.0f};
     CynSpatialExperimental spatialPreview;
+    AudonicMischief audonic;
+    std::atomic<bool> audonicEnabled{false};
+    std::array<std::atomic<float>,6> audonicParams{};
+    std::atomic<float> audonicActivity{0.f};
     std::atomic<float> spatialActivity{0.0f};
     // Real stereo PCM features for the optional partially trained ONNX policy.
     // Published every 100ms; read on the neural worker, never execute ONNX on audio thread.
@@ -92,7 +97,7 @@ struct Engine {
     void reset(int ch) {
         channels=ch;analyzer.setFormat(0,0,0);analyzer.setFormat(32,ch,48000);
         for(auto& f:filters) { f.reset(); }
-        delay={};delayIndex=0;countdown=0;wet=0;level=1;spatialPreview.reset();spatialActivity.store(0.0f,std::memory_order_relaxed);
+        delay={};delayIndex=0;countdown=0;wet=0;level=1;spatialPreview.reset();audonic.reset();audonicActivity.store(0.f,std::memory_order_relaxed);spatialActivity.store(0.0f,std::memory_order_relaxed);
         policyFrameCount.store(0,std::memory_order_release);policySamples=0;
         lowPass=highPass=lastBass=lastRms=0;
         bassEnergy=midEnergy=sideEnergy=leftEnergy=rightEnergy=0;
@@ -125,7 +130,7 @@ struct Engine {
             for(int i=0;i<n;i++)scratch[i]=pcm[offset+i]/32768.0f;
             analyzer.process(scratch.data(),n/channels);
             for(int i=0;i<n;i+=channels) {
-                if(channels==2)collectPolicy(scratch[i],scratch[i+1]);
+                collectPolicy(scratch[i],scratch[i+(channels==2?1:0)]);
                 if(countdown--<=0){refresh();countdown=479;}
                 const bool active=p[0]>.5f;
                 wet+=(static_cast<float>(active)-wet)*.002f;
@@ -143,6 +148,12 @@ struct Engine {
                     // Explicit opt-in: existing stereo ambience only, not trained neural APEX 10M.
                     spatialPreview.process(out[0],out[1],spatialPreviewStrength.load(std::memory_order_relaxed));
                 }
+                if(audonicEnabled.load(std::memory_order_relaxed)) {
+                    std::array<float,6> controls{};
+                    for(int j=0;j<6;j++)controls[j]=audonicParams[j].load(std::memory_order_relaxed);
+                    if(channels==1)out[1]=out[0];
+                    audonic.process(out[0],out[1],controls);
+                }
                 delayIndex=(delayIndex+1)%11000;
                 const float peak=std::max(std::abs(out[0]),std::abs(out[channels-1]));
                 const float limiting=peak>ceiling?ceiling/std::max(peak,1e-9f):1;
@@ -154,6 +165,8 @@ struct Engine {
                     pcm[offset+i+c]=static_cast<int16_t>(std::round(clamp(x,-.999969f,.999969f)*32768));
                 }
             }
+            audonicActivity.store(audonicEnabled.load(std::memory_order_relaxed)?
+                audonic.activity():0.f,std::memory_order_relaxed);
             spatialActivity.store(spatialPreviewStrength.load(std::memory_order_relaxed)>0.0f
                 ? spatialPreview.activity() : 0.0f,std::memory_order_relaxed);
             offset+=n;
@@ -169,6 +182,20 @@ JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_destroy(JNIEnv*
 JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_configure(JNIEnv*,jclass,jlong p,jint ch){if(ch==1||ch==2)engine(p)->reset(ch);}
 JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_process(JNIEnv* env,jclass,jlong p,jobject buffer,jint bytes){auto* data=static_cast<int16_t*>(env->GetDirectBufferAddress(buffer));if(data&&bytes>=0&&bytes<=env->GetDirectBufferCapacity(buffer))engine(p)->process(data,bytes/2);}
 JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_controls(JNIEnv* env,jclass,jlong p,jfloatArray data){if(env->GetArrayLength(data)!=48)return;std::array<float,48>v{};env->GetFloatArrayRegion(data,0,48,v.data());auto* e=engine(p);e->serial.fetch_add(1,std::memory_order_acq_rel);for(int i=0;i<48;i++)e->parameters[i].store(clamp(v[i],-100,100),std::memory_order_relaxed);const int bands=static_cast<int>(v[8]);e->parameters[8].store(bands==35?35:bands==39?39:31);e->serial.fetch_add(1,std::memory_order_release);}
+JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_audonicControls(
+    JNIEnv* env,jclass,jlong handle,jfloatArray values,jboolean enabled){
+    if(!handle||!values||env->GetArrayLength(values)!=6)return;
+    float input[6]{};
+    env->GetFloatArrayRegion(values,0,6,input);
+    auto* e=engine(handle);
+    for(int i=0;i<6;i++)
+        e->audonicParams[i].store(clamp(input[i],0.f,1.f),std::memory_order_relaxed);
+    e->audonicEnabled.store(enabled==JNI_TRUE,std::memory_order_release);
+}
+JNIEXPORT jfloat JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_audonicActivity(
+    JNIEnv*,jclass,jlong handle){
+    return handle?engine(handle)->audonicActivity.load(std::memory_order_relaxed):0.f;
+}
 JNIEXPORT jfloat JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_spatialActivity(JNIEnv*,jclass,jlong handle){
     return handle?engine(handle)->spatialActivity.load(std::memory_order_relaxed):0.0f;
 }

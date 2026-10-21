@@ -239,7 +239,8 @@ final class UpdateSplash {
                     chip.setBackground(bg);
                     chip.setTypeface(null,selected?Typeface.BOLD:Typeface.NORMAL);
                 }
-                if(visibleStage==UpdateManager.CHECKING||visibleStage==UpdateManager.VERIFYING){
+                if(visibleStage==UpdateManager.CHECKING||visibleStage==UpdateManager.VERIFYING||
+                        (visibleStage==UpdateManager.DOWNLOADING&&progress<0)){
                     bar.setIndeterminate(true);
                 }else{
                     bar.setIndeterminate(false);
@@ -252,7 +253,7 @@ final class UpdateSplash {
                 detail.setText(visibleStage==UpdateManager.READY?"Verified · ready to install":
                     visibleStage==UpdateManager.VERIFYING?"Authenticating update":
                     visibleStage==UpdateManager.DOWNLOADING?"Receiving APK":
-                    visibleStage==UpdateManager.FAILED?"Check your connection and retry":
+                    visibleStage==UpdateManager.FAILED?"See the error above, then retry":
                     visibleStage==UpdateManager.UP_TO_DATE?"No newer release available":
                     visibleStage==UpdateManager.CHECKING?"Contacting official releases":"Encrypted HTTPS download");
                 action.setEnabled(!busy);

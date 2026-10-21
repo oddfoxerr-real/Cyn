@@ -17,7 +17,9 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 final class UpdateManager {
-    private static final String API="https://api.github.com/repos/oddfoxerr-real/Cyn/releases?per_page=100&page=";
+    private static final String API="https://api.github.com/repos/oddfoxerr-real/Cyn/releases?per_page=30&page=";
+    private static final String FEED="https://github.com/oddfoxerr-real/Cyn/releases.atom";
+    private static final String RELEASES_WEB="https://github.com/oddfoxerr-real/Cyn/releases";
     private static final ExecutorService IO=Executors.newSingleThreadExecutor();
     private static final AtomicBoolean BUSY=new AtomicBoolean();
     // Stages are reported by the real updater, not the splash animation.
@@ -44,22 +46,19 @@ final class UpdateManager {
         schedule(c);
     }
     static void downloads(Context c,boolean on){prefs(c).edit().putBoolean("download",on).apply();}
-    static void check(Context context,boolean manual,Runnable complete){
+    static void checkOnLaunch(Context context){check(context,false,null,true);}
+    static void check(Context context,boolean manual,Runnable complete){check(context,manual,complete,false);}
+    private static void check(Context context,boolean manual,Runnable complete,boolean launch){
         Context c=context.getApplicationContext();if(!BUSY.compareAndSet(false,true)){if(complete!=null)complete.run();return;}
         if(!manual&&(!automatic(c)||System.currentTimeMillis()-prefs(c).getLong("checked",0)<6*60*60*1000L)){BUSY.set(false);if(complete!=null)complete.run();return;}
         progress=-1;stage=CHECKING;message="Checking CYN Studio releases…";
-        IO.execute(()->{try{JSONObject newest=null;String version=null;
-            for(int page=1;page<=5;page++){
-                JSONArray releases=new JSONArray(new String(read(API+page,4*1024*1024),StandardCharsets.UTF_8));
-                for(int i=0;i<releases.length();i++){JSONObject r=releases.getJSONObject(i);if(r.optBoolean("draft")||r.isNull("published_at"))continue;String v=AndroidRelease.newerVersion(r.optString("tag_name"),BuildConfig.VERSION_NAME);if(v==null)continue;
-                    JSONArray assets=r.optJSONArray("assets");if(assets==null)continue;
-                    for(int j=0;j<assets.length();j++){JSONObject a=assets.getJSONObject(j);if(AndroidRelease.assetUrl(v).equals(a.optString("browser_download_url"))&&a.optLong("size")>0&&(version==null||AndroidRelease.number(v)>AndroidRelease.number(version))){newest=a;version=v;}}
-                }
-                if(releases.length()<100)break;
-            }
+        IO.execute(()->{try{
+            UpdateDiscovery.Release newest=UpdateDiscovery.find(BuildConfig.VERSION_NAME,
+                ()->new String(read(FEED,4*1024*1024),StandardCharsets.UTF_8),UpdateManager::apiRelease);
+            String version=newest==null?null:newest.version;
             prefs(c).edit().putLong("checked",System.currentTimeMillis()).apply();
             if(version==null){stage=UP_TO_DATE;message="CYN "+BuildConfig.VERSION_NAME+" · up to date";return;}
-            String hash=newest.optString("digest");if(hash.startsWith("sha256:"))hash=hash.substring(7);else hash=new String(read(AndroidRelease.assetUrl(version)+".sha256",4096),StandardCharsets.UTF_8).trim().split("\\s+")[0];
+            String hash=newest.digest;if(hash.startsWith("sha256:"))hash=hash.substring(7);else hash=new String(read(AndroidRelease.assetUrl(version)+".sha256",4096),StandardCharsets.UTF_8).trim().split("\\s+")[0];
             if(!hash.matches("[0-9a-fA-F]{64}"))throw new IOException("Release has no valid SHA-256");
             String oldVerified=prefs(c).getString("verified_hash","");
             SharedPreferences.Editor store=prefs(c).edit()
@@ -68,7 +67,7 @@ final class UpdateManager {
             store.apply();
             stage=AVAILABLE;message="CYN "+version+" available · waiting for Wi-Fi";
             ConnectivityManager network=c.getSystemService(ConnectivityManager.class);
-            if(manual||(downloads(c)&&network!=null&&!network.isActiveNetworkMetered()))download(c,version,hash,newest.getLong("size"));
+            if(manual||(downloads(c)&&network!=null&&!network.isActiveNetworkMetered()))download(c,version,hash,newest.size);
         }catch(Exception e){
             stage=FAILED;
             message="Update failed · "+e.getMessage();
@@ -77,19 +76,40 @@ final class UpdateManager {
             if(complete!=null)complete.run();
         }});
     }
+    private static UpdateDiscovery.Release apiRelease()throws Exception{
+        UpdateDiscovery.Release newest=null;
+        for(int page=1;page<=2;page++){
+            JSONArray releases=new JSONArray(new String(read(API+page,4*1024*1024),StandardCharsets.UTF_8));
+            for(int i=0;i<releases.length();i++){
+                JSONObject release=releases.getJSONObject(i);
+                if(release.optBoolean("draft")||release.isNull("published_at"))continue;
+                String version=AndroidRelease.newerVersion(release.optString("tag_name"),BuildConfig.VERSION_NAME);
+                if(version==null)continue;
+                JSONArray assets=release.optJSONArray("assets");if(assets==null)continue;
+                for(int n=0;n<assets.length();n++){
+                    JSONObject asset=assets.getJSONObject(n);
+                    if(AndroidRelease.assetUrl(version).equals(asset.optString("browser_download_url"))&&asset.optLong("size")>0&&
+                            (newest==null||AndroidRelease.number(version)>AndroidRelease.number(newest.version)))
+                        newest=new UpdateDiscovery.Release(version,asset.optString("digest"),asset.getLong("size"));
+                }
+            }
+            if(releases.length()<30)break;
+        }
+        return newest;
+    }
     private static boolean allowed(URL url){String host=url.getHost();return "https".equals(url.getProtocol())&&(url.getPort()==-1||url.getPort()==443)&&url.getUserInfo()==null&&(host.equals("api.github.com")||host.equals("github.com")||host.equals("release-assets.githubusercontent.com")||host.equals("objects.githubusercontent.com"));}
     private static HttpURLConnection connect(String address)throws Exception{
         URL url=new URL(address);
         for(int redirects=0;redirects<6;redirects++){
-            if(!allowed(url))throw new IOException("Untrusted update host");HttpURLConnection c=(HttpURLConnection)url.openConnection();c.setConnectTimeout(15000);c.setReadTimeout(30000);c.setInstanceFollowRedirects(false);c.setRequestProperty("User-Agent","Cyn-Android/"+BuildConfig.VERSION_NAME);int code=c.getResponseCode();
+            if(!allowed(url))throw new IOException("Untrusted update host");HttpURLConnection c=(HttpURLConnection)url.openConnection();c.setConnectTimeout(15000);c.setReadTimeout(30000);c.setInstanceFollowRedirects(false);c.setRequestProperty("User-Agent","Cyn-Android/"+BuildConfig.VERSION_NAME);if(url.getHost().equals("api.github.com")){c.setRequestProperty("Accept","application/vnd.github+json");c.setRequestProperty("X-GitHub-Api-Version","2022-11-28");}else c.setRequestProperty("Accept","*/*");int code=c.getResponseCode();
             if(code>=300&&code<400){String location=c.getHeaderField("Location");c.disconnect();if(location==null)throw new IOException("Invalid redirect");url=new URL(url,location);continue;}
-            if(code!=200){c.disconnect();throw new IOException("GitHub returned "+code);}return c;
+            if(code!=200){String remaining=c.getHeaderField("X-RateLimit-Remaining");String retry=c.getHeaderField("Retry-After");c.disconnect();if(code==403||code==429){throw new IOException("GitHub API blocked this check (HTTP "+code+(("0".equals(remaining))?"; rate limit reached":"")+(retry!=null?"; retry after "+retry+"s":"")+"). Open GitHub Releases or retry later.");}throw new IOException("GitHub returned "+code);}return c;
         }throw new IOException("Too many redirects");
     }
     private static byte[] read(String url,int max)throws Exception{HttpURLConnection c=connect(url);try(InputStream in=c.getInputStream();ByteArrayOutputStream out=new ByteArrayOutputStream()){byte[]b=new byte[8192];int n;while((n=in.read(b))!=-1){if(out.size()+n>max)throw new IOException("Response too large");out.write(b,0,n);}return out.toByteArray();}finally{c.disconnect();}}
     private static File folder(Context c)throws IOException{File dir=new File(c.getCacheDir(),"updates");if(!dir.isDirectory()&&!dir.mkdirs())throw new IOException("Update storage unavailable");return dir;}
     private static void download(Context c,String version,String hash,long size)throws Exception{
-        if(size<1||size>200*1024*1024)throw new IOException("Unexpected APK size");File destination=new File(folder(c),"Cyn-update.apk");
+        if(size==0||size< -1||size>200*1024*1024)throw new IOException("Unexpected APK size");File destination=new File(folder(c),"Cyn-update.apk");
         if(destination.isFile()&&hash.equalsIgnoreCase(DesktopAi.digest(destination))){
             stage=VERIFYING;message="Verifying previously downloaded APK…";
             verify(c,destination);
@@ -97,9 +117,24 @@ final class UpdateManager {
             stage=READY;progress=100;
             message="CYN "+version+" verified · ready to install";notifyReady(c);return;
         }
-        stage=DOWNLOADING;progress=0;message="Downloading CYN "+version+" · 0%";
+        stage=DOWNLOADING;progress=size>0?0:-1;message="Downloading CYN "+version;
         File part=new File(folder(c),"download.part");HttpURLConnection connection=connect(AndroidRelease.assetUrl(version));
-        try{try(InputStream in=connection.getInputStream();FileOutputStream out=new FileOutputStream(part)){byte[]b=new byte[65536];long received=0;int n;while((n=in.read(b))!=-1){received+=n;if(received>size)throw new IOException("APK exceeds release size");out.write(b,0,n);progress=(int)(100*received/size);message="Downloading update · "+progress+"%";}if(received!=size)throw new IOException("Incomplete APK download");out.getFD().sync();}
+        try{
+            long advertised=connection.getContentLengthLong();
+            if(advertised>200*1024*1024L)throw new IOException("APK exceeds size limit");
+            if(size>0&&advertised>0&&size!=advertised)throw new IOException("Release size mismatch");
+            long expected=size>0?size:advertised;
+            try(InputStream in=connection.getInputStream();FileOutputStream out=new FileOutputStream(part)){
+                byte[] b=new byte[65536];long received=0;int n;
+                while((n=in.read(b))!=-1){
+                    received+=n;
+                    if(received>200*1024*1024L||(expected>0&&received>expected))throw new IOException("APK exceeds release size");
+                    out.write(b,0,n);progress=expected>0?(int)(100*received/expected):-1;
+                    message=progress>=0?"Downloading update · "+progress+"%":"Downloading update…";
+                }
+                if(received==0||(expected>0&&received!=expected))throw new IOException("Incomplete APK download");
+                out.getFD().sync();
+            }
             stage=VERIFYING;progress=100;message="Verifying download and signing certificate…";
             if(!hash.equalsIgnoreCase(DesktopAi.digest(part)))throw new IOException("APK checksum mismatch");
             verify(c,part);

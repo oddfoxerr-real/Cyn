@@ -46,6 +46,12 @@ public final class AudioService extends Service {
         appliedAiFresh=false;
         connectedMind=null;
         clearTrace();
+        // Revert external sessions to their manual Studio settings immediately.
+        // A disconnected Connect AI must never leave stale neural EQ applied.
+        if(!destroyed) {
+            updateNativeControls();
+            for(Chain chain:chains.values()) chain.apply();
+        }
     }
     private void startCapture(Intent consent) {
         stopCapture();
@@ -60,6 +66,9 @@ public final class AudioService extends Service {
                 connectedCapture=null;
                 projectionForeground=false;
                 captureStatus="Playback sharing stopped · enable Connect AI to restart";
+                // Revoked consent invalidates all AI decisions immediately.
+                appliedAiFresh=false;
+                connectedMind=null;
                 clearTrace();
                 updateNativeControls();
                 for(Chain chain:chains.values())chain.apply();
@@ -79,6 +88,7 @@ public final class AudioService extends Service {
     boolean useApex, movieMode, spatialPreviewEnabled, partialNeuralPreview;
     String aiProfile=AiSelection.BASIC;
     float spatialPreviewStrength=0.4f;
+    float audonicIntensity=0.45f;
     private long libraryFrame, libraryTrace;
     // UI telemetry is captured from PCM and inference in a 150ms service tick.
     // Indexes: bass, kick/transient, spatial DSP, neural decision intensity.
@@ -264,7 +274,7 @@ public final class AudioService extends Service {
             &&SystemClock.elapsedRealtime()-connectedMind.at<1200;
     }
     boolean mindLive(){
-        return (playing||capturedAudioFresh())&&enabled&&smart&&spatialPreviewEnabled||mindExternal();
+        return (playing||capturedAudioFresh())&&enabled&&smart&&(spatialPreviewEnabled||AiSelection.AUDONIC.equals(aiProfile))||mindExternal();
     }
     float[] mindHidden(){return mindExternal()?connectedMind.hidden:null;}
     float[] mindConnections(){return mindExternal()?connectedMind.connections:null;}
@@ -277,7 +287,7 @@ public final class AudioService extends Service {
     }
     private void updateApexVisualTelemetry(){
         DesktopAi desktopAi=currentAi();
-        if((!playing&&!capturedAudioFresh())||!enabled||!smart||!spatialPreviewEnabled||desktopAi==null){
+        if((!playing&&!capturedAudioFresh())||!enabled||!smart||!(spatialPreviewEnabled||AiSelection.AUDONIC.equals(aiProfile))||desktopAi==null){
             apexVisual=new float[]{0,0,0,0};
             apexDecisionAt=0;
             return;
@@ -290,6 +300,12 @@ public final class AudioService extends Service {
         }
         Chain chain=displayedChain();
         float spatial=playing?apexSpatialActivity():chain!=null&&chain.controlsEq()?chain.appliedWidth:0;
+        DesktopAi.AudonicPolicy creative=desktopAi.audonicPolicy;
+        if(AiSelection.AUDONIC.equals(aiProfile)&&creative!=null&&SystemClock.elapsedRealtime()-creative.at<2500){
+            apexDecisionAt=creative.at;
+            apexVisual=new float[]{bassValue,kickValue,spatial,Math.max(0f,Math.min(1f,creative.effects[0]+creative.effects[1]))};
+            return;
+        }
         DesktopAi.PartialPolicy partial=desktopAi.partialPolicy;
         if(partialNeuralPreview&&partial!=null&&SystemClock.elapsedRealtime()-partial.at<2500){
             apexDecisionAt=partial.at;
@@ -303,12 +319,15 @@ public final class AudioService extends Service {
         }
     }
     float apexSpatialActivity(){
-        if(!playing||!enabled||!smart||!spatialPreviewEnabled||desktopAi==null||desktopAi.engine==0)return 0f;
+        if(!playing||!enabled||!smart||desktopAi==null||desktopAi.engine==0)return 0f;
+        if(AiSelection.AUDONIC.equals(aiProfile))return Math.max(0f,Math.min(1f,NativeEngine.audonicActivity(desktopAi.engine)));
+        if(!spatialPreviewEnabled)return 0f;
         return Math.max(0f,Math.min(1f,NativeEngine.spatialActivity(desktopAi.engine)));
     }
     String processingStatus() {
         if(!enabled)return "Enhancement off · original sound";
         if(playing) {
+            if(AiSelection.AUDONIC.equals(aiProfile))return "AUDONIC Experimental AI · "+desktopAi.audonicStatus;
             if(spatialPreviewEnabled)return partialNeuralPreview
                 ? "APEX 10M Experimental Release · "+desktopAi.partialStatus
                 : "APEX 10M · Classic Spatial DSP";
@@ -371,6 +390,7 @@ public final class AudioService extends Service {
         useApex=AiSelection.usesApex6M(aiProfile);
         spatialPreviewEnabled=AiSelection.usesSpatialPreview(aiProfile);
         spatialPreviewStrength=Math.max(0f,Math.min(1f,prefs.getFloat("spatial10m_strength",.4f)));
+        audonicIntensity=Math.max(0f,Math.min(1f,prefs.getFloat("audonic_intensity",.45f)));
         partialNeuralPreview=prefs.getBoolean("apex10m_partial_opt_in",false);
         for(int i=0;i<39;i++)studioEq[i]=prefs.getFloat("studioEq"+i,0);
         enabled=prefs.getBoolean("enabled",true); smart=prefs.getBoolean("smart",true); sensitivity=prefs.getFloat("sensitivity",.7f);
@@ -620,6 +640,7 @@ public final class AudioService extends Service {
         // its current neural controller as part of that primary engine.
         // Existing saved selections are left untouched until reselected.
         if(AiSelection.APEX_10M.equals(aiProfile))partialNeuralPreview=true;
+        if(AiSelection.AUDONIC.equals(aiProfile))partialNeuralPreview=false;
         useApex=AiSelection.usesApex6M(aiProfile);
         spatialPreviewEnabled=AiSelection.usesSpatialPreview(aiProfile);
         if (desktopAi!=null) desktopAi.reset();
@@ -633,7 +654,7 @@ public final class AudioService extends Service {
         aiProfile=AiSelection.normalize(aiProfile);
         useApex=AiSelection.usesApex6M(aiProfile);
         spatialPreviewEnabled=AiSelection.usesSpatialPreview(aiProfile);
-        SharedPreferences.Editor e=prefs.edit().putString("ai_profile",aiProfile).putBoolean("apex10m_partial_opt_in",partialNeuralPreview).putBoolean("spatial10m_preview",spatialPreviewEnabled).putFloat("spatial10m_strength",spatialPreviewStrength).putBoolean("enabled",enabled).putBoolean("smart",smart).putFloat("sensitivity",sensitivity).putFloat("bass",bass).putFloat("clarity",clarity).putFloat("width",width).putFloat("loudness",loudness);
+        SharedPreferences.Editor e=prefs.edit().putString("ai_profile",aiProfile).putBoolean("apex10m_partial_opt_in",partialNeuralPreview).putBoolean("spatial10m_preview",spatialPreviewEnabled).putFloat("spatial10m_strength",spatialPreviewStrength).putFloat("audonic_intensity",audonicIntensity).putBoolean("enabled",enabled).putBoolean("smart",smart).putFloat("sensitivity",sensitivity).putFloat("bass",bass).putFloat("clarity",clarity).putFloat("width",width).putFloat("loudness",loudness);
         for(int i=0;i<5;i++) e.putFloat("eq"+i,eq[i]);
         e.putFloat("ambience",ambience).putFloat("dynamics",dynamics).putFloat("headroom",headroom).putInt("bands",bandCount).putBoolean("apex",useApex).putBoolean("movie",movieMode);
         for(int i=0;i<39;i++)e.putFloat("studioEq"+i,studioEq[i]);e.apply();updateNativeControls();
@@ -655,6 +676,7 @@ public final class AudioService extends Service {
         DesktopAi desktopAi=currentAi();
         desktopAi.active=(playing||capturedAudioFresh())&&enabled&&smart;
         desktopAi.apexEnabled=useApex;
+        desktopAi.audonicEnabled=AiSelection.AUDONIC.equals(aiProfile)&&desktopAi.active;
         desktopAi.movie=movieMode;
         boolean wantsPartial=spatialPreviewEnabled&&partialNeuralPreview&&desktopAi.active;
         if(desktopAi.partialEnabled!=wantsPartial) {
@@ -679,6 +701,11 @@ public final class AudioService extends Service {
                 if(!playing)publishConnectedMind(x,r.features[11],trace,traceAt);
             }
             if(r.at!=libraryFrame){libraryFrame=r.at;frames.add(new Frame(x,Math.min(1,r.features[11]*4)));while(frames.size()>240)frames.remove(0);}
+        }
+        if(!playing){
+            DesktopAi.AudonicPolicy creative=desktopAi.audonicPolicy;
+            ConnectedEffects.audonic(p,creative==null?null:creative.effects,audonicIntensity,
+                desktopAi.audonicEnabled&&creative!=null&&SystemClock.elapsedRealtime()-creative.at<2500);
         }
         float changeDb=Math.max(Math.abs(p[1]-bass),Math.abs(p[2]-clarity));
         int changedBands=0;
@@ -706,6 +733,22 @@ public final class AudioService extends Service {
             spatialStrength*=verified?partial.gain:0f;
         }
         NativeEngine.spatialPreview(desktopAi.engine,spatialStrength);
+        float[] creative=new float[6];
+        boolean audonicReady=false;
+        if(desktopAi.audonicEnabled){
+            DesktopAi.AudonicPolicy decision=desktopAi.audonicPolicy;
+            audonicReady=decision!=null&&SystemClock.elapsedRealtime()-decision.at<2500;
+            if(audonicReady){
+                final float[] max={.55f,.65f,.45f,.55f,.25f,.50f};
+                for(int j=0;j<6;j++){
+                    float value=decision.effects[j];
+                    creative[j]=Float.isFinite(value)
+                        ?Math.max(0f,Math.min(max[j],value*audonicIntensity)):0f;
+                }
+            }
+        }
+        // Fail closed if weights, inference or audio features are unavailable.
+        NativeEngine.audonicControls(desktopAi.engine,creative,audonicReady);
     }
     void train() {
         if(training) return; training=true; trainingEpoch=0; trainingTrace=null;
@@ -798,8 +841,19 @@ public final class AudioService extends Service {
             // The same Studio EQ and selected neural model now drive both routes.
             // Only use mix-wide AI on the explicitly selected system mix or the
             // sole external session. Never apply a mixed signal's AI to multiple unrelated players.
-            boolean shared=capturedAudioFresh()&&smart&&appliedAiFresh&&(legacy||externalSessionCount()==1);
-            boolean spatialShared=capturedAudioFresh()&&smart&&(legacy||externalSessionCount()==1);
+            // A captured external mix must never drive Library's own session.
+            // Connect applies AI only to an eligible external effect session.
+            // Never send mix-wide neural decisions to unrelated audio sessions.
+            // A system-mix route is eligible only when explicitly selected;
+            // otherwise exactly one active external session must be targeted.
+            // Connect is music-only: never modify the global mix, system sounds,
+            // or a session unless an authorized external music player is active.
+            ExternalNowPlaying.Track music=ExternalNowPlaying.current(AudioService.this);
+            boolean selectedMusic=music!=null&&music.playing&&monitor&&!playing;
+            boolean externalRoute=!legacy&&selectedMusic&&id>0&&
+                id!=playerSession&&id==activeSession&&externalSessionCount()==1;
+            boolean spatialShared=externalRoute&&capturedAudioFresh()&&smart;
+            boolean shared=spatialShared&&appliedAiFresh;
             float[] targets=appliedTargets.clone();
             if(!shared) {
                 targets[1]=bass+(float)(smart?bassOffset:0);
@@ -812,13 +866,17 @@ public final class AudioService extends Service {
             boolean policyFresh=spatialShared&&policy!=null&&SystemClock.elapsedRealtime()-policy.at<2500;
             float spatial=ConnectedEffects.width(targets[3],policyFresh?policy.gain:0,
                 spatialPreviewStrength,spatialShared&&spatialPreviewEnabled,partialNeuralPreview,policyFresh,sensitivity);
-            String signature=enabled+":"+Arrays.toString(targets)+":"+spatial+":"+loudness;
-            if(signature.equals(lastSettings)&&(!enabled||controlsEq())) return;
-            boolean ok=true;
+            // Fail closed for unselected sessions. A music metadata session does
+            // not prove an effect session belongs to that player, so refuse
+            // ambiguous routes rather than process every phone sound.
+            boolean effectEnabled=enabled&&(id==playerSession||externalRoute);
+            String signature=effectEnabled+":"+Arrays.toString(targets)+":"+spatial+":"+loudness;
+            if(signature.equals(lastSettings)&&(!effectEnabled||controlsEq())) return;
+            boolean effectsApplied=true;
             try {
                 if(equalizer!=null) {
-                    if(!equalizer.hasControl()) { failure="Another equalizer owns this session. Disable competing equalizers and reconnect."; ok=false; }
-                    else if(equalizer.setEnabled(enabled)!=AudioEffect.SUCCESS || equalizer.getEnabled()!=enabled) { failure="Android rejected the requested EQ state"; ok=false; }
+                    if(!equalizer.hasControl()) { failure="Another equalizer owns this session. Disable competing equalizers and reconnect."; effectsApplied=false; }
+                    else if(equalizer.setEnabled(effectEnabled)!=AudioEffect.SUCCESS || equalizer.getEnabled()!=effectEnabled) { failure="Android rejected the requested EQ state"; effectsApplied=false; }
                     else {
                         short[] range=equalizer.getBandLevelRange();
                         for(short i=0;i<equalizer.getNumberOfBands();i++) {
@@ -827,24 +885,24 @@ public final class AudioService extends Service {
                         }
                         failure="";
                     }
-                } else {failure="Equalizer unavailable on this session";ok=false;}
-            } catch(RuntimeException error) {failure="Effect control unavailable or owned by another equalizer";ok=false;}
+                } else {failure="Equalizer unavailable on this session";effectsApplied=false;}
+            } catch(RuntimeException error) {failure="Effect control unavailable or owned by another equalizer";effectsApplied=false;}
             // Optional effect failure must not disable a functioning equalizer.
             appliedWidth=0;
             try {
                 if(virtualizer!=null&&virtualizer.hasControl()) {
                     if(virtualizer.getStrengthSupported())virtualizer.setStrength((short)(spatial*1000));
-                    if(virtualizer.setEnabled(enabled&&spatial>0)==AudioEffect.SUCCESS&&virtualizer.getEnabled())
+                    if(virtualizer.setEnabled(effectEnabled&&spatial>0)==AudioEffect.SUCCESS&&virtualizer.getEnabled())
                         appliedWidth=virtualizer.getRoundedStrength()/1000f;
                 }
-            } catch(RuntimeException ignored) {ok=false;}
+            } catch(RuntimeException ignored) {effectsApplied=false;}
             try {
                 if(enhancer!=null&&enhancer.hasControl()) {
-                    enhancer.setEnabled(enabled&&loudness>0);
+                    enhancer.setEnabled(effectEnabled&&loudness>0);
                     enhancer.setTargetGain((int)(loudness*100));
                 }
-            } catch(RuntimeException ignored) {ok=false;}
-            lastSettings=ok?signature:"";
+            } catch(RuntimeException ignored) {effectsApplied=false;}
+            lastSettings=effectsApplied?signature:"";
         }
         void close() { if(visualizer!=null) visualizer.release(); if(equalizer!=null) equalizer.release(); if(virtualizer!=null) virtualizer.release(); if(enhancer!=null) enhancer.release(); }
         boolean controlsEq() { try { return enabled&&equalizer!=null&&equalizer.hasControl()&&equalizer.getEnabled()&&failure.isEmpty(); } catch(RuntimeException e) { return false; } }

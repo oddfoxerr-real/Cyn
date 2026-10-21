@@ -30,6 +30,19 @@ public final class ConnectedEffectsTest {
         near(ConnectedEffects.width(0,.7f,1,true,true,true,0),0,"Zero sensitivity bypasses neural width");
         near(ConnectedEffects.width(0,1,1,true,true,true,1),.7f,"Neural width stays capped");
         near(ConnectedEffects.width(.2f,0,1,true,true,false,1),.2f,"Bypass preserves manual width");
+        float[] neutral=new float[48];neutral[8]=31;
+        float[] policy={.4f,.3f,.2f,.5f,.1f,.6f};
+        float[] stale=neutral.clone();ConnectedEffects.audonic(stale,policy,1,false);
+        check(java.util.Arrays.equals(stale,neutral),"Stale AUDONIC is exact bypass");
+        float[] zero=neutral.clone();ConnectedEffects.audonic(zero,policy,0,true);
+        check(java.util.Arrays.equals(zero,neutral),"Zero intensity is exact bypass");
+        ConnectedEffects.audonic(neutral,policy,1,true);
+        check(ConnectedEffects.band(neutral,80)>0,"AUDONIC reaches connected bass EQ");
+        check(neutral[3]>0,"AUDONIC reaches connected width");
+        for(float v:neutral)check(Float.isFinite(v),"Finite creative targets");
+        float[] invalid={Float.NaN,Float.POSITIVE_INFINITY,Float.NaN,Float.NaN,0,Float.NaN};
+        ConnectedEffects.audonic(neutral,invalid,1,true);
+        for(float v:neutral)check(Float.isFinite(v),"Invalid creative controls rejected");
         System.out.println("PASS Connect EQ interpolation, model effect mapping, stale policy and off transitions");
     }
 }

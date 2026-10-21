@@ -77,3 +77,38 @@ expected = manifest.get('onnx_sha256', '')
 if not ready('apex10m-partial-policy.onnx', expected):
     raise RuntimeError('Frozen APEX 10M ONNX file missing or corrupt')
 print(f"Verified APEX10M experimental RC trained {manifest['frozen_percent_of_15h']}% ({manifest['real_optimizer_updates']} steps); live inference is guarded.")
+
+# AUDONIC is a separate experimental neural AI. Verify its learned ONNX
+# weights against a pinned release before placing them in the APK.
+AUDONIC_BASE = ('https://github.com/oddfoxerr-real/Cyn/releases/download/'
+                'audonic-neural-student-v0.1.0/')
+audonic_manifest_target = DEST / 'audonic-manifest.json'
+audonic_model_target = DEST / 'audonic-student.onnx'
+if args.offline:
+    if not audonic_manifest_target.exists():
+        raise RuntimeError('AUDONIC manifest missing; download official trained student first')
+    audonic_meta = json.loads(audonic_manifest_target.read_text(encoding='utf-8'))
+else:
+    with tempfile.TemporaryDirectory() as folder:
+        manifest_path = pathlib.Path(folder) / 'audonic-meta.json'
+        download(AUDONIC_BASE + 'audonic-manifest.json', manifest_path)
+        audonic_meta = json.loads(manifest_path.read_text(encoding='utf-8'))
+        if (audonic_meta.get('model') != 'AUDONIC neural creative-FX student'
+                or audonic_meta.get('gradient_updates', 0) < 100
+                or audonic_meta.get('apex10m_teacher_distillation') is not True
+                or audonic_meta.get('three_b_teacher_trained') is not False
+                or audonic_meta.get('real_music_quality_verified') is not False):
+            raise RuntimeError('Untrusted AUDONIC neural release metadata')
+        audonic_sha = audonic_meta.get('onnx_sha256','')
+        if len(audonic_sha) != 64 or any(c not in '0123456789abcdef' for c in audonic_sha.lower()):
+            raise RuntimeError('Missing AUDONIC SHA-256')
+        if not ready('audonic-student.onnx',audonic_sha):
+            candidate = pathlib.Path(folder) / 'audonic-student.onnx'
+            download(AUDONIC_BASE + 'audonic-student.onnx',candidate)
+            if digest(candidate)!=audonic_sha:
+                raise RuntimeError('Trained AUDONIC model hash mismatch')
+            shutil.copyfile(candidate,audonic_model_target)
+        audonic_manifest_target.write_text(json.dumps(audonic_meta,sort_keys=True),encoding='utf-8')
+if not ready('audonic-student.onnx', audonic_meta.get('onnx_sha256','')):
+    raise RuntimeError('AUDONIC model missing, corrupted, or unsigned by release manifest')
+print('Verified trained AUDONIC creative neural student and SHA-256.')
