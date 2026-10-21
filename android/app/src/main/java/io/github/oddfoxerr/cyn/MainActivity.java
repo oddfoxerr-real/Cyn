@@ -38,7 +38,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         @Override public void onServiceConnected(ComponentName name,IBinder binder){service=((AudioService.LocalBinder)binder).service();build(false);processControlIntent(getIntent());}
         @Override public void onServiceDisconnected(ComponentName name){service=null;build(false);}
     };
-    @Override public void onCreate(Bundle state){super.onCreate(state);ui=getSharedPreferences("ui",0);if(state!=null){page=state.getInt("page",0);query=state.getString("query","");onlyFavorites=state.getBoolean("favorites");}if(getIntent().getBooleanExtra("updates",false))page=4;build(false);bound=bindService(new Intent(this,AudioService.class),connection,BIND_AUTO_CREATE);UpdateManager.schedule(this);UpdateManager.check(this,false,null);}
+    @Override public void onCreate(Bundle state){super.onCreate(state);ui=getSharedPreferences("ui",0);if(state!=null){page=state.getInt("page",0);query=state.getString("query","");onlyFavorites=state.getBoolean("favorites");}if(getIntent().getBooleanExtra("updates",false))page=4;build(false);bound=bindService(new Intent(this,AudioService.class),connection,BIND_AUTO_CREATE);UpdateManager.schedule(this);UpdateManager.checkOnLaunch(this);}
     @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);state.putInt("page",page);state.putString("query",query);state.putBoolean("favorites",onlyFavorites);}
     @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);if(i.getBooleanExtra("updates",false)){page=4;build(false);}processControlIntent(i);}
     void processControlIntent(Intent i){if(service!=null&&AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL.equals(i.getAction())){notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("session",i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1)));i.setAction(null);page=0;build(false);offerLiveVisuals();}}
@@ -170,7 +170,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(bg);scroll.setFillViewport(true);scroll.setClipToPadding(false);content=column();int side=getResources().getConfiguration().screenWidthDp>=700?60:18;content.setPadding(dp(side),dp(12),dp(side),dp(24));scroll.addView(content);
         if(service==null)add(content,label("Connecting to your sound…",20,text));else if(page==0)music();else if(page==1)learning();else if(page==2)files();else if(page==3)appearance();else updatesPage();
         pages.change(scroll,transition&&!reduced,
-            ui.getInt("page_transition",0),accent,ui.getInt("transition_speed",100));
+            ui.getInt("page_transition",4),accent,ui.getInt("transition_speed",100));
         // Reuse the stable Material menu: just update palette and selection.
         // Reconstructing menu views mid-tap caused intermittent missed selections.
         ColorStateList tabColors=new ColorStateList(
@@ -474,10 +474,10 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         LinearLayout motions=section("Page transitions","The actual outgoing page animates as the next page appears.");
         for(int i=0;i<LiquidPage.MODES.length;i++){
             final int selected=i;
-            TextView option=button(LiquidPage.MODES[i]+(ui.getInt("page_transition",0)==i?"  ✓":""),()->{
+            TextView option=button(LiquidPage.MODES[i]+(ui.getInt("page_transition",4)==i?"  ✓":""),()->{
                 ui.edit().putInt("page_transition",selected).apply();build(true);
             });
-            if(ui.getInt("page_transition",0)==i)primaryAction(option);
+            if(ui.getInt("page_transition",4)==i)primaryAction(option);
             add(motions,option);gap(motions,6);
         }
         LinearLayout speed=section("Motion timing","Used for page transitions. Disable motion to skip all page animations.");
