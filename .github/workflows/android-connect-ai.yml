@@ -153,6 +153,30 @@ jobs:
           echo "$old_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='26'"
           echo "$new_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='27'"
           echo 'PASS: existing v0.2.22 and new v0.2.23 APK share signing identity and have increasing version codes'
+      - name: Enable Android emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Prove existing v0.2.22 upgrades in place to v0.2.23
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            old="$RUNNER_TEMP/cyn-previous.apk"
+            new=dist/android/Cyn-Studio-Android-0.2.23-preview.apk
+            adb install "$old"
+            before=$(adb shell dumpsys package io.github.oddfoxerr.cyn.studio | grep -m1 'versionCode=')
+            echo "Before: $before"
+            adb install -r "$new"
+            after=$(adb shell dumpsys package io.github.oddfoxerr.cyn.studio | grep -m1 'versionCode=')
+            echo "After: $after"
+            echo "$before" | grep 'versionCode=26'
+            echo "$after" | grep 'versionCode=27'
       - name: Upload verified experimental Android APK
         uses: actions/upload-artifact@v4
         with:
