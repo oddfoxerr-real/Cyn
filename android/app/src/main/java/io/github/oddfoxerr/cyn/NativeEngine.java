@@ -10,6 +10,7 @@ final class NativeEngine {
     static native void controls(long handle,float[] values);
     static native void spatialPreview(long handle,float strength);
     static native float spatialActivity(long handle);
+    static native float[] spatialPolicyWindow(long handle);
     static native float[] features(long handle);
     static native float[] yamnetWindow(long handle);
     static native float[] apexWindow(long handle);
