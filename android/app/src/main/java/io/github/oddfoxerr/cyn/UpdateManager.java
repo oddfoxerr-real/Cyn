@@ -17,7 +17,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 final class UpdateManager {
-    private static final String API="https://api.github.com/repos/oddfoxerr-real/Cyn/releases?per_page=100&page=";
+    private static final String API="https://api.github.com/repos/oddfoxerr-real/Cyn/releases?per_page=30&page=";
     private static final String RELEASES_WEB="https://github.com/oddfoxerr-real/Cyn/releases";
     private static final ExecutorService IO=Executors.newSingleThreadExecutor();
     private static final AtomicBoolean BUSY=new AtomicBoolean();
@@ -49,16 +49,16 @@ final class UpdateManager {
     static void check(Context context,boolean manual,Runnable complete){check(context,manual,complete,false);}
     private static void check(Context context,boolean manual,Runnable complete,boolean launch){
         Context c=context.getApplicationContext();if(!BUSY.compareAndSet(false,true)){if(complete!=null)complete.run();return;}
-        if(!manual&&!launch&&(!automatic(c)||System.currentTimeMillis()-prefs(c).getLong("checked",0)<6*60*60*1000L)){BUSY.set(false);if(complete!=null)complete.run();return;}
+        if(!manual&&(!automatic(c)||System.currentTimeMillis()-prefs(c).getLong("checked",0)<6*60*60*1000L)){BUSY.set(false);if(complete!=null)complete.run();return;}
         progress=-1;stage=CHECKING;message="Checking CYN Studio releases…";
         IO.execute(()->{try{JSONObject newest=null;String version=null;
-            for(int page=1;page<=5;page++){
+            for(int page=1;page<=2;page++){
                 JSONArray releases=new JSONArray(new String(read(API+page,4*1024*1024),StandardCharsets.UTF_8));
                 for(int i=0;i<releases.length();i++){JSONObject r=releases.getJSONObject(i);if(r.optBoolean("draft")||r.isNull("published_at"))continue;String v=AndroidRelease.newerVersion(r.optString("tag_name"),BuildConfig.VERSION_NAME);if(v==null)continue;
                     JSONArray assets=r.optJSONArray("assets");if(assets==null)continue;
                     for(int j=0;j<assets.length();j++){JSONObject a=assets.getJSONObject(j);if(AndroidRelease.assetUrl(v).equals(a.optString("browser_download_url"))&&a.optLong("size")>0&&(version==null||AndroidRelease.number(v)>AndroidRelease.number(version))){newest=a;version=v;}}
                 }
-                if(releases.length()<100)break;
+                if(releases.length()<30)break;
             }
             prefs(c).edit().putLong("checked",System.currentTimeMillis()).apply();
             if(version==null){stage=UP_TO_DATE;message="CYN "+BuildConfig.VERSION_NAME+" · up to date";return;}
