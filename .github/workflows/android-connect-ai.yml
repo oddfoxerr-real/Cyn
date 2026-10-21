@@ -131,6 +131,28 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.23-preview.apk > "$RUNNER_TEMP/cyn-apex10m-package.txt"
           grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='27' versionName='0.2.23-preview'" "$RUNNER_TEMP/cyn-apex10m-package.txt"
           (cd dist/android && sha256sum Cyn-Studio-Android-0.2.23-preview.apk > Cyn-Studio-Android-0.2.23-preview.apk.sha256)
+      - name: Verify in-place upgrade compatibility with installed v0.2.22 release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          previous="$RUNNER_TEMP/cyn-previous.apk"
+          gh release download android-studio-v0.2.22-preview --pattern 'Cyn-Studio-Android-0.2.22-preview.apk' --output "$previous"
+          current=dist/android/Cyn-Studio-Android-0.2.23-preview.apk
+          for apk in "$previous" "$current"; do
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk"
+          done
+          old_cert=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$previous" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
+          new_cert=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$current" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
+          test -n "$old_cert" && test "$old_cert" = "$new_cert"
+          old_info=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$previous" | grep '^package:')
+          new_info=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$current" | grep '^package:')
+          echo "$old_info"
+          echo "$new_info"
+          echo "$old_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='26'"
+          echo "$new_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='27'"
+          echo 'PASS: existing v0.2.22 and new v0.2.23 APK share signing identity and have increasing version codes'
       - name: Upload verified experimental Android APK
         uses: actions/upload-artifact@v4
         with:
