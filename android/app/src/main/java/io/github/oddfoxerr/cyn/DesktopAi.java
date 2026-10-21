@@ -22,6 +22,19 @@ final class DesktopAi {
             this.at=SystemClock.elapsedRealtime();
         }
     }
+    static final class AudonicPolicy {
+        final long at;
+        final float[] effects;
+        AudonicPolicy(float[] six){
+            effects=six.clone();
+            at=SystemClock.elapsedRealtime();
+        }
+    }
+    volatile boolean audonicEnabled;
+    volatile AudonicPolicy audonicPolicy;
+    volatile String audonicStatus="Creative engine ready";
+    private OrtSession audonicSession;
+    private long audonicRetryAt;
     volatile boolean partialEnabled;
     volatile PartialPolicy partialPolicy;
     volatile String partialStatus="Ready for APEX 10M neural control";
@@ -45,7 +58,7 @@ final class DesktopAi {
     private float[] previousScene, previousEmbedding;
     private volatile long generation;
     private long workerGeneration=-1;
-    void reset(){generation++;latest=null;partialPolicy=null;}
+    void reset(){generation++;latest=null;partialPolicy=null;audonicPolicy=null;}
     private long retryAt;
     private volatile boolean closed;
     DesktopAi(Context context){this.context=context.getApplicationContext();worker.scheduleWithFixedDelay(this::infer,0,650,TimeUnit.MILLISECONDS);}
@@ -75,6 +88,83 @@ final class DesktopAi {
         if(previousEmbedding!=null){float similarity=0;for(int i=0;i<24;i++)similarity+=projected[i]*previousEmbedding[i];s[10]=Math.max(0,Math.min(1,(1-similarity)*.8f));}previousEmbedding=projected;
         if(previousScene!=null)for(int i=0;i<11;i++)s[i]=previousScene[i]*.55f+s[i]*.45f;
         previousScene=s.clone();return s;
+    }
+    private void inferAudonic(long epoch){
+        if(!audonicEnabled||!active){audonicPolicy=null;return;}
+        if(SystemClock.elapsedRealtime()<audonicRetryAt)return;
+        try{
+            float[] features=NativeEngine.spatialPolicyWindow(engine);
+            if(features==null||features.length!=160){
+                audonicPolicy=null;
+                audonicStatus="Listening for the next musical moment";
+                return;
+            }
+            for(float value:features)if(!Float.isFinite(value))
+                throw new IOException("Invalid musical feature window");
+            if(audonicSession==null){
+                JSONObject manifest;
+                try(InputStream in=context.getAssets().open("models/audonic-manifest.json")){
+                    ByteArrayOutputStream output=new ByteArrayOutputStream();
+                    byte[] buffer=new byte[4096];int read;
+                    while((read=in.read(buffer))!=-1){
+                        if(output.size()+read>8192)throw new IOException("Invalid AUDONIC manifest");
+                        output.write(buffer,0,read);
+                    }
+                    manifest=new JSONObject(output.toString(StandardCharsets.UTF_8.name()));
+                }
+                if(!"AUDONIC neural creative-FX student".equals(manifest.optString("model"))
+                    ||manifest.optInt("gradient_updates")<100
+                    ||!manifest.optBoolean("apex10m_teacher_distillation",false)
+                    ||manifest.optBoolean("three_b_teacher_trained",true)
+                    ||manifest.optBoolean("real_music_quality_verified",true))
+                    throw new IOException("Unverified experimental AUDONIC release");
+                String hash=manifest.optString("onnx_sha256");
+                if(!hash.matches("[0-9a-fA-F]{64}"))
+                    throw new IOException("Missing AUDONIC signature");
+                audonicSession=open("audonic-student.onnx",hash);
+            }
+            long begin=SystemClock.elapsedRealtime();
+            float[][][] controls;
+            try(OnnxTensor input=OnnxTensor.createTensor(environment,
+                        FloatBuffer.wrap(features),new long[]{1,8,20});
+                OrtSession.Result results=audonicSession.run(
+                        Collections.singletonMap("features",input))){
+                OnnxValue output=results.get("fx_controls")
+                    .orElseThrow(()->new IOException("AUDONIC output unavailable"));
+                if(!(output.getValue() instanceof float[][][]))
+                    throw new IOException("AUDONIC output shape changed");
+                controls=(float[][][])output.getValue();
+                if(controls.length!=1||controls[0].length!=6||
+                   controls[0][0].length!=20)
+                    throw new IOException("AUDONIC control shape invalid");
+            }
+            float[] six=new float[6];
+            for(int i=0;i<6;i++){
+                six[i]=controls[0][i][19];
+                if(!Float.isFinite(six[i]))throw new IOException("Invalid FX output");
+                six[i]=finite(six[i]);
+            }
+            // Width and harmonic excitement require independent headroom,
+            // bass-preservation and phase evidence from native PCM analysis.
+            float coherence=Math.max(0f,Math.min(1f,(features[3*20+19]+.25f)/.8f));
+            float headroom=Math.max(0f,Math.min(1f,features[6*20+19]));
+            float vocal=Math.max(0f,Math.min(1f,features[5*20+19]));
+            float bass=Math.max(0f,Math.min(1f,features[19]));
+            six[0]*=headroom*(1-.65f*vocal);
+            six[1]*=headroom;
+            six[2]*=coherence*headroom*(1-.6f*vocal);
+            six[3]*=headroom*(1-.6f*vocal);
+            six[4]*=headroom*(1-.7f*vocal);
+            six[5]*=headroom*(1-.55f*bass);
+            if(audonicEnabled&&active&&!closed&&epoch==generation){
+                audonicPolicy=new AudonicPolicy(six);
+                audonicStatus="Creative AI live · "+(SystemClock.elapsedRealtime()-begin)+" ms";
+            }
+        }catch(Exception|LinkageError problem){
+            audonicPolicy=null;
+            audonicStatus="Creative engine unavailable · safe bypass";
+            audonicRetryAt=SystemClock.elapsedRealtime()+15000;
+        }
     }
     private void inferPartial(long epoch) {
         if(!partialEnabled||!active) {partialPolicy=null;return;}
@@ -140,12 +230,13 @@ final class DesktopAi {
     }
     private void infer(){
         if(closed)return;
-        if(!active){latest=null;partialPolicy=null;previousScene=null;previousEmbedding=null;return;}
+        if(!active){latest=null;partialPolicy=null;audonicPolicy=null;previousScene=null;previousEmbedding=null;return;}
         // APEX 10M inference is independent of YAMNet availability. The
         // previous placement after scene classification delayed or prevented
         // neural-triggered animations when scene analysis was unavailable.
         final long epoch=generation;
         inferPartial(epoch);
+        inferAudonic(epoch);
         if(SystemClock.elapsedRealtime()<retryAt)return;
         try{
             if(workerGeneration!=epoch){previousScene=null;previousEmbedding=null;workerGeneration=epoch;}
@@ -175,5 +266,5 @@ final class DesktopAi {
             if(active&&!closed&&epoch==generation){latest=new Result(f,s,decisions,goals,SystemClock.elapsedRealtime()-started);status=(apexEnabled?"APEX 6M + YAMNet":"YAMNet")+" · running locally";}
         }catch(Exception|LinkageError e){latest=null;partialPolicy=null;status="AI unavailable: "+e.getClass().getSimpleName()+" · manual sound remains active";retryAt=SystemClock.elapsedRealtime()+15000;}
     }
-    void closeAfterPlayer(){closed=true;active=false;worker.execute(()->{try{if(yamnet!=null)yamnet.close();if(apex!=null)apex.close();if(partialSession!=null)partialSession.close();}catch(Exception ignored){}finally{NativeEngine.destroy(engine);}});worker.shutdown();}
+    void closeAfterPlayer(){closed=true;active=false;worker.execute(()->{try{if(yamnet!=null)yamnet.close();if(apex!=null)apex.close();if(partialSession!=null)partialSession.close();if(audonicSession!=null)audonicSession.close();}catch(Exception ignored){}finally{NativeEngine.destroy(engine);}});worker.shutdown();}
 }
