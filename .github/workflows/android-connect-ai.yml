@@ -166,7 +166,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            set -euo pipefail
+            bash -euo pipefail -c '
             old="$RUNNER_TEMP/cyn-previous.apk"
             new=dist/android/Cyn-Studio-Android-0.2.23-preview.apk
             adb install "$old"
@@ -177,6 +177,7 @@ jobs:
             echo "After: $after"
             echo "$before" | grep 'versionCode=26'
             echo "$after" | grep 'versionCode=27'
+            '
       - name: Upload verified experimental Android APK
         uses: actions/upload-artifact@v4
         with:
