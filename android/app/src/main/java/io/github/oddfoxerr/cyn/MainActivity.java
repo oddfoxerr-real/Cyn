@@ -309,16 +309,17 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         externalStatus=label(service.connectionState()+"\n"+service.connectionHint(),12,hint);externalStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(external,externalStatus);
         powerButton=button(service.monitor?"Disconnect CYN":"Connect CYN",()->{
             if(service.monitor) service.stopMonitor();
-            else { notifications(); startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR)); offerLiveVisuals(); }
+            else { startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR)); enableConnectAi(); }
             update();
         });primaryAction(powerButton);add(external,powerButton);
         add(external,button("Try device-wide EQ (experimental)",()->new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle("Try device-wide compatibility?")
             .setMessage("Android's legacy output-mix EQ works only on some phones. It can affect multiple apps, and obtaining effect control does not prove music is being processed. Compare sound with CYN off/on. Disconnect music apps to stop the attempt.")
-            .setPositiveButton("Try",(d,w)->{notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("legacy",true));offerLiveVisuals();})
+            .setPositiveButton("Try",(d,w)->{startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("legacy",true));enableConnectAi();})
             .setNegativeButton("Cancel",null).show()));
         if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)
             add(external,button("Enable live visuals",this::offerLiveVisuals));
+        add(external,button("Enable Connect AI",this::enableConnectAi));
         add(external,button("Connection details",this::connectionHelp));
     }
     void bands(int count){float[]old=service.studioEq.clone();int n=service.bandCount;for(int i=0;i<count;i++){float position=i*(n-1f)/(count-1);int lo=(int)position;service.studioEq[i]=old[lo]+(old[Math.min(n-1,lo+1)]-old[lo])*(position-lo);}service.bandCount=count;service.changed();build();}
@@ -396,13 +397,13 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             add(engine,label("APEX 10M  ·  95.97% TRAINED",12,accent));
             toggle(engine,"APEX 10M neural control",service.partialNeuralPreview,on->{
                 service.partialNeuralPreview=on;
-                service.desktopAi.partialPolicy=null;
-                service.desktopAi.partialStatus=on?"Starting neural engine…":"Classic spatial DSP";
+                service.currentAi().partialPolicy=null;
+                service.currentAi().partialStatus=on?"Starting neural engine…":"Classic spatial DSP";
                 service.changed();
                 build();
             });
             add(engine,label(service.partialNeuralPreview
-                ? "Neural engine · "+service.desktopAi.partialStatus
+                ? "Neural engine · "+service.currentAi().partialStatus
                 : "Classic spatial DSP mode",12,hint));
             add(engine,label("Works with songs played in CYN Library.",12,hint));
 
@@ -521,7 +522,25 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         });
         primaryAction(updateButton);add(updates,updateButton);
         add(updates,label("Material-style updater · official release checks, live progress and verified installs. Automatic updates download on unmetered networks; installation always needs your approval.",12,hint));
-        LinearLayout about=section("CYN for Android","Built on the FxSound open-source foundation.");add(about,button("Audio diagnostics (local only)",()->showText("Audio diagnostics · privacy-safe",service.diagnostics()+"\nAI engine: "+service.desktopAi.status)));add(about,button("Source & release history",()->browser("https://github.com/oddfoxerr-real/Cyn/tree/codex/android/android")));add(about,button("FxSound credits, licenses & no warranty",()->{try{showText("FxSound credits & licenses",asset("NOTICE.txt")+"\n\n"+asset("LICENSE.txt"));}catch(Exception e){toast("Could not open licenses");}}));add(about,label("The phone uses the same neural model weights and desktop mixer. Its audio renderer and effects are adapted for Android; identical sound to the Windows FxSound driver is not claimed.",12,hint));add(about,button("Stop CYN audio",()->{service.stopAll();update();}));
+        LinearLayout about=section("CYN for Android","Built on the FxSound open-source foundation.");add(about,button("Audio diagnostics (local only)",()->showText("Audio diagnostics · privacy-safe",service.diagnostics()+"\nAI engine: "+service.currentAi().status)));add(about,button("Source & release history",()->browser("https://github.com/oddfoxerr-real/Cyn/tree/codex/android/android")));add(about,button("FxSound credits, licenses & no warranty",()->{try{showText("FxSound credits & licenses",asset("NOTICE.txt")+"\n\n"+asset("LICENSE.txt"));}catch(Exception e){toast("Could not open licenses");}}));add(about,label("The phone uses the same neural model weights and desktop mixer. Its audio renderer and effects are adapted for Android; identical sound to the Windows FxSound driver is not claimed.",12,hint));add(about,button("Stop CYN audio",()->{service.stopAll();update();}));
+    }
+    void enableConnectAi(){
+        if(Build.VERSION.SDK_INT<29){offerLiveVisuals();return;}
+        if(service!=null&&service.connectedCapture!=null){toast("Connect AI is already sharing playback");return;}
+        if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){
+            new AlertDialog.Builder(this).setTitle("Enable Connect AI")
+                .setMessage("CYN analyzes shared playback on this phone to adjust supported audio effects. Android calls the first permission microphone access; CYN only captures playback. Audio is not saved or uploaded. Next, approve Android's sharing prompt.")
+                .setPositiveButton("Continue",(d,w)->requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},24))
+                .setNegativeButton("Not now",null).show();
+            return;
+        }
+        try {
+            android.media.projection.MediaProjectionManager manager=getSystemService(android.media.projection.MediaProjectionManager.class);
+            Intent consent=Build.VERSION.SDK_INT>=34
+                ?manager.createScreenCaptureIntent(android.media.projection.MediaProjectionConfig.createConfigForDefaultDisplay())
+                :manager.createScreenCaptureIntent();
+            startActivityForResult(consent,72);
+        }catch(RuntimeException error){toast("Playback sharing is unavailable on this device");}
     }
     void offerLiveVisuals(){
         if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED){
@@ -535,7 +554,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     }
     void requestAnalysis(){service.smart=true;service.changed();offerLiveVisuals();}
     void notifications(){if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},22);}
-    @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results){super.onRequestPermissionsResult(code,permissions,results);if(service==null)return;if(code==23&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)scan();
+    @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results){super.onRequestPermissionsResult(code,permissions,results);if(service==null)return;if(code==24&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED){enableConnectAi();return;}if(code==23&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)scan();
         service.changed();
         if(code==21&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED){
             service.refreshVisualization();
@@ -545,12 +564,12 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         if(miniTitle!=null){setLabel(miniTitle,service.player==null?"Your library is ready":service.title);setLabel(miniState,service.player==null?"Choose a track to listen":service.playing?"Playing · "+time(service.position()):"Paused");}
         if(miniToggle!=null){setLabel(miniToggle,service.playing?"Ⅱ":"▶");miniToggle.setContentDescription(service.playing?"Pause current track":"Play current track");}
         if(playButton!=null)setLabel(playButton,service.playing?"Pause":"Play");
-        if(connectionTitle!=null){setLabel(connectionTitle,!service.enabled?"Original sound":service.playing?"Your sound, live":service.monitor?service.connectionState():"Ready when you are");setLabel(connectionHint,service.playing?(service.smart?service.desktopAi.status:"AI off · manual sound controls"):service.connectionHint());}
+        if(connectionTitle!=null){setLabel(connectionTitle,!service.enabled?"Original sound":service.playing?"Your sound, live":service.monitor?service.connectionState():"Ready when you are");setLabel(connectionHint,service.playing?(service.smart?service.currentAi().status:"AI off · manual sound controls"):service.connectionHint());}
         if(externalStatus!=null)setLabel(externalStatus,service.connectionState()+"\n"+service.connectionHint()+"\n"+service.visualizationStatus());
         if(processingDetails!=null)setLabel(processingDetails,service.processingStatus()+"\n"+service.visualizationStatus());
         if(powerButton!=null)setLabel(powerButton,service.monitor?"Disconnect CYN":"Connect CYN");
         if(playLabel!=null)setLabel(playLabel,service.title);if(position!=null&&!seeking){position.setMax(Math.max(1,service.duration()));position.setProgress(service.position());}if(positionLabel!=null)setLabel(positionLabel,time(service.position())+" / "+time(service.duration()));
-        if(liveStatus!=null){DesktopAi.Result r=service.desktopAi.latest;String state=!service.enabled?"CYN bypassed":!service.smart?"AI off":service.playing?service.desktopAi.status:service.player!=null?"Playback paused":service.monitor?service.analysis:"Play a library track for AI listening";if(r!=null&&service.playing&&service.smart&&service.enabled&&SystemClock.elapsedRealtime()-r.at<2500)state+="\nMusic "+Math.round(r.scene[0]*100)+"% · Speech "+Math.round(r.scene[1]*100)+"% · "+r.milliseconds+" ms inference";setLabel(liveStatus,state);}
+        if(liveStatus!=null){DesktopAi.Result r=service.currentAi().latest;String state=!service.enabled?"CYN bypassed":!service.smart?"AI off":(service.playing||service.capturedAudioFresh())?service.currentAi().status:service.player!=null?"Playback paused":service.monitor?service.analysis:"Connect your music apps for AI listening";if(r!=null&&(service.playing||service.capturedAudioFresh())&&service.smart&&service.enabled&&SystemClock.elapsedRealtime()-r.at<2500)state+="\nMusic "+Math.round(r.scene[0]*100)+"% · Speech "+Math.round(r.scene[1]*100)+"% · "+r.milliseconds+" ms inference";setLabel(liveStatus,state);}
         if(learningStatus!=null){int more=0,less=0;for(PreferenceModel.Example e:service.learning.examples)if(e.effect==feedbackEffect){if(e.more)more++;else less++;}setLabel(learningStatus,new String[]{"Clarity","Ambience","Width","Dynamics","Bass"}[feedbackEffect]+" · "+more+" More / "+less+" Less\n"+(service.training?"Training "+service.trainingEpoch+" / 240":service.learning.message));}
         if(updateState!=null)setLabel(updateState,UpdateManager.message);for(AiControlMarker marker:liveControlMarkers)marker.sync();if(timeline!=null)timeline.invalidate();if(neural!=null)neural.invalidate();if(brainScan!=null)brainScan.invalidate();if(spectrum!=null)spectrum.invalidate();
     }
@@ -559,7 +578,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     @Override protected void onResume(){super.onResume();handler.removeCallbacks(refresh);handler.post(refresh);}
     @Override protected void onPause(){handler.removeCallbacks(refresh);super.onPause();}
     @Override protected void onDestroy(){handler.removeCallbacksAndMessages(null);filesWorker.shutdown();if(bound)unbindService(connection);super.onDestroy();}
-    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==71){if(getPackageManager().canRequestPackageInstalls())UpdateManager.install(this);return;}if(result!=RESULT_OK||data==null||service==null)return;
+    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==72){if(result==RESULT_OK&&data!=null){startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.CAPTURE).putExtra("consent",data));}else toast("Playback sharing cancelled · basic EQ remains available");return;}if(request==71){if(getPackageManager().canRequestPackageInstalls())UpdateManager.install(this);return;}if(result!=RESULT_OK||data==null||service==null)return;
         if(request==10){ArrayList<Uri>uris=new ArrayList<>();if(data.getClipData()!=null)for(int i=0;i<data.getClipData().getItemCount();i++)uris.add(data.getClipData().getItemAt(i).getUri());else if(data.getData()!=null)uris.add(data.getData());for(Uri uri:uris)try{getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(SecurityException ignored){}AudioLibrary library=service.library;libraryBusy=true;filesWorker.execute(()->{try{ArrayList<AudioLibrary.Track> tracks=new ArrayList<>();for(Uri uri:uris)tracks.add(library.read(uri));library.merge(tracks);handler.post(()->{libraryBusy=false;page=2;build();toast(tracks.size()+" tracks added");});}catch(Exception e){handler.post(()->{libraryBusy=false;toast("Could not add audio files");});}});}
         else if(request==30&&data.getData()!=null){if(service.training){toast("Wait for training to finish");return;}try(InputStream in=getContentResolver().openInputStream(data.getData())){service.learning.importModel(in);toast("Desktop preference weights imported");}catch(Exception e){toast("Model import failed: "+e.getMessage());}}
         else if(request==31&&data.getData()!=null){try(OutputStream out=getContentResolver().openOutputStream(data.getData(),"wt")){out.write(service.learning.exportModel().getBytes(java.nio.charset.StandardCharsets.UTF_8));toast("Personal model exported");}catch(Exception e){toast("Could not export model");}}

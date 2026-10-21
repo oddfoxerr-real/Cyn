@@ -36,7 +36,7 @@ final class DesktopAi {
     final long engine=NativeEngine.create();
     volatile boolean active,apexEnabled,movie;
     volatile Result latest;
-    volatile String status="Ready for library playback";
+    volatile String status="Waiting for playback analysis";
     private final Context context;
     private final ScheduledExecutorService worker=Executors.newSingleThreadScheduledExecutor(r->{Thread t=new Thread(r,"CYN neural worker");t.setPriority(Thread.MIN_PRIORITY);return t;});
     private OrtSession yamnet,apex;
@@ -173,7 +173,7 @@ final class DesktopAi {
                 }
             }
             if(active&&!closed&&epoch==generation){latest=new Result(f,s,decisions,goals,SystemClock.elapsedRealtime()-started);status=(apexEnabled?"APEX 6M + YAMNet":"YAMNet")+" · running locally";}
-        }catch(Exception|LinkageError e){latest=null;partialPolicy=null;status="AI unavailable: "+e.getClass().getSimpleName()+" · manual sound remains active";retryAt=SystemClock.elapsedRealtime()+15000;}
+        }catch(Exception|LinkageError e){latest=null;status="AI unavailable: "+e.getClass().getSimpleName()+" · manual sound remains active";retryAt=SystemClock.elapsedRealtime()+15000;}
     }
     void closeAfterPlayer(){closed=true;active=false;worker.execute(()->{try{if(yamnet!=null)yamnet.close();if(apex!=null)apex.close();if(partialSession!=null)partialSession.close();}catch(Exception ignored){}finally{NativeEngine.destroy(engine);}});worker.shutdown();}
 }

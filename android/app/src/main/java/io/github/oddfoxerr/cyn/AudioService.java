@@ -16,6 +16,7 @@ import java.util.concurrent.*;
 
 @androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
 public final class AudioService extends Service {
+    static final String CAPTURE="cyn.CAPTURE";
     static final String PLAY="cyn.PLAY", TOGGLE="cyn.TOGGLE", MONITOR="cyn.MONITOR", STOP="cyn.STOP";
     static final class Frame {
         final double[] x; final long id; final float level;
@@ -30,6 +31,47 @@ public final class AudioService extends Service {
     SharedPreferences prefs;
     androidx.media3.exoplayer.ExoPlayer player;
     DesktopAi desktopAi;
+    ConnectedCapture connectedCapture;
+    private boolean projectionForeground;
+    private long captureGeneration;
+    private String captureStatus="Enable Connect AI to share playback";
+    DesktopAi currentAi() { return !playing&&connectedCapture!=null?connectedCapture.ai:desktopAi; }
+    boolean capturedAudioFresh() { return monitor&&!playing&&enabled&&connectedCapture!=null&&connectedCapture.fresh(); }
+    private void stopCapture() {
+        captureGeneration++;
+        ConnectedCapture old=connectedCapture;
+        connectedCapture=null;
+        projectionForeground=false;
+        if(old!=null)old.stop();
+        appliedAiFresh=false;
+        connectedMind=null;
+        clearTrace();
+    }
+    private void startCapture(Intent consent) {
+        stopCapture();
+        if(Build.VERSION.SDK_INT<29||consent==null)return;
+        monitor=true;
+        projectionForeground=true;
+        foreground(); // Android requires this before getMediaProjection.
+        final long generation=captureGeneration;
+        try {
+            connectedCapture=new ConnectedCapture(this,consent,handler,()->{
+                if(destroyed||generation!=captureGeneration)return;
+                connectedCapture=null;
+                projectionForeground=false;
+                captureStatus="Playback sharing stopped · enable Connect AI to restart";
+                clearTrace();
+                updateNativeControls();
+                for(Chain chain:chains.values())chain.apply();
+                if(monitor||playing)foreground();
+            });
+            captureStatus="Playback sharing started";
+        } catch(RuntimeException|LinkageError error) {
+            projectionForeground=false;
+            captureStatus="Playback sharing unavailable · reconnect to retry";
+            foreground();
+        }
+    }
     AudioLibrary library;
     float ambience=0, dynamics=.2f, headroom=1;
     int bandCount=31;
@@ -96,10 +138,11 @@ public final class AudioService extends Service {
         return "Waiting for a compatible music session";
     }
     String connectionHint() {
-        if(!monitor) return "Connect a compatible music app, or play a track in CYN's library for full processing.";
+        if(!monitor) return "Connect your music apps for adaptive sound. Library playback is optional.";
         if(!enabled) return "Monitoring is on, but enhancement is switched off.";
+        if(connectedCapture!=null)return connectedCapture.status+" · "+(smart?currentAi().status:"AI off");
         if(legacy) return "Experimental output-mix mode: even EQ control does not prove that other apps use it. Compare sound on/off.";
-        if(controlledExternalEqCount()>0) return "CYN controls Android's session EQ. Whether the player routes through it is device-dependent; full neural DSP is for CYN library tracks.";
+        if(controlledExternalEqCount()>0) return "CYN controls Android's session EQ. Enable Connect AI for neural playback analysis. Effect support depends on the player and device.";
         if(externalSessionCount()>0) {
             for(Chain c:chains.values()) if(c.id>0&&c.id!=playerSession&&!c.failure.isEmpty()) return c.failure;
             return "Android exposed a session but did not grant usable effect control.";
@@ -110,6 +153,7 @@ public final class AudioService extends Service {
         if(training) return "Training candidate · epoch "+trainingEpoch+" / 240 · example input";
         PreferenceModel.Trace t=neuralTrace(); Chain c=displayedChain();
         if(playing)return enabled?(smart?desktopAi.status:"AI off · manual library sound"):"CYN bypassed · original audio";
+        if(capturedAudioFresh())return currentAi().status+" · "+processingStatus();
         if(t==null) return "No fresh audio analysis · no live model values";
         String outputs="Frame #"+traceSequence+" · Bass "+(t.ready[4]?Math.round(t.outputs[4]*100)+"%":"untrained")+" · Clarity "+(t.ready[0]?Math.round(t.outputs[0]*100)+"%":"untrained");
         boolean applied=c!=null&&c.controlsEq()&&sensitivity>0&&(t.ready[4]||t.ready[0]);
@@ -122,6 +166,7 @@ public final class AudioService extends Service {
         return "CYN Studio "+BuildConfig.VERSION_NAME+
             "\nConnection: "+connectionState()+
             "\nPlayback mode: "+processingStatus()+
+            "\nConnect AI: "+(connectedCapture!=null?connectedCapture.status:captureStatus)+
             "\nExternal effect sessions detected: "+externalSessionCount()+
             "\nExternal EQ controls available: "+controlledExternalEqCount()+
             "\nSystem mix compatibility: "+(legacy?"requested":"not requested")+
@@ -133,14 +178,15 @@ public final class AudioService extends Service {
     /** Reports a measured control change, never an invented AI animation. */
     float aiControlValue(String control,int band) {
         if(!enabled||!smart)return Float.NaN;
-        if(playing) {
+        if(playing||capturedAudioFresh()) {
+            if(!playing&&(displayedChain()==null||!displayedChain().controlsEq()||(!legacy&&externalSessionCount()!=1)))return Float.NaN;
             if(!appliedAiFresh||SystemClock.elapsedRealtime()-appliedTargetAt>1800)return Float.NaN;
             switch(control) {
                 case "Bass":return appliedTargets[1];
                 case "Vocal clarity":return appliedTargets[2];
-                case "Stereo width":return appliedTargets[3]*100f;
-                case "Ambience":return appliedTargets[4]*100f;
-                case "Dynamics":return appliedTargets[5]*100f;
+                case "Stereo width":return playing?appliedTargets[3]*100f:displayedChain().appliedWidth*100f;
+                case "Ambience":return playing?appliedTargets[4]*100f:Float.NaN;
+                case "Dynamics":return playing?appliedTargets[5]*100f:Float.NaN;
                 case "EQ":return band>=0&&band<bandCount?appliedTargets[9+band]:Float.NaN;
                 default:return Float.NaN;
             }
@@ -161,6 +207,7 @@ public final class AudioService extends Service {
         if(playing)return "CYN internal player visualization";
         if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)
             return "Live visuals need playback analysis permission";
+        if(capturedAudioFresh())return smart?"Live shared playback spectrum + neural analysis":"Live shared playback spectrum · AI off";
         if(hasSessionSpectrum())return neuralTrace()!=null
             ?"Live audio spectrum + neural activity"
             :"Live audio spectrum · enable Smart Listening for neural activity";
@@ -168,7 +215,8 @@ public final class AudioService extends Service {
     }
     // Connected-app visual telemetry comes from the already permission-gated
     // AudioVisualizer FFT and the real 11->12->5 CYN personal neural model.
-    // No PCM access or APEX10M inference is claimed on an external-app route.
+    // Permissioned playback sharing additionally supplies full PCM to currentAi().
+    // Visualizer-only fallback remains the personal model, never fabricated APEX inference.
     static final class MindSample {
         final float[] channels,hidden,connections,outputs;
         final long at;
@@ -216,19 +264,20 @@ public final class AudioService extends Service {
             &&SystemClock.elapsedRealtime()-connectedMind.at<1200;
     }
     boolean mindLive(){
-        return playing&&enabled&&smart&&spatialPreviewEnabled||mindExternal();
+        return (playing||capturedAudioFresh())&&enabled&&smart&&spatialPreviewEnabled||mindExternal();
     }
     float[] mindHidden(){return mindExternal()?connectedMind.hidden:null;}
     float[] mindConnections(){return mindExternal()?connectedMind.connections:null;}
     float[] mindOutputs(){return mindExternal()?connectedMind.outputs:null;}
     float[] apexVisualTelemetry(){
-        return mindExternal()?connectedMind.channels:playing?apexVisual:null;
+        return capturedAudioFresh()?apexVisual:mindExternal()?connectedMind.channels:playing?apexVisual:null;
     }
     long apexDecisionTimestamp(){
-        return mindExternal()?connectedMind.at:playing?apexDecisionAt:0;
+        return capturedAudioFresh()?apexDecisionAt:mindExternal()?connectedMind.at:playing?apexDecisionAt:0;
     }
     private void updateApexVisualTelemetry(){
-        if(!playing||!enabled||!smart||!spatialPreviewEnabled||desktopAi==null){
+        DesktopAi desktopAi=currentAi();
+        if((!playing&&!capturedAudioFresh())||!enabled||!smart||!spatialPreviewEnabled||desktopAi==null){
             apexVisual=new float[]{0,0,0,0};
             apexDecisionAt=0;
             return;
@@ -239,7 +288,8 @@ public final class AudioService extends Service {
             bassValue=Math.max(0f,Math.min(1f,window[19]));
             kickValue=Math.max(0f,Math.min(1f,window[20+19]));
         }
-        float spatial=apexSpatialActivity();
+        Chain chain=displayedChain();
+        float spatial=playing?apexSpatialActivity():chain!=null&&chain.controlsEq()?chain.appliedWidth:0;
         DesktopAi.PartialPolicy partial=desktopAi.partialPolicy;
         if(partialNeuralPreview&&partial!=null&&SystemClock.elapsedRealtime()-partial.at<2500){
             apexDecisionAt=partial.at;
@@ -271,6 +321,16 @@ public final class AudioService extends Service {
                 aiDeltaDb,aiEqBands);
         }
         if(monitor) {
+            if(connectedCapture!=null) {
+                if(!smart)return "Connected manual sound · AI off";
+                if(!capturedAudioFresh())return connectedCapture.status;
+                if(!legacy&&externalSessionCount()>1)return currentAi().status+" · multiple sessions, per-session EQ fallback";
+                String route=legacy?"system-mix effects (device dependent)":"Android session effects";
+                boolean control=displayedChain()!=null&&displayedChain().controlsEq();
+                if(!control)return currentAi().status+" · analysis only, no effect control";
+                return currentAi().status+" → "+route+
+                    (spatialPreviewEnabled?" · "+currentAi().partialStatus:"");
+            }
             if(legacy) return chains.containsKey(0)&&chains.get(0).controlsEq()
                 ?(hasSessionSpectrum()?"System-mix EQ + live adaptive frequency control · routing varies by device":"System-mix EQ controlled · live analysis unavailable or disabled")
                 :"Android system-mix EQ not controlled";
@@ -381,6 +441,7 @@ public final class AudioService extends Service {
                            sessionSpectrumAt>0&&t-sessionSpectrumAt<500)return;
                         sessionSpectrum=spectrum;
                         sessionSpectrumAt=t;
+                        if(capturedAudioFresh())return;
                         if(smart){
                             PreferenceModel.Trace trace=learning.model.trace(features);
                             liveTrace=trace;traceAt=t;traceSequence++;
@@ -416,6 +477,11 @@ public final class AudioService extends Service {
         if(i==null) { stopSelf(); return START_NOT_STICKY; }
         try {
             String action=i.getAction();
+            if(CAPTURE.equals(action)) {
+                Intent consent=Build.VERSION.SDK_INT>=33?i.getParcelableExtra("consent",Intent.class):i.getParcelableExtra("consent");
+                startCapture(consent);
+                return START_NOT_STICKY;
+            }
             if(STOP.equals(action)) { stopAll(); return START_NOT_STICKY; }
             if(MONITOR.equals(action)) {
                 monitor=true; foreground();
@@ -436,7 +502,7 @@ public final class AudioService extends Service {
         return START_NOT_STICKY;
     }
     void stopMonitor() {
-        monitor=false; legacy=false; releaseOutputVisuals(); connectedMind=null; sessionSpectrum=new float[31]; sessionSpectrumAt=0; clearTrace();
+        stopCapture(); monitor=false; legacy=false; releaseOutputVisuals(); connectedMind=null; sessionSpectrum=new float[31]; sessionSpectrumAt=0; clearTrace();
         for(Integer id:new ArrayList<>(chains.keySet())) if(id!=playerSession) detach(id);
         if(playing||preparing) foreground(); else { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); }
 
@@ -449,7 +515,8 @@ public final class AudioService extends Service {
             type=monitor?ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE:ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK;
             if(monitor&&(playing||preparing)) type|=ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK;
         }
-        if(Build.VERSION.SDK_INT>=34) startForeground(41,notification(),type); else startForeground(41,notification());
+        if(Build.VERSION.SDK_INT>=29&&projectionForeground)type|=ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION;
+        if(Build.VERSION.SDK_INT>=29) startForeground(41,notification(),type); else startForeground(41,notification());
     }
     private PendingIntent action(String action) {
         return PendingIntent.getService(this,action.hashCode(),new Intent(this,AudioService.class).setAction(action),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
@@ -532,7 +599,7 @@ public final class AudioService extends Service {
         if(playerSession>0) detach(playerSession); playerSession=-1;
         if(player!=null) { player.release(); player=null; } pcmSpectrum.setActive(false);desktopAi.active=false;desktopAi.reset();playing=false; preparing=false; audio.abandonAudioFocusRequest(focus);
     }
-    void stopAll() { monitor=false; legacy=false; connectedMind=null; releaseOutputVisuals(); sessionSpectrumAt=0; sessionSpectrum=new float[31]; clearTrace(); releasePlayer(); for(Integer id:new ArrayList<>(chains.keySet())) detach(id); mediaSession.setActive(false); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); status="Stopped"; }
+    void stopAll() { stopCapture(); monitor=false; legacy=false; connectedMind=null; releaseOutputVisuals(); sessionSpectrumAt=0; sessionSpectrum=new float[31]; clearTrace(); releasePlayer(); for(Integer id:new ArrayList<>(chains.keySet())) detach(id); mediaSession.setActive(false); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); status="Stopped"; }
     private void attach(int id,String owner) {
         if(id<0||(!legacy&&id==0)||(legacy&&id!=0)||chains.containsKey(id)) return;
         if(chains.size()>=8) { status="Too many audio sessions; close an unused player."; return; }
@@ -556,6 +623,7 @@ public final class AudioService extends Service {
         useApex=AiSelection.usesApex6M(aiProfile);
         spatialPreviewEnabled=AiSelection.usesSpatialPreview(aiProfile);
         if (desktopAi!=null) desktopAi.reset();
+        if(connectedCapture!=null)connectedCapture.ai.reset();
         clearTrace();
         changed();
     }
@@ -574,7 +642,18 @@ public final class AudioService extends Service {
         if(!smart||!enabled) { clearTrace(); analysis="Analysis off · manual settings restored"; }
     }
     void updateNativeControls() {
-        desktopAi.active=playing&&enabled&&smart;
+        this.desktopAi.active=playing&&enabled&&smart;
+        if(connectedCapture!=null) {
+            connectedCapture.analyze=monitor&&!playing&&enabled;
+            connectedCapture.ai.active=capturedAudioFresh()&&smart;
+            if(!connectedCapture.ai.active)connectedCapture.ai.reset();
+            PcmSpectrum.Frame spectrum=connectedCapture.spectrum.latest();
+            if(capturedAudioFresh()&&spectrum.atNanos>0&&System.nanoTime()-spectrum.atNanos<350_000_000L){
+                sessionSpectrum=spectrum.bands;sessionSpectrumAt=SystemClock.elapsedRealtime();
+            }
+        }
+        DesktopAi desktopAi=currentAi();
+        desktopAi.active=(playing||capturedAudioFresh())&&enabled&&smart;
         desktopAi.apexEnabled=useApex;
         desktopAi.movie=movieMode;
         boolean wantsPartial=spatialPreviewEnabled&&partialNeuralPreview&&desktopAi.active;
@@ -596,7 +675,9 @@ public final class AudioService extends Service {
             p[1]=targets[4]/10*12;p[2]=targets[0]/10*8;p[3]=targets[2]/10;p[4]=targets[1]/10;p[5]=targets[3]/10;
             float[] curve=Arrays.copyOfRange(r.decision,5,13);for(int i=0;i<8;i++)curve[i]+=r.apex[i];
             for(int b=0;b<bandCount;b++)p[9+b]+=sensitivity*ApexFeatures.interpolate(curve,(float)(20*Math.pow(1000,b/(double)(bandCount-1))));
-            if(r.at!=libraryTrace){libraryTrace=r.at;liveTrace=trace;traceAt=SystemClock.elapsedRealtime();traceSequence++;predictions=trace.outputs;neurons=trace.hidden;}
+            if(r.at!=libraryTrace){libraryTrace=r.at;liveTrace=trace;traceAt=SystemClock.elapsedRealtime();traceSequence++;predictions=trace.outputs;neurons=trace.hidden;
+                if(!playing)publishConnectedMind(x,r.features[11],trace,traceAt);
+            }
             if(r.at!=libraryFrame){libraryFrame=r.at;frames.add(new Frame(x,Math.min(1,r.features[11]*4)));while(frames.size()>240)frames.remove(0);}
         }
         float changeDb=Math.max(Math.abs(p[1]-bass),Math.abs(p[2]-clarity));
@@ -611,7 +692,8 @@ public final class AudioService extends Service {
         System.arraycopy(p,0,appliedTargets,0,p.length);
         appliedTargetAt=SystemClock.elapsedRealtime();
         appliedAiFresh=fresh;
-        if(playing)analysis=processingStatus();
+        if(playing||capturedAudioFresh())analysis=processingStatus();
+        if(!playing)return; // Capture is analysis-only; Chain applies these targets to original playback.
         NativeEngine.controls(desktopAi.engine,p);
         // Only PCM from CYN library playback passes through this native processor.
         // Android external-app sessions cannot use this effect through the EQ API.
@@ -642,8 +724,8 @@ public final class AudioService extends Service {
     private final Runnable tick=new Runnable() {
         @Override public void run() {
             if(destroyed) return;
-            for(Chain c:chains.values()) { if(SystemClock.elapsedRealtime()-c.lastCapture>900) c.targetBass=c.targetClarity=0; c.bassOffset+=(c.targetBass-c.bassOffset)*.12; c.clarityOffset+=(c.targetClarity-c.clarityOffset)*.12; c.apply(); }
             updateNativeControls();
+            for(Chain c:chains.values()) { if(SystemClock.elapsedRealtime()-c.lastCapture>900) c.targetBass=c.targetClarity=0; c.bassOffset+=(c.targetBass-c.bassOffset)*.12; c.clarityOffset+=(c.targetClarity-c.clarityOffset)*.12; c.apply(); }
             updateApexVisualTelemetry();
             if(monitor)refreshVisualization();
             long now=SystemClock.elapsedRealtime();
@@ -656,7 +738,7 @@ public final class AudioService extends Service {
         final int id; final String owner;
         Equalizer equalizer; Virtualizer virtualizer; LoudnessEnhancer enhancer; Visualizer visualizer;
         String failure=""; long lastCapture; double rms,peak,targetBass,targetClarity,bassOffset,clarityOffset;
-        String lastSettings="";
+        String lastSettings=""; float appliedWidth;
         Chain(int id,String owner) {
             this.id=id; this.owner=owner;
             try { equalizer=new Equalizer(0,id); equalizer.setControlStatusListener((effect,control)->lastSettings=""); } catch(RuntimeException e) { failure="Equalizer unavailable on this session"; }
@@ -676,6 +758,7 @@ public final class AudioService extends Service {
                     @Override public void onFftDataCapture(Visualizer v,byte[] fft,int rate) {
                         if(destroyed||v!=visualizer||!monitor||!enabled||chains.get(id)!=Chain.this) return;
                         lastCapture=SystemClock.elapsedRealtime();
+                        if(capturedAudioFresh())return;
                         if(!playing&&(id==0||id==activeSession)) {
                             if(rms>.01) {
                                 sessionSpectrum=AudioFeatures.spectrum(fft,rate/1000);
@@ -712,33 +795,63 @@ public final class AudioService extends Service {
             } catch(RuntimeException e) { if(visualizer!=null) { visualizer.release(); visualizer=null; } analysis="Analysis unavailable for this session; manual effects still work."; }
         }
         void apply() {
-            String signature=enabled+":"+bass+":"+clarity+":"+width+":"+loudness+":"+Arrays.toString(eq)+":"+Math.round(bassOffset*50)+":"+Math.round(clarityOffset*50);
+            // The same Studio EQ and selected neural model now drive both routes.
+            // Only use mix-wide AI on the explicitly selected system mix or the
+            // sole external session. Never apply a mixed signal's AI to multiple unrelated players.
+            boolean shared=capturedAudioFresh()&&smart&&appliedAiFresh&&(legacy||externalSessionCount()==1);
+            boolean spatialShared=capturedAudioFresh()&&smart&&(legacy||externalSessionCount()==1);
+            float[] targets=appliedTargets.clone();
+            if(!shared) {
+                targets[1]=bass+(smart?bassOffset:0);
+                targets[2]=clarity+(smart?clarityOffset:0);
+                targets[3]=width/100;
+                targets[8]=bandCount;
+                for(int b=0;b<bandCount;b++)targets[9+b]=studioEq[b];
+            }
+            DesktopAi.PartialPolicy policy=currentAi().partialPolicy;
+            boolean policyFresh=spatialShared&&policy!=null&&SystemClock.elapsedRealtime()-policy.at<2500;
+            float spatial=ConnectedEffects.width(targets[3],policyFresh?policy.gain:0,
+                spatialPreviewStrength,spatialShared&&spatialPreviewEnabled,partialNeuralPreview,policyFresh,sensitivity);
+            String signature=enabled+":"+Arrays.toString(targets)+":"+spatial+":"+loudness;
             if(signature.equals(lastSettings)&&(!enabled||controlsEq())) return;
+            boolean ok=true;
             try {
                 if(equalizer!=null) {
-                    if(!equalizer.hasControl()) { failure="Another equalizer owns this session. Disable competing equalizers and reconnect."; lastSettings=""; return; }
-                    if(equalizer.setEnabled(enabled)!=AudioEffect.SUCCESS || equalizer.getEnabled()!=enabled) { failure="Android rejected the requested EQ state"; lastSettings=""; return; }
-                    short[] range=equalizer.getBandLevelRange();
-                    for(short i=0;i<equalizer.getNumberOfBands();i++) {
-                        double hz=equalizer.getCenterFreq(i)/1000.0;
-                        double pos=PreferenceModel.clamp(Math.log(Math.max(60,hz)/60)/Math.log(14000.0/60)*4,0,4);
-                        int lo=(int)pos,hi=Math.min(4,lo+1); double base=eq[lo]+(eq[hi]-eq[lo])*(pos-lo);
-                        double b=PreferenceModel.clamp(bass+bassOffset,0,6)/(1+Math.pow(hz/180,2));
-                        double c=PreferenceModel.clamp(clarity+clarityOffset,0,6)*(1-1/(1+Math.pow(hz/2200,2)));
-                        equalizer.setBandLevel(i,(short)PreferenceModel.clamp((base+b+c)*100,Math.max(-600,range[0]),Math.min(600,range[1])));
+                    if(!equalizer.hasControl()) { failure="Another equalizer owns this session. Disable competing equalizers and reconnect."; ok=false; }
+                    else if(equalizer.setEnabled(enabled)!=AudioEffect.SUCCESS || equalizer.getEnabled()!=enabled) { failure="Android rejected the requested EQ state"; ok=false; }
+                    else {
+                        short[] range=equalizer.getBandLevelRange();
+                        for(short i=0;i<equalizer.getNumberOfBands();i++) {
+                            float gain=ConnectedEffects.band(targets,equalizer.getCenterFreq(i)/1000f);
+                            equalizer.setBandLevel(i,(short)ConnectedEffects.clamp(gain*100,Math.max(-600,range[0]),Math.min(600,range[1])));
+                        }
+                        failure="";
                     }
+                } else {failure="Equalizer unavailable on this session";ok=false;}
+            } catch(RuntimeException error) {failure="Effect control unavailable or owned by another equalizer";ok=false;}
+            // Optional effect failure must not disable a functioning equalizer.
+            appliedWidth=0;
+            try {
+                if(virtualizer!=null&&virtualizer.hasControl()) {
+                    if(virtualizer.getStrengthSupported())virtualizer.setStrength((short)(spatial*1000));
+                    if(virtualizer.setEnabled(enabled&&spatial>0)==AudioEffect.SUCCESS&&virtualizer.getEnabled())
+                        appliedWidth=virtualizer.getRoundedStrength()/1000f;
                 }
-                if(virtualizer!=null) { virtualizer.setEnabled(enabled&&width>0); if(virtualizer.getStrengthSupported()) virtualizer.setStrength((short)(width*10)); }
-                if(enhancer!=null) { enhancer.setEnabled(enabled&&loudness>0); enhancer.setTargetGain((int)(loudness*100)); }
-                failure=equalizer==null?"Equalizer unavailable on this session":""; lastSettings=signature;
-            } catch(RuntimeException e) { failure="Effect control unavailable or owned by another equalizer"; }
+            } catch(RuntimeException ignored) {ok=false;}
+            try {
+                if(enhancer!=null&&enhancer.hasControl()) {
+                    enhancer.setEnabled(enabled&&loudness>0);
+                    enhancer.setTargetGain((int)(loudness*100));
+                }
+            } catch(RuntimeException ignored) {ok=false;}
+            lastSettings=ok?signature:"";
         }
         void close() { if(visualizer!=null) visualizer.release(); if(equalizer!=null) equalizer.release(); if(virtualizer!=null) virtualizer.release(); if(enhancer!=null) enhancer.release(); }
         boolean controlsEq() { try { return enabled&&equalizer!=null&&equalizer.hasControl()&&equalizer.getEnabled()&&failure.isEmpty(); } catch(RuntimeException e) { return false; } }
         String description() { return owner+" · session "+id+"\n"+(controlsEq()?"EQ enabled and controlled":enabled?"EQ not active":"Enhancement disabled")+(virtualizer!=null?" · width":"")+(enhancer!=null?" · loudness":"")+(failure.isEmpty()?"":"\n"+failure); }
     }
     @Override public void onDestroy() {
-        destroyed=true; handler.removeCallbacksAndMessages(null); trainer.shutdownNow(); unregisterReceiver(receiver); releaseOutputVisuals(); releasePlayer();
+        destroyed=true; stopCapture(); handler.removeCallbacksAndMessages(null); trainer.shutdownNow(); unregisterReceiver(receiver); releaseOutputVisuals(); releasePlayer();
         for(Chain c:chains.values()) c.close(); chains.clear(); pcmSpectrum.close();mediaSession.release();desktopAi.closeAfterPlayer(); super.onDestroy();
     }
 }
