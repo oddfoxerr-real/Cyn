@@ -38,6 +38,10 @@ public final class AudioService extends Service {
     String aiProfile=AiSelection.BASIC;
     float spatialPreviewStrength=0.4f;
     private long libraryFrame, libraryTrace;
+    // UI telemetry is captured from PCM and inference in a 150ms service tick.
+    // Indexes: bass, kick/transient, spatial DSP, neural decision intensity.
+    volatile float[] apexVisual=new float[]{0,0,0,0};
+    volatile long apexDecisionAt;
     MediaSession mediaSession;
     AudioManager audio;
     AudioFocusRequest focus;
@@ -162,6 +166,33 @@ public final class AudioService extends Service {
             :"Live audio spectrum · enable Smart Listening for neural activity";
         return "Waiting for playback measurements · "+visualError;
     }
+    float[] apexVisualTelemetry(){return apexVisual;}
+    long apexDecisionTimestamp(){return apexDecisionAt;}
+    private void updateApexVisualTelemetry(){
+        if(!playing||!enabled||!smart||!spatialPreviewEnabled||desktopAi==null){
+            apexVisual=new float[]{0,0,0,0};
+            apexDecisionAt=0;
+            return;
+        }
+        float bassValue=0,kickValue=0;
+        float[] window=NativeEngine.spatialPolicyWindow(desktopAi.engine);
+        if(window!=null&&window.length==160){
+            bassValue=Math.max(0f,Math.min(1f,window[19]));
+            kickValue=Math.max(0f,Math.min(1f,window[20+19]));
+        }
+        float spatial=apexSpatialActivity();
+        DesktopAi.PartialPolicy partial=desktopAi.partialPolicy;
+        if(partialNeuralPreview&&partial!=null&&SystemClock.elapsedRealtime()-partial.at<2500){
+            apexDecisionAt=partial.at;
+            apexVisual=new float[]{bassValue,kickValue,spatial,
+                Math.max(0f,Math.min(1f,partial.spatial))};
+        }else{
+            DesktopAi.Result decision=desktopAi.latest;
+            apexDecisionAt=decision!=null&&SystemClock.elapsedRealtime()-decision.at<2500
+                ?decision.at:0;
+            apexVisual=new float[]{bassValue,kickValue,spatial,0};
+        }
+    }
     float apexSpatialActivity(){
         if(!playing||!enabled||!smart||!spatialPreviewEnabled||desktopAi==null||desktopAi.engine==0)return 0f;
         return Math.max(0f,Math.min(1f,NativeEngine.spatialActivity(desktopAi.engine)));
@@ -170,8 +201,8 @@ public final class AudioService extends Service {
         if(!enabled)return "Enhancement off · original sound";
         if(playing) {
             if(spatialPreviewEnabled)return partialNeuralPreview
-                ? "APEX 10M frozen 37.33% synthetic neural policy · "+desktopAi.partialStatus
-                : "Selected: APEX 10M conservative spatial DSP (partial neural off)";
+                ? "APEX 10M Experimental Release · "+desktopAi.partialStatus
+                : "APEX 10M · Classic Spatial DSP";
             if(!smart)return "CYN native DSP active · manual tuning";
             DesktopAi.Result r=desktopAi.latest;
             if(r==null||SystemClock.elapsedRealtime()-r.at>2500)
@@ -458,6 +489,10 @@ public final class AudioService extends Service {
     }
     void selectAiProfile(String selected) {
         aiProfile=AiSelection.normalize(selected);
+        // Choosing the experimental APEX 10M release intentionally enables
+        // its current neural controller as part of that primary engine.
+        // Existing saved selections are left untouched until reselected.
+        if(AiSelection.APEX_10M.equals(aiProfile))partialNeuralPreview=true;
         useApex=AiSelection.usesApex6M(aiProfile);
         spatialPreviewEnabled=AiSelection.usesSpatialPreview(aiProfile);
         if (desktopAi!=null) desktopAi.reset();
@@ -549,6 +584,7 @@ public final class AudioService extends Service {
             if(destroyed) return;
             for(Chain c:chains.values()) { if(SystemClock.elapsedRealtime()-c.lastCapture>900) c.targetBass=c.targetClarity=0; c.bassOffset+=(c.targetBass-c.bassOffset)*.12; c.clarityOffset+=(c.targetClarity-c.clarityOffset)*.12; c.apply(); }
             updateNativeControls();
+            updateApexVisualTelemetry();
             if(monitor)refreshVisualization();
             long now=SystemClock.elapsedRealtime();
             if(!playing&&now-traceAt>900) { clearTrace(); if(smart&&enabled) analysis="Waiting for session analysis · enable permission if needed"; }
