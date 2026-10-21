@@ -367,7 +367,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         android.widget.RadioGroup aiChoices=new android.widget.RadioGroup(this);
         aiChoices.setOrientation(android.widget.RadioGroup.VERTICAL);
         String[] profileIds={AiSelection.BASIC,AiSelection.APEX_6M,AiSelection.APEX_10M};
-        String[] profileLabels={"CYN Base AI · YAMNet + personal preferences","APEX 6M · existing neural spectral guidance","APEX 10M · Spatial DSP + optional 37.33% neural test"};
+        String[] profileLabels={"CYN Base AI · YAMNet + personal preferences","APEX 6M · existing neural spectral guidance","APEX 10M · Experimental release (37.33% trained)"};
         int selectedViewId=View.NO_ID;
         for(int i=0;i<profileIds.length;i++){
             com.google.android.material.radiobutton.MaterialRadioButton option=new com.google.android.material.radiobutton.MaterialRadioButton(this);
@@ -390,37 +390,22 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             }
         });
         add(engine,aiChoices);
-        add(engine,label("Only one primary AI profile can be selected. The experimental APEX 10M submode uses a frozen, partly trained 3.69M-parameter policy head; it is not yet validated on real music.",12,hint));
+        add(engine,label("One primary AI at a time. APEX 10M is the current experimental neural-spatial release.",12,hint));
         if(AiSelection.APEX_10M.equals(service.aiProfile)){
             slider(engine,"Spatial intensity",service.spatialPreviewStrength*100,0,100,"%",v->{service.spatialPreviewStrength=v/100;service.changed();});
-            toggle(engine,"Try frozen 37.33% neural policy (experimental)",service.partialNeuralPreview,on->{
-                if(!on) {
-                    service.partialNeuralPreview=false;
-                    service.desktopAi.partialPolicy=null;
-                    service.changed();
-                    build();
-                    return;
-                }
-                new AlertDialog.Builder(this)
-                    .setTitle("Experimental APEX 10M neural preview")
-                    .setMessage("This is a genuine partly trained 3.69M-parameter temporal policy, frozen at 37.33% of a synthetic 15-hour training run. It was NOT trained or validated on real music.\n\nIt can only REDUCE the conservative spatial effect, never increase it beyond your selected strength. It requires local CYN library playback, adds CPU use, and safely bypasses when inference is unavailable.\n\nFor listening comparisons only. The normal AI is unchanged.")
-                    .setPositiveButton("Enable test", (dialog,which)->{
-                        service.partialNeuralPreview=true;
-                        service.desktopAi.reset();
-                        service.changed();build();
-                    })
-                    .setNegativeButton("Cancel",(dialog,which)->build())
-                    .show();
+            add(engine,label("RELEASE 0.2.19  ·  37.33% TRAINED",12,accent));
+            toggle(engine,"APEX 10M neural control",service.partialNeuralPreview,on->{
+                service.partialNeuralPreview=on;
+                service.desktopAi.partialPolicy=null;
+                service.desktopAi.partialStatus=on?"Starting neural engine…":"Classic spatial DSP";
+                service.changed();
+                build();
             });
-            if(service.partialNeuralPreview){
-                add(engine,label("Partial-model status: "+service.desktopAi.partialStatus,12,accent));
-                add(engine,button("Return to conservative APEX 10M DSP",()->{
-                    service.partialNeuralPreview=false;
-                    service.desktopAi.partialPolicy=null;
-                    service.changed();build();
-                }));
-            }
-            add(engine,label("Enhances existing stereo ambience on CYN library playback. No Dolby Atmos/object decoding, positional source reconstruction, or external-app PCM access.",12,hint));
+            add(engine,label(service.partialNeuralPreview
+                ? "Neural engine · "+service.desktopAi.partialStatus
+                : "Classic spatial DSP mode",12,hint));
+            add(engine,label("Works with songs played in CYN Library.",12,hint));
+
         }
         category(engine,"Content focus (not another AI)",body->{
             toggle(body,"Dialogue / movie tuning",service.movieMode,on->{service.movieMode=on;service.changed();});
@@ -428,15 +413,17 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         slider(engine,"Sensitivity",service.sensitivity*100,0,100,"%",v->{service.sensitivity=v/100;service.changed();});
         liveStatus=label("",13,accent);add(engine,liveStatus);
         if(AiSelection.APEX_10M.equals(service.aiProfile)){
-            LinearLayout network=section("APEX 10M • Neural-style network mesh",
-                "A holographic network showing measured spatial DSP activity. The optional frozen 37.33% neural policy influences its safety-limited strength only when explicitly enabled.");
+            LinearLayout network=section("APEX 10M • Live brain network",
+                "Bass · Kick · Spatial · Neural activity");
             brainScan=new ApexSpatialBrainView(this,new ApexSpatialBrainView.Signal(){
                 @Override public float activity(){return service==null?0f:service.apexSpatialActivity();}
+                @Override public float[] channels(){return service==null?null:service.apexVisualTelemetry();}
+                @Override public long decisionAt(){return service==null?0:service.apexDecisionTimestamp();}
                 @Override public boolean enabled(){return service!=null&&service.playing&&service.enabled&&service.smart&&service.spatialPreviewEnabled;}
                 @Override public boolean reduced(){return reduced;}
             },accent,secondary);
             network.addView(brainScan,new LinearLayout.LayoutParams(-1,dp(334)));
-            add(network,label("Each burst lights a different neon-coloured route through the mesh. Pulses reflect measured DSP activity, not actual individual neuron activations.",12,hint));
+
         }else{
             LinearLayout network=section("Personal neural activity","Measured activations from your preference model.");
             neural=new NeuralView();
@@ -445,7 +432,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         LinearLayout c=section("Teach your sound","Select a passage, then tell CYN what you want more or less of.");timeline=new Timeline();c.addView(timeline,new LinearLayout.LayoutParams(-1,dp(130)));buttons(c,new String[]{"Last 5 seconds","Live timeline"},new Runnable[]{()->timeline.selectRecent(),()->timeline.resume()});gap(c,8);
         category(c,"Training target",body->{String[] names={"Clarity","Ambience","Width","Dynamics","Bass"};for(int i=0;i<5;i++){final int n=i;add(body,button(names[i],()->{feedbackEffect=n;toast("Training "+names[n]);timeline.invalidate();}));}});buttons(c,new String[]{"Less here","More here"},new Runnable[]{()->labelFrames(false),()->labelFrames(true)});learningStatus=label("",12,accent);add(c,learningStatus);add(c,button("Train personal model",()->service.train()));
         category(c,"Model tools",body->{add(body,button("Import desktop preference model",()->startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE),30)));add(body,button("Export personal model",()->startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("application/json").putExtra(Intent.EXTRA_TITLE,"CYN-phone-preferences.cynai.json"),31)));add(body,button("Reset personal learning",()->new AlertDialog.Builder(this).setTitle("Reset personal learning?").setMessage("Your saved labels and personal weights will be removed.").setPositiveButton("Reset",(d,w)->{if(service.training){toast("Wait for training to finish");return;}try{service.learning.reset();}catch(Exception e){toast("Could not reset model");}}).setNegativeButton("Cancel",null).show()));});
-        add(c,label("Personal training needs at least five More and five Less frames for each selected effect. APEX is the existing 225-step experimental model; its real-music quality is not established.",12,hint));
+        add(c,label("Personal training uses your More/Less feedback. APEX 10M's release model has separate training.",12,hint));
         add(c,button("Analyze a compatible external app",this::requestAnalysis));
     }
     void labelFrames(boolean more){if(service.training){toast("Wait for training to finish");return;}List<AudioService.Frame> selected=timeline.selection();if(selected.isEmpty()){toast("Play a library track, then select a passage");return;}try{service.learning.label(selected,feedbackEffect,more);toast("Saved "+selected.size()+" frames");timeline.invalidate();}catch(Exception e){toast("Could not save feedback");}}
