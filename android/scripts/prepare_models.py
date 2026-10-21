@@ -72,7 +72,7 @@ else:
             if digest(candidate) != expected:
                 raise RuntimeError('APEX 10M partial model SHA-256 mismatch')
             shutil.copyfile(candidate, model_target)
-        manifest_target.write_text(json.dumps(manifest, sort_keys=True) + '\\n', encoding='utf-8')
+        manifest_target.write_text(json.dumps(manifest, sort_keys=True), encoding='utf-8')
 expected = manifest.get('onnx_sha256', '')
 if not ready('apex10m-partial-policy.onnx', expected):
     raise RuntimeError('Frozen APEX 10M ONNX file missing or corrupt')
