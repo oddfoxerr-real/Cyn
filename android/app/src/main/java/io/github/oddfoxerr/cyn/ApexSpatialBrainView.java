@@ -31,6 +31,9 @@ final class ApexSpatialBrainView extends View {
         float[] connections();
         float[] outputs();
         boolean reduced();
+        // Fresh six-channel AUDONIC policy only; never substitute generic AI inference.
+        float[] creative();
+        float creativeStrength();
     }
 
     private static final int HEMI_NODES=150;
@@ -44,6 +47,15 @@ final class ApexSpatialBrainView extends View {
         0xff55f0ff,0xffff55d9,0xff9fff66,0xffffbb55,
         0xff8f8bff,0xffff7580,0xff50ffc3,0xff87b7ff
     };
+    private static final int[] CREATIVE_HUES={
+        0xffff815a,0xffffc15d,0xff8e86ff,0xff51d8e9,0xffe57cdd,0xff69edaa
+    };
+    private static final String[] CREATIVE_NAMES={
+        "HARMONICS","ATTACK","WIDTH","COLOUR","RHYTHM","OVERTONES"
+    };
+    private static final int[] CREATIVE_ANCHORS={29,81,127,176,230,279};
+    private static final Typeface HEADING_FACE=Typeface.create("sans-serif-medium",Typeface.BOLD);
+    private static final Typeface BODY_FACE=Typeface.create("sans-serif",Typeface.NORMAL);
     private final float[] modelX=new float[N],modelY=new float[N],modelZ=new float[N];
     private final float[] screenX=new float[N],screenY=new float[N],depth=new float[N];
     private final int[] edgeA=new int[MAX_EDGES],edgeB=new int[MAX_EDGES];
@@ -53,6 +65,10 @@ final class ApexSpatialBrainView extends View {
     private final Wave[] waves=new Wave[WAVE_COUNT];
     private final Signal source;
     private final int accent,secondary;
+    private final boolean audonic;
+    private final float[] creativeLevel=new float[6],creativePrevious=new float[6];
+    private final long[] lastCreativeWave=new long[6];
+    private final android.graphics.RectF creativeOrbit=new android.graphics.RectF();
     private int edgeCount,randomState=0x3a14f1c7,colourCursor=0;
     private float angle=.37f,tilt=.08f,energy,lastMeasured,travelTime;
     private float lastBass,lastKick,lastSpatial,bassFlash,kickFlash,spatialFlash,neuralFlash;
@@ -64,9 +80,14 @@ final class ApexSpatialBrainView extends View {
         float distance=99f,rate=1f,power;
     }
     ApexSpatialBrainView(Context context,Signal feed,int mainColour,int secondaryColour){
+        this(context,feed,mainColour,secondaryColour,false);
+    }
+    ApexSpatialBrainView(Context context,Signal feed,int mainColour,int secondaryColour,boolean creativeMode){
         super(context);
-        source=feed;accent=mainColour;secondary=secondaryColour;
-        setContentDescription("CYN APEX 10M active neural network mesh with rotating lights and audio-reactive pathways.");
+        source=feed;accent=mainColour;secondary=secondaryColour;audonic=creativeMode;
+        setContentDescription(audonic
+            ? "AUDONIC six-channel creative neural mesh; each labelled effect responds to recent model decisions."
+            : "CYN APEX 10M active neural network mesh with rotating lights and audio-reactive pathways.");
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         paint.setStrokeCap(Paint.Cap.ROUND);
         for(int i=0;i<WAVE_COUNT;i++)waves[i]=new Wave();
@@ -191,9 +212,10 @@ final class ApexSpatialBrainView extends View {
             int candidate=rand()%N;
             // Each real signal lights an appropriate physical region.
             float y=modelY[candidate];
-            boolean inRegion=channel==0?y>.17f:
-                channel==1?Math.abs(y)<.35f:
-                channel==2?Math.abs(modelX[candidate])>.29f:
+            int region=Math.floorMod(channel,4);
+            boolean inRegion=region==0?y>.17f:
+                region==1?Math.abs(y)<.35f:
+                region==2?Math.abs(modelX[candidate])>.29f:
                 y<-.10f;
             if(inRegion&&depth[candidate]>-.3f){from=candidate;break;}
         }
@@ -215,7 +237,8 @@ final class ApexSpatialBrainView extends View {
             wave.distance=0f;
             // Each measured event gets a different neon colour; variation is
             // cosmetic, while the event, amplitude and speed are real.
-            wave.hue=NEON[(colourCursor+++(rand()%NEON.length))%NEON.length];
+            wave.hue=audonic?CREATIVE_HUES[Math.floorMod(channel,CREATIVE_HUES.length)]
+                :NEON[(colourCursor+++(rand()%NEON.length))%NEON.length];
             wave.rate=3.5f+4.5f*clamp(measured,0,1);
             wave.power=clamp(measured,.25f,1f);
             break;
@@ -227,12 +250,14 @@ final class ApexSpatialBrainView extends View {
             int a=edgeA[i],b=edgeB[i];
             boolean forward=(depth[a]+depth[b])>=0;
             if(forward!=(pass==1))continue;
-            int hue=NEON[((a/17)+(b/23))%NEON.length];
+            int hue=audonic?CREATIVE_HUES[((a/17)+(b/23))%CREATIVE_HUES.length]
+                :NEON[((a/17)+(b/23))%NEON.length];
             float region=(modelY[a]+modelY[b])*.5f;
             float channelLight=region>.18f?bassFlash:
                 region<-.24f?neuralFlash:kickFlash;
             channelLight=Math.max(channelLight,spatialFlash*
                 Math.max(0f,Math.abs(modelX[a]+modelX[b])));
+            if(audonic)channelLight=Math.max(channelLight,creativeLevel[(a+b)%6]);
             int alpha=(forward?92:38)+Math.round(strength*(forward?65:24))
                 +Math.round(channelLight*(forward?65:20));
             line(c,a,b,hue,alpha,forward?1.45f+channelLight*.85f:0.85f);
@@ -248,10 +273,12 @@ final class ApexSpatialBrainView extends View {
             boolean front=depth[i]>=0;
             if(front!=(pass==1))continue;
             boolean hub=(i%17==0||degrees[i]>=9);
-            int hue=hub?secondary:NEON[(i*7+i/11)%NEON.length];
+            int hue=audonic?CREATIVE_HUES[i%6]
+                :hub?secondary:NEON[(i*7+i/11)%NEON.length];
             float region=modelY[i];
             float signal=region>.18f?bassFlash:region<-.24f?neuralFlash:kickFlash;
             signal=Math.max(signal,spatialFlash*Math.abs(modelX[i]));
+            if(audonic)signal=Math.max(signal,creativeLevel[i%6]);
             float r=(front?(hub?3.7f:2.15f):(hub?2.1f:1.35f))
                 *(1f+.37f*signal);
             if(front && (hub||i%4==0)){
@@ -334,6 +361,71 @@ final class ApexSpatialBrainView extends View {
             }
         }
     }
+
+    /**
+     * AUDONIC's creative rings and satellites reflect the six actual, recent
+     * ONNX effect controls scaled by the user's creative-intensity setting.
+     * Missing/stale decisions fade to zero: no synthetic pulses or fake values.
+     */
+    private void updateCreative(float dt,boolean live,long now,boolean reduced){
+        if(!audonic)return;
+        float[] decisions=live?source.creative():null;
+        float intensity=clamp(source.creativeStrength(),0,1);
+        for(int i=0;i<6;i++){
+            float raw=decisions!=null&&decisions.length==6&&Float.isFinite(decisions[i])
+                ?decisions[i]:0f;
+            float target=clamp(raw,0,1)*intensity;
+            float previous=creativePrevious[i];
+            if(live&&!reduced&&target>.07f
+                    &&Math.abs(target-previous)>.095f
+                    &&now-lastCreativeWave[i]>180){
+                launch(target,now,i);
+                lastCreativeWave[i]=now;
+            }
+            creativePrevious[i]=target;
+            creativeLevel[i]+=(target-creativeLevel[i])
+                *Math.min(1f,Math.max(.016f,dt)*(target>creativeLevel[i]?11f:6f));
+        }
+    }
+    private void drawCreative(Canvas canvas,float cx,float cy,float scale){
+        creativeOrbit.set(cx-scale*1.3f,cy-scale*.97f,
+            cx+scale*1.3f,cy+scale*.97f);
+        for(int i=0;i<6;i++){
+            float intensity=clamp(creativeLevel[i],0,1);
+            int hue=CREATIVE_HUES[i];
+            ink(hue,30,Paint.Style.STROKE,2.5f);
+            canvas.drawArc(creativeOrbit,-90+i*60,49,false,paint);
+            if(intensity>.001f){
+                ink(hue,100+Math.round(intensity*150),Paint.Style.STROKE,
+                    2.5f+intensity*2.3f);
+                canvas.drawArc(creativeOrbit,-90+i*60,49*intensity,false,paint);
+            }
+            float x=getWidth()*(i%2==0?.205f:.795f);
+            float y=getHeight()*(.18f+(i/2)*.27f);
+            int anchor=CREATIVE_ANCHORS[i];
+            if(intensity>.01f){
+                ink(hue,25+Math.round(intensity*140),Paint.Style.STROKE,
+                    .8f+intensity*1.5f);
+                canvas.drawLine(x,y,screenX[anchor],screenY[anchor],paint);
+                circle(canvas,x,y,6+intensity*10,hue,16+Math.round(intensity*72));
+            }
+            circle(canvas,x,y,3.5f+intensity*3.5f,hue,
+                105+Math.round(intensity*150));
+            paint.setTextAlign(Paint.Align.CENTER);
+            paint.setTypeface(HEADING_FACE);
+            paint.setTextSize(Math.max(10f,Math.min(12f,getHeight()*.032f)));
+            ink(hue,205,Paint.Style.FILL,0);
+            canvas.drawText(CREATIVE_NAMES[i],x,y+17,paint);
+            float half=Math.min(getWidth()*.085f,34f);
+            ink(hue,45,Paint.Style.STROKE,2f);
+            canvas.drawLine(x-half,y+24,x+half,y+24,paint);
+            if(intensity>.001f){
+                ink(hue,200,Paint.Style.STROKE,2.5f);
+                canvas.drawLine(x-half,y+24,x-half+2*half*intensity,y+24,paint);
+            }
+        }
+        paint.setTextAlign(Paint.Align.LEFT);
+    }
     @Override protected void onAttachedToWindow(){
         super.onAttachedToWindow();
         lastFrame=0;
@@ -374,6 +466,7 @@ final class ApexSpatialBrainView extends View {
         kickFlash=Math.max(0,kickFlash-dt*3.4f);
         spatialFlash=Math.max(0,spatialFlash-dt*1.5f);
         neuralFlash=Math.max(0,neuralFlash-dt*2.8f);
+        updateCreative(dt,playing,now,reduced);
 
         if(!reduced){
             // Always rotate while the AI page is visible. Active spatial or
@@ -386,8 +479,16 @@ final class ApexSpatialBrainView extends View {
                 if(decisionTime>0&&decisionTime!=lastDecisionAt){
                     lastDecisionAt=decisionTime;
                     neuralFlash=Math.max(neuralFlash,.38f+.62f*decision);
-                    launch(Math.max(.45f,decision),now,3);
-                    launch(Math.max(.30f,decision*.7f),now+1,3);
+                    if(!audonic){
+                        launch(Math.max(.45f,decision),now,3);
+                        launch(Math.max(.30f,decision*.7f),now+1,3);
+                    }else{
+                        int strongest=0;
+                        for(int i=1;i<6;i++)
+                            if(creativeLevel[i]>creativeLevel[strongest])strongest=i;
+                        if(creativeLevel[strongest]>.01f)
+                            launch(creativeLevel[strongest],now,strongest);
+                    }
                 }
                 if(kick>.11f && kick-lastKick>.065f && now-lastKickWave>140){
                     kickFlash=Math.max(kickFlash,clamp(kick*2.1f,.4f,1f));
@@ -424,29 +525,38 @@ final class ApexSpatialBrainView extends View {
 
         drawGraph(canvas,scale,level,0);
         drawGraph(canvas,scale,level,1);
-        if(external)drawNeuralPathways(canvas,source.hidden(),
+        if(external&&!audonic)drawNeuralPathways(canvas,source.hidden(),
             source.connections(),source.outputs());
         if(playing)drawWaves(canvas,level);
+        if(audonic)drawCreative(canvas,cx,cy,scale);
 
-        paint.setTypeface(Typeface.create("sans-serif-medium",Typeface.BOLD));
+        paint.setTypeface(HEADING_FACE);
         paint.setTextSize(Math.max(12,h*.050f));
         ink(accent,245,Paint.Style.FILL,0);
-        canvas.drawText(external?"CYN NEURAL MIND  /  CONNECTED":
-            playing?"APEX 10M MIND  /  LIVE":
-            connected?"CYN MIND  /  WAITING FOR AUDIO":
-            "CYN MIND  /  DISCONNECTED",
+        canvas.drawText(audonic
+                ?(playing?"AUDONIC MIND  /  LIVE":
+                  connected?"AUDONIC MIND  /  WAITING FOR AI":
+                  "AUDONIC MIND  /  DISCONNECTED")
+                :external?"CYN NEURAL MIND  /  CONNECTED":
+                  playing?"APEX 10M MIND  /  LIVE":
+                  connected?"CYN MIND  /  WAITING FOR AUDIO":
+                  "CYN MIND  /  DISCONNECTED",
             16,h-44,paint);
-        paint.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));
+        paint.setTypeface(BODY_FACE);
         paint.setTextSize(Math.max(10,h*.035f));
         ink(secondary,220,Paint.Style.FILL,0);
-        canvas.drawText(playing
-            ?"BASS "+Math.round(bass*100)+"%    KICK "+Math.round(kick*100)
+        canvas.drawText(audonic
+            ?(playing?"6 CREATIVE EFFECTS  /  LIVE DSP POLICY":
+              connected?"LISTENING FOR AUDONIC DECISIONS":"CONNECT CYN TO VIEW ACTIVITY")
+            :playing?"BASS "+Math.round(bass*100)+"%    KICK "+Math.round(kick*100)
                 +"%    "+(external?"SPECTRUM ":"SPATIAL ")+Math.round(spatial*100)+"%"
             :connected?"MONITORING CONNECTED AUDIO":"CONNECT CYN TO VIEW ACTIVITY",
             16,h-24,paint);
         if(playing){
-            canvas.drawText((external?"PERSONAL AI ":"APEX AI ")+Math.round(decision*100)+
-                "%    LIVE SIGNAL PATHS",16,h-8,paint);
+            canvas.drawText(audonic
+                ?"BASS "+Math.round(bass*100)+"%   ATTACK "+Math.round(kick*100)+"%   REAL SIGNAL PATHS"
+                :(external?"PERSONAL AI ":"APEX AI ")+Math.round(decision*100)+
+                    "%    LIVE SIGNAL PATHS",16,h-8,paint);
         }
         if(!reduced&&isAttachedToWindow()&&isShown()){
             // This is the missing continuous frame loop. Previously no redraw
