@@ -1,0 +1,8 @@
+.gradle/
+**/build/
+local.properties
+.signing/
+*.jks
+/app/src/main/assets/models/
+
+**/.cxx/
