@@ -812,8 +812,12 @@ public final class AudioService extends Service {
             // Never send mix-wide neural decisions to unrelated audio sessions.
             // A system-mix route is eligible only when explicitly selected;
             // otherwise exactly one active external session must be targeted.
-            boolean externalRoute=legacy?id==0:
-                id>0&&id!=playerSession&&id==activeSession&&externalSessionCount()==1;
+            // Connect is music-only: never modify the global mix, system sounds,
+            // or a session unless an authorized external music player is active.
+            ExternalNowPlaying.Track music=ExternalNowPlaying.current(AudioService.this);
+            boolean selectedMusic=music!=null&&music.playing&&monitor&&!playing;
+            boolean externalRoute=!legacy&&selectedMusic&&id>0&&
+                id!=playerSession&&id==activeSession&&externalSessionCount()==1;
             boolean spatialShared=externalRoute&&capturedAudioFresh()&&smart;
             boolean shared=spatialShared&&appliedAiFresh;
             float[] targets=appliedTargets.clone();
@@ -828,13 +832,18 @@ public final class AudioService extends Service {
             boolean policyFresh=spatialShared&&policy!=null&&SystemClock.elapsedRealtime()-policy.at<2500;
             float spatial=ConnectedEffects.width(targets[3],policyFresh?policy.gain:0,
                 spatialPreviewStrength,spatialShared&&spatialPreviewEnabled,partialNeuralPreview,policyFresh,sensitivity);
-            String signature=enabled+":"+Arrays.toString(targets)+":"+spatial+":"+loudness;
-            if(signature.equals(lastSettings)&&(!enabled||controlsEq())) return;
+            // Fail closed for unselected sessions. A music metadata session does
+            // not prove an effect session belongs to that player, so refuse
+            // ambiguous routes rather than process every phone sound.
+            boolean effectEnabled=enabled&&(id==playerSession||externalRoute);
+            String signature=effectEnabled+":"+Arrays.toString(targets)+":"+spatial+":"+loudness;
+            if(signature.equals(lastSettings)&&(!effectEnabled||controlsEq())) return;
+            boolean ok=true;
             boolean ok=true;
             try {
                 if(equalizer!=null) {
                     if(!equalizer.hasControl()) { failure="Another equalizer owns this session. Disable competing equalizers and reconnect."; ok=false; }
-                    else if(equalizer.setEnabled(enabled)!=AudioEffect.SUCCESS || equalizer.getEnabled()!=enabled) { failure="Android rejected the requested EQ state"; ok=false; }
+                    else if(equalizer.setEnabled(effectEnabled)!=AudioEffect.SUCCESS || equalizer.getEnabled()!=effectEnabled) { failure="Android rejected the requested EQ state"; ok=false; }
                     else {
                         short[] range=equalizer.getBandLevelRange();
                         for(short i=0;i<equalizer.getNumberOfBands();i++) {
@@ -850,13 +859,13 @@ public final class AudioService extends Service {
             try {
                 if(virtualizer!=null&&virtualizer.hasControl()) {
                     if(virtualizer.getStrengthSupported())virtualizer.setStrength((short)(spatial*1000));
-                    if(virtualizer.setEnabled(enabled&&spatial>0)==AudioEffect.SUCCESS&&virtualizer.getEnabled())
+                    if(virtualizer.setEnabled(effectEnabled&&spatial>0)==AudioEffect.SUCCESS&&virtualizer.getEnabled())
                         appliedWidth=virtualizer.getRoundedStrength()/1000f;
                 }
             } catch(RuntimeException ignored) {ok=false;}
             try {
                 if(enhancer!=null&&enhancer.hasControl()) {
-                    enhancer.setEnabled(enabled&&loudness>0);
+                    enhancer.setEnabled(effectEnabled&&loudness>0);
                     enhancer.setTargetGain((int)(loudness*100));
                 }
             } catch(RuntimeException ignored) {ok=false;}
