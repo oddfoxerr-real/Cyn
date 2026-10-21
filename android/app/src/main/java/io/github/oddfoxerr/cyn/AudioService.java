@@ -37,6 +37,7 @@ public final class AudioService extends Service {
     boolean useApex, movieMode, spatialPreviewEnabled, partialNeuralPreview;
     String aiProfile=AiSelection.BASIC;
     float spatialPreviewStrength=0.4f;
+    float audonicIntensity=0.45f;
     private long libraryFrame, libraryTrace;
     // UI telemetry is captured from PCM and inference in a 150ms service tick.
     // Indexes: bass, kick/transient, spatial DSP, neural decision intensity.
@@ -216,7 +217,7 @@ public final class AudioService extends Service {
             &&SystemClock.elapsedRealtime()-connectedMind.at<1200;
     }
     boolean mindLive(){
-        return playing&&enabled&&smart&&spatialPreviewEnabled||mindExternal();
+        return playing&&enabled&&smart&&(spatialPreviewEnabled||AiSelection.AUDONIC.equals(aiProfile))||mindExternal();
     }
     float[] mindHidden(){return mindExternal()?connectedMind.hidden:null;}
     float[] mindConnections(){return mindExternal()?connectedMind.connections:null;}
@@ -228,7 +229,7 @@ public final class AudioService extends Service {
         return mindExternal()?connectedMind.at:playing?apexDecisionAt:0;
     }
     private void updateApexVisualTelemetry(){
-        if(!playing||!enabled||!smart||!spatialPreviewEnabled||desktopAi==null){
+        if(!playing||!enabled||!smart||!(spatialPreviewEnabled||AiSelection.AUDONIC.equals(aiProfile))||desktopAi==null){
             apexVisual=new float[]{0,0,0,0};
             apexDecisionAt=0;
             return;
@@ -239,7 +240,16 @@ public final class AudioService extends Service {
             bassValue=Math.max(0f,Math.min(1f,window[19]));
             kickValue=Math.max(0f,Math.min(1f,window[20+19]));
         }
-        float spatial=apexSpatialActivity();
+        float spatial=AiSelection.AUDONIC.equals(aiProfile)?
+            NativeEngine.audonicActivity(desktopAi.engine):apexSpatialActivity();
+        DesktopAi.AudonicPolicy creative=desktopAi.audonicPolicy;
+        if(AiSelection.AUDONIC.equals(aiProfile)&&creative!=null&&
+                SystemClock.elapsedRealtime()-creative.at<2500){
+            apexDecisionAt=creative.at;
+            apexVisual=new float[]{bassValue,kickValue,spatial,
+                Math.max(0f,Math.min(1f,creative.effects[0]+creative.effects[1]))};
+            return;
+        }
         DesktopAi.PartialPolicy partial=desktopAi.partialPolicy;
         if(partialNeuralPreview&&partial!=null&&SystemClock.elapsedRealtime()-partial.at<2500){
             apexDecisionAt=partial.at;
@@ -259,6 +269,8 @@ public final class AudioService extends Service {
     String processingStatus() {
         if(!enabled)return "Enhancement off · original sound";
         if(playing) {
+            if(AiSelection.AUDONIC.equals(aiProfile))
+                return "AUDONIC Experimental AI · "+desktopAi.audonicStatus;
             if(spatialPreviewEnabled)return partialNeuralPreview
                 ? "APEX 10M Experimental Release · "+desktopAi.partialStatus
                 : "APEX 10M · Classic Spatial DSP";
@@ -311,6 +323,7 @@ public final class AudioService extends Service {
         useApex=AiSelection.usesApex6M(aiProfile);
         spatialPreviewEnabled=AiSelection.usesSpatialPreview(aiProfile);
         spatialPreviewStrength=Math.max(0f,Math.min(1f,prefs.getFloat("spatial10m_strength",.4f)));
+        audonicIntensity=Math.max(0f,Math.min(1f,prefs.getFloat("audonic_intensity",.45f)));
         partialNeuralPreview=prefs.getBoolean("apex10m_partial_opt_in",false);
         for(int i=0;i<39;i++)studioEq[i]=prefs.getFloat("studioEq"+i,0);
         enabled=prefs.getBoolean("enabled",true); smart=prefs.getBoolean("smart",true); sensitivity=prefs.getFloat("sensitivity",.7f);
@@ -553,6 +566,7 @@ public final class AudioService extends Service {
         // its current neural controller as part of that primary engine.
         // Existing saved selections are left untouched until reselected.
         if(AiSelection.APEX_10M.equals(aiProfile))partialNeuralPreview=true;
+        if(AiSelection.AUDONIC.equals(aiProfile))partialNeuralPreview=false;
         useApex=AiSelection.usesApex6M(aiProfile);
         spatialPreviewEnabled=AiSelection.usesSpatialPreview(aiProfile);
         if (desktopAi!=null) desktopAi.reset();
@@ -565,7 +579,7 @@ public final class AudioService extends Service {
         aiProfile=AiSelection.normalize(aiProfile);
         useApex=AiSelection.usesApex6M(aiProfile);
         spatialPreviewEnabled=AiSelection.usesSpatialPreview(aiProfile);
-        SharedPreferences.Editor e=prefs.edit().putString("ai_profile",aiProfile).putBoolean("apex10m_partial_opt_in",partialNeuralPreview).putBoolean("spatial10m_preview",spatialPreviewEnabled).putFloat("spatial10m_strength",spatialPreviewStrength).putBoolean("enabled",enabled).putBoolean("smart",smart).putFloat("sensitivity",sensitivity).putFloat("bass",bass).putFloat("clarity",clarity).putFloat("width",width).putFloat("loudness",loudness);
+        SharedPreferences.Editor e=prefs.edit().putString("ai_profile",aiProfile).putBoolean("apex10m_partial_opt_in",partialNeuralPreview).putBoolean("spatial10m_preview",spatialPreviewEnabled).putFloat("spatial10m_strength",spatialPreviewStrength).putFloat("audonic_intensity",audonicIntensity).putBoolean("enabled",enabled).putBoolean("smart",smart).putFloat("sensitivity",sensitivity).putFloat("bass",bass).putFloat("clarity",clarity).putFloat("width",width).putFloat("loudness",loudness);
         for(int i=0;i<5;i++) e.putFloat("eq"+i,eq[i]);
         e.putFloat("ambience",ambience).putFloat("dynamics",dynamics).putFloat("headroom",headroom).putInt("bands",bandCount).putBoolean("apex",useApex).putBoolean("movie",movieMode);
         for(int i=0;i<39;i++)e.putFloat("studioEq"+i,studioEq[i]);e.apply();updateNativeControls();
@@ -576,6 +590,7 @@ public final class AudioService extends Service {
     void updateNativeControls() {
         desktopAi.active=playing&&enabled&&smart;
         desktopAi.apexEnabled=useApex;
+        desktopAi.audonicEnabled=AiSelection.AUDONIC.equals(aiProfile)&&desktopAi.active;
         desktopAi.movie=movieMode;
         boolean wantsPartial=spatialPreviewEnabled&&partialNeuralPreview&&desktopAi.active;
         if(desktopAi.partialEnabled!=wantsPartial) {
@@ -624,6 +639,22 @@ public final class AudioService extends Service {
             spatialStrength*=verified?partial.gain:0f;
         }
         NativeEngine.spatialPreview(desktopAi.engine,spatialStrength);
+        float[] creative=new float[6];
+        boolean audonicReady=false;
+        if(desktopAi.audonicEnabled){
+            DesktopAi.AudonicPolicy decision=desktopAi.audonicPolicy;
+            audonicReady=decision!=null&&SystemClock.elapsedRealtime()-decision.at<2500;
+            if(audonicReady){
+                final float[] max={.55f,.65f,.45f,.55f,.25f,.50f};
+                for(int j=0;j<6;j++){
+                    float value=decision.effects[j];
+                    creative[j]=Float.isFinite(value)
+                        ?Math.max(0f,Math.min(max[j],value*audonicIntensity)):0f;
+                }
+            }
+        }
+        // Fail closed if weights, inference or audio features are unavailable.
+        NativeEngine.audonicControls(desktopAi.engine,creative,audonicReady);
     }
     void train() {
         if(training) return; training=true; trainingEpoch=0; trainingTrace=null;
