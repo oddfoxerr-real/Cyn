@@ -367,7 +367,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         android.widget.RadioGroup aiChoices=new android.widget.RadioGroup(this);
         aiChoices.setOrientation(android.widget.RadioGroup.VERTICAL);
         String[] profileIds={AiSelection.BASIC,AiSelection.APEX_6M,AiSelection.APEX_10M};
-        String[] profileLabels={"CYN Base AI · YAMNet + personal preferences","APEX 6M · existing neural spectral guidance","APEX 10M · Experimental spatial DSP preview"};
+        String[] profileLabels={"CYN Base AI · YAMNet + personal preferences","APEX 6M · existing neural spectral guidance","APEX 10M · Spatial DSP + optional 37.33% neural test"};
         int selectedViewId=View.NO_ID;
         for(int i=0;i<profileIds.length;i++){
             com.google.android.material.radiobutton.MaterialRadioButton option=new com.google.android.material.radiobutton.MaterialRadioButton(this);
@@ -390,9 +390,36 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             }
         });
         add(engine,aiChoices);
-        add(engine,label("Only one primary AI profile can be selected. APEX 10M currently uses experimental live spatial DSP; its additional neural reasoning weights have not been trained.",12,hint));
+        add(engine,label("Only one primary AI profile can be selected. The experimental APEX 10M submode uses a frozen, partly trained 3.69M-parameter policy head; it is not yet validated on real music.",12,hint));
         if(AiSelection.APEX_10M.equals(service.aiProfile)){
             slider(engine,"Spatial intensity",service.spatialPreviewStrength*100,0,100,"%",v->{service.spatialPreviewStrength=v/100;service.changed();});
+            toggle(engine,"Try frozen 37.33% neural policy (experimental)",service.partialNeuralPreview,on->{
+                if(!on) {
+                    service.partialNeuralPreview=false;
+                    service.desktopAi.partialPolicy=null;
+                    service.changed();
+                    build();
+                    return;
+                }
+                new AlertDialog.Builder(this)
+                    .setTitle("Experimental APEX 10M neural preview")
+                    .setMessage("This is a genuine partly trained 3.69M-parameter temporal policy, frozen at 37.33% of a synthetic 15-hour training run. It was NOT trained or validated on real music.\n\nIt can only REDUCE the conservative spatial effect, never increase it beyond your selected strength. It requires local CYN library playback, adds CPU use, and safely bypasses when inference is unavailable.\n\nFor listening comparisons only. The normal AI is unchanged.")
+                    .setPositiveButton("Enable test", (dialog,which)->{
+                        service.partialNeuralPreview=true;
+                        service.desktopAi.reset();
+                        service.changed();build();
+                    })
+                    .setNegativeButton("Cancel",(dialog,which)->build())
+                    .show();
+            });
+            if(service.partialNeuralPreview){
+                add(engine,label("Partial-model status: "+service.desktopAi.partialStatus,12,accent));
+                add(engine,button("Return to conservative APEX 10M DSP",()->{
+                    service.partialNeuralPreview=false;
+                    service.desktopAi.partialPolicy=null;
+                    service.changed();build();
+                }));
+            }
             add(engine,label("Enhances existing stereo ambience on CYN library playback. No Dolby Atmos/object decoding, positional source reconstruction, or external-app PCM access.",12,hint));
         }
         category(engine,"Content focus (not another AI)",body->{
@@ -402,14 +429,14 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         liveStatus=label("",13,accent);add(engine,liveStatus);
         if(AiSelection.APEX_10M.equals(service.aiProfile)){
             LinearLayout network=section("APEX 10M • Neural-style network mesh",
-                "A holographic brain-shaped network with connected nodes and neon activity bursts. The neural 10M reasoning head remains untrained and inactive.");
+                "A holographic network showing measured spatial DSP activity. The optional frozen 37.33% neural policy influences its safety-limited strength only when explicitly enabled.");
             brainScan=new ApexSpatialBrainView(this,new ApexSpatialBrainView.Signal(){
                 @Override public float activity(){return service==null?0f:service.apexSpatialActivity();}
                 @Override public boolean enabled(){return service!=null&&service.playing&&service.enabled&&service.smart&&service.spatialPreviewEnabled;}
                 @Override public boolean reduced(){return reduced;}
             },accent,secondary);
             network.addView(brainScan,new LinearLayout.LayoutParams(-1,dp(334)));
-            add(network,label("Each activity burst lights up a different neon-coloured route through the branching mesh. Pulse timing follows live spatial DSP output, not invented AI thoughts.",12,hint));
+            add(network,label("Each burst lights a different neon-coloured route through the mesh. Pulses reflect measured DSP activity, not actual individual neuron activations.",12,hint));
         }else{
             LinearLayout network=section("Personal neural activity","Measured activations from your preference model.");
             neural=new NeuralView();
