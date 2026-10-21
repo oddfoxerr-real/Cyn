@@ -64,6 +64,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p /tmp/cyn-tests
+          python android/scripts/test_audonic_policy.py /tmp/cyn-tests/audonic-controls.bin
           python android/scripts/test_partial_policy.py
           python - <<'PY'
           import json
@@ -84,6 +86,8 @@ jobs:
           /tmp/cyn-tests/spatial
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/linux" android/tests/native/engine_test.cpp -o /tmp/cyn-tests/engine
           /tmp/cyn-tests/engine
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/linux" android/tests/native/audonic_engine_test.cpp -o /tmp/cyn-tests/audonic
+          /tmp/cyn-tests/audonic /tmp/cyn-tests/audonic-controls.bin
           javac -d /tmp/cyn-tests android/app/src/main/java/io/github/oddfoxerr/cyn/{PreferenceModel,AudioFeatures,AndroidRelease,ApexFeatures,AiSelection,ConnectedEffects}.java android/tests/{AudioModelTest,ApexFeaturesTest,AiSelectionTest,ConnectedMindTraceTest,ConnectedEffectsTest}.java
           java -cp /tmp/cyn-tests io.github.oddfoxerr.cyn.ConnectedEffectsTest
           java -cp /tmp/cyn-tests io.github.oddfoxerr.cyn.AiSelectionTest
@@ -131,28 +135,42 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.24-preview.apk > "$RUNNER_TEMP/cyn-apex10m-package.txt"
           grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='28' versionName='0.2.24-preview'" "$RUNNER_TEMP/cyn-apex10m-package.txt"
           (cd dist/android && sha256sum Cyn-Studio-Android-0.2.24-preview.apk > Cyn-Studio-Android-0.2.24-preview.apk.sha256)
-      - name: Verify in-place upgrade compatibility with installed v0.2.22 release
+      - name: Verify in-place upgrades from both v0.2.22 and v0.2.23
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          previous="$RUNNER_TEMP/cyn-previous.apk"
-          gh release download android-studio-v0.2.22-preview --pattern 'Cyn-Studio-Android-0.2.22-preview.apk' --output "$previous"
           current=dist/android/Cyn-Studio-Android-0.2.24-preview.apk
-          for apk in "$previous" "$current"; do
-            "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk"
+          signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          new_cert=$("$signer" verify --print-certs "$current" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
+          new_info=$("$aapt" dump badging "$current" | grep '^package:')
+          new_code=$(echo "$new_info" | sed -n "s/.*versionCode='\([^']*\)'.*/\1/p")
+          echo "$new_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='28'"
+          for version in 0.2.22 0.2.23; do
+            previous="$RUNNER_TEMP/cyn-$version.apk"
+            gh release download "android-studio-v$version-preview" --pattern "Cyn-Studio-Android-$version-preview.apk" --output "$previous"
+            "$signer" verify --verbose --print-certs "$previous"
+            old_cert=$("$signer" verify --print-certs "$previous" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
+            test -n "$old_cert" && test "$old_cert" = "$new_cert"
+            old_info=$("$aapt" dump badging "$previous" | grep '^package:')
+            echo "$old_info" | grep -F "name='io.github.oddfoxerr.cyn.studio'"
+            old_code=$(echo "$old_info" | sed -n "s/.*versionCode='\([^']*\)'.*/\1/p")
+            test "$new_code" -gt "$old_code"
+            echo "PASS: upgrade from $version preserves certificate and package, increases version code"
           done
-          old_cert=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$previous" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
-          new_cert=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$current" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
-          test -n "$old_cert" && test "$old_cert" = "$new_cert"
-          old_info=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$previous" | grep '^package:')
-          new_info=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$current" | grep '^package:')
-          echo "$old_info"
-          echo "$new_info"
-          echo "$old_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='26'"
-          echo "$new_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='27'"
-          echo 'PASS: existing v0.2.22 and new v0.2.24 APK share signing identity and have increasing version codes'
+          python - <<'PYCODE'
+          import zipfile
+          from pathlib import Path
+          with zipfile.ZipFile('dist/android/Cyn-Studio-Android-0.2.24-preview.apk') as apk:
+              for source in Path('android/app/src/main/assets/models').iterdir():
+                  if source.is_file():
+                      assert apk.read('assets/models/'+source.name)==source.read_bytes(), source.name
+              for abi in ('arm64-v8a','x86_64'):
+                  assert any(n.startswith('lib/'+abi+'/') and n.endswith('.so') for n in apk.namelist())
+          print('PASS: signed APK contains verified model bytes and native ABI libraries')
+          PYCODE
       - name: Upload verified experimental Android APK
         uses: actions/upload-artifact@v4
         with:
@@ -175,7 +193,7 @@ jobs:
             exit 1
           fi
           gh release create "$tag" --target "$GITHUB_SHA" \
-            --title 'CYN Studio Android 0.2.24 · Updater reliability and Connect AI' \
+            --title 'CYN Studio Android 0.2.24 · AUDONIC, Library and Material 3' \
             --notes-file android/CONNECT_AI_RELEASE_NOTES.md \
             --prerelease --latest=false \
             dist/android/Cyn-Studio-Android-0.2.24-preview.apk \

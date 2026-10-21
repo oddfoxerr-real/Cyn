@@ -19,6 +19,23 @@ final class ConnectedEffects {
         double clarity = targets[2] * Math.exp(-.5 * octaves * octaves);
         return clamp((float) (curve + bass + clarity), -6, 6);
     }
+    /** Creative policy mapped only to effects Android sessions can render. */
+    static void audonic(float[] targets,float[] policy,float intensity,boolean fresh){
+        if(!fresh||policy==null||policy.length!=6)return;
+        float strength=clamp(intensity,0,1);
+        // No duplicate playback: restrained tonal motion uses the original session EQ.
+        targets[1]=clamp(targets[1]+clamp(policy[5],0,1)*strength*1.5f,0,12);
+        targets[2]=clamp(targets[2]+(clamp(policy[0],0,1)+clamp(policy[1],0,1))*strength*.75f,0,8);
+        targets[3]=clamp(targets[3]+clamp(policy[2],0,1)*strength*.12f,0,1);
+        int count=Math.round(targets[8]);
+        if(count!=31&&count!=35&&count!=39)return;
+        for(int b=0;b<count;b++){
+            double hz=20*Math.pow(1000,b/(double)(count-1));
+            double octaves=Math.log(hz/800)/Math.log(2);
+            float cut=(float)Math.exp(-.5*octaves*octaves)*clamp(policy[3],0,1)*strength;
+            targets[9+b]=clamp(targets[9+b]-cut,-12,12);
+        }
+    }
     static float width(float manual, float neuralGain, float intensity, boolean selected,
                        boolean neuralEnabled, boolean fresh, float sensitivity) {
         // The neural controller may reduce the requested Android virtualization

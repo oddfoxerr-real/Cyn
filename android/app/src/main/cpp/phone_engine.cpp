@@ -130,7 +130,7 @@ struct Engine {
             for(int i=0;i<n;i++)scratch[i]=pcm[offset+i]/32768.0f;
             analyzer.process(scratch.data(),n/channels);
             for(int i=0;i<n;i+=channels) {
-                if(channels==2)collectPolicy(scratch[i],scratch[i+1]);
+                collectPolicy(scratch[i],scratch[i+(channels==2?1:0)]);
                 if(countdown--<=0){refresh();countdown=479;}
                 const bool active=p[0]>.5f;
                 wet+=(static_cast<float>(active)-wet)*.002f;
@@ -147,11 +147,12 @@ struct Engine {
                 if(channels==2){const float mid=(out[0]+out[1])*.5f,side=(out[0]-out[1])*.5f*(1+clamp(p[3],0,1)*.55f);out[0]=mid+side;out[1]=mid-side;
                     // Explicit opt-in: existing stereo ambience only, not trained neural APEX 10M.
                     spatialPreview.process(out[0],out[1],spatialPreviewStrength.load(std::memory_order_relaxed));
-                    if(audonicEnabled.load(std::memory_order_relaxed)) {
-                        std::array<float,6> controls{};
-                        for(int j=0;j<6;j++)controls[j]=audonicParams[j].load(std::memory_order_relaxed);
-                        audonic.process(out[0],out[1],controls);
-                    }
+                }
+                if(audonicEnabled.load(std::memory_order_relaxed)) {
+                    std::array<float,6> controls{};
+                    for(int j=0;j<6;j++)controls[j]=audonicParams[j].load(std::memory_order_relaxed);
+                    if(channels==1)out[1]=out[0];
+                    audonic.process(out[0],out[1],controls);
                 }
                 delayIndex=(delayIndex+1)%11000;
                 const float peak=std::max(std::abs(out[0]),std::abs(out[channels-1]));

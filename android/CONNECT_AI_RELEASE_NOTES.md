@@ -1,18 +1,11 @@
-# CYN Mobile 0.2.22 preview — Connect AI playback analysis
+# CYN Mobile 0.2.24 preview
 
-Connect now offers Android playback sharing consent and analyzes permitted media/game audio through an isolated copy of the existing YAMNet/APEX inference engine. The shared Studio EQ curve (31/35/39 bands) maps to the bands exposed by each Android effect session. The selected APEX 10M spatial policy can reduce the requested Android Virtualizer strength when that effect is supported. Library playback remains optional.
+- Restores AUDONIC selection, saved creative intensity, verified model assets and native creative DSP. Base AI, APEX 6M and APEX 10M remain available.
+- AUDONIC now handles mono Library audio as well as stereo. Connect maps fresh creative model decisions to compatible Android session EQ and virtualization; custom waveshaping remains native Library DSP.
+- Repairs Audius result sizing, keeps the search action above results, adds keyboard search, progress, empty and retry states, and rejects stale results after navigation or another search.
+- Applies all 11 CYN palettes to Material 3 components, fields, dialogs, navigation and player surfaces. Keeps saved themes and audio settings. No wallpaper color extraction.
+- Keeps package io.github.oddfoxerr.cyn.studio and the existing release certificate; version code increases to 28. Uses the existing Android release discovery and installer flow.
 
-## Fixed
-- Connect previously ran only FFT balancing and the personal preference model. The selected YAMNet/APEX engines were activated only by Library playback.
-- Connect ignored Studio's EQ curve and used a separate legacy five-band array.
-- A failed YAMNet inference no longer erases an independently successful APEX spatial decision.
-- Capture and Library have separate native/inference state. Disconnect, revoked consent, paused/blocked input, disabled enhancement, and profile changes invalidate neural decisions.
-- Optional stereo/loudness effect errors no longer prevent a working EQ from being updated.
+Release gates include real ONNX inference, trained AUDONIC controls through native stereo/mono PCM, bypass and gain bounds, Connect mapping, preference migration, Android compilation/lint, APK signatures and alignment, packaged model integrity, and matching upgrade identity against 0.2.22 and 0.2.23.
 
-## Use
-Tap Connect CYN, grant audio permission, and approve Android's playback-sharing prompt. No microphone source, screen frames, files, or uploads are used. Play music in a compatible app; if its EQ session was already open, restart playback or select CYN in its EQ settings. Enable Connect AI retries a declined or stopped sharing session. Device-wide EQ remains an explicit experimental option.
-
-## Actual scope
-This is not a universal Android audio driver. Apps can block capture or expose no usable audio-effect session. Capture alone cannot replace or mute another app's original output; CYN does not play a duplicate captured stream. Neural adjustments use Android's EQ/Virtualizer, not Library's native stereo/ambience/dynamics renderer. Android may decline virtualization, especially on particular outputs. Multiple unrelated external sessions retain manual/per-session fallback adjustments; mix-derived neural decisions are applied only to a single external session or an explicitly selected system-mix route. The UI distinguishes analysis from available effect control. Samsung/device routing and audible outcomes require on-phone verification.
-
-The existing experimental APEX checkpoint and its synthetic-training limitations are unchanged. Android 10+ is required for playback capture; Android 9 retains compatible-session effects and Visualizer analysis. Package identity and registered signing certificate are unchanged; versionCode is 26.
+Hardware playback, live Audius availability and Android installation on individual devices require device confirmation. No emulator or uninstall is required by this release workflow. Connect still depends on the external player exposing supported Android audio effects and permitting capture for neural analysis.

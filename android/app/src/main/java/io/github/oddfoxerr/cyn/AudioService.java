@@ -702,6 +702,11 @@ public final class AudioService extends Service {
             }
             if(r.at!=libraryFrame){libraryFrame=r.at;frames.add(new Frame(x,Math.min(1,r.features[11]*4)));while(frames.size()>240)frames.remove(0);}
         }
+        if(!playing){
+            DesktopAi.AudonicPolicy creative=desktopAi.audonicPolicy;
+            ConnectedEffects.audonic(p,creative==null?null:creative.effects,audonicIntensity,
+                desktopAi.audonicEnabled&&creative!=null&&SystemClock.elapsedRealtime()-creative.at<2500);
+        }
         float changeDb=Math.max(Math.abs(p[1]-bass),Math.abs(p[2]-clarity));
         int changedBands=0;
         for(int b=0;b<bandCount;b++) {

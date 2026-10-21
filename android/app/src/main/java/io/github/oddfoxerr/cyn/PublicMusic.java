@@ -14,12 +14,12 @@ final class PublicMusic {
         final String id,title,artist; final long durationMs;
         Song(String i,String t,String a,long d){id=i;title=t;artist=a;durationMs=d;}
         AudioLibrary.Track asTrack(){
-            Uri uri=Uri.parse("https://api.audius.co/v1/tracks/"+Uri.encode(id)+"/stream");
+            Uri uri=Uri.parse("https://api.audius.co/v1/tracks/"+Uri.encode(id)+"/stream?app_name=CYN");
             return new AudioLibrary.Track(uri,title,artist,"Audius",durationMs,false);
         }
     }
     static List<Song> search(String query)throws Exception{
-        String endpoint="https://api.audius.co/v1/tracks/search?query="+URLEncoder.encode(query,"UTF-8")+"&limit=25";
+        String endpoint="https://api.audius.co/v1/tracks/search?query="+URLEncoder.encode(query,"UTF-8")+"&limit=25&app_name=CYN";
         HttpURLConnection conn=(HttpURLConnection)new URL(endpoint).openConnection();
         conn.setConnectTimeout(10000);conn.setReadTimeout(12000);
         conn.setRequestProperty("Accept","application/json");
@@ -35,7 +35,7 @@ final class PublicMusic {
             ArrayList<Song> songs=new ArrayList<>();
             if(items==null)return songs;
             for(int i=0;i<items.length();i++){
-                JSONObject s=items.optJSONObject(i);if(s==null||s.optBoolean("is_stream_gated",false))continue;
+                JSONObject s=items.optJSONObject(i);if(s==null||s.optBoolean("is_stream_gated",false)||!s.optBoolean("is_streamable",true)||s.optBoolean("is_delete",false))continue;
                 String id=s.optString("id"),title=s.optString("title");
                 if(id.isEmpty()||title.isEmpty())continue;
                 JSONObject user=s.optJSONObject("user");

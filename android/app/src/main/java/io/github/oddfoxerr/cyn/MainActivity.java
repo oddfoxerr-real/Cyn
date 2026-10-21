@@ -22,6 +22,9 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     AudioService service;
     final Handler handler=new Handler(Looper.getMainLooper());
     final ExecutorService filesWorker=Executors.newSingleThreadExecutor();
+    final ExecutorService searchWorker=Executors.newSingleThreadExecutor();
+    int searchGeneration;
+    String publicQuery="";
     LinearLayout shell,content,mini,libraryRows;
     com.google.android.material.bottomnavigation.BottomNavigationView nav;
     LiquidPage pages;
@@ -38,8 +41,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         @Override public void onServiceConnected(ComponentName name,IBinder binder){service=((AudioService.LocalBinder)binder).service();build(false);processControlIntent(getIntent());}
         @Override public void onServiceDisconnected(ComponentName name){service=null;build(false);}
     };
-    @Override public void onCreate(Bundle state){super.onCreate(state);ui=getSharedPreferences("ui",0);if(state!=null){page=state.getInt("page",0);query=state.getString("query","");onlyFavorites=state.getBoolean("favorites");}if(getIntent().getBooleanExtra("updates",false))page=4;build(false);bound=bindService(new Intent(this,AudioService.class),connection,BIND_AUTO_CREATE);UpdateManager.schedule(this);UpdateManager.checkOnLaunch(this);}
-    @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);state.putInt("page",page);state.putString("query",query);state.putBoolean("favorites",onlyFavorites);}
+    @Override public void onCreate(Bundle state){ui=getSharedPreferences("ui",0);applyPaletteTheme();super.onCreate(state);if(state!=null){page=state.getInt("page",0);query=state.getString("query","");onlyFavorites=state.getBoolean("favorites");publicQuery=state.getString("publicQuery","");}if(getIntent().getBooleanExtra("updates",false))page=4;build(false);bound=bindService(new Intent(this,AudioService.class),connection,BIND_AUTO_CREATE);UpdateManager.schedule(this);UpdateManager.checkOnLaunch(this);}
+    @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);state.putInt("page",page);state.putString("query",query);state.putBoolean("favorites",onlyFavorites);state.putString("publicQuery",publicQuery);}
     @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);if(i.getBooleanExtra("updates",false)){page=4;build(false);}processControlIntent(i);}
     void processControlIntent(Intent i){if(service!=null&&AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL.equals(i.getAction())){notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("session",i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1)));i.setAction(null);page=0;build(false);offerLiveVisuals();}}
     String asset(String name)throws IOException{try(InputStream in=getAssets().open(name)){return Streams.text(in);}}
@@ -64,6 +67,10 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         {0xffff74dc,0xff7ea9ff,0xff16091d,0xff301a39},
         {0xff76aaff,0xff63ecd5,0xff080f24,0xff192341}
     };
+    static final int[] PALETTE_STYLES={R.style.CynPalette0,R.style.CynPalette1,R.style.CynPalette2,R.style.CynPalette3,R.style.CynPalette4,R.style.CynPalette5,R.style.CynPalette6,R.style.CynPalette7,R.style.CynPalette8,R.style.CynPalette9,R.style.CynPalette10};
+    void applyPaletteTheme(){
+        setTheme(PALETTE_STYLES[Math.floorMod(ui.getInt("studio_theme",0),PALETTE_STYLES.length)]);
+    }
     void palette(){
         reduced=ui.getBoolean("reduce",false)||!android.animation.ValueAnimator.areAnimatorsEnabled();
         int t=Math.floorMod(ui.getInt("studio_theme",0),THEME_COLORS.length);
@@ -86,6 +93,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         b.setInsetTop(0);b.setInsetBottom(0);
         b.setBackgroundTintList(ColorStateList.valueOf(androidx.core.graphics.ColorUtils.blendARGB(card,accent,.07f)));
         b.setStrokeWidth(dp(1));b.setStrokeColor(ColorStateList.valueOf(outline));
+        b.setRippleColor(ColorStateList.valueOf(androidx.core.graphics.ColorUtils.setAlphaComponent(accent,48)));
         b.setFocusable(true);
         final int motion=ui==null?0:ui.getInt("button_motion",0);
         if(motion>0&&!reduced){
@@ -166,6 +174,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             });
             add(shell,nav);
         }
+        shell.setBackgroundColor(bg);nav.setBackgroundColor(bg);
+        mini.setBackground(shape(androidx.core.graphics.ColorUtils.blendARGB(card,accent,.09f),26));
         getWindow().setStatusBarColor(bg);getWindow().setNavigationBarColor(bg);
         ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(bg);scroll.setFillViewport(true);scroll.setClipToPadding(false);content=column();int side=getResources().getConfiguration().screenWidthDp>=700?60:18;content.setPadding(dp(side),dp(12),dp(side),dp(24));scroll.addView(content);
         if(service==null)add(content,label("Connecting to your sound…",20,text));else if(page==0)music();else if(page==1)learning();else if(page==2)files();else if(page==3)appearance();else updatesPage();
@@ -330,7 +340,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             "\n\n"+service.connectionHint()+
             "\n\nCYN listens to and enhances compatible playback through available Android audio effects. Some players do not expose a controllable session. The optional CYN Library has its own native DSP path."+
             "\n\nThis panel does not expose your phone identity, app names or audio session identifiers. For optional local troubleshooting, open Style → Audio diagnostics.";
-        new AlertDialog.Builder(this).setTitle("CYN connection").setMessage(message).setPositiveButton("Done",null).show();
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle("CYN connection").setMessage(message).setPositiveButton("Done",null).show();
     }
     void files(){
         add(content,label("Optional audio library",29,text));add(content,label(service.library.all().size()+" local tracks · an extra way to enjoy CYN",13,hint));
@@ -338,47 +348,91 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         LinearLayout transport=buttons(player,new String[]{"Previous",service.playing?"Pause":"Play","Next"},new Runnable[]{()->service.previous(),()->{if(service.player==null)toast("Choose a track below");else if(service.playing)service.pause();else startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.TOGGLE));build();},()->service.next()});playButton=(TextView)transport.getChildAt(1);
         toggle(player,"Shuffle",service.prefs.getBoolean("shuffle",false),service::shuffle);category(player,"Repeat",body->buttons(body,new String[]{"Off","All","One"},new Runnable[]{()->{service.repeat(0);toast("Repeat off");},()->{service.repeat(2);toast("Repeat all");},()->{service.repeat(1);toast("Repeat track");}}));liveStatus=label("",12,accent);add(player,liveStatus);
         buttons(content,new String[]{"Add files","Scan phone"},new Runnable[]{this::pickTracks,this::scanPermission});gap(content,12);
-        LinearLayout online=section("PUBLIC MUSIC · AUDIUS","Search the Audius open music catalog and play available tracks through CYN's own audio engine.");
-        EditText publicSearch=new EditText(this);publicSearch.setSingleLine(true);publicSearch.setTextColor(text);publicSearch.setHintTextColor(hint);
-        publicSearch.setHint("Search online music");publicSearch.setMinHeight(dp(52));publicSearch.setPadding(dp(16),dp(8),dp(16),dp(8));
-        publicSearch.setBackground(shape(card,16));add(online,publicSearch);
-        LinearLayout publicResults=column();add(online,publicResults);
-        add(online,button("Search Audius",()->{
-            String term=publicSearch.getText().toString().trim();
-            if(term.isEmpty()){toast("Enter a song or artist");return;}
-            publicResults.removeAllViews();add(publicResults,label("Searching Audius…",13,hint));
-            filesWorker.execute(()->{
-                try{List<PublicMusic.Song> found=PublicMusic.search(term);
-                    handler.post(()->{
-                        if(page!=2||!publicResults.isAttachedToWindow())return;
-                        publicResults.removeAllViews();
-                        if(found.isEmpty()){add(publicResults,label("No public tracks found.",13,hint));return;}
-                        for(PublicMusic.Song song:found){
-                            LinearLayout trackRow=row();
-                            TextView play=button("▶  "+song.title+" · "+song.artist,()->{
-                                if(service==null){toast("Audio engine connecting");return;}
-                                try{playTrack(java.util.Collections.singletonList(song.asTrack()),0);}
-                                catch(RuntimeException e){toast("Unable to start stream");}
-                            });
-                            trackRow.addView(play,new LinearLayout.LayoutParams(0,-2,1));
-                            add(trackRow,button("＋",()->{
-                                if(service==null){toast("Audio engine connecting");return;}
-                                filesWorker.execute(()->{
-                                    try{service.library.merge(java.util.Collections.singletonList(song.asTrack()));
-                                        handler.post(()->{toast("Added to your Library");if(page==2)renderTracks();});
-                                    }catch(Exception e){handler.post(()->toast("Could not save track"));}
-                                });
-                            }));
-                            add(publicResults,trackRow);
-                        }
-                    });
-                }catch(Exception e){handler.post(()->{if(page==2&&publicResults.isAttachedToWindow()){publicResults.removeAllViews();add(publicResults,label("Online search unavailable. Check your connection.",13,hint));}});}
-            });
-        }));
+        buildPublicMusic();
 
         EditText search=new EditText(this);search.setSingleLine(true);search.setTextColor(text);search.setHintTextColor(hint);search.setHint("Search tracks, artists, albums");search.setContentDescription("Search audio library");search.setText(query);search.setMinHeight(dp(52));search.setPadding(dp(16),dp(8),dp(16),dp(8));search.setBackground(shape(card,16));add(content,search);
         toggle(content,"Favorites only",onlyFavorites,on->{onlyFavorites=on;visibleTracks=60;renderTracks();});
         libraryRows=column();add(content,libraryRows);search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){query=s.toString();visibleTracks=60;renderTracks();}public void afterTextChanged(Editable e){}});renderTracks();
+    }
+    void buildPublicMusic(){
+        LinearLayout online=section("Audius","Discover music to play through CYN.");
+        com.google.android.material.textfield.TextInputLayout field=new com.google.android.material.textfield.TextInputLayout(this);
+        field.setBoxBackgroundMode(com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE);
+        field.setBoxCornerRadii(dp(20),dp(20),dp(20),dp(20));
+        field.setHint("Song or artist");
+        com.google.android.material.textfield.TextInputEditText input=new com.google.android.material.textfield.TextInputEditText(field.getContext());
+        input.setSingleLine(true);input.setTextColor(text);input.setTextSize(16);
+        input.setMinHeight(dp(56));input.setText(publicQuery);
+        input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        field.addView(input,new LinearLayout.LayoutParams(-1,-2));add(online,field);gap(online,8);
+        LinearLayout results=column();
+        TextView searchButton=button("Search Audius",()->searchPublicMusic(input,results));
+        primaryAction(searchButton);add(online,searchButton);gap(online,8);add(online,results);
+        input.addTextChangedListener(new TextWatcher(){
+            public void beforeTextChanged(CharSequence value,int start,int count,int after){}
+            public void onTextChanged(CharSequence value,int start,int before,int count){publicQuery=value.toString();}
+            public void afterTextChanged(Editable value){}
+        });
+        input.setOnEditorActionListener((v,action,event)->{
+            if(action==android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH){searchPublicMusic(input,results);return true;}
+            return false;
+        });
+    }
+    void searchPublicMusic(EditText input,LinearLayout results){
+        String term=input.getText().toString().trim();
+        if(term.isEmpty()){input.setError("Enter a song or artist");input.requestFocus();return;}
+        final int generation=++searchGeneration;
+        android.view.inputmethod.InputMethodManager keyboard=(android.view.inputmethod.InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);
+        if(keyboard!=null)keyboard.hideSoftInputFromWindow(input.getWindowToken(),0);
+        results.removeAllViews();
+        com.google.android.material.progressindicator.LinearProgressIndicator progress=new com.google.android.material.progressindicator.LinearProgressIndicator(this);
+        progress.setIndeterminate(true);progress.setIndicatorColor(accent);add(results,progress);
+        TextView status=label("Searching Audius…",13,hint);
+        status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(results,status);
+        searchWorker.execute(()->{
+            try{
+                List<PublicMusic.Song> found=PublicMusic.search(term);
+                handler.post(()->{
+                    if(generation!=searchGeneration||page!=2||!results.isAttachedToWindow())return;
+                    results.removeAllViews();
+                    TextView summary=label(found.isEmpty()?"No playable tracks found. Try another song or artist.":found.size()+" tracks",13,hint);
+                    summary.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(results,summary);
+                    for(PublicMusic.Song song:found){
+                        LinearLayout track=row();track.setPadding(0,dp(4),0,dp(4));
+                        TextView play=button(song.title+"\n"+song.artist,()->{
+                            if(service==null){toast("Audio engine connecting");return;}
+                            try{playTrack(Collections.singletonList(song.asTrack()),0);}
+                            catch(RuntimeException failure){toast("Unable to start stream");}
+                        });
+                        play.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);play.setMaxLines(3);
+                        play.setEllipsize(TextUtils.TruncateAt.END);
+                        play.setContentDescription("Play "+song.title+" by "+song.artist);
+                        track.addView(play,new LinearLayout.LayoutParams(0,-2,1));
+                        TextView save=button("+",()->savePublicTrack(song));
+                        save.setContentDescription("Add "+song.title+" to Library");
+                        save.setPadding(0,0,0,0);save.setMinimumWidth(0);save.setMinWidth(0);
+                        LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(dp(48),dp(52));
+                        size.setMarginStart(dp(8));track.addView(save,size);add(results,track);
+                    }
+                });
+            }catch(Exception failure){handler.post(()->{
+                if(generation!=searchGeneration||page!=2||!results.isAttachedToWindow())return;
+                results.removeAllViews();
+                TextView error=label("Audius is unavailable. Check your connection and retry.",13,hint);
+                error.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(results,error);
+                add(results,button("Retry search",()->searchPublicMusic(input,results)));
+            });}
+        });
+    }
+    void savePublicTrack(PublicMusic.Song song){
+        if(service==null){toast("Audio engine connecting");return;}
+        AudioLibrary library=service.library;
+        filesWorker.execute(()->{
+            try{library.merge(Collections.singletonList(song.asTrack()));
+                handler.post(()->{if(isDestroyed())return;toast("Added to your Library");if(page==2)renderTracks();});
+            }catch(Exception failure){handler.post(()->{if(!isDestroyed())toast("Could not save track");});}
+        });
     }
     List<AudioLibrary.Track> filteredTracks(){ArrayList<AudioLibrary.Track> list=new ArrayList<>();String q=query.toLowerCase(Locale.ROOT);for(AudioLibrary.Track t:service.library.all())if((!onlyFavorites||t.favorite)&&(t.title+" "+t.artist+" "+t.album).toLowerCase(Locale.ROOT).contains(q))list.add(t);return list;}
     void renderTracks(){if(libraryRows==null)return;libraryRows.removeAllViews();List<AudioLibrary.Track> tracks=filteredTracks();if(tracks.isEmpty()){LinearLayout empty=column();empty.setPadding(dp(14),dp(20),dp(14),dp(20));add(empty,label(libraryBusy?"Reading your music…":"Room for your next favorite.",19,text));add(empty,label(query.isEmpty()?"Add files or scan your phone to bring your music into CYN.":"No tracks match this search.",13,hint));add(libraryRows,empty);return;}
@@ -392,7 +446,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             favorite.setTag(t.uri.toString());
             favorite.setContentDescription((t.favorite?"Remove favorite ":"Favorite ")+t.title);
             favorite.setOnClickListener(v->{try{service.library.favorite(t.uri);renderTracks();}catch(Exception e){toast("Could not save favorite");}});
-            r.addView(favorite,new LinearLayout.LayoutParams(dp(48),dp(48)));words.setOnClickListener(v->playTrack(tracks,index));r.setOnClickListener(v->playTrack(tracks,index));r.setFocusable(true);r.setContentDescription("Play "+t.title+" by "+t.artist);r.setOnLongClickListener(v->{new AlertDialog.Builder(this).setTitle(t.title).setItems(new String[]{"Play now","Remove from CYN library"},(d,n)->{if(n==0)playTrack(tracks,index);else try{service.library.remove(t.uri);renderTracks();}catch(Exception e){toast("Could not remove track");}}).show();return true;});add(libraryRows,r);gap(libraryRows,8);}
+            r.addView(favorite,new LinearLayout.LayoutParams(dp(48),dp(48)));words.setOnClickListener(v->playTrack(tracks,index));r.setOnClickListener(v->playTrack(tracks,index));r.setFocusable(true);r.setContentDescription("Play "+t.title+" by "+t.artist);r.setOnLongClickListener(v->{new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle(t.title).setItems(new String[]{"Play now","Remove from CYN library"},(d,n)->{if(n==0)playTrack(tracks,index);else try{service.library.remove(t.uri);renderTracks();}catch(Exception e){toast("Could not remove track");}}).show();return true;});add(libraryRows,r);gap(libraryRows,8);}
         if(tracks.size()>visibleTracks)add(libraryRows,button("Show more tracks",()->{visibleTracks+=60;renderTracks();}));
     }
     void playTrack(List<AudioLibrary.Track> queue,int index){notifications();startForegroundService(new Intent(this,AudioService.class).setAction("cyn.QUEUE"));service.playQueue(queue,index);update();}
@@ -443,7 +497,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             add(engine,label(service.partialNeuralPreview
                 ? "Neural engine · "+service.currentAi().partialStatus
                 : "Classic spatial DSP mode",12,hint));
-            add(engine,label("Works with songs played in CYN Library.",12,hint));
+            add(engine,label("Library DSP and supported Connect session effects.",12,hint));
 
         }
         if(AiSelection.AUDONIC.equals(service.aiProfile)){
@@ -453,8 +507,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 service.audonicIntensity=v/100;
                 service.changed();
             });
-            add(engine,label(service.desktopAi.audonicStatus,12,hint));
-            add(engine,label("Best with CYN Library music · local processing",12,hint));
+            add(engine,label(service.currentAi().audonicStatus,12,hint));
+            add(engine,label("Native creative DSP in Library · adaptive session effects in Connect",12,hint));
         }
         category(engine,"Content focus (not another AI)",body->{
             toggle(body,"Dialogue / movie tuning",service.movieMode,on->{service.movieMode=on;service.changed();});
@@ -490,7 +544,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         }
         LinearLayout c=section("Teach your sound","Select a passage, then tell CYN what you want more or less of.");timeline=new Timeline();c.addView(timeline,new LinearLayout.LayoutParams(-1,dp(130)));buttons(c,new String[]{"Last 5 seconds","Live timeline"},new Runnable[]{()->timeline.selectRecent(),()->timeline.resume()});gap(c,8);
         category(c,"Training target",body->{String[] names={"Clarity","Ambience","Width","Dynamics","Bass"};for(int i=0;i<5;i++){final int n=i;add(body,button(names[i],()->{feedbackEffect=n;toast("Training "+names[n]);timeline.invalidate();}));}});buttons(c,new String[]{"Less here","More here"},new Runnable[]{()->labelFrames(false),()->labelFrames(true)});learningStatus=label("",12,accent);add(c,learningStatus);add(c,button("Train personal model",()->service.train()));
-        category(c,"Model tools",body->{add(body,button("Import desktop preference model",()->startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE),30)));add(body,button("Export personal model",()->startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("application/json").putExtra(Intent.EXTRA_TITLE,"CYN-phone-preferences.cynai.json"),31)));add(body,button("Reset personal learning",()->new AlertDialog.Builder(this).setTitle("Reset personal learning?").setMessage("Your saved labels and personal weights will be removed.").setPositiveButton("Reset",(d,w)->{if(service.training){toast("Wait for training to finish");return;}try{service.learning.reset();}catch(Exception e){toast("Could not reset model");}}).setNegativeButton("Cancel",null).show()));});
+        category(c,"Model tools",body->{add(body,button("Import desktop preference model",()->startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE),30)));add(body,button("Export personal model",()->startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("application/json").putExtra(Intent.EXTRA_TITLE,"CYN-phone-preferences.cynai.json"),31)));add(body,button("Reset personal learning",()->new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle("Reset personal learning?").setMessage("Your saved labels and personal weights will be removed.").setPositiveButton("Reset",(d,w)->{if(service.training){toast("Wait for training to finish");return;}try{service.learning.reset();}catch(Exception e){toast("Could not reset model");}}).setNegativeButton("Cancel",null).show()));});
         add(c,label("Personal training uses your More/Less feedback. APEX 10M's release model has separate training.",12,hint));
         add(c,button("Analyze a compatible external app",this::requestAnalysis));
     }
@@ -512,7 +566,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             swatch.addView(accentChip,cp);
             TextView select=button(THEME_NAMES[i]+(ui.getInt("studio_theme",0)==i?"  ✓":""),()->{
                 ui.edit().putInt("studio_theme",selected).apply();
-                build(true);
+                applyPaletteTheme();shell=null;build(false);
             });
             if(ui.getInt("studio_theme",0)==i)primaryAction(select);
             swatch.addView(select,new LinearLayout.LayoutParams(0,dp(52),1));
@@ -576,7 +630,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         if(Build.VERSION.SDK_INT<29){offerLiveVisuals();return;}
         if(service!=null&&service.connectedCapture!=null){toast("Connect AI is already sharing playback");return;}
         if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){
-            new AlertDialog.Builder(this).setTitle("Enable Connect AI")
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle("Enable Connect AI")
                 .setMessage("CYN analyzes shared playback on this phone to adjust supported audio effects. Android calls the first permission microphone access; CYN only captures playback. Audio is not saved or uploaded. Next, approve Android's sharing prompt.")
                 .setPositiveButton("Continue",(d,w)->requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},24))
                 .setNegativeButton("Not now",null).show();
@@ -595,7 +649,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             if(service!=null)service.refreshVisualization();
             return;
         }
-        new AlertDialog.Builder(this).setTitle("Enable CYN live visuals?")
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle("Enable CYN live visuals?")
             .setMessage("To show a real-time spectrum and neural activity for music outside CYN, Android requires its microphone-labelled audio permission. CYN uses Android's playback Visualizer; it does not open the microphone, save music or upload audio. Some apps may still block analysis.")
             .setPositiveButton("Enable",(d,w)->requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},21))
             .setNegativeButton("Not now",null).show();
@@ -627,7 +681,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     final Runnable refresh=new Runnable(){public void run(){update();handler.postDelayed(this,250);}};
     @Override protected void onResume(){super.onResume();handler.removeCallbacks(refresh);handler.post(refresh);}
     @Override protected void onPause(){handler.removeCallbacks(refresh);super.onPause();}
-    @Override protected void onDestroy(){handler.removeCallbacksAndMessages(null);filesWorker.shutdown();if(bound)unbindService(connection);super.onDestroy();}
+    @Override protected void onDestroy(){handler.removeCallbacksAndMessages(null);searchGeneration++;searchWorker.shutdownNow();filesWorker.shutdown();if(bound)unbindService(connection);super.onDestroy();}
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==72){if(result==RESULT_OK&&data!=null){startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.CAPTURE).putExtra("consent",data));}else toast("Playback sharing cancelled · basic EQ remains available");return;}if(request==71){if(getPackageManager().canRequestPackageInstalls())UpdateManager.install(this);return;}if(result!=RESULT_OK||data==null||service==null)return;
         if(request==10){ArrayList<Uri>uris=new ArrayList<>();if(data.getClipData()!=null)for(int i=0;i<data.getClipData().getItemCount();i++)uris.add(data.getClipData().getItemAt(i).getUri());else if(data.getData()!=null)uris.add(data.getData());for(Uri uri:uris)try{getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(SecurityException ignored){}AudioLibrary library=service.library;libraryBusy=true;filesWorker.execute(()->{try{ArrayList<AudioLibrary.Track> tracks=new ArrayList<>();for(Uri uri:uris)tracks.add(library.read(uri));library.merge(tracks);handler.post(()->{libraryBusy=false;page=2;build();toast(tracks.size()+" tracks added");});}catch(Exception e){handler.post(()->{libraryBusy=false;toast("Could not add audio files");});}});}
         else if(request==30&&data.getData()!=null){if(service.training){toast("Wait for training to finish");return;}try(InputStream in=getContentResolver().openInputStream(data.getData())){service.learning.importModel(in);toast("Desktop preference weights imported");}catch(Exception e){toast("Model import failed: "+e.getMessage());}}
@@ -636,7 +690,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     String time(int ms){int seconds=Math.max(0,ms)/1000;return String.format(Locale.ROOT,"%d:%02d",seconds/60,seconds%60);}
     void toast(String value){Toast.makeText(this,value,Toast.LENGTH_SHORT).show();}
     void browser(String url){try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}catch(Exception e){toast("No browser available");}}
-    void showText(String title,String value){TextView t=label(value,13,text);t.setTextIsSelectable(true);t.setPadding(dp(20),dp(12),dp(20),dp(20));ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(card);scroll.addView(t);new AlertDialog.Builder(this).setTitle(title).setView(scroll).setPositiveButton("Done",null).show();}
+    void showText(String title,String value){TextView t=label(value,13,text);t.setTextIsSelectable(true);t.setPadding(dp(20),dp(12),dp(20),dp(20));ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(card);scroll.addView(t);new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle(title).setView(scroll).setPositiveButton("Done",null).show();}
     final class Spectrum extends View {
         final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
         final Path curve=new Path();

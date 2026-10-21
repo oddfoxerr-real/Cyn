@@ -27,3 +27,8 @@ y=x.copy();y[:,1]=.92;y[:,3]=-.6;y[:,6]=.05;y[:,5]=.85
 alternate=session.run(None,{'features':y})[0]
 assert np.max(np.abs(base-alternate))>1e-4,'Model must react to differing sounds'
 print(f"PASS: real AUDONIC trained ONNX, sha256 and six adaptive FX controls, {manifest['gradient_updates']} gradient updates")
+
+# Pass actual neural output to the native PCM regression, not invented controls.
+import sys
+if len(sys.argv)>1:
+    base[0,:,-1].astype("<f4").tofile(sys.argv[1])
