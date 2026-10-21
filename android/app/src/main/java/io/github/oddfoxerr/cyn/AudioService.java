@@ -838,11 +838,11 @@ public final class AudioService extends Service {
             boolean effectEnabled=enabled&&(id==playerSession||externalRoute);
             String signature=effectEnabled+":"+Arrays.toString(targets)+":"+spatial+":"+loudness;
             if(signature.equals(lastSettings)&&(!effectEnabled||controlsEq())) return;
-            boolean ok=true;
+            boolean effectsApplied=true;
             try {
                 if(equalizer!=null) {
-                    if(!equalizer.hasControl()) { failure="Another equalizer owns this session. Disable competing equalizers and reconnect."; ok=false; }
-                    else if(equalizer.setEnabled(effectEnabled)!=AudioEffect.SUCCESS || equalizer.getEnabled()!=effectEnabled) { failure="Android rejected the requested EQ state"; ok=false; }
+                    if(!equalizer.hasControl()) { failure="Another equalizer owns this session. Disable competing equalizers and reconnect."; effectsApplied=false; }
+                    else if(equalizer.setEnabled(effectEnabled)!=AudioEffect.SUCCESS || equalizer.getEnabled()!=effectEnabled) { failure="Android rejected the requested EQ state"; effectsApplied=false; }
                     else {
                         short[] range=equalizer.getBandLevelRange();
                         for(short i=0;i<equalizer.getNumberOfBands();i++) {
@@ -851,8 +851,8 @@ public final class AudioService extends Service {
                         }
                         failure="";
                     }
-                } else {failure="Equalizer unavailable on this session";ok=false;}
-            } catch(RuntimeException error) {failure="Effect control unavailable or owned by another equalizer";ok=false;}
+                } else {failure="Equalizer unavailable on this session";effectsApplied=false;}
+            } catch(RuntimeException error) {failure="Effect control unavailable or owned by another equalizer";effectsApplied=false;}
             // Optional effect failure must not disable a functioning equalizer.
             appliedWidth=0;
             try {
@@ -861,14 +861,14 @@ public final class AudioService extends Service {
                     if(virtualizer.setEnabled(effectEnabled&&spatial>0)==AudioEffect.SUCCESS&&virtualizer.getEnabled())
                         appliedWidth=virtualizer.getRoundedStrength()/1000f;
                 }
-            } catch(RuntimeException ignored) {ok=false;}
+            } catch(RuntimeException ignored) {effectsApplied=false;}
             try {
                 if(enhancer!=null&&enhancer.hasControl()) {
                     enhancer.setEnabled(effectEnabled&&loudness>0);
                     enhancer.setTargetGain((int)(loudness*100));
                 }
-            } catch(RuntimeException ignored) {ok=false;}
-            lastSettings=ok?signature:"";
+            } catch(RuntimeException ignored) {effectsApplied=false;}
+            lastSettings=effectsApplied?signature:"";
         }
         void close() { if(visualizer!=null) visualizer.release(); if(equalizer!=null) equalizer.release(); if(virtualizer!=null) virtualizer.release(); if(enhancer!=null) enhancer.release(); }
         boolean controlsEq() { try { return enabled&&equalizer!=null&&equalizer.hasControl()&&equalizer.getEnabled()&&failure.isEmpty(); } catch(RuntimeException e) { return false; } }
