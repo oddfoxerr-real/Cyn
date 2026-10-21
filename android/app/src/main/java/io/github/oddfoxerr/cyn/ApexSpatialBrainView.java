@@ -54,6 +54,8 @@ final class ApexSpatialBrainView extends View {
         "HARMONICS","ATTACK","WIDTH","COLOUR","RHYTHM","OVERTONES"
     };
     private static final int[] CREATIVE_ANCHORS={29,81,127,176,230,279};
+    private static final Typeface HEADING_FACE=Typeface.create("sans-serif-medium",Typeface.BOLD);
+    private static final Typeface BODY_FACE=Typeface.create("sans-serif",Typeface.NORMAL);
     private final float[] modelX=new float[N],modelY=new float[N],modelZ=new float[N];
     private final float[] screenX=new float[N],screenY=new float[N],depth=new float[N];
     private final int[] edgeA=new int[MAX_EDGES],edgeB=new int[MAX_EDGES];
@@ -410,7 +412,7 @@ final class ApexSpatialBrainView extends View {
             circle(canvas,x,y,3.5f+intensity*3.5f,hue,
                 105+Math.round(intensity*150));
             paint.setTextAlign(Paint.Align.CENTER);
-            paint.setTypeface(Typeface.create("sans-serif-medium",Typeface.BOLD));
+            paint.setTypeface(HEADING_FACE);
             paint.setTextSize(Math.max(10f,Math.min(12f,getHeight()*.032f)));
             ink(hue,205,Paint.Style.FILL,0);
             canvas.drawText(CREATIVE_NAMES[i],x,y+17,paint);
@@ -528,7 +530,7 @@ final class ApexSpatialBrainView extends View {
         if(playing)drawWaves(canvas,level);
         if(audonic)drawCreative(canvas,cx,cy,scale);
 
-        paint.setTypeface(Typeface.create("sans-serif-medium",Typeface.BOLD));
+        paint.setTypeface(HEADING_FACE);
         paint.setTextSize(Math.max(12,h*.050f));
         ink(accent,245,Paint.Style.FILL,0);
         canvas.drawText(audonic
@@ -540,7 +542,7 @@ final class ApexSpatialBrainView extends View {
                   connected?"CYN MIND  /  WAITING FOR AUDIO":
                   "CYN MIND  /  DISCONNECTED",
             16,h-44,paint);
-        paint.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));
+        paint.setTypeface(BODY_FACE);
         paint.setTextSize(Math.max(10,h*.035f));
         ink(secondary,220,Paint.Style.FILL,0);
         canvas.drawText(audonic
