@@ -51,7 +51,7 @@ public final class ExternalNowPlaying extends NotificationListenerService {
                 if(paused==null&&state.getState()==PlaybackState.STATE_PAUSED)paused=track;
             }
             return paused;
-        } catch(SecurityException|RuntimeException ignored) { return null; }
+        } catch(RuntimeException ignored) { return null; }
     }
     static void toggle(Track track) {
         if(track==null)return;
