@@ -1,11 +1,11 @@
-# CYN Mobile 0.2.24 preview
+# CYN Mobile 0.2.25 preview
 
-- Restores AUDONIC selection, saved creative intensity, verified model assets and native creative DSP. Base AI, APEX 6M and APEX 10M remain available.
-- AUDONIC now handles mono Library audio as well as stereo. Connect maps fresh creative model decisions to compatible Android session EQ and virtualization; custom waveshaping remains native Library DSP.
-- Repairs Audius result sizing, keeps the search action above results, adds keyboard search, progress, empty and retry states, and rejects stale results after navigation or another search.
-- Applies all 11 CYN palettes to Material 3 components, fields, dialogs, navigation and player surfaces. Keeps saved themes and audio settings. No wallpaper color extraction.
-- Keeps package io.github.oddfoxerr.cyn.studio and the existing release certificate; version code increases to 28. Uses the existing Android release discovery and installer flow.
+Fixes update discovery failing with GitHub API HTTP 403 rate limits. Checks the public repository release feed first; uses the existing paginated API only if the feed is unavailable or contains no Android releases. APKs still come from the same GitHub releases, with required SHA-256, package, version-code and signing-certificate checks before installation.
 
-Release gates include real ONNX inference, trained AUDONIC controls through native stereo/mono PCM, bypass and gain bounds, Connect mapping, preference migration, Android compilation/lint, APK signatures and alignment, packaged model integrity, and matching upgrade identity against 0.2.22 and 0.2.23.
+Downloads remain bounded and verified even when feed metadata has no APK size. The updater now reports unknown download progress honestly and avoids blaming the connection for every failure.
 
-Hardware playback, live Audius availability and Android installation on individual devices require device confirmation. No emulator or uninstall is required by this release workflow. Connect still depends on the external player exposing supported Android audio effects and permitting capture for neural analysis.
+Includes the 0.2.24 AUDONIC restoration, Audius layout fixes and all 11 Material 3 palettes. Preserves settings, package identity, certificate and existing releases. Version code: 29.
+
+Verified by release workflow: live public feed discovery from 0.2.23, simulated blocked API, fallback/error cases, AI inference/native DSP, Connect mapping, Android build/lint, signature and package checks against 0.2.22–0.2.24.
+
+For older installations currently blocked by GitHub rate limiting, download this APK directly from the release and install over CYN. No uninstall is required. Physical-device installation remains unverified in CI.
