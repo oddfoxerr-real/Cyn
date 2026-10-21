@@ -412,7 +412,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         });
         slider(engine,"Sensitivity",service.sensitivity*100,0,100,"%",v->{service.sensitivity=v/100;service.changed();});
         liveStatus=label("",13,accent);add(engine,liveStatus);
-        if(AiSelection.APEX_10M.equals(service.aiProfile)){
+        if(AiSelection.APEX_10M.equals(service.aiProfile)||service.monitor){
             LinearLayout network=section("CYN • 3D mind map",
                 "Live AI activity across CYN Library and connected audio");
             brainScan=new ApexSpatialBrainView(this,new ApexSpatialBrainView.Signal(){
