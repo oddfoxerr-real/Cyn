@@ -33,6 +33,53 @@ struct Engine {
     std::atomic<float> spatialPreviewStrength{0.0f};
     CynSpatialExperimental spatialPreview;
     std::atomic<float> spatialActivity{0.0f};
+    // Real stereo PCM features for the optional partially trained ONNX policy.
+    // Published every 100ms; read on the neural worker, never execute ONNX on audio thread.
+    std::array<std::atomic<float>,160> policyFrames{};
+    std::atomic<unsigned> policyFrameCount{0};
+    int policySamples=0;
+    float lowPass=0,highPass=0,lastBass=0,lastRms=0;
+    float bassEnergy=0,midEnergy=0,sideEnergy=0,leftEnergy=0,rightEnergy=0;
+    float crossEnergy=0,vocalEnergy=0,policyPeak=0;
+    void collectPolicy(float left,float right) noexcept {
+        const float mid=(left+right)*.5f,side=(left-right)*.5f;
+        lowPass+=.018f*(mid-lowPass);
+        highPass+=.20f*(mid-highPass);
+        const float vocal=highPass-lowPass;
+        bassEnergy+=lowPass*lowPass;
+        midEnergy+=mid*mid;
+        sideEnergy+=side*side;
+        leftEnergy+=left*left;
+        rightEnergy+=right*right;
+        crossEnergy+=left*right;
+        vocalEnergy+=vocal*vocal;
+        policyPeak=std::max(policyPeak,std::max(std::abs(left),std::abs(right)));
+        if(++policySamples<4800)return;
+        const float count=static_cast<float>(policySamples);
+        const float rms=std::sqrt(midEnergy/count);
+        const float bass=std::sqrt(bassEnergy/count);
+        const float l=std::sqrt(leftEnergy/count),r=std::sqrt(rightEnergy/count);
+        const float ratio=clamp(bass/std::max(rms,1e-5f),0,1);
+        const float onset=clamp(std::max(0.0f,ratio-lastBass)*2+
+            std::max(0.0f,rms-lastRms)*4,0,1);
+        const float side=std::sqrt(sideEnergy/count);
+        const float correlation=clamp(crossEnergy/std::max(l*r*count,1e-9f),-1,1);
+        const std::array<float,8> features={
+            ratio,onset,clamp(side/std::max(side+rms,1e-5f),0,1),correlation,
+            clamp(std::max(0.0f,rms-lastRms)*6,0,1),
+            clamp(std::sqrt(vocalEnergy/count)/std::max(rms,1e-5f),0,1),
+            clamp(1-policyPeak,0,1),
+            clamp((l-r)/std::max(l+r,1e-5f),-1,1)
+        };
+        const unsigned serial=policyFrameCount.load(std::memory_order_relaxed);
+        const int slot=static_cast<int>(serial%20);
+        for(int index=0;index<8;index++)
+            policyFrames[index*20+slot].store(features[index],std::memory_order_relaxed);
+        policyFrameCount.store(serial+1,std::memory_order_release);
+        lastBass=ratio;lastRms=rms;
+        policySamples=0; bassEnergy=midEnergy=sideEnergy=leftEnergy=rightEnergy=0;
+        crossEnergy=vocalEnergy=policyPeak=0;
+    }
     std::atomic<unsigned> serial{0};
     std::array<float,48> p{};
     std::array<Biquad,maxBands> filters{};
@@ -46,6 +93,10 @@ struct Engine {
         channels=ch;analyzer.setFormat(0,0,0);analyzer.setFormat(32,ch,48000);
         for(auto& f:filters) { f.reset(); }
         delay={};delayIndex=0;countdown=0;wet=0;level=1;spatialPreview.reset();spatialActivity.store(0.0f,std::memory_order_relaxed);
+        policyFrameCount.store(0,std::memory_order_release);policySamples=0;
+        lowPass=highPass=lastBass=lastRms=0;
+        bassEnergy=midEnergy=sideEnergy=leftEnergy=rightEnergy=0;
+        crossEnergy=vocalEnergy=policyPeak=0;
     }
     void refresh() {
         for(int retry=0;retry<3;retry++) {
@@ -74,6 +125,7 @@ struct Engine {
             for(int i=0;i<n;i++)scratch[i]=pcm[offset+i]/32768.0f;
             analyzer.process(scratch.data(),n/channels);
             for(int i=0;i<n;i+=channels) {
+                if(channels==2)collectPolicy(scratch[i],scratch[i+1]);
                 if(countdown--<=0){refresh();countdown=479;}
                 const bool active=p[0]>.5f;
                 wet+=(static_cast<float>(active)-wet)*.002f;
@@ -122,6 +174,22 @@ JNIEXPORT jfloat JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_spatialActivi
 }
 JNIEXPORT void JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_spatialPreview(JNIEnv*,jclass,jlong handle,jfloat strength){
     if(handle)engine(handle)->spatialPreviewStrength.store(clamp(strength,0.0f,1.0f),std::memory_order_relaxed);
+}
+JNIEXPORT jfloatArray JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_spatialPolicyWindow(JNIEnv* env,jclass,jlong p){
+    if(!p)return nullptr;
+    auto* e=engine(p);
+    std::array<float,160> result{};
+    for(int attempt=0;attempt<3;attempt++){
+        const unsigned serial=e->policyFrameCount.load(std::memory_order_acquire);
+        if(serial<20)return nullptr;
+        for(int index=0;index<8;index++)
+            for(unsigned frame=0;frame<20;frame++)
+                result[index*20+frame]=e->policyFrames[index*20+((serial+frame)%20)]
+                    .load(std::memory_order_relaxed);
+        if(serial==e->policyFrameCount.load(std::memory_order_acquire))
+            return array(env,result.data(),static_cast<int>(result.size()));
+    }
+    return nullptr;
 }
 JNIEXPORT jfloatArray JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_features(JNIEnv* env,jclass,jlong p){const auto a=engine(p)->analyzer.snapshot();std::array<float,12>v{};std::copy(a.values.begin(),a.values.end(),v.begin());v[11]=a.rms;return array(env,v.data(),12);}
 JNIEXPORT jfloatArray JNICALL Java_io_github_oddfoxerr_cyn_NativeEngine_yamnetWindow(JNIEnv* env,jclass,jlong p){std::array<float,15600>w{};auto*e=engine(p);if(!e->analyzer.copyYamNetWindow(w,e->yamWindow))return nullptr;return array(env,w.data(),w.size());}
