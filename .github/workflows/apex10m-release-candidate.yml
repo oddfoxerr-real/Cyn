@@ -1,0 +1,191 @@
+name: Publish APEX 10M Experimental Neural Release Candidate
+
+on:
+  push:
+    branches:
+      - feature/apex10m-release-candidate-v2
+    paths:
+      - 'apex_engine/apex10m_partial_*.py'
+      - 'tests/test_apex10m_partial_ab.py'
+      - '.github/workflows/apex10m-release-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apex10m-rc1-frozen-snapshot
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned CPU and WAV evaluation libraries
+        shell: bash
+        run: |
+          python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install numpy==1.26.4 scipy==1.14.1 soundfile==0.12.1 onnx==1.17.0 onnxruntime==1.20.1
+      - name: Confirm actual audio inference, mono and antiphase safeguards
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_apex10m_partial_ab.py' -v
+      - name: Freeze a coherent intermediate snapshot without stopping training
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p snapshot
+          for attempt in 1 2 3 4 5; do
+            rm -f snapshot/apex10m-policy.pt snapshot/apex10m-policy-metrics.json
+            gh release download apex10m-spatial-policy-15h-synthetic-v1 --pattern 'apex10m-policy.pt' --pattern 'apex10m-policy-metrics.json' --dir snapshot --clobber
+            if python - <<'PY'
+          import hashlib,json,pathlib,sys,torch
+          base=pathlib.Path('snapshot')
+          metrics=json.loads((base/'apex10m-policy-metrics.json').read_text())
+          blob=base/'apex10m-policy.pt'
+          digest=hashlib.sha256(blob.read_bytes()).hexdigest()
+          state=torch.load(blob,map_location='cpu',weights_only=True)
+          assert metrics['checkpoint_sha256']==digest,'Metrics/checkpoint mismatch; staged upload was in progress'
+          assert state['format']=='cyn-apex10m-spatial-curriculum-v1'
+          assert state['synthetic_only'] and not state['live_playback_approved']
+          assert state['training_seconds']>=36000,'Must include completed Stage 2 and at least 10h compute'
+          assert state['training_seconds']<=54000,'This is not a partial checkpoint'
+          assert state['steps']==metrics['real_gradient_updates']
+          assert metrics['measured_training_seconds']>=36000
+          assert not metrics['neural_playback_enabled']
+          print(f"FROZEN: {state['training_seconds']/3600:.3f} hours, {state['steps']} real updates, {digest}",flush=True)
+          PY
+            then break; fi
+            if [ "$attempt" -eq 5 ]; then echo '::error::Could not fetch a coherent frozen checkpoint';exit 1;fi
+            sleep 8
+          done
+          mv snapshot/apex10m-policy.pt snapshot/CYN-APEX10M-RC1-FROZEN.pt
+      - name: Export genuine neural head to ONNX and verify PyTorch parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          python - <<'PY'
+          import hashlib,json,pathlib,torch,onnx,onnxruntime as ort,numpy as np
+          from sys import path
+          path.insert(0,'apex_engine')
+          from apex10m_model import SpatialReasoner
+          checkpoint=pathlib.Path('snapshot/CYN-APEX10M-RC1-FROZEN.pt')
+          state=torch.load(checkpoint,map_location='cpu',weights_only=True)
+          model=SpatialReasoner()
+          model.load_state_dict(state['model'],strict=True)
+          model.eval()
+          example=torch.rand(1,8,20)
+          onnx_file=pathlib.Path('dist/CYN-APEX10M-RC1-Spatial-Head.onnx')
+          with torch.no_grad():
+              torch.onnx.export(model,example,onnx_file,opset_version=17,
+                  input_names=['features'],output_names=['band_controls','policy_controls'],
+                  dynamic_axes={'features':{2:'frames'},'band_controls':{3:'frames'},
+                                'policy_controls':{2:'frames'}},
+                  do_constant_folding=True,dynamo=False)
+          onnx.checker.check_model(str(onnx_file))
+          session=ort.InferenceSession(str(onnx_file),providers=['CPUExecutionProvider'])
+          for steps in (20,31):
+              x=torch.rand(1,8,steps)
+              with torch.no_grad():reference=model(x)
+              outputs=session.run(None,{'features':x.numpy()})
+              for expected,actual in zip(reference,outputs):
+                  difference=float(np.max(np.abs(expected.numpy()-actual)))
+                  print(f"ONNX PARITY: frames={steps} max diff={difference:.6g}")
+                  assert difference<0.0008,'ONNX neural output changed unexpectedly'
+          report={
+              'name':'APEX 10M experimental spatial-policy head (synthetic-only)',
+              'frozen_measured_training_seconds':round(state['training_seconds'],2),
+              'frozen_percent_of_15h':round(100*state['training_seconds']/54000,2),
+              'real_optimizer_updates':state['steps'],
+              'total_10m_architecture_parameters':state['full_architecture_parameters'],
+              'trained_spatial_head_parameters':state['head_parameters'],
+              'base_6m_retrained':False,
+              'training_continues_in_original_workflow':True,
+              'trained_on_real_music':False,
+              'neural_playback_approved':False,
+              'checkpoint_sha256':hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
+              'onnx_sha256':hashlib.sha256(onnx_file.read_bytes()).hexdigest(),
+              'holdout_synthetic_metrics':state['validation'],
+          }
+          pathlib.Path('dist/CYN-APEX10M-RC1-manifest.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report,indent=2),flush=True)
+          PY
+      - name: Generate playable mobile A/B sample and simple Windows/Linux tester
+        shell: bash
+        run: |
+          set -euo pipefail
+          python apex_engine/apex10m_partial_demo.py dist/CYN-APEX10M-Demo-DRY.wav
+          python apex_engine/apex10m_partial_ab.py dist/CYN-APEX10M-Demo-DRY.wav --checkpoint snapshot/CYN-APEX10M-RC1-FROZEN.pt --output dist/CYN-APEX10M-Demo-PARTIAL.wav --strength 0.90
+          python - <<'PY'
+          import json,pathlib,soundfile as sf,numpy as np
+          a,r=sf.read('dist/CYN-APEX10M-Demo-DRY.wav',always_2d=True)
+          b,q=sf.read('dist/CYN-APEX10M-Demo-PARTIAL.wav',always_2d=True)
+          assert r==q==48000 and np.isfinite(b).all()
+          assert np.max(np.abs(a-b))>1e-6,'The learned A/B effect must actually change the output'
+          assert np.max(np.abs(b))<=1
+          print('PASS: playable phone-compatible 48-kHz stereo WAV A/B samples')
+          PY
+          mkdir -p dist/source/apex_engine
+          cp apex_engine/apex10m_partial_ab.py apex_engine/apex10m_partial_demo.py apex_engine/apex10m_model.py apex_engine/apex10m_spatial.py dist/source/apex_engine/
+          cp dist/CYN-APEX10M-RC1-manifest.json dist/source/
+          cp snapshot/CYN-APEX10M-RC1-FROZEN.pt dist/source/
+          cat > dist/source/README.txt <<'EOF'
+          CYN APEX 10M Frozen Partial Policy Research Preview.
+          1. Install Python 3.11 and run:
+             pip install torch==2.5.1 numpy==1.26.4 scipy==1.14.1 soundfile==0.12.1
+          2. From this folder run:
+             python apex_engine/apex10m_partial_ab.py YOUR_STEREO.wav --checkpoint CYN-APEX10M-RC1-FROZEN.pt --strength .75
+          The source WAV must be 30 seconds or less. Output is a new -apex10m-partial.wav.
+          This is offline synthetic-trained policy guidance; not a finished neural CYN Android AI.
+          Never use the checkpoint in live playback without independent listening and safety tests.
+          EOF
+          (cd dist/source && zip -q -r ../CYN-APEX10M-RC1-Offline-Tester.zip .)
+          (cd dist && sha256sum CYN-APEX10M-RC1-Spatial-Head.onnx CYN-APEX10M-RC1-manifest.json CYN-APEX10M-Demo-PARTIAL.wav CYN-APEX10M-Demo-DRY.wav CYN-APEX10M-RC1-Offline-Tester.zip > CYN-APEX10M-RC1-checksums.sha256)
+      - name: Upload frozen preview test artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: CYN-APEX10M-frozen-release-candidate
+          path: |
+            dist/CYN-APEX10M-RC1-Spatial-Head.onnx
+            dist/CYN-APEX10M-RC1-manifest.json
+            dist/CYN-APEX10M-RC1-checksums.sha256
+            dist/CYN-APEX10M-Demo-DRY.wav
+            dist/CYN-APEX10M-Demo-PARTIAL.wav
+            dist/CYN-APEX10M-RC1-Offline-Tester.zip
+          retention-days: 90
+      - name: Publish immutable experimental APEX 10M release candidate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=apex10m-experimental-rc-v1
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo '::error::Frozen partial preview already published; will not overwrite it'
+            exit 1
+          fi
+          percent=$(python -c "import json;print(json.load(open('dist/CYN-APEX10M-RC1-manifest.json'))['frozen_percent_of_15h'])")
+          cat > dist/RELEASE_NOTES.md <<EOF
+          # APEX 10M experimental AI release candidate
+          **Frozen at $percent% of the requested 15 hours of measured gradient training.** Training percentage and optimizer counts are read from the checkpoint, never fabricated.
+          This is a separate, immutable snapshot of completed optimizer updates. The original 15h workflow remains independent.
+
+          **Mobile listening:** Download both WAV assets to your Android phone and compare them with headphones:
+          * `CYN-APEX10M-Demo-DRY.wav` — unchanged original synthetic bass/kick/stereo test.
+          * `CYN-APEX10M-Demo-PARTIAL.wav` — frozen learned-head spatial-policy decisions applied through a limited, conservative stereo DSP.
+          You may hear a subtle difference; this test is intentionally safety limited.
+
+          **Test your own music (computer required):** download the Offline Tester ZIP, install the listed Python dependencies, and process any ≤30-second stereo WAV. You may play the output on your phone.
+
+          The ONNX file contains measured checkpoint-trained 3.69M spatial-head weights. The original 6.3M APEX base is NOT included or retrained. It is packaged into a separate experimental CYN Mobile build. Synthetic-policy training does not prove real-music improvements; independent phase/headroom safeguards and opt-in testing remain required.
+          EOF
+          gh release create "$tag" --target "$GITHUB_SHA" --prerelease --latest=false             --title "CYN APEX 10M Experimental Neural AI Release Candidate — $percent% Trained"             --notes-file dist/RELEASE_NOTES.md             dist/CYN-APEX10M-RC1-Spatial-Head.onnx             dist/CYN-APEX10M-RC1-manifest.json             dist/CYN-APEX10M-RC1-checksums.sha256             dist/CYN-APEX10M-Demo-DRY.wav             dist/CYN-APEX10M-Demo-PARTIAL.wav             dist/CYN-APEX10M-RC1-Offline-Tester.zip
