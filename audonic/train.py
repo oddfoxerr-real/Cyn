@@ -91,8 +91,13 @@ def main():
             x[:4]=torch.from_numpy(public[ids])
         teacher_controls=None
         if teacher:
-            teacher_controls=torch.from_numpy(
-                teacher.run(["policy_controls"],{"features":x.numpy()})[0])
+            # The released APEX 10M export pins batch dimension to 1.
+            # Run each window against the REAL teacher instead of fabricating
+            # predictions or changing its immutable ONNX contract.
+            teacher_controls=torch.from_numpy(np.concatenate([
+                teacher.run(["policy_controls"],{"features":one[None]})[0]
+                for one in x.numpy()
+            ],axis=0))
             assert tuple(teacher_controls.shape)==(12,8,20)
         expected=targets(x,teacher_controls)
         predicted=model(x)
@@ -111,8 +116,11 @@ def main():
     # Validation never reuses the training generator.
     holdout=make_scenes(12,20,torch.Generator().manual_seed(77555))
     teacher_holdout=None
-    if teacher:teacher_holdout=torch.from_numpy(teacher.run(
-        ["policy_controls"],{"features":holdout.numpy()})[0])
+    if teacher:
+        teacher_holdout=torch.from_numpy(np.concatenate([
+            teacher.run(["policy_controls"],{"features":one[None]})[0]
+            for one in holdout.numpy()
+        ],axis=0))
     with torch.no_grad():
         validation=float(F.mse_loss(model(holdout),targets(holdout,teacher_holdout)).item())
     args.output.mkdir(parents=True,exist_ok=True)
