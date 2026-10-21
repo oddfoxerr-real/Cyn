@@ -44,9 +44,11 @@ final class UpdateManager {
         schedule(c);
     }
     static void downloads(Context c,boolean on){prefs(c).edit().putBoolean("download",on).apply();}
-    static void check(Context context,boolean manual,Runnable complete){
+    static void checkOnLaunch(Context context){check(context,false,null,true);}
+    static void check(Context context,boolean manual,Runnable complete){check(context,manual,complete,false);}
+    private static void check(Context context,boolean manual,Runnable complete,boolean launch){
         Context c=context.getApplicationContext();if(!BUSY.compareAndSet(false,true)){if(complete!=null)complete.run();return;}
-        if(!manual&&(!automatic(c)||System.currentTimeMillis()-prefs(c).getLong("checked",0)<6*60*60*1000L)){BUSY.set(false);if(complete!=null)complete.run();return;}
+        if(!manual&&!launch&&(!automatic(c)||System.currentTimeMillis()-prefs(c).getLong("checked",0)<6*60*60*1000L)){BUSY.set(false);if(complete!=null)complete.run();return;}
         progress=-1;stage=CHECKING;message="Checking CYN Studio releases…";
         IO.execute(()->{try{JSONObject newest=null;String version=null;
             for(int page=1;page<=5;page++){
