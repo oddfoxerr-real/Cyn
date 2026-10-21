@@ -405,8 +405,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         toggle(engine,"Smart Listening (master switch)",service.smart,on->{service.smart=on;service.changed();});
         android.widget.RadioGroup aiChoices=new android.widget.RadioGroup(this);
         aiChoices.setOrientation(android.widget.RadioGroup.VERTICAL);
-        String[] profileIds={AiSelection.BASIC,AiSelection.APEX_6M,AiSelection.APEX_10M};
-        String[] profileLabels={"CYN Base AI · YAMNet + personal preferences","APEX 6M · existing neural spectral guidance","APEX 10M · Experimental AI Release"};
+        String[] profileIds={AiSelection.BASIC,AiSelection.APEX_6M,AiSelection.APEX_10M,AiSelection.AUDONIC};
+        String[] profileLabels={"CYN Base AI · YAMNet + personal preferences","APEX 6M · existing neural spectral guidance","APEX 10M · Experimental AI Release","AUDONIC · Neural Mischief AI (Experimental)"};
         int selectedViewId=View.NO_ID;
         for(int i=0;i<profileIds.length;i++){
             com.google.android.material.radiobutton.MaterialRadioButton option=new com.google.android.material.radiobutton.MaterialRadioButton(this);
@@ -445,6 +445,16 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 : "Classic spatial DSP mode",12,hint));
             add(engine,label("Works with songs played in CYN Library.",12,hint));
 
+        }
+        if(AiSelection.AUDONIC.equals(service.aiProfile)){
+            add(engine,label("AUDONIC · Creative AI v0.1",13,accent));
+            add(engine,label("Adaptive harmonic texture, kick bite, stereo movement and musical colour.",12,hint));
+            slider(engine,"Creative intensity",service.audonicIntensity*100,0,100,"%",v->{
+                service.audonicIntensity=v/100;
+                service.changed();
+            });
+            add(engine,label(service.desktopAi.audonicStatus,12,hint));
+            add(engine,label("Best with CYN Library music · local processing",12,hint));
         }
         category(engine,"Content focus (not another AI)",body->{
             toggle(body,"Dialogue / movie tuning",service.movieMode,on->{service.movieMode=on;service.changed();});
