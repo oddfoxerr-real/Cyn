@@ -7,7 +7,7 @@ service=(root/"AudioService.java").read_text(encoding="utf-8")
 ai=(root/"DesktopAi.java").read_text(encoding="utf-8")
 scan=(root/"ApexSpatialBrainView.java").read_text(encoding="utf-8")
 assert "Try frozen" not in main, "Experimental release naming regressed"
-assert "APEX 10M · Experimental release (37.33% trained)" in main
+assert "APEX 10M · Experimental AI Release" in main
 assert "APEX 10M neural control" in main
 assert 'if(AiSelection.APEX_10M.equals(aiProfile))partialNeuralPreview=true;' in service
 assert "postInvalidateDelayed(40)" in scan and "onAttachedToWindow" in scan
