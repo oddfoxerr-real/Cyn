@@ -367,7 +367,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         android.widget.RadioGroup aiChoices=new android.widget.RadioGroup(this);
         aiChoices.setOrientation(android.widget.RadioGroup.VERTICAL);
         String[] profileIds={AiSelection.BASIC,AiSelection.APEX_6M,AiSelection.APEX_10M};
-        String[] profileLabels={"CYN Base AI · YAMNet + personal preferences","APEX 6M · existing neural spectral guidance","APEX 10M · Experimental release (37.33% trained)"};
+        String[] profileLabels={"CYN Base AI · YAMNet + personal preferences","APEX 6M · existing neural spectral guidance","APEX 10M · Experimental AI Release"};
         int selectedViewId=View.NO_ID;
         for(int i=0;i<profileIds.length;i++){
             com.google.android.material.radiobutton.MaterialRadioButton option=new com.google.android.material.radiobutton.MaterialRadioButton(this);
@@ -393,7 +393,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         add(engine,label("One primary AI at a time. APEX 10M is the current experimental neural-spatial release.",12,hint));
         if(AiSelection.APEX_10M.equals(service.aiProfile)){
             slider(engine,"Spatial intensity",service.spatialPreviewStrength*100,0,100,"%",v->{service.spatialPreviewStrength=v/100;service.changed();});
-            add(engine,label("RELEASE 0.2.19  ·  37.33% TRAINED",12,accent));
+            add(engine,label("APEX 10M  ·  NEW TRAINED RELEASE",12,accent));
             toggle(engine,"APEX 10M neural control",service.partialNeuralPreview,on->{
                 service.partialNeuralPreview=on;
                 service.desktopAi.partialPolicy=null;
