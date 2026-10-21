@@ -19,7 +19,14 @@ import android.view.View;
  * Fixed-size arrays are allocated once; onDraw has no bitmap/mesh allocations.
  */
 final class ApexSpatialBrainView extends View {
-    interface Signal { float activity(); boolean enabled(); boolean reduced(); }
+    interface Signal {
+        // Cached real audio + inference telemetry, updated by AudioService.
+        float activity();
+        float[] channels(); // bass, kick, spatial DSP, neural decision
+        long decisionAt();
+        boolean enabled();
+        boolean reduced();
+    }
 
     private static final int HEMI_NODES=150;
     private static final int N=HEMI_NODES*2;
@@ -43,7 +50,8 @@ final class ApexSpatialBrainView extends View {
     private final int accent,secondary;
     private int edgeCount,randomState=0x3a14f1c7,colourCursor=0;
     private float angle=.37f,tilt=.08f,energy,lastMeasured,travelTime;
-    private long lastFrame,lastWave;
+    private float lastBass,lastKick,lastSpatial,bassFlash,kickFlash,spatialFlash,neuralFlash;
+    private long lastFrame,lastWave,lastBassWave,lastKickWave,lastSpatialWave,lastDecisionAt;
 
     private static final class Wave {
         final int[] route=new int[ROUTE_LEN];
@@ -53,7 +61,7 @@ final class ApexSpatialBrainView extends View {
     ApexSpatialBrainView(Context context,Signal feed,int mainColour,int secondaryColour){
         super(context);
         source=feed;accent=mainColour;secondary=secondaryColour;
-        setContentDescription("CYN APEX 10M holographic brain mesh with interconnected nodes and neon signal paths. Coloured thoughts are illustrative; their pulse intensity follows spatial audio processing.");
+        setContentDescription("CYN APEX 10M active neural network mesh with rotating lights and audio-reactive pathways.");
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         paint.setStrokeCap(Paint.Cap.ROUND);
         for(int i=0;i<WAVE_COUNT;i++)waves[i]=new Wave();
@@ -167,16 +175,23 @@ final class ApexSpatialBrainView extends View {
         ink(hue,opacity,Paint.Style.FILL,0);
         c.drawCircle(x,y,radius,paint);
     }
-    private void launch(float measured,long now){
-        if(measured<.00003f)return;
+    private void launch(float measured,long now,int channel){
+        if(measured<=0f)return;
         // Deterministic spatial-energy-based cadence. Randomness only chooses
         // the visual hue and route, NOT fake neural inference events.
-        long interval=(long)(790-620*clamp((float)Math.sqrt(measured)*4,0,1));
-        boolean rise=measured>lastMeasured*1.45f&&measured>.00012f;
-        if(now-lastWave<interval&&!rise)return;
+        if(now-lastWave<85)return;
         lastWave=now;
         int from=rand()%N;
-        for(int attempt=0;attempt<8&&depth[from]<-.30f;attempt++)from=rand()%N;
+        for(int attempt=0;attempt<20;attempt++){
+            int candidate=rand()%N;
+            // Each real signal lights an appropriate physical region.
+            float y=modelY[candidate];
+            boolean inRegion=channel==0?y>.17f:
+                channel==1?Math.abs(y)<.35f:
+                channel==2?Math.abs(modelX[candidate])>.29f:
+                y<-.10f;
+            if(inRegion&&depth[candidate]>-.3f){from=candidate;break;}
+        }
         for(Wave wave:waves){
             if(wave.distance<ROUTE_LEN+.8f)continue;
             wave.route[0]=from;
@@ -193,9 +208,11 @@ final class ApexSpatialBrainView extends View {
                 previous=current;current=next;
             }
             wave.distance=0f;
-            wave.hue=NEON[(colourCursor+++(rand()%3))%NEON.length];
-            wave.rate=2.2f+4.6f*clamp((float)Math.sqrt(measured)*5,0,1);
-            wave.power=clamp((float)Math.sqrt(measured)*4.4f,.2f,1f);
+            // Each measured event gets a different neon colour; variation is
+            // cosmetic, while the event, amplitude and speed are real.
+            wave.hue=NEON[(colourCursor+++(rand()%NEON.length))%NEON.length];
+            wave.rate=3.5f+4.5f*clamp(measured,0,1);
+            wave.power=clamp(measured,.25f,1f);
             break;
         }
     }
@@ -206,8 +223,14 @@ final class ApexSpatialBrainView extends View {
             boolean forward=(depth[a]+depth[b])>=0;
             if(forward!=(pass==1))continue;
             int hue=NEON[((a/17)+(b/23))%NEON.length];
-            int alpha=(forward?92:38)+Math.round(strength*(forward?78:30));
-            line(c,a,b,hue,alpha,forward?1.45f:0.85f);
+            float region=(modelY[a]+modelY[b])*.5f;
+            float channelLight=region>.18f?bassFlash:
+                region<-.24f?neuralFlash:kickFlash;
+            channelLight=Math.max(channelLight,spatialFlash*
+                Math.max(0f,Math.abs(modelX[a]+modelX[b])));
+            int alpha=(forward?92:38)+Math.round(strength*(forward?65:24))
+                +Math.round(channelLight*(forward?65:20));
+            line(c,a,b,hue,alpha,forward?1.45f+channelLight*.85f:0.85f);
         }
         // Fine cross-connection web at a lighter opacity: distinguishes
         // dendrites from the dominant nearest-neighbour pathways.
@@ -221,15 +244,20 @@ final class ApexSpatialBrainView extends View {
             if(front!=(pass==1))continue;
             boolean hub=(i%17==0||degrees[i]>=9);
             int hue=hub?secondary:NEON[(i*7+i/11)%NEON.length];
-            float r=front?(hub?3.7f:2.15f):(hub?2.1f:1.35f);
+            float region=modelY[i];
+            float signal=region>.18f?bassFlash:region<-.24f?neuralFlash:kickFlash;
+            signal=Math.max(signal,spatialFlash*Math.abs(modelX[i]));
+            float r=(front?(hub?3.7f:2.15f):(hub?2.1f:1.35f))
+                *(1f+.37f*signal);
             if(front && (hub||i%4==0)){
                 circle(c,screenX[i],screenY[i],r*3.2f,hue,
-                    16+Math.round(strength*62));
+                    16+Math.round(strength*50)+Math.round(signal*80));
                 circle(c,screenX[i],screenY[i],r*1.8f,hue,
-                    33+Math.round(strength*88));
+                    33+Math.round(strength*70)+Math.round(signal*105));
             }
             circle(c,screenX[i],screenY[i],r,hue,
-                (front?200:80)+Math.round(strength*(front?52:34)));
+                (front?170:80)+Math.round(strength*(front?35:25))
+                +Math.round(signal*(front?55:30)));
             if(hub&&front)circle(c,screenX[i],screenY[i],1.1f,Color.WHITE,
                 146+Math.round(strength*95));
         }
@@ -262,6 +290,16 @@ final class ApexSpatialBrainView extends View {
             }
         }
     }
+    @Override protected void onAttachedToWindow(){
+        super.onAttachedToWindow();
+        lastFrame=0;
+        postInvalidateOnAnimation();
+    }
+    @Override protected void onWindowVisibilityChanged(int visibility){
+        super.onWindowVisibilityChanged(visibility);
+        lastFrame=0;
+        if(visibility==VISIBLE)postInvalidateOnAnimation();
+    }
     @Override protected void onDraw(Canvas canvas){
         super.onDraw(canvas);
         int w=getWidth(),h=getHeight();
@@ -270,21 +308,64 @@ final class ApexSpatialBrainView extends View {
         float dt=lastFrame==0?0:Math.min(.06f,(now-lastFrame)*.001f);
         lastFrame=now;
         boolean playing=source.enabled(),reduced=source.reduced();
+        float[] measuredChannels=source.channels();
+        float bass=playing&&measuredChannels!=null&&measuredChannels.length>=4
+            ?clamp(measuredChannels[0],0,1):0;
+        float kick=playing&&measuredChannels!=null&&measuredChannels.length>=4
+            ?clamp(measuredChannels[1],0,1):0;
+        float spatial=playing&&measuredChannels!=null&&measuredChannels.length>=4
+            ?clamp(measuredChannels[2],0,1):0;
+        float decision=playing&&measuredChannels!=null&&measuredChannels.length>=4
+            ?clamp(measuredChannels[3],0,1):0;
         float measured=playing?clamp(source.activity(),0,1):0;
         if(!Float.isFinite(measured))measured=0;
-        energy+=(measured-energy)*Math.min(1,dt*(measured>energy?9:4));
-        float level=clamp((float)Math.sqrt(energy)*5.0f,0,1);
-        if(playing&&!reduced){
-            // Slow autonomous orientation; brightness and energy paths remain
-            // faithful to the available measured stereo signal.
-            angle+=dt*(.08f+level*.74f);
-            tilt=.08f+.12f*(float)Math.sin(angle*.35f);
+        if(!Float.isFinite(bass))bass=0;
+        if(!Float.isFinite(kick))kick=0;
+        if(!Float.isFinite(spatial))spatial=0;
+        if(!Float.isFinite(decision))decision=0;
+        energy+=(measured-energy)*Math.min(1f,dt*(measured>energy?9f:4f));
+        float level=clamp((float)Math.sqrt(energy)*5f,0,1);
+        bassFlash=Math.max(0,bassFlash-dt*1.0f);
+        kickFlash=Math.max(0,kickFlash-dt*3.4f);
+        spatialFlash=Math.max(0,spatialFlash-dt*1.5f);
+        neuralFlash=Math.max(0,neuralFlash-dt*2.8f);
+
+        if(!reduced){
+            // Always rotate while the AI page is visible. Active spatial or
+            // decision signals noticeably accelerate the 3D rotation.
+            angle+=dt*(playing?.58f+level*.90f+decision*.38f:.42f);
+            tilt=.09f+.13f*(float)Math.sin(angle*.55f);
             travelTime+=dt;
-            launch(measured,now);
-            for(Wave wave:waves)if(wave.distance<ROUTE_LEN+.8f)
-                wave.distance+=dt*wave.rate;
+            if(playing){
+                final long decisionTime=source.decisionAt();
+                if(decisionTime>0&&decisionTime!=lastDecisionAt){
+                    lastDecisionAt=decisionTime;
+                    neuralFlash=Math.max(neuralFlash,.38f+.62f*decision);
+                    launch(Math.max(.45f,decision),now,3);
+                    launch(Math.max(.30f,decision*.7f),now+1,3);
+                }
+                if(kick>.11f && kick-lastKick>.065f && now-lastKickWave>140){
+                    kickFlash=Math.max(kickFlash,clamp(kick*2.1f,.4f,1f));
+                    launch(kickFlash,now,1);
+                    lastKickWave=now;
+                }
+                if(bass>.20f && bass-lastBass>.04f && now-lastBassWave>270){
+                    bassFlash=Math.max(bassFlash,clamp(bass*1.25f,.25f,1f));
+                    launch(bassFlash,now,0);
+                    lastBassWave=now;
+                }
+                if(spatial>.00025f &&
+                    (spatial>lastSpatial*1.35f || now-lastSpatialWave>450)
+                    && now-lastSpatialWave>180){
+                    spatialFlash=Math.max(spatialFlash,clamp((float)Math.sqrt(spatial)*4f,.2f,1f));
+                    launch(spatialFlash,now,2);
+                    lastSpatialWave=now;
+                }
+                for(Wave wave:waves)if(wave.distance<ROUTE_LEN+.8f)
+                    wave.distance+=dt*wave.rate;
+            }
         }
-        lastMeasured=measured;
+        lastBass=bass;lastKick=kick;lastSpatial=spatial;lastMeasured=measured;
         float cx=w*.5f,cy=h*.445f;
         float scale=Math.min(w*.59f,h*.405f);
         project(cx,cy,scale);
@@ -308,9 +389,18 @@ final class ApexSpatialBrainView extends View {
         paint.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));
         paint.setTextSize(Math.max(10,h*.035f));
         ink(secondary,220,Paint.Style.FILL,0);
-        canvas.drawText("Measured spatial energy: "+Math.round(measured*100)+"%",16,h-26,paint);
-        canvas.drawText("Coloured pathways are artistic, not trained neuron activations",
-            16,h-9,paint);
-        if(playing&&!reduced&&isAttachedToWindow())postInvalidateDelayed(48);
+        canvas.drawText(playing
+            ?"BASS "+Math.round(bass*100)+"%    KICK "+Math.round(kick*100)
+                +"%    SPATIAL "+Math.round(spatial*100)+"%"
+            :"APEX 10M  •  EXPERIMENTAL RELEASE",16,h-24,paint);
+        if(playing){
+            canvas.drawText("NEURAL "+Math.round(decision*100)+"%    LIVE SIGNAL PATHS",
+                16,h-8,paint);
+        }
+        if(!reduced&&isAttachedToWindow()&&isShown()){
+            // This is the missing continuous frame loop. Previously no redraw
+            // was scheduled at all when paused, so rotation appeared frozen.
+            postInvalidateDelayed(40);
+        }
     }
 }
