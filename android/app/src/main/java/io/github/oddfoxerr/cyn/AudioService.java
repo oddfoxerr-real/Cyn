@@ -279,6 +279,15 @@ public final class AudioService extends Service {
     float[] mindHidden(){return mindExternal()?connectedMind.hidden:null;}
     float[] mindConnections(){return mindExternal()?connectedMind.connections:null;}
     float[] mindOutputs(){return mindExternal()?connectedMind.outputs:null;}
+    /** Immutable six-effect ONNX decision, only while the selected engine is live. */
+    float[] audonicVisualTelemetry(){
+        if(!enabled||!smart||!AiSelection.AUDONIC.equals(aiProfile)
+                ||(!playing&&!capturedAudioFresh()))return null;
+        DesktopAi active=currentAi();
+        DesktopAi.AudonicPolicy policy=active==null?null:active.audonicPolicy;
+        return policy!=null&&SystemClock.elapsedRealtime()-policy.at<2500
+            ?policy.effects:null;
+    }
     float[] apexVisualTelemetry(){
         return capturedAudioFresh()?apexVisual:mindExternal()?connectedMind.channels:playing?apexVisual:null;
     }
