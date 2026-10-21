@@ -338,6 +338,33 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         LinearLayout transport=buttons(player,new String[]{"Previous",service.playing?"Pause":"Play","Next"},new Runnable[]{()->service.previous(),()->{if(service.player==null)toast("Choose a track below");else if(service.playing)service.pause();else startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.TOGGLE));build();},()->service.next()});playButton=(TextView)transport.getChildAt(1);
         toggle(player,"Shuffle",service.prefs.getBoolean("shuffle",false),service::shuffle);category(player,"Repeat",body->buttons(body,new String[]{"Off","All","One"},new Runnable[]{()->{service.repeat(0);toast("Repeat off");},()->{service.repeat(2);toast("Repeat all");},()->{service.repeat(1);toast("Repeat track");}}));liveStatus=label("",12,accent);add(player,liveStatus);
         buttons(content,new String[]{"Add files","Scan phone"},new Runnable[]{this::pickTracks,this::scanPermission});gap(content,12);
+        LinearLayout online=section("PUBLIC MUSIC · AUDIUS","Search the Audius open music catalog and play available tracks through CYN's own audio engine.");
+        EditText publicSearch=new EditText(this);publicSearch.setSingleLine(true);publicSearch.setTextColor(text);publicSearch.setHintTextColor(hint);
+        publicSearch.setHint("Search online music");publicSearch.setMinHeight(dp(52));publicSearch.setPadding(dp(16),dp(8),dp(16),dp(8));
+        publicSearch.setBackground(shape(card,16));add(online,publicSearch);
+        LinearLayout publicResults=column();add(online,publicResults);
+        add(online,button("Search Audius",()->{
+            String term=publicSearch.getText().toString().trim();
+            if(term.isEmpty()){toast("Enter a song or artist");return;}
+            publicResults.removeAllViews();add(publicResults,label("Searching Audius…",13,hint));
+            filesWorker.execute(()->{
+                try{List<PublicMusic.Song> found=PublicMusic.search(term);
+                    handler.post(()->{
+                        if(page!=2||!publicResults.isAttachedToWindow())return;
+                        publicResults.removeAllViews();
+                        if(found.isEmpty()){add(publicResults,label("No public tracks found.",13,hint));return;}
+                        for(PublicMusic.Song song:found){
+                            add(publicResults,button(song.title+" · "+song.artist+"  ▶",()->{
+                                if(service==null){toast("Audio engine connecting");return;}
+                                try{playTrack(java.util.Collections.singletonList(song.asTrack()),0);}
+                                catch(RuntimeException e){toast("Unable to start stream");}
+                            }));
+                        }
+                    });
+                }catch(Exception e){handler.post(()->{if(page==2&&publicResults.isAttachedToWindow()){publicResults.removeAllViews();add(publicResults,label("Online search unavailable. Check your connection.",13,hint));}});}
+            });
+        }));
+
         EditText search=new EditText(this);search.setSingleLine(true);search.setTextColor(text);search.setHintTextColor(hint);search.setHint("Search tracks, artists, albums");search.setContentDescription("Search audio library");search.setText(query);search.setMinHeight(dp(52));search.setPadding(dp(16),dp(8),dp(16),dp(8));search.setBackground(shape(card,16));add(content,search);
         toggle(content,"Favorites only",onlyFavorites,on->{onlyFavorites=on;visibleTracks=60;renderTracks();});
         libraryRows=column();add(content,libraryRows);search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){query=s.toString();visibleTracks=60;renderTracks();}public void afterTextChanged(Editable e){}});renderTracks();
