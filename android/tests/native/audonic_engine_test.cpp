@@ -9,7 +9,7 @@ int main(int argc,char** argv){
     std::array<float,6> policy{};
     std::ifstream model(argv[1],std::ios::binary);
     model.read(reinterpret_cast<char*>(policy.data()),sizeof(policy));
-    assert(model.gcount()==sizeof(policy));
+    assert(model.gcount()==static_cast<std::streamsize>(sizeof(policy)));
     for(float v:policy)assert(std::isfinite(v)&&v>=0&&v<=1);
     for(int channels:{1,2}){
         Engine baseline,creative;
