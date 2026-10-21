@@ -62,10 +62,10 @@ struct Engine {
         const float ratio=clamp(bass/std::max(rms,1e-5f),0,1);
         const float onset=clamp(std::max(0.0f,ratio-lastBass)*2+
             std::max(0.0f,rms-lastRms)*4,0,1);
-        const float side=std::sqrt(sideEnergy/count);
+        const float sideLevel=std::sqrt(sideEnergy/count);
         const float correlation=clamp(crossEnergy/std::max(l*r*count,1e-9f),-1,1);
         const std::array<float,8> features={
-            ratio,onset,clamp(side/std::max(side+rms,1e-5f),0,1),correlation,
+            ratio,onset,clamp(sideLevel/std::max(sideLevel+rms,1e-5f),0,1),correlation,
             clamp(std::max(0.0f,rms-lastRms)*6,0,1),
             clamp(std::sqrt(vocalEnergy/count)/std::max(rms,1e-5f),0,1),
             clamp(1-policyPeak,0,1),
