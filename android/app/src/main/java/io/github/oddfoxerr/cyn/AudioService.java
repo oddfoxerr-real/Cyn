@@ -46,6 +46,12 @@ public final class AudioService extends Service {
         appliedAiFresh=false;
         connectedMind=null;
         clearTrace();
+        // Revert external sessions to their manual Studio settings immediately.
+        // A disconnected Connect AI must never leave stale neural EQ applied.
+        if(!destroyed) {
+            updateNativeControls();
+            for(Chain chain:chains.values()) chain.apply();
+        }
     }
     private void startCapture(Intent consent) {
         stopCapture();
@@ -798,8 +804,11 @@ public final class AudioService extends Service {
             // The same Studio EQ and selected neural model now drive both routes.
             // Only use mix-wide AI on the explicitly selected system mix or the
             // sole external session. Never apply a mixed signal's AI to multiple unrelated players.
-            boolean shared=capturedAudioFresh()&&smart&&appliedAiFresh&&(legacy||externalSessionCount()==1);
-            boolean spatialShared=capturedAudioFresh()&&smart&&(legacy||externalSessionCount()==1);
+            // A captured external mix must never drive Library's own session.
+            // Connect applies AI only to an eligible external effect session.
+            boolean externalRoute=id!=playerSession&&(legacy?id==0:id>0);
+            boolean shared=externalRoute&&capturedAudioFresh()&&smart&&appliedAiFresh&&(legacy||externalSessionCount()==1);
+            boolean spatialShared=externalRoute&&capturedAudioFresh()&&smart&&(legacy||externalSessionCount()==1);
             float[] targets=appliedTargets.clone();
             if(!shared) {
                 targets[1]=bass+(float)(smart?bassOffset:0);
