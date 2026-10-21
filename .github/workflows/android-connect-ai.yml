@@ -108,8 +108,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/android
-          git archive --format=zip --output=dist/android/Cyn-Studio-Android-0.2.23-Source.zip HEAD android
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/android/Cyn-Studio-Android-0.2.23-preview-unsigned.apk
+          git archive --format=zip --output=dist/android/Cyn-Studio-Android-0.2.24-Source.zip HEAD android
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/android/Cyn-Studio-Android-0.2.24-preview-unsigned.apk
       - name: Sign using existing registered CYN Studio certificate
         shell: bash
         env:
@@ -124,13 +124,13 @@ jobs:
           keyfile="$RUNNER_TEMP/cyn-studio.jks"
           trap 'rm -f "$keyfile"' EXIT
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keyfile"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$keyfile" --ks-key-alias cyn-studio --ks-pass env:CYN_KEY_PASSWORD --key-pass env:CYN_KEY_PASSWORD --out dist/android/Cyn-Studio-Android-0.2.23-preview.apk dist/android/Cyn-Studio-Android-0.2.23-preview-unsigned.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/android/Cyn-Studio-Android-0.2.23-preview.apk > "$RUNNER_TEMP/cyn-apex10m-cert.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$keyfile" --ks-key-alias cyn-studio --ks-pass env:CYN_KEY_PASSWORD --key-pass env:CYN_KEY_PASSWORD --out dist/android/Cyn-Studio-Android-0.2.24-preview.apk dist/android/Cyn-Studio-Android-0.2.24-preview-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/android/Cyn-Studio-Android-0.2.24-preview.apk > "$RUNNER_TEMP/cyn-apex10m-cert.txt"
           grep -F 'certificate SHA-256 digest: 045d9c122b2158d569c0ef8d10bbb08496a9f19e7397b702e99e9330c780bcb7' "$RUNNER_TEMP/cyn-apex10m-cert.txt"
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 dist/android/Cyn-Studio-Android-0.2.23-preview.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.23-preview.apk > "$RUNNER_TEMP/cyn-apex10m-package.txt"
-          grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='27' versionName='0.2.23-preview'" "$RUNNER_TEMP/cyn-apex10m-package.txt"
-          (cd dist/android && sha256sum Cyn-Studio-Android-0.2.23-preview.apk > Cyn-Studio-Android-0.2.23-preview.apk.sha256)
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 dist/android/Cyn-Studio-Android-0.2.24-preview.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.24-preview.apk > "$RUNNER_TEMP/cyn-apex10m-package.txt"
+          grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='28' versionName='0.2.24-preview'" "$RUNNER_TEMP/cyn-apex10m-package.txt"
+          (cd dist/android && sha256sum Cyn-Studio-Android-0.2.24-preview.apk > Cyn-Studio-Android-0.2.24-preview.apk.sha256)
       - name: Verify in-place upgrade compatibility with installed v0.2.22 release
         shell: bash
         env:
@@ -139,7 +139,7 @@ jobs:
           set -euo pipefail
           previous="$RUNNER_TEMP/cyn-previous.apk"
           gh release download android-studio-v0.2.22-preview --pattern 'Cyn-Studio-Android-0.2.22-preview.apk' --output "$previous"
-          current=dist/android/Cyn-Studio-Android-0.2.23-preview.apk
+          current=dist/android/Cyn-Studio-Android-0.2.24-preview.apk
           for apk in "$previous" "$current"; do
             "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$apk"
           done
@@ -152,15 +152,15 @@ jobs:
           echo "$new_info"
           echo "$old_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='26'"
           echo "$new_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='27'"
-          echo 'PASS: existing v0.2.22 and new v0.2.23 APK share signing identity and have increasing version codes'
+          echo 'PASS: existing v0.2.22 and new v0.2.24 APK share signing identity and have increasing version codes'
       - name: Upload verified experimental Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: CYN-Android-APEX10M-RC-v0.2.23
+          name: CYN-Android-APEX10M-RC-v0.2.24
           path: |
-            dist/android/Cyn-Studio-Android-0.2.23-preview.apk
-            dist/android/Cyn-Studio-Android-0.2.23-preview.apk.sha256
-            dist/android/Cyn-Studio-Android-0.2.23-Source.zip
+            dist/android/Cyn-Studio-Android-0.2.24-preview.apk
+            dist/android/Cyn-Studio-Android-0.2.24-preview.apk.sha256
+            dist/android/Cyn-Studio-Android-0.2.24-Source.zip
           retention-days: 30
       - name: Publish experimental Android prerelease only
         if: github.ref == 'refs/heads/fix/android-connect-isolated-20261021' || inputs.publish
@@ -169,15 +169,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag=android-studio-v0.2.23-preview
+          tag=android-studio-v0.2.24-preview
           if gh release view "$tag" >/dev/null 2>&1; then
             echo 'Release tag already exists; refuse to replace binaries'
             exit 1
           fi
           gh release create "$tag" --target "$GITHUB_SHA" \
-            --title 'CYN Studio Android 0.2.23 · Connect AI Playback Analysis' \
+            --title 'CYN Studio Android 0.2.24 · Updater reliability and Connect AI' \
             --notes-file android/CONNECT_AI_RELEASE_NOTES.md \
             --prerelease --latest=false \
-            dist/android/Cyn-Studio-Android-0.2.23-preview.apk \
-            dist/android/Cyn-Studio-Android-0.2.23-preview.apk.sha256 \
-            dist/android/Cyn-Studio-Android-0.2.23-Source.zip
+            dist/android/Cyn-Studio-Android-0.2.24-preview.apk \
+            dist/android/Cyn-Studio-Android-0.2.24-preview.apk.sha256 \
+            dist/android/Cyn-Studio-Android-0.2.24-Source.zip
