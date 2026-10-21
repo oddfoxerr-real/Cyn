@@ -41,7 +41,7 @@ print('Verified desktop YAMNet and full APEX 6,307,477-parameter weights.')
 # Partial APEX10M head: this is explicitly an experimental research *submode*
 # and never replaces the full APEX 6M model or YAMNet.
 PARTIAL_BASE = ('https://github.com/oddfoxerr-real/Cyn/releases/download/'
-                'apex10m-partial-policy-ab-v0.1.0/')
+                'apex10m-experimental-rc-v1/')
 manifest_target = DEST / 'apex10m-partial-manifest.json'
 model_target = DEST / 'apex10m-partial-policy.onnx'
 if args.offline:
@@ -52,14 +52,14 @@ else:
     with tempfile.TemporaryDirectory() as folder:
         temp = pathlib.Path(folder)
         manifest_file = temp / 'manifest.json'
-        download(PARTIAL_BASE + 'CYN-APEX10M-PARTIAL-manifest.json', manifest_file)
+        download(PARTIAL_BASE + 'CYN-APEX10M-RC1-manifest.json', manifest_file)
         manifest = json.loads(manifest_file.read_text(encoding='utf-8'))
         # Do not fetch a mutable latest model while training runs.
-        # Verify the immutable 37.33% snapshot explicitly.
-        if (manifest.get('name') != 'APEX 10M partial spatial policy head (synthetic-only)'
+        # Verify the immutable release candidate with at least ten hours trained.
+        if (manifest.get('name') != 'APEX 10M experimental spatial-policy head (synthetic-only)'
                 or manifest.get('trained_on_real_music') is not False
                 or manifest.get('neural_playback_approved') is not False
-                or not 37.3 <= float(manifest.get('frozen_percent_of_15h', 0)) <= 37.4
+                or not 66.66 <= float(manifest.get('frozen_percent_of_15h', 0)) <= 100.0
                 or manifest.get('trained_spatial_head_parameters') != 3693992
                 or manifest.get('total_10m_architecture_parameters') != 10001469):
             raise RuntimeError('Untrusted or unsupported APEX 10M frozen-preview manifest')
@@ -68,7 +68,7 @@ else:
             raise RuntimeError('Missing partial model SHA-256')
         if not ready('apex10m-partial-policy.onnx', expected):
             candidate = temp / 'partial.onnx'
-            download(PARTIAL_BASE + 'CYN-APEX10M-PARTIAL-Spatial-Head.onnx', candidate)
+            download(PARTIAL_BASE + 'CYN-APEX10M-RC1-Spatial-Head.onnx', candidate)
             if digest(candidate) != expected:
                 raise RuntimeError('APEX 10M partial model SHA-256 mismatch')
             shutil.copyfile(candidate, model_target)
@@ -76,4 +76,4 @@ else:
 expected = manifest.get('onnx_sha256', '')
 if not ready('apex10m-partial-policy.onnx', expected):
     raise RuntimeError('Frozen APEX 10M ONNX file missing or corrupt')
-print('Verified isolated 37.33% synthetic APEX 10M policy head; production playback remains opt-in/off.')
+print(f"Verified APEX10M experimental RC trained {manifest['frozen_percent_of_15h']}% ({manifest['real_optimizer_updates']} steps); live inference is guarded.")
