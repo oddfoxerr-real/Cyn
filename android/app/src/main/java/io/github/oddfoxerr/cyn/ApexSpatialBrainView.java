@@ -25,6 +25,11 @@ final class ApexSpatialBrainView extends View {
         float[] channels(); // bass, kick, spatial DSP, neural decision
         long decisionAt();
         boolean enabled();
+        boolean connected();
+        boolean external();
+        float[] hidden();
+        float[] connections();
+        float[] outputs();
         boolean reduced();
     }
 
@@ -262,6 +267,45 @@ final class ApexSpatialBrainView extends View {
                 146+Math.round(strength*95));
         }
     }
+    // Connected playback exposes the actual personal model's 12 hidden
+    // activations and 60 output contributions. Highlight those weights on
+    // top of the illustrative 3D mesh instead of inventing activation values.
+    private void drawNeuralPathways(Canvas c,float[] hidden,float[] links,
+            float[] outputs) {
+        if(hidden==null||hidden.length!=12||links==null||links.length!=60||
+                outputs==null||outputs.length!=5)return;
+        for(int o=0;o<5;o++){
+            int destination=19+o*54;
+            for(int j=0;j<12;j++){
+                float weight=links[o*12+j];
+                if(!Float.isFinite(weight))continue;
+                int origin=7+j*23;
+                float strength=clamp(Math.abs(weight)*7f,0f,1f);
+                int hue=weight>=0?NEON[(o+j)%NEON.length]:secondary;
+                line(c,origin,destination,hue,
+                    24+Math.round(strength*195),.9f+strength*1.65f);
+            }
+        }
+        for(int j=0;j<12;j++){
+            int node=7+j*23;
+            float strength=Float.isFinite(hidden[j])
+                ?clamp(Math.abs(hidden[j])*5f,0f,1f):0f;
+            int hue=NEON[(j*3)%NEON.length];
+            circle(c,screenX[node],screenY[node],6f+strength*4f,
+                hue,20+Math.round(strength*76));
+            circle(c,screenX[node],screenY[node],2.5f+strength*1.8f,
+                hue,85+Math.round(strength*155));
+        }
+        for(int o=0;o<5;o++){
+            int node=19+o*54;
+            float strength=Float.isFinite(outputs[o])
+                ?clamp(outputs[o],0f,1f):0f;
+            circle(c,screenX[node],screenY[node],8.0f,
+                accent,20+Math.round(strength*90));
+            circle(c,screenX[node],screenY[node],3.3f,
+                Color.WHITE,80+Math.round(strength*165));
+        }
+    }
     private void drawWaves(Canvas c,float strength){
         for(Wave wave:waves){
             if(wave.distance>ROUTE_LEN-1+.5f)continue;
@@ -308,6 +352,7 @@ final class ApexSpatialBrainView extends View {
         float dt=lastFrame==0?0:Math.min(.06f,(now-lastFrame)*.001f);
         lastFrame=now;
         boolean playing=source.enabled(),reduced=source.reduced();
+        boolean connected=source.connected(),external=source.external();
         float[] measuredChannels=source.channels();
         float bass=playing&&measuredChannels!=null&&measuredChannels.length>=4
             ?clamp(measuredChannels[0],0,1):0;
@@ -379,23 +424,29 @@ final class ApexSpatialBrainView extends View {
 
         drawGraph(canvas,scale,level,0);
         drawGraph(canvas,scale,level,1);
+        if(external)drawNeuralPathways(canvas,source.hidden(),
+            source.connections(),source.outputs());
         if(playing)drawWaves(canvas,level);
 
         paint.setTypeface(Typeface.create("sans-serif-medium",Typeface.BOLD));
         paint.setTextSize(Math.max(12,h*.050f));
         ink(accent,245,Paint.Style.FILL,0);
-        canvas.drawText(playing?"SPATIAL NETWORK  /  LIVE":"SPATIAL NETWORK  /  STANDBY",
+        canvas.drawText(external?"CYN NEURAL MIND  /  CONNECTED":
+            playing?"APEX 10M MIND  /  LIVE":
+            connected?"CYN MIND  /  WAITING FOR AUDIO":
+            "CYN MIND  /  DISCONNECTED",
             16,h-44,paint);
         paint.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));
         paint.setTextSize(Math.max(10,h*.035f));
         ink(secondary,220,Paint.Style.FILL,0);
         canvas.drawText(playing
             ?"BASS "+Math.round(bass*100)+"%    KICK "+Math.round(kick*100)
-                +"%    SPATIAL "+Math.round(spatial*100)+"%"
-            :"APEX 10M  •  EXPERIMENTAL RELEASE",16,h-24,paint);
+                +"%    "+(external?"SPECTRUM ":"SPATIAL ")+Math.round(spatial*100)+"%"
+            :connected?"MONITORING CONNECTED AUDIO":"CONNECT CYN TO VIEW ACTIVITY",
+            16,h-24,paint);
         if(playing){
-            canvas.drawText("NEURAL "+Math.round(decision*100)+"%    LIVE SIGNAL PATHS",
-                16,h-8,paint);
+            canvas.drawText((external?"PERSONAL AI ":"APEX AI ")+Math.round(decision*100)+
+                "%    LIVE SIGNAL PATHS",16,h-8,paint);
         }
         if(!reduced&&isAttachedToWindow()&&isShown()){
             // This is the missing continuous frame loop. Previously no redraw
