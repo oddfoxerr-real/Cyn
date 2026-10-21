@@ -515,26 +515,37 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         });
         slider(engine,"Sensitivity",service.sensitivity*100,0,100,"%",v->{service.sensitivity=v/100;service.changed();});
         liveStatus=label("",13,accent);add(engine,liveStatus);
-        if(AiSelection.APEX_10M.equals(service.aiProfile)||service.monitor){
-            LinearLayout network=section("CYN • 3D mind map",
-                "Live AI activity across CYN Library and connected audio");
+        boolean audonicMind=AiSelection.AUDONIC.equals(service.aiProfile);
+        if(AiSelection.APEX_10M.equals(service.aiProfile)||audonicMind||service.monitor){
+            LinearLayout network=section(audonicMind?"AUDONIC • Creative BrainScan":"CYN • 3D mind map",
+                audonicMind?"Six creative channels, responding to live AUDONIC decisions"
+                    :"Live AI activity across CYN Library and connected audio");
             brainScan=new ApexSpatialBrainView(this,new ApexSpatialBrainView.Signal(){
                 @Override public float activity(){
                     if(service==null)return 0f;
                     float[] values=service.apexVisualTelemetry();
-                    return service.mindExternal()&&values!=null&&values.length>=4
-                        ?values[2]:service.apexSpatialActivity();
+                    return (service.mindExternal()||service.capturedAudioFresh())
+                        &&values!=null&&values.length>=4
+                        ?Math.max(values[0],Math.max(values[1],values[2]))
+                        :service.apexSpatialActivity();
                 }
                 @Override public float[] channels(){return service==null?null:service.apexVisualTelemetry();}
                 @Override public long decisionAt(){return service==null?0:service.apexDecisionTimestamp();}
-                @Override public boolean enabled(){return service!=null&&service.mindLive();}
+                @Override public boolean enabled(){return service!=null&&service.mindLive()
+                    &&(!audonicMind||service.audonicVisualTelemetry()!=null);}
                 @Override public boolean connected(){return service!=null&&service.mindConnected();}
                 @Override public boolean external(){return service!=null&&service.mindExternal();}
                 @Override public float[] hidden(){return service==null?null:service.mindHidden();}
                 @Override public float[] connections(){return service==null?null:service.mindConnections();}
                 @Override public float[] outputs(){return service==null?null:service.mindOutputs();}
                 @Override public boolean reduced(){return reduced;}
-            },accent,secondary);
+                @Override public float[] creative(){
+                    return service==null?null:service.audonicVisualTelemetry();
+                }
+                @Override public float creativeStrength(){
+                    return service==null?0f:service.audonicIntensity;
+                }
+            },accent,secondary,audonicMind);
             network.addView(brainScan,new LinearLayout.LayoutParams(-1,dp(334)));
 
         }else{
