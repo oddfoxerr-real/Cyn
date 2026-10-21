@@ -802,8 +802,8 @@ public final class AudioService extends Service {
             boolean spatialShared=capturedAudioFresh()&&smart&&(legacy||externalSessionCount()==1);
             float[] targets=appliedTargets.clone();
             if(!shared) {
-                targets[1]=bass+(smart?bassOffset:0);
-                targets[2]=clarity+(smart?clarityOffset:0);
+                targets[1]=bass+(float)(smart?bassOffset:0);
+                targets[2]=clarity+(float)(smart?clarityOffset:0);
                 targets[3]=width/100;
                 targets[8]=bandCount;
                 for(int b=0;b<bandCount;b++)targets[9+b]=studioEq[b];
