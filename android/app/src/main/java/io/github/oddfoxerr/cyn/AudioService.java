@@ -839,7 +839,6 @@ public final class AudioService extends Service {
             String signature=effectEnabled+":"+Arrays.toString(targets)+":"+spatial+":"+loudness;
             if(signature.equals(lastSettings)&&(!effectEnabled||controlsEq())) return;
             boolean ok=true;
-            boolean ok=true;
             try {
                 if(equalizer!=null) {
                     if(!equalizer.hasControl()) { failure="Another equalizer owns this session. Disable competing equalizers and reconnect."; ok=false; }
