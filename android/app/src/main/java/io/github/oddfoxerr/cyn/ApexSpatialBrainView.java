@@ -433,9 +433,10 @@ final class ApexSpatialBrainView extends View {
                     dp(2.5f+intensity*1.5f));
                 canvas.drawArc(creativeOrbit,-90+i*60,52*intensity,false,paint);
             }
-            float space=(getWidth()-dp(24)-dp(12))/3f;
-            float x=dp(12)+(i%3)*(space+dp(6));
-            float y=stageBottom+dp(10)+(i/3)*dp(49);
+            int columns=getWidth()<dp(306)?2:3;
+            float space=(getWidth()-dp(24)-(columns-1)*dp(6))/columns;
+            float x=dp(12)+(i%columns)*(space+dp(6));
+            float y=stageBottom+dp(10)+(i/columns)*dp(49);
             tileBounds.set(x,y,x+space,y+dp(43));
             int fill=androidx.core.graphics.ColorUtils.blendARGB(
                 surfaceHigh,primaryContainer,.16f+intensity*.30f);
@@ -469,7 +470,7 @@ final class ApexSpatialBrainView extends View {
         canvas.drawRoundRect(viewBounds,dp(28),dp(28),paint);
         ink(outlineVariant,135,Paint.Style.STROKE,dp(1));
         canvas.drawRoundRect(viewBounds,dp(28),dp(28),paint);
-        stageBottom=h-(audonic?dp(153):dp(79));
+        stageBottom=h-(audonic?(w<dp(306)?dp(201):dp(153)):dp(79));
         stageBounds.set(dp(12),dp(49),w-dp(12),stageBottom);
         ink(surfaceHigh,255,Paint.Style.FILL,0);
         canvas.drawRoundRect(stageBounds,dp(24),dp(24),paint);
@@ -509,6 +510,25 @@ final class ApexSpatialBrainView extends View {
              :external?"CYN NEURAL MIND  /  CONNECTED":
                connected?"WAITING FOR AUDIO":"CONNECT CYN TO VIEW ACTIVITY";
         canvas.drawText(status,dp(18),getHeight()-dp(17),paint);
+    }
+    @Override public void onInitializeAccessibilityNodeInfo(
+            android.view.accessibility.AccessibilityNodeInfo info){
+        super.onInitializeAccessibilityNodeInfo(info);
+        if(audonic){
+            StringBuilder detail=new StringBuilder("AUDONIC BrainScan. ");
+            detail.append(source.enabled()?"Live creative activity. ":
+                source.connected()?"Waiting for model decisions. ":"Disconnected. ");
+            for(int i=0;i<CREATIVE_NAMES.length;i++){
+                if(i>0)detail.append(", ");
+                detail.append(CREATIVE_NAMES[i]).append(" ")
+                    .append(Math.round(clamp(creativeLevel[i],0,1)*100)).append(" percent");
+            }
+            info.setContentDescription(detail.toString());
+        }else{
+            info.setContentDescription("CYN neural BrainScan. "+
+                (source.enabled()?"Live measured activity":
+                    source.connected()?"Waiting for audio":"Disconnected"));
+        }
     }
     @Override protected void onAttachedToWindow(){
         super.onAttachedToWindow();
