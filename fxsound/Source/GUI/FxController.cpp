@@ -3513,7 +3513,7 @@ void FxController::setSmartHeadroomCap(float percent)
 void FxController::setAudonicIntensity(float percent)
 {
     if(!std::isfinite(percent)) return;
-    settings_.setDouble("cyn_audonic_intensity",jlimit(0.0f,100.0f,percent));
+    settings_.setInt("cyn_audonic_intensity_percent",roundToInt(jlimit(0.0f,100.0f,percent)));
 }
 
 bool FxController::getLiveAudonicControls(CynAudonicStudio::Controls& out)
@@ -3822,7 +3822,7 @@ String FxController::getAppliedMixSummary()
     return status;
 }
 
-String FxController::getSmartSummary() const
+String FxController::getSmartSummary()
 {
     const String mode=smart_mode_==1?"Movie AI":"Music AI";
     if(!smart_enabled_) return mode+" / learning available (processing off)";
