@@ -69,6 +69,7 @@ final class ApexSpatialBrainView extends View {
     // Material 3 colour roles come from the active CYN palette, not fixed neon ink.
     private final int surfaceLow,surfaceHigh,onSurface,onSurfaceVariant,outlineVariant,primaryContainer;
     private final int[] materialCreativeHues=new int[6];
+    private final int[] materialNeuralHues=new int[NEON.length];
     private final float density,scaledDensity;
     private final android.graphics.RectF viewBounds=new android.graphics.RectF();
     private final android.graphics.RectF stageBounds=new android.graphics.RectF();
@@ -110,7 +111,10 @@ final class ApexSpatialBrainView extends View {
             context,com.google.android.material.R.attr.colorPrimaryContainer,0xff2b405d);
         for(int i=0;i<materialCreativeHues.length;i++)
             materialCreativeHues[i]=androidx.core.graphics.ColorUtils.blendARGB(
-                CREATIVE_HUES[i],accent,.23f);
+                CREATIVE_HUES[i],accent,.33f);
+        for(int i=0;i<materialNeuralHues.length;i++)
+            materialNeuralHues[i]=androidx.core.graphics.ColorUtils.blendARGB(
+                NEON[i],i%2==0?accent:secondary,.67f);
         setContentDescription(audonic
             ? "AUDONIC six-channel creative neural mesh; each labelled effect responds to recent model decisions."
             : "CYN APEX 10M active neural network mesh with rotating lights and audio-reactive pathways.");
@@ -267,7 +271,7 @@ final class ApexSpatialBrainView extends View {
             // Each measured event gets a different neon colour; variation is
             // cosmetic, while the event, amplitude and speed are real.
             wave.hue=audonic?materialCreativeHues[Math.floorMod(channel,materialCreativeHues.length)]
-                :NEON[(colourCursor+++(rand()%NEON.length))%NEON.length];
+                :materialNeuralHues[(colourCursor+++(rand()%materialNeuralHues.length))%materialNeuralHues.length];
             wave.rate=3.5f+4.5f*clamp(measured,0,1);
             wave.power=clamp(measured,.25f,1f);
             break;
@@ -280,7 +284,7 @@ final class ApexSpatialBrainView extends View {
             boolean forward=(depth[a]+depth[b])>=0;
             if(forward!=(pass==1))continue;
             int hue=audonic?materialCreativeHues[((a/17)+(b/23))%materialCreativeHues.length]
-                :NEON[((a/17)+(b/23))%NEON.length];
+                :materialNeuralHues[((a/17)+(b/23))%materialNeuralHues.length];
             float region=(modelY[a]+modelY[b])*.5f;
             float channelLight=region>.18f?bassFlash:
                 region<-.24f?neuralFlash:kickFlash;
@@ -303,7 +307,7 @@ final class ApexSpatialBrainView extends View {
             if(front!=(pass==1))continue;
             boolean hub=(i%17==0||degrees[i]>=9);
             int hue=audonic?materialCreativeHues[i%6]
-                :hub?secondary:NEON[(i*7+i/11)%NEON.length];
+                :hub?secondary:materialNeuralHues[(i*7+i/11)%materialNeuralHues.length];
             float region=modelY[i];
             float signal=region>.18f?bassFlash:region<-.24f?neuralFlash:kickFlash;
             signal=Math.max(signal,spatialFlash*Math.abs(modelX[i]));
@@ -337,7 +341,7 @@ final class ApexSpatialBrainView extends View {
                 if(!Float.isFinite(weight))continue;
                 int origin=7+j*23;
                 float strength=clamp(Math.abs(weight)*7f,0f,1f);
-                int hue=weight>=0?NEON[(o+j)%NEON.length]:secondary;
+                int hue=weight>=0?materialNeuralHues[(o+j)%materialNeuralHues.length]:secondary;
                 line(c,origin,destination,hue,
                     24+Math.round(strength*195),.9f+strength*1.65f);
             }
@@ -346,7 +350,7 @@ final class ApexSpatialBrainView extends View {
             int node=7+j*23;
             float strength=Float.isFinite(hidden[j])
                 ?clamp(Math.abs(hidden[j])*5f,0f,1f):0f;
-            int hue=NEON[(j*3)%NEON.length];
+            int hue=materialNeuralHues[(j*3)%materialNeuralHues.length];
             circle(c,screenX[node],screenY[node],6f+strength*4f,
                 hue,20+Math.round(strength*76));
             circle(c,screenX[node],screenY[node],2.5f+strength*1.8f,
