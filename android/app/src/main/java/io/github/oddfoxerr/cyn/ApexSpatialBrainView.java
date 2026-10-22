@@ -433,10 +433,8 @@ final class ApexSpatialBrainView extends View {
                     dp(2.5f+intensity*1.5f));
                 canvas.drawArc(creativeOrbit,-90+i*60,52*intensity,false,paint);
             }
-            float x=stageBounds.left+dp(7)+i%3*
-                ((stageBounds.width()-dp(8))/3f);
             float space=(getWidth()-dp(24)-dp(12))/3f;
-            x=dp(12)+(i%3)*(space+dp(6));
+            float x=dp(12)+(i%3)*(space+dp(6));
             float y=stageBottom+dp(10)+(i/3)*dp(49);
             tileBounds.set(x,y,x+space,y+dp(43));
             int fill=androidx.core.graphics.ColorUtils.blendARGB(
@@ -448,7 +446,7 @@ final class ApexSpatialBrainView extends View {
             circle(canvas,x+dp(11),y+dp(12),dp(3.5f),hue,180+Math.round(intensity*75));
             paint.setTypeface(HEADING_FACE);
             paint.setTextAlign(Paint.Align.LEFT);
-            float maxTextWidth=space-dp(20);
+            float maxTextWidth=space-dp(29);
             float textSize=Math.min(sp(10f),Math.max(sp(8f),
                 maxTextWidth/Math.max(1f,CREATIVE_NAMES[i].length()*.64f)));
             paint.setTextSize(textSize);
