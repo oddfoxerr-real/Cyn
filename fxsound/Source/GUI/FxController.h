@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "FxModel.h"
 #include "PersonalAudioModel.h"
 #include "CynApexFlowHybrid.h"
+#include "CynAudonicStudio.h"
 #include "CynYamNetWorker.h"
 #include "CynApex6MWorker.h"
 #include "CynPresetCycler.h"
@@ -150,6 +151,9 @@ public:
     bool isSmartTraining() const { return smart_training_; }
     bool getLiveNeuralActivity(NeuralActivitySnapshot& out) const;
     bool getLiveYamNetScene(CynAudioScene& out) const;
+    bool getLiveAudonicControls(CynAudonicStudio::Controls& out);
+    float getAudonicIntensity() { return juce::jlimit(0.0f,100.0f,(float)settings_.getDouble("cyn_audonic_intensity",45.0)); }
+    void setAudonicIntensity(float percent);
     float getSmartTrainingProgress() const {
         return juce::jlimit(0.0f,1.0f,
             (float)smart_training_epoch_.load(std::memory_order_relaxed)/240.0f);
@@ -388,6 +392,8 @@ private:
     CynApexFlowHybrid apex_flow_; // Opt-in passage controller; music profile only.
     bool apex6m_active_ = false; // UI-timer status for full ONNX model.
     bool apex_hybrid_active_ = false; // UI-thread status, never audio callback.
+    CynAudonicStudio::Controls audonic_controls_ {};
+    juce::int64 audonic_policy_at_ = 0; // Milliseconds; message thread only.
     int smart_mode_ = 0; // 0 music, 1 movie/TV; this is not an automatic classifier.
     std::vector<AudioFrame> smart_history_;
     std::array<float,5> smart_effects_ {}, smart_scores_ {{0.5f,0.5f,0.5f,0.5f,0.5f}};
