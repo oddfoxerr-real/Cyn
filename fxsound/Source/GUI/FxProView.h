@@ -9,6 +9,7 @@
 #include "FxVisualizer.h"
 #include "AudioLearningTimeline.h"
 #include "CynNeuralActivity.h"
+#include "CynBrainScan3D.h"
 #include "CynDjTouch.h"
 #include "CynPowerCurtain.h"
 #include "CynAiHubDialog.h"
@@ -120,6 +121,11 @@ private:
     Slider headroom_cap_ { Slider::LinearHorizontal, Slider::TextBoxRight };
     AudioLearningTimeline learning_timeline_;
     CynNeuralActivity neural_activity_;
+    CynBrainScan3D brain_scan_;
+    TextButton scan_toggle_ {"Neural graph"};
+    bool showNeuralGraph_ = false;
+    Label audonic_intensity_label_;
+    Slider audonic_intensity_ { Slider::LinearHorizontal,Slider::TextBoxRight };
     // Message-thread copies only: never fetch inference inside paint or DSP.
     CynAudioScene neural_core_scene_ {};
     bool neural_core_live_=false;

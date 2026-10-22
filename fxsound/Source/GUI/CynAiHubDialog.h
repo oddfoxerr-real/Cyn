@@ -82,7 +82,7 @@ public:
         // The dialog-only Close control must not be displayed as a dead button.
         close_.setVisible(!embedded);
         if(embedded) {
-            subtitle_.setText("Community models, local imports and APEX 6M — native and private.",
+            subtitle_.setText("Community AI, AUDONIC Studio and APEX 6M — native and private.",
                               juce::dontSendNotification);
         }
         resized();
@@ -115,7 +115,7 @@ private:
     {
         juce::String id, name, author, category, description, filename, researchUrl;
         int issue = 0;
-        bool researchOnly = false, nativeApex = false;
+        bool researchOnly = false, nativeApex = false, nativeAudonic = false;
     };
 
     bool pendingApexActivation_=false;
@@ -172,7 +172,25 @@ private:
     {
         if (const auto* p = selected())
         {
-            if (p->nativeApex)
+            if(p->nativeAudonic)
+            {
+                auto& ctrl=FxController::getInstance();
+                const bool active=ctrl.getSmartListeningMode()==0 &&
+                                  ctrl.getActiveAIProfileId()=="audonic";
+                description_.setText(
+                    "AUDONIC STUDIO  /  WINDOWS NATIVE CREATIVE AI\n\n"
+                    "Six adaptive creative channels: Harmonics, Attack, Width, Colour, "
+                    "Rhythm and Overtones. The native FxSound DSP gets bounded real "
+                    "adjustments, based on measured audio and optional YAMNet scenes.\n\n"
+                    "Use the Creative intensity slider under Smart Listening. "
+                    "BrainScan shows the actual six effect target values.\n\n"
+                    "This is not the separately trained Android ONNX AUDONIC model. "
+                    "Your previous music profile and private learning remain saved.\n\n"
+                    + juce::String(active?"ACTIVE IN MUSIC AI":"Available offline"),
+                    juce::dontSendNotification);
+                import_.setButtonText(active?"AUDONIC active":"Activate AUDONIC");
+            }
+            else if (p->nativeApex)
             {
                 auto& ctrl = FxController::getInstance();
                 const bool installed = ctrl.apex6MInstalled();
@@ -289,10 +307,27 @@ private:
         catalogueRejected_ = submittedCount - static_cast<int> (collected.size());
         catalogueExternal_ = researchCount;
         profiles_ = std::move (collected);
+        ensureAudonicEntry();
         list_.updateContent();
         if (! profiles_.empty()) list_.selectRow (0);
         updateSelection();
         return true;
+    }
+
+    void ensureAudonicEntry()
+    {
+        for(const auto& p:profiles_)
+            if(p.nativeAudonic)return;
+        Profile p;
+        p.id="audonic-studio";
+        p.name="AUDONIC Studio / Creative AI";
+        p.author="CYN";
+        p.category="Local native creative DSP";
+        p.description="Six bounded effects derived from measured audio and YAMNet scene analysis. "
+                      "Preserves your personal learning. This is the Windows-native preview, "
+                      "not the separate Android AUDONIC ONNX student.";
+        p.nativeAudonic=true;
+        profiles_.insert(profiles_.begin(),p);
     }
 
     void readBundledCatalogue()
@@ -302,7 +337,11 @@ private:
         if (! file.existsAsFile() || file.getSize() > maxCatalogueBytes
             || ! loadCatalogue (juce::JSON::parse (file)))
         {
-            status_.setText ("Community catalogue not bundled. You can still import local AI files.",
+            profiles_.clear();
+            ensureAudonicEntry();
+            list_.updateContent();
+            list_.selectRow(0);
+            status_.setText ("Native AUDONIC Studio available. Community catalogue not bundled.",
                              juce::dontSendNotification);
         }
         else
@@ -421,6 +460,29 @@ private:
         if (busy_) return;
         auto* item = selected();
         if (! item) return;
+        if(item->nativeAudonic)
+        {
+            auto& ctrl=FxController::getInstance();
+            if(!juce::AlertWindow::showOkCancelBox(
+                   juce::AlertWindow::QuestionIcon,"Activate AUDONIC Studio?",
+                   "Enable CYN's native creative DSP in Music AI? Your current "
+                   "personal model remains intact. This is the Windows preview, "
+                   "not the Android AUDONIC ONNX model.",
+                   "Activate","Cancel"))return;
+            if(ctrl.getSmartListeningMode()!=0)ctrl.setSmartListeningMode(0);
+            if(ctrl.getSmartListeningMode()!=0) {
+                status_.setText("Finish current training before selecting AUDONIC.",
+                                juce::dontSendNotification);
+                return;
+            }
+            juce::String error;
+            const bool success=ctrl.selectAIProfile("audonic",error);
+            if(success)ctrl.setSmartListening(true);
+            status_.setText(success?"AUDONIC Studio active. Open Smart Listening for BrainScan."
+                                    :"Activation failed: "+error,juce::dontSendNotification);
+            updateSelection();
+            return;
+        }
         if (item->nativeApex)
         {
             auto& ctrl = FxController::getInstance();

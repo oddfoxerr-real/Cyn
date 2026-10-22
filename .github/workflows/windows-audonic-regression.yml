@@ -1,0 +1,58 @@
+name: CYN Windows AUDONIC / BrainScan regression
+
+on:
+  push:
+    branches:
+      - feature/windows-audonic-brainscan-material3-20261022
+  pull_request:
+    paths:
+      - 'fxsound/Source/GUI/CynAudonicStudio.h'
+      - 'fxsound/Source/GUI/CynBrainScan3D.h'
+      - 'fxsound/Source/GUI/FxController.*'
+      - 'fxsound/Source/GUI/FxProView.*'
+      - 'fxsound/Source/GUI/FxTheme.*'
+      - 'fxsound/Source/GUI/CynThemeStudio.h'
+      - 'fxsound/Source/GUI/CynThemeAtmosphere.h'
+      - 'fxsound/Source/GUI/CynAiHubDialog.h'
+      - 'tests/native/audonic_studio_policy_test.cpp'
+      - 'scripts/test_windows_audonic_brainscan.mjs'
+      - '.github/workflows/windows-audonic-regression.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  creative-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check native AUDONIC and BrainScan source integration
+        run: node scripts/test_windows_audonic_brainscan.mjs
+      - name: Compile and execute native creative DSP policy regression
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -Wall -Wextra -Werror -pedantic tests/native/audonic_studio_policy_test.cpp -o /tmp/cyn-audonic-regression
+          /tmp/cyn-audonic-regression
+
+  windows-juce-compile:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Visual Studio and bundled JUCE
+        shell: pwsh
+        run: .\\BUILD_CYN.ps1 -CheckOnly
+      - name: Compile Windows native GUI and FxSound DSP
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\\Installer\\vswhere.exe'
+          $installation = & $vswhere -latest -version '[17.0,18.0)' -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath | Select-Object -First 1
+          if (-not $installation) { throw 'VS2022 C++ tools unavailable' }
+          $msbuild = Join-Path $installation 'MSBuild\\Current\\Bin\\MSBuild.exe'
+          & $msbuild 'fxsound\\Project\\FxSound.sln' /m:2 /nr:false /t:Build /p:Configuration=Release /p:Platform=x64 /nologo
+          if ($LASTEXITCODE -ne 0) { throw "CYN native Windows compile failed ($LASTEXITCODE)" }
