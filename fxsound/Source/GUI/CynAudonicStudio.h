@@ -16,7 +16,7 @@ public:
 
     static float unit(float value) noexcept
     {
-        return std::isfinite(value) ? std::max(0.0f, std::min(1.0f, value)) : 0.0f;
+        return std::isfinite(value) ? (std::max)(0.0f, (std::min)(1.0f, value)) : 0.0f;
     }
 
     static Controls decide(float music, float speech, float percussion,
@@ -63,7 +63,7 @@ public:
             return std::exp(-0.5f*distance*distance);
         };
         // Gentle, peak-limited tonal movement. No per-sample waveshaping.
-        return std::max(-0.6f,std::min(0.85f,
+        return (std::max)(-0.6f,(std::min)(0.85f,
             controls[Overtones]*0.48f*bell(160.0f,1.1f)+
             controls[Harmonics]*0.62f*bell(3500.0f,0.8f)-
             controls[Colour]*0.23f*bell(900.0f,1.3f)));
