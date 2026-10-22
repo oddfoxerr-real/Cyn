@@ -3318,8 +3318,11 @@ std::vector<FxController::AIProfileOption> FxController::getAvailableAIProfiles(
     };
     append(File::getSpecialLocation(File::currentExecutableFile).getSiblingFile("CynAiProfiles"),"bundled:");
     append(File::getSpecialLocation(File::userApplicationDataDirectory).getChildFile("Cyn/AIModels"),"imported:");
-    if(smart_mode_==0 && apex6MInstalled())
-        choices.push_back({"apex6m","CYN APEX 6M (Full ONNX · Live Neural EQ)"});
+    if(smart_mode_==0) {
+        choices.push_back({"audonic","AUDONIC Studio · Creative AI (Native Preview)"});
+        if(apex6MInstalled())
+            choices.push_back({"apex6m","CYN APEX 6M (Full ONNX · Live Neural EQ)"});
+    }
     return choices;
 }
 String FxController::getActiveAIProfileId() {
@@ -3356,6 +3359,31 @@ bool FxController::selectAIProfile(const String& id,String& error) {
         if(smart_enabled_) captureSmartBaseline();
         smart_learning_message_="APEX 6M neural Music AI selected: ONNX + adaptive live DSP.";
         error.clear();return true;
+    }
+    // AUDONIC Studio reuses the current personal model without overwriting
+    // trained weights or feedback. It is a native creative policy, NOT the
+    // distinct Android AUDONIC ONNX student model.
+    if(id=="audonic") {
+        if(smart_mode_!=0) { error="AUDONIC Studio is available in Music AI."; return false; }
+        if(smart_enabled_) restoreSmartBaseline();
+        settings_.setString("cyn_audonic_previous_music_profile",getActiveAIProfileId());
+        settings_.setString("cyn_active_ai_profile_music","audonic");
+        if(smart_enabled_) captureSmartBaseline();
+        audonic_controls_.fill(0.0f);
+        audonic_policy_at_=0;
+        smart_learning_message_="AUDONIC Studio ready: measured creative DSP, existing learning preserved.";
+        error.clear();return true;
+    }
+    if(smart_mode_==0 && getActiveAIProfileId()=="audonic") {
+        const String saved=settings_.getString("cyn_audonic_previous_music_profile");
+        const String previous=(saved.isEmpty() || saved=="audonic")?"personal":saved;
+        if(smart_enabled_) restoreSmartBaseline();
+        settings_.setString("cyn_active_ai_profile_music",previous);
+        if(smart_enabled_) captureSmartBaseline();
+        audonic_controls_.fill(0.0f);
+        audonic_policy_at_=0;
+        if(id==previous) { error.clear();return true; }
+        return selectAIProfile(id,error);
     }
     const auto choices=getAvailableAIProfiles();
     const auto found=std::find_if(choices.begin(),choices.end(),
@@ -3482,6 +3510,24 @@ void FxController::setSmartHeadroomCap(float percent)
     smart_headroom_cap_=jlimit(0.0f,100.0f,percent);
     settings_.setDouble("cyn_music_headroom_cap",smart_headroom_cap_);
 }
+void FxController::setAudonicIntensity(float percent)
+{
+    if(!std::isfinite(percent)) return;
+    settings_.setDouble("cyn_audonic_intensity",jlimit(0.0f,100.0f,percent));
+}
+
+bool FxController::getLiveAudonicControls(CynAudonicStudio::Controls& out)
+{
+    if(getActiveAIProfileId()!="audonic" || !smart_enabled_ ||
+       !FxModel::getModel().getPowerState() || !audio_process_on_ ||
+       !playback_device_available_ || smart_stale_ticks_>=4 ||
+       audonic_policy_at_<=0 ||
+       Time::currentTimeMillis()-audonic_policy_at_>1200)
+        return false;
+    out=audonic_controls_;
+    return true;
+}
+
 void FxController::updateSmartListening()
 {
     // The actual native DSP power switch is authoritative. No hidden model
@@ -3489,6 +3535,8 @@ void FxController::updateSmartListening()
     if(!FxModel::getModel().getPowerState()) {
         apex_hybrid_active_=false;
         apex6m_active_=false;
+        audonic_controls_.fill(0.0f);
+        audonic_policy_at_=0;
         return;
     }
     const auto input=dfx_dsp_.getInputAudioFeatures();
@@ -3510,6 +3558,8 @@ void FxController::updateSmartListening()
     if(!smart_enabled_) {
         apex_hybrid_active_=false;
         apex6m_active_=false;
+        audonic_controls_.fill(0.0f);
+        audonic_policy_at_=0;
         apex_flow_.reset();
         return;
     }
@@ -3523,6 +3573,7 @@ void FxController::updateSmartListening()
         smart_stale_ticks_<4 && input.rms>0.0001f &&
         smart_sensitivity_>0.0f;
     const bool listening=active && smart_stale_ticks_<4 && input.rms>0.0001f;
+    const bool audonicActive=smart_mode_==0 && getActiveAIProfileId()=="audonic";
     const bool movie=smart_mode_==1;
     const auto& model=movie?movie_model_:smart_model_;
     // Music recognition uses relative spectral shape and crest, not upstream
@@ -3546,6 +3597,27 @@ void FxController::updateSmartListening()
             : music_crescendo_.current();
         CynFlagshipMixer::applyCrescendo(decision,scene,arc);
     } else music_crescendo_.reset();
+    // A six-control native creative policy based on measured PCM spectral
+    // features and (when available) real YAMNet scene outputs. Never label
+    // this as the Android ONNX student or run DSP/inference in the UI paint.
+    if(audonicActive && listening && smart_sensitivity_>0.0f) {
+        const float high=jlimit(0.0f,1.0f,
+            std::exp(jlimit(-12.0f,0.0f,input.values[6])));
+        const auto controls=CynAudonicStudio::decide(
+            yamnetLive?scene.music:0.0f,
+            yamnetLive?scene.speech:0.0f,
+            yamnetLive?scene.percussion:0.0f,
+            yamnetLive?scene.bassDrum:0.0f,
+            high,decision.headroom,
+            getAudonicIntensity()/100.0f*
+                CynSmartRange::normalized(smart_sensitivity_));
+        for(size_t i=0;i<audonic_controls_.size();++i)
+            audonic_controls_[i]+=(controls[i]-audonic_controls_[i])*0.32f;
+        audonic_policy_at_=now;
+    } else {
+        audonic_controls_.fill(0.0f);
+        audonic_policy_at_=0;
+    }
     // The full 6M model and the lightweight APEX hybrid can both benefit
     // from CYN's independent musical passage controller, but remain distinct.
     apex_hybrid_active_=!movie &&
@@ -3650,6 +3722,8 @@ void FxController::updateSmartListening()
                 cycling_effects_[(size_t)e]:smart_effects_[e]),
             smart_scores_[e],smart_sensitivity_,up,down[e],
             decision.headroom,movie,(e==3 || e==4 || (e==0 && smart_sensitivity_>55.0f)));
+        if(audonicActive && listening)
+            target+=CynAudonicStudio::effectAdd(e,audonic_controls_);
         if(movie && e==4) target=jmin(target,jmax(smart_effects_[4],6.3f));
         if(movie && e==3) target=jmin(target,jmax(smart_effects_[3],5.0f));
         target=jlimit(0.0f,10.0f,target);
@@ -3689,6 +3763,8 @@ void FxController::updateSmartListening()
                 target+=jlimit(-1.35f,1.15f,learned);
             }
         }
+        if(audonicActive && listening)
+            target+=CynAudonicStudio::eqAdd(freq,audonic_controls_);
         target=jlimit(MIN_GAIN,MAX_GAIN,target);
         const float current=dfx_dsp_.getEqBandBoostCut(b);
         if(std::abs(target-current)>0.04f) {
@@ -3705,7 +3781,8 @@ void FxController::updateSmartListening()
 }
 String FxController::getAppliedMixSummary()
 {
-    const String mode = smart_mode_ == 1 ? "Movie AI" : "Music AI";
+    const String mode = smart_mode_ == 1 ? "Movie AI" :
+        getActiveAIProfileId()=="audonic" ? "AUDONIC Studio" : "Music AI";
     if (!smart_enabled_) return mode + " / off";
     if (!FxModel::getModel().getPowerState() || !audio_process_on_ ||
         !playback_device_available_ || smart_stale_ticks_ >= 4)
@@ -3751,6 +3828,10 @@ String FxController::getSmartSummary() const
     if(!smart_enabled_) return mode+" / learning available (processing off)";
     if(smart_stale_ticks_>=4) return mode+" / waiting for audio";
     CynAudioScene scene;
+    if(smart_mode_==0 && getActiveAIProfileId()=="audonic")
+        return audonic_policy_at_>0 && Time::currentTimeMillis()-audonic_policy_at_<1200
+            ? "AUDONIC Studio / native creative DSP / 6 live effect controls"
+            : "AUDONIC Studio / waiting for fresh audio";
     if(smart_mode_==0 && apex6m_active_) {
         if(apex_worker_ && apex_worker_->failed())
             return "Music AI / CYN APEX 6M / engine failed: " + apex6MDiagnostic();
