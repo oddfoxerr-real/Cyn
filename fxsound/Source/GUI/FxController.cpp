@@ -3656,9 +3656,9 @@ void FxController::updateSmartListening()
     // Preset selection is passage-level (scene features refresh ~100ms), not
     // per-sample. Even when a new preset is chosen, the DSP never reloads .fac;
     // effects and EQ move gradually toward the cached REAL preset values.
-    if(smart_preset_cycling_ && !movie && cycling_dirty_)
+    if(smart_preset_cycling_ && !movie && !audonicActive && cycling_dirty_)
         rebuildPresetCyclingProfiles();
-    if(smart_preset_cycling_ && !movie && !cycling_profiles_.empty()) {
+    if(smart_preset_cycling_ && !movie && !audonicActive && !cycling_profiles_.empty()) {
         const auto chosen=cycling_policy_.update(cycling_signatures_,scene,
                                                   (uint64_t)now,listening && fresh);
         const auto& desired=cycling_profiles_[(size_t)chosen];
@@ -3718,7 +3718,7 @@ void FxController::updateSmartListening()
         // bass positive shifts still require measured pre-effect headroom.
         const float up=movie?movieUp[e]:musicUp[e];
         float target=CynSmartRange::effectTarget(
-            (smart_preset_cycling_&&!movie&&!cycling_profiles_.empty()?
+            (smart_preset_cycling_&&!movie&&!audonicActive&&!cycling_profiles_.empty()?
                 cycling_effects_[(size_t)e]:smart_effects_[e]),
             smart_scores_[e],smart_sensitivity_,up,down[e],
             decision.headroom,movie,(e==3 || e==4 || (e==0 && smart_sensitivity_>55.0f)));
@@ -3738,7 +3738,7 @@ void FxController::updateSmartListening()
     for(int b=0;b<jmin(getNumEqBands(),(int)smart_eq_.size());++b) {
         const float freq=dfx_dsp_.getEqBandFrequency(b);
         const float weight=jlimit(0.0f,1.0f,(300.0f-freq)/200.0f);
-        const float cycledBaseline=smart_preset_cycling_&&!movie&&
+        const float cycledBaseline=smart_preset_cycling_&&!movie&&!audonicActive&&
             b<(int)cycling_eq_.size()&&!cycling_profiles_.empty()?
             cycling_eq_[(size_t)b]:smart_eq_[(size_t)b];
         float target=cycledBaseline;
