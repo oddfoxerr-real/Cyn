@@ -124,7 +124,7 @@ public:
     // Separate Music AI and Movie / TV AI models, labels and settings.
     int getSmartListeningMode() const { return smart_mode_; }
     void setSmartListeningMode(int mode);
-    String getSmartSummary() const;
+    String getSmartSummary();
     String getAppliedMixSummary();
     const std::vector<AudioFrame>& getRecentAudio() const { return smart_history_; }
     void labelAudio(const std::vector<AudioFrame>& frames, int effect, bool more);
@@ -152,7 +152,7 @@ public:
     bool getLiveNeuralActivity(NeuralActivitySnapshot& out) const;
     bool getLiveYamNetScene(CynAudioScene& out) const;
     bool getLiveAudonicControls(CynAudonicStudio::Controls& out);
-    float getAudonicIntensity() { return juce::jlimit(0.0f,100.0f,(float)settings_.getDouble("cyn_audonic_intensity",45.0)); }
+    float getAudonicIntensity() { return juce::jlimit(0.0f,100.0f,(float)settings_.getInt("cyn_audonic_intensity_percent",45)); }
     void setAudonicIntensity(float percent);
     float getSmartTrainingProgress() const {
         return juce::jlimit(0.0f,1.0f,
