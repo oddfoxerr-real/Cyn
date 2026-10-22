@@ -23,6 +23,7 @@ for token in (
     "canvas.drawRoundRect(tileProgress",
     "CREATIVE_NAMES[i]",
     "materialCreativeHues[i]",
+    "materialNeuralHues[(o+j)%materialNeuralHues.length]",
 ):
     assert token in view, f"BrainScan Material 3 component missing: {token}"
 assert "dp(audonicMind?466:368)" in activity, "Material channel cards need allocated space"
