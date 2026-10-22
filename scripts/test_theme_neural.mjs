@@ -6,7 +6,7 @@ const theme=file("fxsound/Source/GUI/FxTheme.cpp");
 const atmosphere=file("fxsound/Source/GUI/CynThemeAtmosphere.h");
 const neural=file("fxsound/Source/GUI/CynNeuralActivity.h");
 const view=file("fxsound/Source/GUI/FxProView.cpp");
-assert(themeH.includes("NeuralCore, DarkMesh, AetherGlass, IonViolet, LiquidTitanium, JadeCircuit, SolarInk, PolarMist, NumModes"),"Legacy theme enum retained for compatibility while canonical theme is DarkMesh");
+assert(themeH.includes("NeuralCore, DarkMesh, AetherGlass, IonViolet, LiquidTitanium, JadeCircuit, SolarInk, PolarMist, Material3, NumModes"),"Legacy theme enum retained for compatibility while canonical theme is DarkMesh");
 assert(theme.includes('"Dark Theme"'),"Missing user-visible theme name");
 assert(atmosphere.includes("case FxThemeMode::DarkMesh:"),"Theme needs a real animated backdrop");
 assert(neural.includes("setProfileId(const juce::String& id)"),"Neural visualization must accept selected model ID");
@@ -21,7 +21,7 @@ assert(view.includes("smart_toggle_.setBounds(1032,477,244,26)") &&
        view.includes("neural_activity_.setBounds(1008,288,271,164)") &&
        view.includes("learning_timeline_.setBounds(left+13,288,722,164)"),
        "Smart Listening switch must be below the timeline and separate from neural visualization");
-assert(view.includes('txt("LIVE NEURAL ACTIVITY",1011'),"Smart Listening must have an independently framed live neural inspector");
+assert(view.includes('txt("BRAINSCAN  /  LIVE SIGNAL",1011') && view.includes('neural_activity_.setBounds(1008,288,271,164)') && view.includes('brain_scan_.setBounds(1008,288,271,164)'),"Smart Listening must have an independently framed switchable BrainScan inspector");
 console.log("PASS: dark Dark Theme theme, true live neural path weighting, model colors and header spacing");
 
 const paletteRow=theme.match(/\/\/ Dark Theme:[^\n]*\n\s*\{([^}]+)\}/);
