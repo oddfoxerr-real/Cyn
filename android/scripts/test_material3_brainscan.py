@@ -39,6 +39,9 @@ for token in (
     "postInvalidateDelayed(40)",
 ):
     assert token in view, f"Telemetered activity or reduced motion regressed: {token}"
+assert "int columns=getWidth()<dp(306)?2:3;" in view, "Narrow phone cards must use two columns"
+assert "onInitializeAccessibilityNodeInfo" in view, "Channel values need screen-reader access"
+assert "info.setContentDescription(detail.toString())" in view, "Real channel levels need accessible labels"
 assert "new ApexSpatialBrainView(this" in activity
 assert "service.audonicVisualTelemetry()" in activity
 print("PASS Material 3 palettes, rounded BrainScan viewport, tonal channel tiles, real telemetry, motion accessibility")
