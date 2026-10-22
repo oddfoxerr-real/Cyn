@@ -108,8 +108,10 @@ assert(header.includes("CynNeuralActivity neural_activity_"), "Missing visualize
 assert(neural.includes("std::array<Point<float>, 11> inputs") && neural.includes("std::array<Point<float>, 12> hidden") && neural.includes("std::array<Point<float>, 5> outputs"), "Must match real 11-12-5 model architecture");
 assert(view.includes("neural_activity_.setBounds(1008,288,271,164)"), "Neural network belongs in the dedicated Smart Listening inspector");
 assert(view.includes("neural_activity_.setTrainingActive(controller.isSmartTraining())"), "Brain must reflect actual training state");
-assert(view.includes("neural_activity_.setAnimationEnabled(page==1)") &&
-       view.includes("const bool wantGraph=page_==1;"),
+assert(view.includes("neural_activity_.setAnimationEnabled(page==1 && showNeuralGraph_)") &&
+       view.includes("const bool wantGraph=page_==1 && showNeuralGraph_;") &&
+       view.includes("brain_scan_.setAnimationEnabled(page==1 && !showNeuralGraph_)") &&
+       view.includes("const bool wantScan=page_==1 && !showNeuralGraph_;"),
        "Keep the live neural telemetry exclusively on the Smart Listening page, not over every theme");
 assert(neural.includes("FxTheme::isReducedMotion()"), "Respect reduced-motion accessibility setting");
 assert(neural.includes("startTimerHz(24)"), "Use efficient bounded redraw frequency");
@@ -134,7 +136,7 @@ console.log("PASS: live neural inference and supervised epoch animation");
 // The existing personal-model network must be labeled separately from pretrained
 // YAMNet event classifications; no fabricated YAMNet weight-node activity.
 const themeHeader=readFileSync(path("fxsound/Source/GUI/FxTheme.h"),"utf8");
-assert(themeHeader.includes("CharcoalDesktop, NeuralCore, DarkMesh, AetherGlass, IonViolet, LiquidTitanium, JadeCircuit, SolarInk, PolarMist, NumModes"),"Neural Core must preserve existing saved theme IDs");
+assert(themeHeader.includes("CharcoalDesktop, NeuralCore, DarkMesh, AetherGlass, IonViolet, LiquidTitanium, JadeCircuit, SolarInk, PolarMist, Material3, NumModes"),"Neural Core must preserve existing saved theme IDs");
 assert(theme.includes('return "Dark Theme";'),"Default dark palette must remain compatible with existing stored theme IDs");
 assert(view.includes("brainController.getLiveNeuralActivity(snapshot)"),"Neural theme must use real personal model activations");
 assert(view.includes("brainController.getLiveYamNetScene(scene)"),"Neural theme must read real YAMNet classifications");
@@ -152,7 +154,7 @@ console.log("PASS: Neural Core live inference visualization, distinct AI identit
 const atmosphere=readFileSync(path("fxsound/Source/GUI/CynThemeAtmosphere.h"),"utf8");
 const themeModes=[...themeHeader.matchAll(/enum FxThemeMode : int \{([^}]+)\}/g)][0][1]
   .split(",").map(item=>item.trim().replace(/=.*/,"")).filter(item=>item!=="NumModes");
-assert.equal(themeModes.length,27,"Original saved IDs and six new native CYN themes must be retained");
+assert.equal(themeModes.length,28,"Existing saved theme IDs and new Material 3 palette must be retained");
 for(const mode of themeModes)
   assert(atmosphere.includes("case FxThemeMode::"+mode+":"),"No dynamic artwork for "+mode);
 assert(view.includes("CynThemeAtmosphere::paint(g,mode"),
@@ -185,7 +187,8 @@ assert(atmosphere.includes('Rectangle<float> bounds,bool preview=false'),
        "Theme art must be rendered across a real workspace or large preview");
 assert(!view.includes('g,theme_audio_level_);'),
        "Do not return to tiny decorative sidebar artwork");
-assert(view.includes('neural_activity_.setVisible(page==1)'),
+assert(view.includes('neural_activity_.setVisible(page==1 && showNeuralGraph_)') &&
+       view.includes('brain_scan_.setVisible(page==1 && !showNeuralGraph_)'),
        "Neural widget must not crowd Sound Studio sidebar");
 console.log("PASS: stable Dark Theme studio, retained live scenes and native UI transition");
 
