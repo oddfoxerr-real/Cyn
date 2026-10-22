@@ -609,11 +609,14 @@ final class ApexSpatialBrainView extends View {
         canvas.drawOval(cx-scale*1.07f,cy-scale*.88f,
             cx+scale*1.07f,cy+scale*.88f,paint);
 
+        int clip=canvas.save();
+        canvas.clipRect(stageBounds);
         drawGraph(canvas,scale,level,0);
         drawGraph(canvas,scale,level,1);
         if(external&&!audonic)drawNeuralPathways(canvas,source.hidden(),
             source.connections(),source.outputs());
         if(playing)drawWaves(canvas,level);
+        canvas.restoreToCount(clip);
         if(audonic)drawCreative(canvas,cx,cy,scale);
 
         drawMaterialHeader(canvas,playing,connected);
