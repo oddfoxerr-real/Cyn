@@ -77,7 +77,8 @@ public:
             case FxThemeMode::LiquidTitanium:
             case FxThemeMode::JadeCircuit:
             case FxThemeMode::SolarInk:
-            case FxThemeMode::PolarMist: break;
+            case FxThemeMode::PolarMist:
+            case FxThemeMode::Material3: break;
             default: themeMode_=FxThemeMode::DarkMesh; break;
         }
         for(const auto& item : std::initializer_list<std::pair<FxThemeMode,const char*>>{
@@ -87,7 +88,8 @@ public:
             {FxThemeMode::LiquidTitanium,"Liquid Titanium"},
             {FxThemeMode::JadeCircuit,"Jade Circuit"},
             {FxThemeMode::SolarInk,"Solar Ink"},
-            {FxThemeMode::PolarMist,"Polar Mist"}})
+            {FxThemeMode::PolarMist,"Polar Mist"},
+            {FxThemeMode::Material3,"Material 3"}})
             themePicker_.addItem(item.second,(int)item.first+1);
         themePicker_.setSelectedId((int)themeMode_+1,juce::dontSendNotification);
         themePicker_.onChange=[this] {
