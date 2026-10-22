@@ -1,7 +1,7 @@
 name: Android Material UI validation
 on:
   push:
-    branches: ['feature/android-material3-expressive-20261022']
+    branches: ['feature/android-material3-expressive-20261022', 'feature/android-material3-brainscan-20261022']
     paths: ['android/**', '.github/workflows/android-material-ui.yml']
   workflow_dispatch:
 permissions:
@@ -24,6 +24,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Install pinned SDK
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
+      - name: Verify Material 3 BrainScan telemetry and theme regression
+        run: python3 android/scripts/test_material3_brainscan.py
       - name: Assemble Android debug app and run lint
         run: bash android/gradlew -p android :app:assembleDebug :app:lintDebug
       - uses: actions/upload-artifact@v4

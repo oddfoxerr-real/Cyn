@@ -597,7 +597,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                     return service==null?0f:service.audonicIntensity;
                 }
             },accent,secondary,audonicMind);
-            network.addView(brainScan,new LinearLayout.LayoutParams(-1,dp(334)));
+            network.addView(brainScan,new LinearLayout.LayoutParams(-1,dp(audonicMind?466:368)));
 
         }else{
             LinearLayout network=section("Personal neural activity","Measured activations from your preference model.");
