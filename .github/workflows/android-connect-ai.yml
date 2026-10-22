@@ -7,6 +7,7 @@ on:
       - fix/android-connect-isolated-20261021
       - feature/android-audonic-brainscan-20261021
       - feature/android-material3-expressive-20261022
+      - feature/android-material3-brainscan-20261022
     paths:
       - 'android/**'
       - '.github/workflows/android-connect-ai.yml'
@@ -106,6 +107,7 @@ jobs:
           python android/scripts/test_apex_visual_release.py
           python android/scripts/test_connected_mind.py
           python android/scripts/test_audonic_brainscan.py
+          python android/scripts/test_material3_brainscan.py
       - name: Compile full release and run Android Lint
         shell: bash
         run: |
@@ -117,8 +119,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/android
-          git archive --format=zip --output=dist/android/Cyn-Studio-Android-0.2.27-Source.zip HEAD android
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/android/Cyn-Studio-Android-0.2.27-preview-unsigned.apk
+          git archive --format=zip --output=dist/android/Cyn-Studio-Android-0.2.28-Source.zip HEAD android
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/android/Cyn-Studio-Android-0.2.28-preview-unsigned.apk
       - name: Sign using existing registered CYN Studio certificate
         shell: bash
         env:
@@ -133,27 +135,27 @@ jobs:
           keyfile="$RUNNER_TEMP/cyn-studio.jks"
           trap 'rm -f "$keyfile"' EXIT
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keyfile"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$keyfile" --ks-key-alias cyn-studio --ks-pass env:CYN_KEY_PASSWORD --key-pass env:CYN_KEY_PASSWORD --out dist/android/Cyn-Studio-Android-0.2.27-preview.apk dist/android/Cyn-Studio-Android-0.2.27-preview-unsigned.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/android/Cyn-Studio-Android-0.2.27-preview.apk > "$RUNNER_TEMP/cyn-apex10m-cert.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$keyfile" --ks-key-alias cyn-studio --ks-pass env:CYN_KEY_PASSWORD --key-pass env:CYN_KEY_PASSWORD --out dist/android/Cyn-Studio-Android-0.2.28-preview.apk dist/android/Cyn-Studio-Android-0.2.28-preview-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/android/Cyn-Studio-Android-0.2.28-preview.apk > "$RUNNER_TEMP/cyn-apex10m-cert.txt"
           grep -F 'certificate SHA-256 digest: 045d9c122b2158d569c0ef8d10bbb08496a9f19e7397b702e99e9330c780bcb7' "$RUNNER_TEMP/cyn-apex10m-cert.txt"
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 dist/android/Cyn-Studio-Android-0.2.27-preview.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.27-preview.apk > "$RUNNER_TEMP/cyn-apex10m-package.txt"
-          grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='31' versionName='0.2.27-preview'" "$RUNNER_TEMP/cyn-apex10m-package.txt"
-          (cd dist/android && sha256sum Cyn-Studio-Android-0.2.27-preview.apk > Cyn-Studio-Android-0.2.27-preview.apk.sha256)
-      - name: Verify in-place upgrades through v0.2.25
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 dist/android/Cyn-Studio-Android-0.2.28-preview.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.28-preview.apk > "$RUNNER_TEMP/cyn-apex10m-package.txt"
+          grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='32' versionName='0.2.28-preview'" "$RUNNER_TEMP/cyn-apex10m-package.txt"
+          (cd dist/android && sha256sum Cyn-Studio-Android-0.2.28-preview.apk > Cyn-Studio-Android-0.2.28-preview.apk.sha256)
+      - name: Verify in-place upgrades through v0.2.27
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          current=dist/android/Cyn-Studio-Android-0.2.27-preview.apk
+          current=dist/android/Cyn-Studio-Android-0.2.28-preview.apk
           signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
           new_cert=$("$signer" verify --print-certs "$current" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
           new_info=$("$aapt" dump badging "$current" | grep '^package:')
           new_code=$(echo "$new_info" | sed -n "s/.*versionCode='\([^']*\)'.*/\1/p")
-          echo "$new_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='31'"
-          for version in 0.2.22 0.2.23 0.2.24 0.2.25 0.2.26; do
+          echo "$new_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='32'"
+          for version in 0.2.22 0.2.23 0.2.24 0.2.25 0.2.26 0.2.27; do
             previous="$RUNNER_TEMP/cyn-$version.apk"
             gh release download "android-studio-v$version-preview" --pattern "Cyn-Studio-Android-$version-preview.apk" --output "$previous"
             "$signer" verify --verbose --print-certs "$previous"
@@ -168,7 +170,7 @@ jobs:
           python - <<'PYCODE'
           import zipfile
           from pathlib import Path
-          with zipfile.ZipFile('dist/android/Cyn-Studio-Android-0.2.27-preview.apk') as apk:
+          with zipfile.ZipFile('dist/android/Cyn-Studio-Android-0.2.28-preview.apk') as apk:
               for source in Path('android/app/src/main/assets/models').iterdir():
                   if source.is_file():
                       assert apk.read('assets/models/'+source.name)==source.read_bytes(), source.name
@@ -179,28 +181,28 @@ jobs:
       - name: Upload verified experimental Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: CYN-Android-MATERIAL3-v0.2.27
+          name: CYN-Android-M3-BRAINSCAN-v0.2.28
           path: |
-            dist/android/Cyn-Studio-Android-0.2.27-preview.apk
-            dist/android/Cyn-Studio-Android-0.2.27-preview.apk.sha256
-            dist/android/Cyn-Studio-Android-0.2.27-Source.zip
+            dist/android/Cyn-Studio-Android-0.2.28-preview.apk
+            dist/android/Cyn-Studio-Android-0.2.28-preview.apk.sha256
+            dist/android/Cyn-Studio-Android-0.2.28-Source.zip
           retention-days: 30
       - name: Publish experimental Android prerelease only
-        if: github.ref == 'refs/heads/feature/android-material3-expressive-20261022'
+        if: github.ref == 'refs/heads/feature/android-material3-brainscan-20261022'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag=android-studio-v0.2.27-preview
+          tag=android-studio-v0.2.28-preview
           if gh release view "$tag" >/dev/null 2>&1; then
             echo 'Release tag already exists; refuse to replace binaries'
             exit 1
           fi
           gh release create "$tag" --target "$GITHUB_SHA" \
-            --title 'CYN Studio Android 0.2.27 · Material 3 Expressive Controls' \
+            --title 'CYN Studio Android 0.2.28 · Material 3 BrainScan' \
             --notes-file android/CONNECT_AI_RELEASE_NOTES.md \
             --prerelease --latest=false \
-            dist/android/Cyn-Studio-Android-0.2.27-preview.apk \
-            dist/android/Cyn-Studio-Android-0.2.27-preview.apk.sha256 \
-            dist/android/Cyn-Studio-Android-0.2.27-Source.zip
+            dist/android/Cyn-Studio-Android-0.2.28-preview.apk \
+            dist/android/Cyn-Studio-Android-0.2.28-preview.apk.sha256 \
+            dist/android/Cyn-Studio-Android-0.2.28-Source.zip

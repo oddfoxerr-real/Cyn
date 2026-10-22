@@ -1,14 +1,12 @@
-# CYN Mobile 0.2.27 preview — Material 3 Expressive Controls
+# CYN Mobile v0.2.28 preview — Material 3 BrainScan
 
-CYN's existing Android audio engine remains unchanged. This update refines the native Material 3 interface while preserving all features from 0.2.26.
+- Redesigns AUDONIC's Creative BrainScan and CYN's connected/APEX neural view using the app's **real Material 3 palette roles**: surface containers, outlined rounded viewport, on-surface typography, softened neural colours and theme-aware contrast across all 11 palettes.
+- AUDONIC's six named channels now appear as compact rounded **tonal activity tiles** in a responsive three-column/two-row arrangement. Their progress tracks are driven exclusively by fresh actual AUDONIC policy outputs multiplied by the user's Creative intensity; disconnected or stale telemetry fades to idle.
+- Retains the 3D-projected brain mesh, measured neural pathways and decision-triggered pulses. The mesh is clipped to its own viewport so it no longer overlaps the channel tiles.
+- Adds a compact LIVE / WAITING / OFFLINE state and a readable signal footer. Respects Reduce motion, device font scaling and existing CYN accessibility preferences.
+- Enlarges the AUDONIC scan area to make six-channel readings legible, without replacing the AI engines or reworking the underlying audio processing.
+- Preserves Base AI, APEX 6M, APEX 10M, AUDONIC ONNX/native DSP, Connect, Library, saved themes/settings, user learning, and prior installation identity.
 
-- Larger, rounded tonal buttons with CYN's existing 11 fixed theme palettes (no wallpaper-based colour extraction).
-- Bigger primary playback control, clearer transport hierarchy and rounded library search.
-- Connected single-choice selectors for 31/35/39-band EQ and repeat modes with checked-state accessibility.
-- Selected AI-engine cards are visually highlighted; Base AI, APEX 6M, APEX 10M and AUDONIC are retained.
-- A playback-aware wavy library seek bar keeps native dragging, keyboard control and accessibility. Animation obeys Reduce motion.
-- While the audio service connects, the mini-player indicates that state and disables unavailable playback rather than accepting a nonfunctional tap.
-- Preserves AUDONIC's six-channel measured BrainScan from 0.2.26, ONNX/native DSP, compatible Connect effects, Library, saved preferences, fox sliders, and the updater's public-feed fallback.
-- Signed with the same CYN Studio certificate under package `io.github.oddfoxerr.cyn.studio`. Version code increases from 30 to 31, so Android can install this APK over 0.2.26 without erasing app data.
+**Android upgrade:** package `io.github.oddfoxerr.cyn.studio`, versionCode **32** (`0.2.28-preview`); signed using the existing CYN Studio key, verified against installed v0.2.27 and earlier versions. The in-app updater continues using the existing official GitHub Android release feed.
 
-Release verification: actual AUDONIC and APEX model inference, native PCM/DSP tests, existing BrainScan and Connect regressions, full release APK and debug APK assembly, lint, model-byte integrity, signature, package name and higher version-code checks against 0.2.22–0.2.26. Hardware-specific Connect capabilities and physical-phone playback remain device-dependent and are not represented as validated by CI.
+Release CI checks the Material 3 and fresh-signal contracts, native DSP and actual ONNX inference, Android compile and lint, signing certificate, packaged model integrity, and increasing version code. Hardware-specific Connect and perceptual audio quality still need real-device verification.
