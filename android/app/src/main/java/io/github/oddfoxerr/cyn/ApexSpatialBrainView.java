@@ -66,6 +66,15 @@ final class ApexSpatialBrainView extends View {
     private final Signal source;
     private final int accent,secondary;
     private final boolean audonic;
+    // Material 3 colour roles come from the active CYN palette, not fixed neon ink.
+    private final int surfaceLow,surfaceHigh,onSurface,onSurfaceVariant,outlineVariant,primaryContainer;
+    private final int[] materialCreativeHues=new int[6];
+    private final float density,scaledDensity;
+    private final android.graphics.RectF viewBounds=new android.graphics.RectF();
+    private final android.graphics.RectF stageBounds=new android.graphics.RectF();
+    private final android.graphics.RectF tileBounds=new android.graphics.RectF();
+    private final android.graphics.RectF tileProgress=new android.graphics.RectF();
+    private float stageBottom;
     private final float[] creativeLevel=new float[6],creativePrevious=new float[6];
     private final long[] lastCreativeWave=new long[6];
     private final android.graphics.RectF creativeOrbit=new android.graphics.RectF();
@@ -85,15 +94,35 @@ final class ApexSpatialBrainView extends View {
     ApexSpatialBrainView(Context context,Signal feed,int mainColour,int secondaryColour,boolean creativeMode){
         super(context);
         source=feed;accent=mainColour;secondary=secondaryColour;audonic=creativeMode;
+        density=getResources().getDisplayMetrics().density;
+        scaledDensity=getResources().getDisplayMetrics().scaledDensity;
+        surfaceLow=com.google.android.material.color.MaterialColors.getColor(
+            context,com.google.android.material.R.attr.colorSurfaceContainerLow,0xff101723);
+        surfaceHigh=com.google.android.material.color.MaterialColors.getColor(
+            context,com.google.android.material.R.attr.colorSurfaceContainerHigh,0xff223044);
+        onSurface=com.google.android.material.color.MaterialColors.getColor(
+            context,com.google.android.material.R.attr.colorOnSurface,Color.WHITE);
+        onSurfaceVariant=com.google.android.material.color.MaterialColors.getColor(
+            context,com.google.android.material.R.attr.colorOnSurfaceVariant,0xffb9c7da);
+        outlineVariant=com.google.android.material.color.MaterialColors.getColor(
+            context,com.google.android.material.R.attr.colorOutlineVariant,0xff405066);
+        primaryContainer=com.google.android.material.color.MaterialColors.getColor(
+            context,com.google.android.material.R.attr.colorPrimaryContainer,0xff2b405d);
+        for(int i=0;i<materialCreativeHues.length;i++)
+            materialCreativeHues[i]=androidx.core.graphics.ColorUtils.blendARGB(
+                CREATIVE_HUES[i],accent,.23f);
         setContentDescription(audonic
             ? "AUDONIC six-channel creative neural mesh; each labelled effect responds to recent model decisions."
             : "CYN APEX 10M active neural network mesh with rotating lights and audio-reactive pathways.");
-        setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+        // One calm accessibility node, not a new spoken event on each 40-ms frame.
+        setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
         paint.setStrokeCap(Paint.Cap.ROUND);
         for(int i=0;i<WAVE_COUNT;i++)waves[i]=new Wave();
         generateBrain();
         generateGraph();
     }
+    private float dp(float value){return value*density;}
+    private float sp(float value){return value*scaledDensity;}
     private static float clamp(float v,float a,float b){return Math.max(a,Math.min(b,v));}
     private static float fract(float v){return v-(float)Math.floor(v);}
     private int rand(){
@@ -237,7 +266,7 @@ final class ApexSpatialBrainView extends View {
             wave.distance=0f;
             // Each measured event gets a different neon colour; variation is
             // cosmetic, while the event, amplitude and speed are real.
-            wave.hue=audonic?CREATIVE_HUES[Math.floorMod(channel,CREATIVE_HUES.length)]
+            wave.hue=audonic?materialCreativeHues[Math.floorMod(channel,materialCreativeHues.length)]
                 :NEON[(colourCursor+++(rand()%NEON.length))%NEON.length];
             wave.rate=3.5f+4.5f*clamp(measured,0,1);
             wave.power=clamp(measured,.25f,1f);
@@ -250,7 +279,7 @@ final class ApexSpatialBrainView extends View {
             int a=edgeA[i],b=edgeB[i];
             boolean forward=(depth[a]+depth[b])>=0;
             if(forward!=(pass==1))continue;
-            int hue=audonic?CREATIVE_HUES[((a/17)+(b/23))%CREATIVE_HUES.length]
+            int hue=audonic?materialCreativeHues[((a/17)+(b/23))%materialCreativeHues.length]
                 :NEON[((a/17)+(b/23))%NEON.length];
             float region=(modelY[a]+modelY[b])*.5f;
             float channelLight=region>.18f?bassFlash:
@@ -273,7 +302,7 @@ final class ApexSpatialBrainView extends View {
             boolean front=depth[i]>=0;
             if(front!=(pass==1))continue;
             boolean hub=(i%17==0||degrees[i]>=9);
-            int hue=audonic?CREATIVE_HUES[i%6]
+            int hue=audonic?materialCreativeHues[i%6]
                 :hub?secondary:NEON[(i*7+i/11)%NEON.length];
             float region=modelY[i];
             float signal=region>.18f?bassFlash:region<-.24f?neuralFlash:kickFlash;
@@ -387,44 +416,101 @@ final class ApexSpatialBrainView extends View {
                 *Math.min(1f,Math.max(.016f,dt)*(target>creativeLevel[i]?11f:6f));
         }
     }
+    /**
+     * Material 3 Expressive scan: six tonal telemetry tiles plus measured arcs.
+     * The cards remain informational; no fabricated meters or touch controls.
+     */
     private void drawCreative(Canvas canvas,float cx,float cy,float scale){
-        creativeOrbit.set(cx-scale*1.3f,cy-scale*.97f,
-            cx+scale*1.3f,cy+scale*.97f);
+        creativeOrbit.set(cx-scale*1.10f,cy-scale*.83f,
+            cx+scale*1.10f,cy+scale*.83f);
         for(int i=0;i<6;i++){
             float intensity=clamp(creativeLevel[i],0,1);
-            int hue=CREATIVE_HUES[i];
-            ink(hue,30,Paint.Style.STROKE,2.5f);
-            canvas.drawArc(creativeOrbit,-90+i*60,49,false,paint);
+            int hue=materialCreativeHues[i];
+            ink(outlineVariant,106,Paint.Style.STROKE,dp(2.5f));
+            canvas.drawArc(creativeOrbit,-90+i*60,52,false,paint);
             if(intensity>.001f){
-                ink(hue,100+Math.round(intensity*150),Paint.Style.STROKE,
-                    2.5f+intensity*2.3f);
-                canvas.drawArc(creativeOrbit,-90+i*60,49*intensity,false,paint);
+                ink(hue,120+Math.round(intensity*125),Paint.Style.STROKE,
+                    dp(2.5f+intensity*1.5f));
+                canvas.drawArc(creativeOrbit,-90+i*60,52*intensity,false,paint);
             }
-            float x=getWidth()*(i%2==0?.205f:.795f);
-            float y=getHeight()*(.18f+(i/2)*.27f);
-            int anchor=CREATIVE_ANCHORS[i];
-            if(intensity>.01f){
-                ink(hue,25+Math.round(intensity*140),Paint.Style.STROKE,
-                    .8f+intensity*1.5f);
-                canvas.drawLine(x,y,screenX[anchor],screenY[anchor],paint);
-                circle(canvas,x,y,6+intensity*10,hue,16+Math.round(intensity*72));
-            }
-            circle(canvas,x,y,3.5f+intensity*3.5f,hue,
-                105+Math.round(intensity*150));
-            paint.setTextAlign(Paint.Align.CENTER);
+            float x=stageBounds.left+dp(7)+i%3*
+                ((stageBounds.width()-dp(8))/3f);
+            float space=(getWidth()-dp(24)-dp(12))/3f;
+            x=dp(12)+(i%3)*(space+dp(6));
+            float y=stageBottom+dp(10)+(i/3)*dp(49);
+            tileBounds.set(x,y,x+space,y+dp(43));
+            int fill=androidx.core.graphics.ColorUtils.blendARGB(
+                surfaceHigh,primaryContainer,.16f+intensity*.30f);
+            ink(fill,255,Paint.Style.FILL,0);
+            canvas.drawRoundRect(tileBounds,dp(15),dp(15),paint);
+            ink(outlineVariant,115,Paint.Style.STROKE,dp(1));
+            canvas.drawRoundRect(tileBounds,dp(15),dp(15),paint);
+            circle(canvas,x+dp(11),y+dp(12),dp(3.5f),hue,180+Math.round(intensity*75));
             paint.setTypeface(HEADING_FACE);
-            paint.setTextSize(Math.max(10f,Math.min(12f,getHeight()*.032f)));
-            ink(hue,205,Paint.Style.FILL,0);
-            canvas.drawText(CREATIVE_NAMES[i],x,y+17,paint);
-            float half=Math.min(getWidth()*.085f,34f);
-            ink(hue,45,Paint.Style.STROKE,2f);
-            canvas.drawLine(x-half,y+24,x+half,y+24,paint);
+            paint.setTextAlign(Paint.Align.LEFT);
+            float maxTextWidth=space-dp(20);
+            float textSize=Math.min(sp(10f),Math.max(sp(8f),
+                maxTextWidth/Math.max(1f,CREATIVE_NAMES[i].length()*.64f)));
+            paint.setTextSize(textSize);
+            ink(onSurface,235,Paint.Style.FILL,0);
+            canvas.drawText(CREATIVE_NAMES[i],x+dp(19),y+dp(16),paint);
+            float trackLeft=x+dp(10),trackRight=x+space-dp(10);
+            tileProgress.set(trackLeft,y+dp(30),trackRight,y+dp(33));
+            ink(outlineVariant,180,Paint.Style.FILL,0);
+            canvas.drawRoundRect(tileProgress,dp(2),dp(2),paint);
             if(intensity>.001f){
-                ink(hue,200,Paint.Style.STROKE,2.5f);
-                canvas.drawLine(x-half,y+24,x-half+2*half*intensity,y+24,paint);
+                tileProgress.right=trackLeft+(trackRight-trackLeft)*intensity;
+                ink(hue,255,Paint.Style.FILL,0);
+                canvas.drawRoundRect(tileProgress,dp(2),dp(2),paint);
             }
         }
+    }
+    private void drawMaterialSurface(Canvas canvas,int w,int h){
+        viewBounds.set(dp(2),dp(2),w-dp(2),h-dp(2));
+        ink(surfaceLow,255,Paint.Style.FILL,0);
+        canvas.drawRoundRect(viewBounds,dp(28),dp(28),paint);
+        ink(outlineVariant,135,Paint.Style.STROKE,dp(1));
+        canvas.drawRoundRect(viewBounds,dp(28),dp(28),paint);
+        stageBottom=h-(audonic?dp(153):dp(79));
+        stageBounds.set(dp(12),dp(49),w-dp(12),stageBottom);
+        ink(surfaceHigh,255,Paint.Style.FILL,0);
+        canvas.drawRoundRect(stageBounds,dp(24),dp(24),paint);
+        ink(outlineVariant,90,Paint.Style.STROKE,dp(1));
+        canvas.drawRoundRect(stageBounds,dp(24),dp(24),paint);
+    }
+    private void drawMaterialHeader(Canvas canvas,boolean playing,boolean connected){
+        paint.setTypeface(HEADING_FACE);
+        paint.setTextSize(sp(12));
         paint.setTextAlign(Paint.Align.LEFT);
+        ink(onSurface,245,Paint.Style.FILL,0);
+        canvas.drawText(audonic?"CREATIVE BRAINSCAN":"NEURAL BRAINSCAN",
+            dp(19),dp(31),paint);
+        final String status=playing?"LIVE":connected?"WAITING":"OFFLINE";
+        final int stateColour=playing?accent:onSurfaceVariant;
+        final float right=getWidth()-dp(22);
+        paint.setTextSize(sp(10));
+        paint.setTextAlign(Paint.Align.RIGHT);
+        ink(stateColour,245,Paint.Style.FILL,0);
+        canvas.drawText(status,right,dp(30),paint);
+        circle(canvas,right-paint.measureText(status)-dp(11),
+            dp(26),dp(3),stateColour,255);
+        paint.setTextAlign(Paint.Align.LEFT);
+    }
+    private void drawMaterialFooter(Canvas canvas,boolean playing,
+            boolean connected,boolean external,float bass,float kick,
+            float spatial,float decision){
+        paint.setTextAlign(Paint.Align.LEFT);
+        paint.setTypeface(BODY_FACE);
+        paint.setTextSize(sp(11));
+        ink(onSurfaceVariant,240,Paint.Style.FILL,0);
+        final String status=audonic
+            ?(playing?"6 CREATIVE EFFECTS  ·  LIVE DSP POLICY":
+                connected?"WAITING FOR AUDONIC DECISIONS":"CONNECT CYN TO VIEW ACTIVITY")
+            :playing?"BASS "+Math.round(bass*100)+"%  ·  KICK "+Math.round(kick*100)
+                 +"%  ·  "+(external?"SPECTRUM ":"SPATIAL ")+Math.round(spatial*100)+"%"
+             :external?"CYN NEURAL MIND  /  CONNECTED":
+               connected?"WAITING FOR AUDIO":"CONNECT CYN TO VIEW ACTIVITY";
+        canvas.drawText(status,dp(18),getHeight()-dp(17),paint);
     }
     @Override protected void onAttachedToWindow(){
         super.onAttachedToWindow();
@@ -512,16 +598,18 @@ final class ApexSpatialBrainView extends View {
             }
         }
         lastBass=bass;lastKick=kick;lastSpatial=spatial;lastMeasured=measured;
-        float cx=w*.5f,cy=h*.445f;
-        float scale=Math.min(w*.59f,h*.405f);
+        drawMaterialSurface(canvas,w,h);
+        float cx=w*.5f,cy=(stageBounds.top+stageBottom)*.5f;
+        float scale=Math.min((w-dp(42))*.57f,
+            (stageBottom-stageBounds.top)*.56f);
         project(cx,cy,scale);
-        // Background rings suggest a holographic diagnostic rather than a ball.
-        ink(accent,48+Math.round(level*86),Paint.Style.STROKE,1.15f);
-        canvas.drawOval(cx-scale*1.34f,cy-scale*1.13f,
-            cx+scale*1.34f,cy+scale*1.13f,paint);
-        ink(secondary,30+Math.round(level*82),Paint.Style.STROKE,.9f);
-        canvas.drawOval(cx-scale*1.16f,cy-scale*.91f,
-            cx+scale*1.16f,cy+scale*.91f,paint);
+        // Delicate tonal orbit; its opacity only follows observed signal.
+        ink(outlineVariant,52+Math.round(level*75),Paint.Style.STROKE,dp(1.1f));
+        canvas.drawOval(cx-scale*1.25f,cy-scale*1.06f,
+            cx+scale*1.25f,cy+scale*1.06f,paint);
+        ink(accent,32+Math.round(level*65),Paint.Style.STROKE,dp(1));
+        canvas.drawOval(cx-scale*1.07f,cy-scale*.88f,
+            cx+scale*1.07f,cy+scale*.88f,paint);
 
         drawGraph(canvas,scale,level,0);
         drawGraph(canvas,scale,level,1);
@@ -530,34 +618,8 @@ final class ApexSpatialBrainView extends View {
         if(playing)drawWaves(canvas,level);
         if(audonic)drawCreative(canvas,cx,cy,scale);
 
-        paint.setTypeface(HEADING_FACE);
-        paint.setTextSize(Math.max(12,h*.050f));
-        ink(accent,245,Paint.Style.FILL,0);
-        canvas.drawText(audonic
-                ?(playing?"AUDONIC MIND  /  LIVE":
-                  connected?"AUDONIC MIND  /  WAITING FOR AI":
-                  "AUDONIC MIND  /  DISCONNECTED")
-                :external?"CYN NEURAL MIND  /  CONNECTED":
-                  playing?"APEX 10M MIND  /  LIVE":
-                  connected?"CYN MIND  /  WAITING FOR AUDIO":
-                  "CYN MIND  /  DISCONNECTED",
-            16,h-44,paint);
-        paint.setTypeface(BODY_FACE);
-        paint.setTextSize(Math.max(10,h*.035f));
-        ink(secondary,220,Paint.Style.FILL,0);
-        canvas.drawText(audonic
-            ?(playing?"6 CREATIVE EFFECTS  /  LIVE DSP POLICY":
-              connected?"LISTENING FOR AUDONIC DECISIONS":"CONNECT CYN TO VIEW ACTIVITY")
-            :playing?"BASS "+Math.round(bass*100)+"%    KICK "+Math.round(kick*100)
-                +"%    "+(external?"SPECTRUM ":"SPATIAL ")+Math.round(spatial*100)+"%"
-            :connected?"MONITORING CONNECTED AUDIO":"CONNECT CYN TO VIEW ACTIVITY",
-            16,h-24,paint);
-        if(playing){
-            canvas.drawText(audonic
-                ?"BASS "+Math.round(bass*100)+"%   ATTACK "+Math.round(kick*100)+"%   REAL SIGNAL PATHS"
-                :(external?"PERSONAL AI ":"APEX AI ")+Math.round(decision*100)+
-                    "%    LIVE SIGNAL PATHS",16,h-8,paint);
-        }
+        drawMaterialHeader(canvas,playing,connected);
+        drawMaterialFooter(canvas,playing,connected,external,bass,kick,spatial,decision);
         if(!reduced&&isAttachedToWindow()&&isShown()){
             // This is the missing continuous frame loop. Previously no redraw
             // was scheduled at all when paused, so rotation appeared frozen.
