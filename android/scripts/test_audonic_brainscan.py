@@ -11,8 +11,8 @@ brain=(src/"ApexSpatialBrainView.java").read_text(encoding="utf-8")
 ai=(src/"DesktopAi.java").read_text(encoding="utf-8")
 gradle=(root/"app/build.gradle").read_text(encoding="utf-8")
 
-code=re.search(r"^\\s*versionCode\\s+(\\d+)\\s*$",gradle,re.MULTILINE)
-name=re.search(r"^\\s*versionName\\s+'(0\\.2\\.\\d+-preview)'\\s*$",gradle,re.MULTILINE)
+code=re.search(r"^\s*versionCode\s+(\d+)\s*$",gradle,re.MULTILINE)
+name=re.search(r"^\s*versionName\s+'(0\.2\.\d+-preview)'\s*$",gradle,re.MULTILINE)
 assert code is not None and name is not None, "Android preview version metadata missing"
 assert int(code.group(1))>=30, "AUDONIC BrainScan needs 0.2.26 or newer app identity"
 assert "||audonicMind||service.monitor" in main, "AUDONIC scan hidden in Library mode"
