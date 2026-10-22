@@ -83,6 +83,7 @@ $script:phase='checking'
 $script:statusLast=''
 $script:installRequested=$false
 $script:installerPath=''
+$script:installLogPath=''
 $script:newVersion=''
 $script:installProcess=$null
 $script:exitRequestedAt=[datetime]::MinValue
@@ -98,7 +99,15 @@ function Show-Error([string]$message) {
     Update-Label 'Update interrupted' $message
     $actionButton.Content='Close'
     $actionButton.IsEnabled=$true
-    $laterButton.Visibility='Collapsed'
+    $progressText.Text='Installation stopped'
+    $percentText.Text=''
+    $downloadProgress.Value=0
+    if ($script:installLogPath -and (Test-Path -LiteralPath $script:installLogPath)) {
+        $laterButton.Content='View install log'
+        $laterButton.Visibility='Visible'
+    } else {
+        $laterButton.Visibility='Collapsed'
+    }
 }
 function Show-Ready([string]$version,[string]$path) {
     $script:phase='ready'
@@ -167,6 +176,16 @@ $actionButton.Add_Click({
     $window.Close()
 })
 $laterButton.Add_Click({
+    if ($script:phase -eq 'error' -and $script:installLogPath -and
+        (Test-Path -LiteralPath $script:installLogPath)) {
+        try {
+            $notepad=Join-Path $env:SystemRoot 'System32\notepad.exe'
+            Start-Process -FilePath $notepad -ArgumentList ('"'+$script:installLogPath+'"') | Out-Null
+        } catch {
+            Update-Label 'Update interrupted' ('Cannot open install log: '+$_.Exception.Message)
+        }
+        return
+    }
     Defer-CurrentUpdate
     $script:allowedToClose=$true
     $window.Close()
@@ -188,10 +207,18 @@ $clock.Add_Tick({
             try { $_.Path -ieq (Join-Path $PSScriptRoot 'Cyn.exe') } catch { $false }
         })
         if ($running.Count -eq 0) {
+            if (@(Get-Process -Name FxSound -ErrorAction SilentlyContinue).Count -gt 0) {
+                Show-Error 'FxSound is still running. Quit it from the system tray, then retry installation.'
+                return
+            }
             try {
-                $script:installProcess=Start-Process -FilePath $script:installerPath -Verb RunAs -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART' -PassThru
+                $script:installLogPath=Join-Path $cache ("Cyn-Setup-"+$script:newVersion+"-install.log")
+                # The old /SUPPRESSMSGBOXES automatically chose Abort at recoverable
+                # Inno Setup errors. Show progress and allow a human Retry/Cancel.
+                $arguments=@('/SILENT','/NORESTART',('/LOG="'+$script:installLogPath+'"'))
+                $script:installProcess=Start-Process -FilePath $script:installerPath -Verb RunAs -ArgumentList $arguments -PassThru
                 $script:phase='installing'
-                Update-Label 'Installing Cyn' 'Windows is applying the verified update...'
+                Update-Label 'Installing Cyn' 'Follow the Windows installer if it needs your attention.'
                 $progressText.Text='Installation in progress'
                 $percentText.Text=''
             } catch {
@@ -205,7 +232,12 @@ $clock.Add_Tick({
     if ($script:phase -eq 'installing') {
         if ($script:installProcess -and $script:installProcess.HasExited) {
             if ($script:installProcess.ExitCode -ne 0) {
-                Show-Error ("Installer returned error "+$script:installProcess.ExitCode+". Your previous installation remains available.")
+                $code=[int]$script:installProcess.ExitCode
+                if ($code -eq 5) {
+                    Show-Error 'Setup was cancelled or aborted during installation. Open the install log to identify the cause.'
+                } else {
+                    Show-Error ("Installer failed with exit code "+$code+". Open the install log for details.")
+                }
                 return
             }
             $script:phase='complete'
