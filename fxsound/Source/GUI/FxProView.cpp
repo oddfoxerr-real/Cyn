@@ -19,7 +19,7 @@ FxProView::FxProView() : tool_tip_(this)
     for (auto* component : std::initializer_list<Component*> {
         &audio_controls_, &equalizer_, &visualizer_, &embedded_ai_hub_, &sound_nav_, &smart_nav_,
         &devices_nav_, &ai_hub_nav_, &studio_nav_, &ai_status_card_, &overview_tab_, &eq_focus_tab_, &effects_focus_tab_, &home_, &smart_rail_, &devices_rail_, &settings_,
-        &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &headroom_cap_, &preset_cycling_, &preset_cycling_status_, &learning_timeline_, &neural_activity_, &learning_effect_, &listening_mode_, &ai_profile_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
+        &refresh_, &smart_toggle_, &pin_toggle_, &live_status_, &smart_status_, &settings_rail_, &sensitivity_, &headroom_cap_, &preset_cycling_, &preset_cycling_status_, &learning_timeline_, &neural_activity_, &brain_scan_, &scan_toggle_, &audonic_intensity_label_, &audonic_intensity_, &learning_effect_, &listening_mode_, &ai_profile_, &more_, &less_, &train_, &starter_, &resume_, &learning_status_, &export_ai_, &import_ai_, &browse_ai_ })
         addAndMakeVisible(component);
     for(auto* c:std::initializer_list<Component*> {&misc_nav_,&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,&dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,&dj_progress_}) addAndMakeVisible(c);
     misc_nav_.onClick=[this]{selectPage(4);};
@@ -83,7 +83,25 @@ FxProView::FxProView() : tool_tip_(this)
     listening_mode_.addItemList({"Music AI", "Movie & TV AI"},1);
     listening_mode_.setSelectedId(1,dontSendNotification);
     listening_mode_.setTooltip("Music and movies have separate neural models and learning history. Movie AI uses conservative dialogue-focused sound shaping until trained.");
-    ai_profile_.setTooltip("Select the actual neural model. Each listening mode can use a different AI; previous model training is backed up.");
+    ai_profile_.setTooltip("Select the actual neural model or experimental AUDONIC Studio creative policy. Music and movie AI remain separate.");
+    scan_toggle_.onClick=[this] {
+        showNeuralGraph_=!showNeuralGraph_;
+        scan_toggle_.setButtonText(showNeuralGraph_?"3D BrainScan":"Neural graph");
+        selectPage(page_);
+    };
+    scan_toggle_.setTooltip("Switch between the measured 11/12/5 neural graph and the rotating 3D BrainScan.");
+    audonic_intensity_label_.setText("AUDONIC",dontSendNotification);
+    audonic_intensity_label_.setFont(11.0f);
+    audonic_intensity_label_.setColour(Label::textColourId,Colour(FXCOLOR(HintText)).withAlpha(1.0f));
+    audonic_intensity_.setName("AUDONIC creative intensity");
+    audonic_intensity_.setRange(0,100,1);
+    audonic_intensity_.setTextValueSuffix("%");
+    audonic_intensity_.setTextBoxStyle(Slider::TextBoxRight,false,59,25);
+    audonic_intensity_.setTooltip("Adjust actual native AUDONIC creative DSP intensity without changing your trained preferences.");
+    audonic_intensity_.setValue(FxController::getInstance().getAudonicIntensity(),dontSendNotification);
+    audonic_intensity_.onValueChange=[this] {
+        FxController::getInstance().setAudonicIntensity((float)audonic_intensity_.getValue());
+    };
     ai_profile_.onChange=[this] {
         auto& controller=FxController::getInstance();
         const int index=ai_profile_.getSelectedId()-1;
@@ -318,11 +336,16 @@ void FxProView::selectPage(int page)
     refresh_.setVisible(page == 2);
     sensitivity_.setVisible(page == 1);
     headroom_cap_.setVisible(page == 1);
-    preset_cycling_.setVisible(page == 1);
-    preset_cycling_status_.setVisible(page == 1);
-    const bool neuralCore=FxTheme::getThemeMode()==FxThemeMode::NeuralCore;
-    neural_activity_.setVisible(page==1);
-    neural_activity_.setAnimationEnabled(page==1);
+    const bool audonicMode=FxController::getInstance().getActiveAIProfileId()=="audonic";
+    preset_cycling_.setVisible(page == 1 && !audonicMode);
+    preset_cycling_status_.setVisible(page == 1 && !audonicMode);
+    audonic_intensity_label_.setVisible(page==1 && audonicMode);
+    audonic_intensity_.setVisible(page==1 && audonicMode);
+    neural_activity_.setVisible(page==1 && showNeuralGraph_);
+    neural_activity_.setAnimationEnabled(page==1 && showNeuralGraph_);
+    brain_scan_.setVisible(page==1 && !showNeuralGraph_);
+    brain_scan_.setAnimationEnabled(page==1 && !showNeuralGraph_);
+    scan_toggle_.setVisible(page==1);
     resized();
     if (page_ == 1)
     {
@@ -407,10 +430,15 @@ void FxProView::timerCallback()
     // A separate 100ms UI telemetry sample keeps audio-responsive glow smooth
     // without forcing the other status controls to refresh at 10Hz.
     const bool neuralCore=FxTheme::getThemeMode()==FxThemeMode::NeuralCore;
-    const bool wantGraph=page_==1;
+    const bool wantGraph=page_==1 && showNeuralGraph_;
+    const bool wantScan=page_==1 && !showNeuralGraph_;
     if(neural_activity_.isVisible()!=wantGraph) {
         neural_activity_.setVisible(wantGraph);
         neural_activity_.setAnimationEnabled(wantGraph);
+    }
+    if(brain_scan_.isVisible()!=wantScan) {
+        brain_scan_.setVisible(wantScan);
+        brain_scan_.setAnimationEnabled(wantScan);
     }
     // All themes sample the existing personal audio telemetry, never a new
     // recorder or a DSP-thread callback. YAMNet is requested only by Neural Core.
@@ -424,10 +452,17 @@ void FxProView::timerCallback()
             : 0.0f;
         theme_audio_level_+=(level-theme_audio_level_)*
             (FxTheme::isReducedMotion()?1.0f:0.33f);
-        if(wantGraph) {
+        if(page_==1) {
             neural_activity_.setTrainingActive(brainController.isSmartTraining());
             neural_activity_.setActivity(hasAudio?&snapshot:nullptr,
                                          brainController.getSmartTrainingProgress());
+            CynAudonicStudio::Controls creative {};
+            const bool audonic=brainController.getActiveAIProfileId()=="audonic";
+            const bool creativeLive=audonic && brainController.getLiveAudonicControls(creative);
+            const bool liveSignal=brainController.isSmartListening() && hasAudio &&
+                                  (!audonic || creativeLive);
+            brain_scan_.setActivity(liveSignal?&snapshot:nullptr,
+                                    creativeLive?&creative:nullptr,audonic);
         }
         if(neuralCore) {
             CynAudioScene scene;
@@ -497,6 +532,13 @@ void FxProView::timerCallback()
         sensitivity_.setValue(controller.getSmartSensitivity(), dontSendNotification);
     const bool cyclingAllowed=controller.getSmartListeningMode()==0;
     preset_cycling_.setEnabled(cyclingAllowed);
+    const bool audonicSelected=controller.getActiveAIProfileId()=="audonic";
+    preset_cycling_.setVisible(page_==1&&!audonicSelected);
+    preset_cycling_status_.setVisible(page_==1&&!audonicSelected);
+    audonic_intensity_label_.setVisible(page_==1&&audonicSelected);
+    audonic_intensity_.setVisible(page_==1&&audonicSelected);
+    if(!audonic_intensity_.isMouseButtonDown())
+        audonic_intensity_.setValue(controller.getAudonicIntensity(),dontSendNotification);
     preset_cycling_.setToggleState(controller.isSmartPresetCycling(),dontSendNotification);
     preset_cycling_status_.setText(
         controller.isSmartPresetCycling() && cyclingAllowed
@@ -575,6 +617,10 @@ void FxProView::resized()
     // Smart Listening gets a wide live training timeline and its own neural
     // inspector, while preserving all AI mode, training and export controls.
     neural_activity_.setBounds(1008,288,271,164);
+    brain_scan_.setBounds(1008,288,271,164);
+    scan_toggle_.setBounds(1161,258,124,26);
+    scan_toggle_.setColour(TextButton::buttonColourId,Colour(FXCOLOR(PanelBackground)));
+    scan_toggle_.setColour(TextButton::textColourOffId,Colour(FXCOLOR(SliderTrack)));
     learning_timeline_.setBounds(left+13,288,722,164);
     listening_mode_.setBounds(left+22,510,216,32);
     ai_profile_.setBounds(left+253,510,397,32);
@@ -586,6 +632,8 @@ void FxProView::resized()
     sensitivity_.setBounds(left+150,603,265,24);
     headroom_cap_.setBounds(left+542,603,259,24);
     preset_cycling_.setBounds(left+20,629,208,24);
+    audonic_intensity_label_.setBounds(left+20,629,116,24);
+    audonic_intensity_.setBounds(left+140,629,316,24);
     preset_cycling_status_.setBounds(left+234,629,210,24);
     learning_status_.setBounds(left+20,657,393,27);
     export_ai_.setBounds(left+456,657,92,27);
@@ -798,7 +846,7 @@ void FxProView::paint(Graphics& g)
         card(996,253,304,210);
         card(247,472,1053,216);
         txt("LEARNING TIMELINE",265,258,490,23,14,false,true);
-        txt("LIVE NEURAL ACTIVITY",1011,258,274,23,14,false,true);
+        txt("BRAINSCAN  /  LIVE SIGNAL",1011,258,163,23,11.3f,false,true);
         txt("LISTENING CONTROLS",264,476,470,22,14,false,true);
         txt("SENSITIVITY",265,603,128,20,11.5f,true,true);
         txt("HEADROOM CAP",663,603,150,20,11.5f,true,true);
@@ -887,6 +935,13 @@ void FxProView::refreshAIProfileChoices()
     }
     const auto selected=FxController::getInstance().getActiveAIProfileId();
     neural_activity_.setProfileId(selected);
+    if(page_==1) {
+        const bool audonic=selected=="audonic";
+        preset_cycling_.setVisible(!audonic);
+        preset_cycling_status_.setVisible(!audonic);
+        audonic_intensity_.setVisible(audonic);
+        audonic_intensity_label_.setVisible(audonic);
+    }
     const int index=ai_profile_ids_.indexOf(selected);
     if(index>=0) ai_profile_.setSelectedId(index+1,dontSendNotification);
 }
@@ -1181,7 +1236,9 @@ void FxProView::lookAndFeelChanged()
     }
     if(FxTheme::isReducedMotion()) startTimer(500); else startTimerHz(60);
     selectPage(page_);
-    neural_activity_.setAnimationEnabled(page_==1);
+    neural_activity_.setAnimationEnabled(page_==1 && showNeuralGraph_);
+    brain_scan_.setAnimationEnabled(page_==1 && !showNeuralGraph_);
+    audonic_intensity_label_.setColour(Label::textColourId,Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     learning_status_.setColour(Label::textColourId,Colour(FXCOLOR(HintText)).withAlpha(1.0f));
     repaint();
 }
