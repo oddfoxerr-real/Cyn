@@ -9,8 +9,8 @@ android {
         minSdk 28
         targetSdk 35
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
-        versionCode 30
-        versionName '0.2.26-preview'
+        versionCode 31
+        versionName '0.2.27-preview'
         ndk { abiFilters 'arm64-v8a', 'x86_64' }
         externalNativeBuild { cmake { cppFlags '-std=c++17 -O2' } }
     }

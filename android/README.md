@@ -1,14 +1,14 @@
-# CYN Studio Android 0.2.11 preview
+# CYN Studio Android 0.2.27 preview
 
 Android 9+ on 64-bit ARM or x86. The app is named **CYN Studio**, package
-`io.github.oddfoxerr.cyn.studio`, version code 15. It installs alongside the older
+`io.github.oddfoxerr.cyn.studio`, version code 31. This release adds Material 3 Expressive controls while preserving AUDONIC BrainScan and existing audio processing. Previous 0.2.26 installs update in place with the same signing key. It installs alongside the older
 Cyn app because that app's original signing key could not be recovered. Keep the
 old app to preserve its settings and learning; Studio starts with separate data.
 Disable the old app's audio monitoring before enabling Studio to avoid competing
 effects. Future Studio releases retain this identity and signing key.
 
-Download `Cyn-Studio-Android-0.2.11-preview.apk` from the
-[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.11-preview),
+Download `Cyn-Studio-Android-0.2.27-preview.apk` from the
+[Studio release](https://github.com/oddfoxerr-real/Cyn/releases/tag/android-studio-v0.2.27-preview),
 open it on your phone and confirm installation. Do not uninstall the old Cyn to
 install Studio.
 

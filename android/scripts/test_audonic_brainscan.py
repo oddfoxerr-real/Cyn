@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """AUDONIC BrainScan release gate: measured policy channels and mode isolation."""
 from pathlib import Path
+import re
 
 root=Path(__file__).resolve().parents[1]
 src=root/"app/src/main/java/io/github/oddfoxerr/cyn"
@@ -10,7 +11,10 @@ brain=(src/"ApexSpatialBrainView.java").read_text(encoding="utf-8")
 ai=(src/"DesktopAi.java").read_text(encoding="utf-8")
 gradle=(root/"app/build.gradle").read_text(encoding="utf-8")
 
-assert "versionCode 30" in gradle and "0.2.26-preview" in gradle
+code=re.search(r"^\s*versionCode\s+(\d+)\s*$",gradle,re.MULTILINE)
+name=re.search(r"^\s*versionName\s+'(0\.2\.\d+-preview)'\s*$",gradle,re.MULTILINE)
+assert code is not None and name is not None, "Android preview version metadata missing"
+assert int(code.group(1))>=30, "AUDONIC BrainScan needs 0.2.26 or newer app identity"
 assert "||audonicMind||service.monitor" in main, "AUDONIC scan hidden in Library mode"
 assert "Creative BrainScan" in main
 assert "new ApexSpatialBrainView" in main

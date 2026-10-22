@@ -87,12 +87,13 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     void gap(LinearLayout l,int height){l.addView(new View(this),new LinearLayout.LayoutParams(1,dp(height)));}
     TextView button(String title,Runnable action){
         com.google.android.material.button.MaterialButton b=new com.google.android.material.button.MaterialButton(this);
-        b.setText(title);b.setTextSize(13);b.setTextColor(text);b.setAllCaps(false);
-        b.setTypeface(null,Typeface.BOLD);b.setGravity(Gravity.CENTER);
-        b.setMinHeight(dp(52));b.setMinimumHeight(dp(52));b.setCornerRadius(dp(20));
+        b.setText(title);b.setTextSize(14);b.setTextColor(text);b.setAllCaps(false);
+        b.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));b.setLetterSpacing(.007f);b.setGravity(Gravity.CENTER);
+        b.setMinHeight(dp(56));b.setMinimumHeight(dp(56));b.setCornerRadius(dp(28));
+        b.setPadding(dp(12),dp(10),dp(12),dp(10));
         b.setInsetTop(0);b.setInsetBottom(0);
-        b.setBackgroundTintList(ColorStateList.valueOf(androidx.core.graphics.ColorUtils.blendARGB(card,accent,.07f)));
-        b.setStrokeWidth(dp(1));b.setStrokeColor(ColorStateList.valueOf(outline));
+        b.setBackgroundTintList(ColorStateList.valueOf(com.google.android.material.color.MaterialColors.getColor(this,com.google.android.material.R.attr.colorSecondaryContainer,card)));
+        b.setStrokeWidth(0);b.setStrokeColor(ColorStateList.valueOf(outline));
         b.setRippleColor(ColorStateList.valueOf(androidx.core.graphics.ColorUtils.setAlphaComponent(accent,48)));
         b.setFocusable(true);
         final int motion=ui==null?0:ui.getInt("button_motion",0);
@@ -120,21 +121,66 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         if(view instanceof com.google.android.material.button.MaterialButton){
             com.google.android.material.button.MaterialButton b=(com.google.android.material.button.MaterialButton)view;
             b.setBackgroundTintList(ColorStateList.valueOf(accent));b.setTextColor(bg);
-            b.setStrokeWidth(0);b.setCornerRadius(dp(23));
+            b.setStrokeWidth(0);b.setCornerRadius(dp(26));
         }
     }
     LinearLayout buttons(LinearLayout parent,String[] labels,Runnable[] actions){LinearLayout r=row();for(int i=0;i<labels.length;i++){TextView b=button(labels[i],actions[i]);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.setMargins(dp(3),0,dp(3),0);r.addView(b,lp);}add(parent,r);return r;}
+    // Connected single-choice controls retain native button focus and announce selection.
+    LinearLayout segments(LinearLayout parent,String[] labels,int selected,java.util.function.IntConsumer choose){
+        LinearLayout group=row();
+        for(int i=0;i<labels.length;i++){
+            final int index=i;
+            com.google.android.material.button.MaterialButton item=
+                (com.google.android.material.button.MaterialButton)button(labels[i],()->{
+                    for(int n=0;n<group.getChildCount();n++){
+                        com.google.android.material.button.MaterialButton child=
+                            (com.google.android.material.button.MaterialButton)group.getChildAt(n);
+                        segmentState(child,n==index);
+                    }
+                    choose.accept(index);
+                });
+            item.setShapeAppearanceModel(item.getShapeAppearanceModel().toBuilder()
+                .setTopLeftCornerSize(dp(i==0?26:6)).setBottomLeftCornerSize(dp(i==0?26:6))
+                .setTopRightCornerSize(dp(i==labels.length-1?26:6))
+                .setBottomRightCornerSize(dp(i==labels.length-1?26:6)).build());
+            segmentState(item,i==selected);
+            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);
+            lp.setMargins(i==0?0:dp(2),0,i==labels.length-1?0:dp(2),0);
+            group.addView(item,lp);
+        }
+        add(parent,group);return group;
+    }
+    void segmentState(com.google.android.material.button.MaterialButton item,boolean selected){
+        item.setCheckable(true);
+        item.setChecked(selected);
+        item.setSelected(selected);
+        item.setBackgroundTintList(ColorStateList.valueOf(selected?accent:
+            androidx.core.graphics.ColorUtils.blendARGB(card,accent,.09f)));
+        item.setTextColor(selected?bg:text);
+        androidx.core.view.ViewCompat.setStateDescription(item,selected?"Selected":"Not selected");
+    }
+    void transportStyle(LinearLayout transport){
+        for(int i=0;i<transport.getChildCount();i++){
+            com.google.android.material.button.MaterialButton item=
+                (com.google.android.material.button.MaterialButton)transport.getChildAt(i);
+            item.setMinHeight(dp(i==1?84:72));item.setMinimumHeight(dp(i==1?84:72));
+            item.setCornerRadius(dp(i==1?32:24));item.setTextSize(i==1?18:13);
+            LinearLayout.LayoutParams lp=(LinearLayout.LayoutParams)item.getLayoutParams();
+            lp.weight=i==1?1.35f:1f;item.setLayoutParams(lp);
+            if(i==1){primaryAction(item);item.setCornerRadius(dp(32));}
+        }
+    }
     void animateRows(LinearLayout l){if(reduced)return;for(int i=0;i<l.getChildCount();i++){View v=l.getChildAt(i);v.setAlpha(0);v.setTranslationY(dp(8));v.animate().alpha(1).translationY(0).setDuration(220).setStartDelay(Math.min(i,5)*25L).start();}}
     LinearLayout section(String title,String description){
         com.google.android.material.card.MaterialCardView surface=new com.google.android.material.card.MaterialCardView(this);
         surface.setCardBackgroundColor(card);surface.setRadius(dp(28));surface.setCardElevation(0);
-        surface.setStrokeWidth(dp(1));surface.setStrokeColor(outline);surface.setUseCompatPadding(false);
+        surface.setStrokeWidth(0);surface.setUseCompatPadding(false);
         surface.setClipToOutline(true);
         LinearLayout c=column();c.setPadding(dp(20),dp(18),dp(20),dp(20));
         surface.addView(c,new android.widget.FrameLayout.LayoutParams(-1,-2));
         LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,dp(9),0,dp(9));
         content.addView(surface,lp);
-        TextView h=label(title,19,text);h.setTypeface(null,Typeface.BOLD);add(c,h);
+        TextView h=label(title,20,text);h.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));h.setAccessibilityHeading(true);add(c,h);
         if(!description.isEmpty())add(c,label(description,13,hint));gap(c,10);return c;
     }
     void build(){build(false);}
@@ -191,7 +237,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         nav.setItemActiveIndicatorColor(ColorStateList.valueOf(
             androidx.core.graphics.ColorUtils.blendARGB(card,accent,.2f)));
         if(nav.getSelectedItemId()!=page)nav.setSelectedItemId(page);
-        mini.removeAllViews();LinearLayout m=row();LinearLayout info=column();miniTitle=label("Your library is ready",13,text);miniTitle.setSingleLine();miniTitle.setEllipsize(TextUtils.TruncateAt.END);miniState=label("Choose a track to listen",11,hint);add(info,miniTitle);add(info,miniState);m.addView(info,new LinearLayout.LayoutParams(0,-2,1));TextView toggle=button("▶",()->{ExternalNowPlaying.Track external=ExternalNowPlaying.current(this);if(external!=null&&!service.playing){ExternalNowPlaying.toggle(external);return;}if(service==null)return;if(service.player==null){if(ExternalNowPlaying.instance==null){startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));}else{page=2;build(true);}return;}if(service.playing)service.pause();else startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.TOGGLE));});miniToggle=toggle;toggle.setContentDescription("Play current track");m.addView(toggle,new LinearLayout.LayoutParams(dp(68),-2));add(mini,m);info.setOnClickListener(v->{ExternalNowPlaying.Track external=ExternalNowPlaying.current(this);if(external!=null&&!service.playing){try{startActivity(getPackageManager().getLaunchIntentForPackage(external.controller.getPackageName()));}catch(RuntimeException ignored){}return;}if(service.player==null&&ExternalNowPlaying.instance==null){startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));return;}page=2;build(true);});update();
+        mini.removeAllViews();LinearLayout m=row();LinearLayout info=column();miniTitle=label(service==null?"Connecting to CYN…":"Your library is ready",13,text);miniTitle.setSingleLine();miniTitle.setEllipsize(TextUtils.TruncateAt.END);miniState=label(service==null?"Audio service initializing":"Choose a track to listen",11,hint);add(info,miniTitle);add(info,miniState);m.addView(info,new LinearLayout.LayoutParams(0,-2,1));TextView toggle=button("▶",()->{ExternalNowPlaying.Track external=ExternalNowPlaying.current(this);if(service==null)return;if(external!=null&&!service.playing){ExternalNowPlaying.toggle(external);return;}if(service==null)return;if(service.player==null){if(ExternalNowPlaying.instance==null){startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));}else{page=2;build(true);}return;}if(service.playing)service.pause();else startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.TOGGLE));});miniToggle=toggle;toggle.setEnabled(service!=null);toggle.setAlpha(service==null?.45f:1f);toggle.setContentDescription(service==null?"Playback unavailable while connecting":"Play current track");m.addView(toggle,new LinearLayout.LayoutParams(dp(68),-2));add(mini,m);info.setOnClickListener(v->{ExternalNowPlaying.Track external=ExternalNowPlaying.current(this);if(service==null)return;if(external!=null&&!service.playing){try{startActivity(getPackageManager().getLaunchIntentForPackage(external.controller.getPackageName()));}catch(RuntimeException ignored){}return;}if(service.player==null&&ExternalNowPlaying.instance==null){startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));return;}page=2;build(true);});update();
     }
     void toggle(LinearLayout parent,String title,boolean checked,java.util.function.Consumer<Boolean> change){
         com.google.android.material.materialswitch.MaterialSwitch s=new com.google.android.material.materialswitch.MaterialSwitch(this);
@@ -313,7 +359,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         toggle(hero,"CYN enhancement",service.enabled,on->{service.enabled=on;service.changed();});
         LinearLayout c=section("Sound controls","For library playback and compatible music sessions.");smartSlider(c,"Bass",-1,"Bass",service.bass,0,12," dB",v->{service.bass=v;service.changed();});smartSlider(c,"Vocal clarity",-1,"Vocal clarity",service.clarity,0,8," dB",v->{service.clarity=v;service.changed();});
         category(c,"Space & dynamics · live AI sliders",body->{smartSlider(body,"Stereo width",-1,"Stereo width",service.width,0,100,"%",v->{service.width=v;service.changed();});smartSlider(body,"Ambience",-1,"Ambience",service.ambience*100,0,100,"%",v->{service.ambience=v/100;service.changed();});smartSlider(body,"Dynamics",-1,"Dynamics",service.dynamics*100,0,100,"%",v->{service.dynamics=v/100;service.changed();});smartSlider(body,"Output headroom",-1,"Output headroom",service.headroom,.3f,6," dB",v->{service.headroom=v;service.changed();});add(body,label("Ambience, dynamics and the full EQ process CYN library playback. Other apps use the effects their audio session supports.",12,hint));});
-        category(c,service.bandCount+"-band equalizer · live AI sliders",body->{buttons(body,new String[]{"31","35","39"},new Runnable[]{()->bands(31),()->bands(35),()->bands(39)});gap(body,8);for(int i=0;i<service.bandCount;i++){final int n=i;float hz=(float)(20*Math.pow(1000,i/(double)(service.bandCount-1)));smartSlider(body,"EQ",n,hz<1000?Math.round(hz)+" Hz":String.format(Locale.ROOT,"%.1f kHz",hz/1000),service.studioEq[i],-12,12," dB",v->{service.studioEq[n]=v;service.changed();});}add(body,button("Reset equalizer",()->{Arrays.fill(service.studioEq,0);service.changed();build();}));});
+        category(c,service.bandCount+"-band equalizer · live AI sliders",body->{segments(body,new String[]{"31","35","39"},service.bandCount==31?0:service.bandCount==35?1:2,index->bands(new int[]{31,35,39}[index]));gap(body,8);for(int i=0;i<service.bandCount;i++){final int n=i;float hz=(float)(20*Math.pow(1000,i/(double)(service.bandCount-1)));smartSlider(body,"EQ",n,hz<1000?Math.round(hz)+" Hz":String.format(Locale.ROOT,"%.1f kHz",hz/1000),service.studioEq[i],-12,12," dB",v->{service.studioEq[n]=v;service.changed();});}add(body,button("Reset equalizer",()->{Arrays.fill(service.studioEq,0);service.changed();build();}));});
         category(c,"Listening presets",body->{buttons(body,new String[]{"Balanced","Impact","Dialogue"},new Runnable[]{()->preset(2,1,.2f),()->preset(5,1,.45f),()->preset(1,3,.15f)});});
         LinearLayout external=section("Connect CYN","Enable real-time sound control for compatible music apps. Android determines which audio sessions accept enhancement.");
         externalStatus=label(service.connectionState()+"\n"+service.connectionHint(),12,hint);externalStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(external,externalStatus);
@@ -344,13 +390,13 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     }
     void files(){
         add(content,label("Optional audio library",29,text));add(content,label(service.library.all().size()+" local tracks · an extra way to enjoy CYN",13,hint));
-        LinearLayout player=section("NOW PLAYING","");playLabel=label(service.title,21,text);playLabel.setTypeface(null,Typeface.BOLD);add(player,playLabel);positionLabel=label("",12,hint);add(player,positionLabel);position=new SeekBar(this);position.setContentDescription("Track position");position.setMinimumHeight(dp(48));position.setProgressTintList(ColorStateList.valueOf(accent));position.setThumbTintList(ColorStateList.valueOf(accent));position.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int n,boolean user){}public void onStartTrackingTouch(SeekBar b){seeking=true;}public void onStopTrackingTouch(SeekBar b){seeking=false;service.seek(b.getProgress());}});add(player,position);
-        LinearLayout transport=buttons(player,new String[]{"Previous",service.playing?"Pause":"Play","Next"},new Runnable[]{()->service.previous(),()->{if(service.player==null)toast("Choose a track below");else if(service.playing)service.pause();else startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.TOGGLE));build();},()->service.next()});playButton=(TextView)transport.getChildAt(1);
-        toggle(player,"Shuffle",service.prefs.getBoolean("shuffle",false),service::shuffle);category(player,"Repeat",body->buttons(body,new String[]{"Off","All","One"},new Runnable[]{()->{service.repeat(0);toast("Repeat off");},()->{service.repeat(2);toast("Repeat all");},()->{service.repeat(1);toast("Repeat track");}}));liveStatus=label("",12,accent);add(player,liveStatus);
+        LinearLayout player=section("NOW PLAYING","");playLabel=label(service.title,21,text);playLabel.setTypeface(null,Typeface.BOLD);add(player,playLabel);positionLabel=label("",12,hint);add(player,positionLabel);position=new ExpressiveSeekBar(this,accent,outline,reduced);position.setContentDescription("Track position");position.setMinimumHeight(dp(48));position.setProgressTintList(ColorStateList.valueOf(accent));position.setThumbTintList(ColorStateList.valueOf(accent));position.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int n,boolean user){}public void onStartTrackingTouch(SeekBar b){seeking=true;}public void onStopTrackingTouch(SeekBar b){seeking=false;service.seek(b.getProgress());}});add(player,position);
+        LinearLayout transport=buttons(player,new String[]{"Previous",service.playing?"Pause":"Play","Next"},new Runnable[]{()->service.previous(),()->{if(service.player==null)toast("Choose a track below");else if(service.playing)service.pause();else startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.TOGGLE));build();},()->service.next()});playButton=(TextView)transport.getChildAt(1);transportStyle(transport);
+        toggle(player,"Shuffle",service.prefs.getBoolean("shuffle",false),service::shuffle);category(player,"Repeat",body->segments(body,new String[]{"Off","All","One"},service.prefs.getInt("repeat",0)==0?0:service.prefs.getInt("repeat",0)==2?1:2,index->service.repeat(new int[]{0,2,1}[index])));liveStatus=label("",12,accent);add(player,liveStatus);
         buttons(content,new String[]{"Add files","Scan phone"},new Runnable[]{this::pickTracks,this::scanPermission});gap(content,12);
         buildPublicMusic();
 
-        EditText search=new EditText(this);search.setSingleLine(true);search.setTextColor(text);search.setHintTextColor(hint);search.setHint("Search tracks, artists, albums");search.setContentDescription("Search audio library");search.setText(query);search.setMinHeight(dp(52));search.setPadding(dp(16),dp(8),dp(16),dp(8));search.setBackground(shape(card,16));add(content,search);
+        EditText search=new EditText(this);search.setSingleLine(true);search.setTextColor(text);search.setHintTextColor(hint);search.setHint("Search tracks, artists, albums");search.setContentDescription("Search audio library");search.setText(query);search.setMinHeight(dp(52));search.setPadding(dp(16),dp(8),dp(16),dp(8));search.setBackground(shape(card,28));add(content,search);
         toggle(content,"Favorites only",onlyFavorites,on->{onlyFavorites=on;visibleTracks=60;renderTracks();});
         libraryRows=column();add(content,libraryRows);search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){query=s.toString();visibleTracks=60;renderTracks();}public void afterTextChanged(Editable e){}});renderTracks();
     }
@@ -469,7 +515,12 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             option.setTextColor(text);option.setTextSize(14);option.setMinHeight(dp(54));
             option.setContentDescription(profileLabels[i]);
             option.setButtonTintList(ColorStateList.valueOf(accent));
-            aiChoices.addView(option,new android.widget.RadioGroup.LayoutParams(-1,-2));
+            option.setPadding(dp(12),dp(12),dp(16),dp(12));
+            boolean active=service.aiProfile.equals(profileIds[i]);
+            option.setBackground(shape(androidx.core.graphics.ColorUtils.blendARGB(card,accent,active?.20f:.04f),20));
+            android.widget.RadioGroup.LayoutParams optionLayout=new android.widget.RadioGroup.LayoutParams(-1,-2);
+            optionLayout.setMargins(0,dp(3),0,dp(3));
+            aiChoices.addView(option,optionLayout);
             if(service.aiProfile.equals(profileIds[i]))selectedViewId=viewId;
         }
         if(selectedViewId!=View.NO_ID)aiChoices.check(selectedViewId);
@@ -679,6 +730,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         if(miniTitle!=null){setLabel(miniTitle,externalShown?external.title:service.player==null?"Enable media access for Spotify, SoundCloud & more":service.title);setLabel(miniState,externalShown?external.app+" · "+(external.playing?"Playing":"Paused")+(external.artist.isEmpty()?"":" · "+external.artist):service.player==null?"Tap to allow media controls":service.playing?"Playing · "+time(service.position()):"Paused");}
         if(miniToggle!=null){setLabel(miniToggle,externalShown?(external.playing?"Ⅱ":"▶"):service.playing?"Ⅱ":"▶");miniToggle.setContentDescription(externalShown?(external.playing?"Pause "+external.app:"Play "+external.app):service.playing?"Pause current track":"Play current track");}
         if(playButton!=null)setLabel(playButton,service.playing?"Pause":"Play");
+        if(position instanceof ExpressiveSeekBar)((ExpressiveSeekBar)position).setPlaying(service.playing);
         if(connectionTitle!=null){setLabel(connectionTitle,!service.enabled?"Original sound":service.playing?"Your sound, live":service.monitor?service.connectionState():"Ready when you are");setLabel(connectionHint,service.playing?(service.smart?service.currentAi().status:"AI off · manual sound controls"):service.connectionHint());}
         if(externalStatus!=null)setLabel(externalStatus,service.connectionState()+"\n"+service.connectionHint()+"\n"+service.visualizationStatus());
         if(processingDetails!=null)setLabel(processingDetails,service.processingStatus()+"\n"+service.visualizationStatus());
