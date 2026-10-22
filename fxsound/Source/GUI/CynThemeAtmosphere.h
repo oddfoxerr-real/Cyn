@@ -61,7 +61,8 @@ public:
         if(mode!=FxThemeMode::DarkMesh &&
            mode!=FxThemeMode::AetherGlass && mode!=FxThemeMode::IonViolet &&
            mode!=FxThemeMode::LiquidTitanium && mode!=FxThemeMode::JadeCircuit &&
-           mode!=FxThemeMode::SolarInk && mode!=FxThemeMode::PolarMist)
+           mode!=FxThemeMode::SolarInk && mode!=FxThemeMode::PolarMist &&
+           mode!=FxThemeMode::Material3)
             halo(795+60*breathe,246,390,.16f+energy*.14f);
         switch(mode)
         {
@@ -388,6 +389,18 @@ public:
                 }
                 break;
             }
+            case FxThemeMode::Material3: {
+                // Calm Material 3 tonal surfaces and rounded accent geometry.
+                halo(830,265,340,.12f+energy*.08f);
+                for(int n=0;n<5;++n) {
+                    const float x=555.0f+n*86.0f;
+                    const float y=205.0f+24.0f*std::sin(t*.18f+n*.7f);
+                    g.setColour((n%2?soft:accent).withAlpha((.055f+energy*.025f)*strength));
+                    g.fillRoundedRectangle(x,y,65.0f,115.0f,29.0f);
+                    ring(x+32.5f,y+57.5f,25.0f,.18f,1.15f);
+                }
+                break;
+            }
             case FxThemeMode::PolarMist: {
                 // Wispy cyan haze and light condensation droplets.
                 for(int n=0;n<9;++n)
@@ -432,7 +445,7 @@ inline void paint(Graphics& g,FxThemeMode theme,float timeSeconds,float audioLev
         const bool nativeCyn=theme==FxThemeMode::AetherGlass ||
              theme==FxThemeMode::IonViolet || theme==FxThemeMode::LiquidTitanium ||
              theme==FxThemeMode::JadeCircuit || theme==FxThemeMode::SolarInk ||
-             theme==FxThemeMode::PolarMist;
+             theme==FxThemeMode::PolarMist || theme==FxThemeMode::Material3;
         const float mix=nativeCyn ? (preview?.11f:.025f) :
                         (preview?(light?.08f:.21f):(light?.027f:.073f));
         ColourGradient surface(background.interpolatedWith(accent,mix),bounds.getX(),bounds.getY(),
