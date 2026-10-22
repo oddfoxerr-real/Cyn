@@ -21,7 +21,7 @@ assert(ui.includes('version_button_.setBounds') && ui.includes('check_updates_bu
 assert(ui.includes('Installed: Cyn v'));
 assert(!ui.includes('Cyn identity-2 / DSP v'),"Ambiguous old version text returned");
 assert(controller.includes('const auto currentVersion=major+"."+minor+"."+patch'));
-const installedVersion = installer.match(/^AppVersion=(\\d+\\.\\d+\\.\\d+)\\s*$/m)?.[1];
+const installedVersion = installer.match(/^AppVersion=(\d+\.\d+\.\d+)\s*$/m)?.[1];
 assert(installedVersion, "Installer must declare a semantic Windows version");
 const nativeVersion = installedVersion + ".0";
 const [major,minor,patch] = installedVersion.split(".").map(Number);
