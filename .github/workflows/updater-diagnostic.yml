@@ -32,6 +32,9 @@ jobs:
               (Join-Path $PWD $path), [ref]$tokens, [ref]$errors)
             if ($errors.Count) { throw "PowerShell parse error in $path : $($errors[0].Message)" }
           }
+      - name: Verify recoverable installer handoff and diagnostics
+        shell: pwsh
+        run: node scripts/test_cyn_update_handoff.mjs
       - name: Probe updater matching logic
         shell: powershell
         run: .\scripts\diagnose_cyn_updater.ps1
