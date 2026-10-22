@@ -87,7 +87,11 @@ FxProView::FxProView() : tool_tip_(this)
     scan_toggle_.onClick=[this] {
         showNeuralGraph_=!showNeuralGraph_;
         scan_toggle_.setButtonText(showNeuralGraph_?"3D BrainScan":"Neural graph");
-        selectPage(page_);
+        neural_activity_.setVisible(page_==1&&showNeuralGraph_);
+        neural_activity_.setAnimationEnabled(page_==1&&showNeuralGraph_);
+        brain_scan_.setVisible(page_==1&&!showNeuralGraph_);
+        brain_scan_.setAnimationEnabled(page_==1&&!showNeuralGraph_);
+        repaint();
     };
     scan_toggle_.setTooltip("Switch between the measured 11/12/5 neural graph and the rotating 3D BrainScan.");
     audonic_intensity_label_.setText("AUDONIC",dontSendNotification);
