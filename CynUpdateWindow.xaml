@@ -104,7 +104,8 @@
                    HorizontalAlignment="Center"/>
         <TextBlock x:Name="StageDetail" Text="Connecting to the official Cyn GitHub releases…"
                    FontFamily="Segoe UI" FontSize="12" Foreground="#A4BCC3"
-                   HorizontalAlignment="Center" Margin="0,8,0,17"/>
+                   HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"
+                    MaxWidth="600" Margin="0,8,0,17"/>
         <Border Background="#293D43" Height="7" CornerRadius="4">
           <Grid ClipToBounds="True">
             <ProgressBar x:Name="DownloadProgress" Minimum="0" Maximum="100"
@@ -126,7 +127,7 @@
           </Grid.ColumnDefinitions>
           <TextBlock Text="Cyn updater  •  SHA-256 verification" Foreground="#738F99"
                      FontSize="10" VerticalAlignment="Center"/>
-          <Button x:Name="LaterButton" Grid.Column="1" Width="96" Height="32"
+          <Button x:Name="LaterButton" Grid.Column="1" Width="136" Height="32"
                   Content="Later" Visibility="Collapsed" Foreground="#E6F4F7"
                   Background="#283840" BorderBrush="#48616B" Margin="0,0,9,0"/>
           <Button x:Name="ActionButton" Grid.Column="2" Width="148" Height="32"
