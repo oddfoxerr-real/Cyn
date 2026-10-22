@@ -3006,7 +3006,8 @@ void FxController::setThemeMode(FxThemeMode mode)
         case FxThemeMode::LiquidTitanium:
         case FxThemeMode::JadeCircuit:
         case FxThemeMode::SolarInk:
-        case FxThemeMode::PolarMist: break;
+        case FxThemeMode::PolarMist:
+        case FxThemeMode::Material3: break;
         default: mode=FxThemeMode::DarkMesh; break;
     }
     settings_.setInt("theme_mode",(int)mode);
