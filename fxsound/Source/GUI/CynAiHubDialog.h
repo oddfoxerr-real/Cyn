@@ -174,7 +174,7 @@ private:
         {
             if(p->nativeAudonic)
             {
-                const auto& ctrl=FxController::getInstance();
+                auto& ctrl=FxController::getInstance();
                 const bool active=ctrl.getSmartListeningMode()==0 &&
                                   ctrl.getActiveAIProfileId()=="audonic";
                 description_.setText(
