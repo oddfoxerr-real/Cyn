@@ -21,14 +21,20 @@ assert(ui.includes('version_button_.setBounds') && ui.includes('check_updates_bu
 assert(ui.includes('Installed: Cyn v'));
 assert(!ui.includes('Cyn identity-2 / DSP v'),"Ambiguous old version text returned");
 assert(controller.includes('const auto currentVersion=major+"."+minor+"."+patch'));
-assert.equal((native.match(/JUCE_APP_VERSION=2\.0\.73\.0/g)||[]).length,4);
-assert.match(installer,/^AppVersion=2\.0\.73\s*$/m);
-assert.match(installer,/^VersionInfoVersion=2\.0\.73\.0\s*$/m);
-assert(winResource.includes("FILEVERSION  2,0,73,0") &&
-       (winResource.match(/2\.0\.73\.0/g) || []).length === 2 &&
-       juceHeader.includes('versionString  = "2.0.73.0"') &&
-       juceHeader.includes("versionNumber  = 0x2004900") &&
-       juceProject.includes('version="2.0.73.0"'),
+const installedVersion = installer.match(/^AppVersion=(\d+\.\d+\.\d+)\s*$/m)?.[1];
+assert(installedVersion, "Installer must declare a semantic Windows version");
+const nativeVersion = installedVersion + ".0";
+const [major,minor,patch] = installedVersion.split(".").map(Number);
+const nativeHex = "0x" + (major * 0x1000000 + minor * 0x10000 + patch * 0x100).toString(16);
+assert.equal(native.split("JUCE_APP_VERSION=" + nativeVersion).length - 1, 4);
+assert.equal(native.split("JUCE_APP_VERSION_HEX=" + nativeHex).length - 1, 4);
+assert.match(installer,/^AppVersion=\d+\.\d+\.\d+\s*$/m);
+assert(installer.includes("VersionInfoVersion=" + nativeVersion));
+assert(winResource.includes(`FILEVERSION  ${major},${minor},${patch},0`) &&
+       winResource.split(nativeVersion).length - 1 === 2 &&
+       juceHeader.includes('versionString  = "' + nativeVersion + '"') &&
+       juceHeader.includes("versionNumber  = " + nativeHex) &&
+       juceProject.includes('version="' + nativeVersion + '"'),
        "Windows executable resource, generated JUCE ProjectInfo and Projucer project must match installer");
 console.log("PASS: installed version UI, manual update, auto-update toggle and matching native version");
 
@@ -36,7 +42,7 @@ console.log("PASS: installed version UI, manual update, auto-update toggle and m
 const buildInstaller=file("BUILD_INSTALLER.ps1");
 const outputNameMatch=installer.match(/^OutputBaseFilename=([A-Za-z0-9._-]+)\s*$/m);
 assert(outputNameMatch, "Inno Setup manifest must declare an output filename");
-assert.equal(outputNameMatch[1], "Cyn-Setup-2.0.73-x64");
+assert.equal(outputNameMatch[1], "Cyn-Setup-" + installedVersion + "-x64");
 assert(buildInstaller.includes('^OutputBaseFilename=') && buildInstaller.includes('Groups[1].Value'),
   "Installer build must compute the actual executable name from Cyn.iss");
 assert(!/\$installer\s*=\s*Join-Path\s+\$PSScriptRoot\s+'dist\\Cyn-Setup-\d/.test(buildInstaller),

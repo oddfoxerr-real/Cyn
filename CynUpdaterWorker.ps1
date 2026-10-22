@@ -32,9 +32,22 @@ try {
     # GitHub Actions may use the ephemeral build token to avoid public API rate limits.
     # Regular Cyn users are never asked for or required to provide a token.
     if ($env:GH_TOKEN) { $headers['Authorization'] = 'Bearer ' + $env:GH_TOKEN }
-    # Do not wrap Invoke-RestMethod in @(...). In Windows PowerShell 5.1
-    # this creates a nested array and treats all releases as one object.
-    $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases?per_page=50" -Headers $headers -TimeoutSec 25
+    # Stable Windows releases use vX.Y.Z. Android/model prereleases must not
+    # crowd the update result out of a limited public GitHub API list.
+    $releases = $null
+    try {
+        $candidate = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/latest" -Headers $headers -TimeoutSec 25
+        if (!$candidate.draft -and $candidate.published_at -and $candidate.tag_name -like 'v*') {
+            $releases = @($candidate)
+        }
+    } catch {
+        # Older GitHub API deployments or failed latest lookups use the list fallback.
+    }
+    if ($null -eq $releases) {
+        # Do not wrap Invoke-RestMethod inside @(...): Windows PowerShell 5.1
+        # can produce a nested array rather than release objects.
+        $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases?per_page=100" -Headers $headers -TimeoutSec 25
+    }
     $available=@(
         foreach($release in $releases) {
             if ($release.draft -or !$release.published_at -or $release.tag_name -notmatch '^v\d+\.\d+\.\d+$') { continue }
