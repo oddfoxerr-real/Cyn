@@ -456,6 +456,18 @@ void FxController::applyConfig(const String& commandline)
     if (smart == "0" || smart == "1") setSmartListening(smart == "1");
     auto pinned = arg_list.getValueForOption("--pin_output");
     if (pinned == "0" || pinned == "1") setOutputPinned(pinned == "1");
+    // Native CYN accepts AI profile changes from the Riff Electron shell.
+    // Resolve against installed models and preserve the existing switch logic.
+    const auto requestedAI=arg_list.getValueForOption("--select_ai").unquoted();
+    if(requestedAI.isNotEmpty()) {
+        const auto profiles=getAvailableAIProfiles();
+        const auto valid=std::any_of(profiles.begin(),profiles.end(),
+            [&](const AIProfileOption& choice){return choice.id==requestedAI;});
+        if(valid) {
+            String selectionError;
+            selectAIProfile(requestedAI,selectionError);
+        }
+    }
 	auto power_state = arg_list.getValueForOption("--power");
 	auto view = arg_list.getValueForOption("--view");
 	auto output_device = arg_list.getValueForOption("--output").unquoted();
@@ -745,6 +757,17 @@ void FxController::printStatus()
         settings->setProperty("ai_dj",var(dj));
     }
     settings->setProperty("output_pinned", isOutputPinned());
+    // Explicitly expose real selected profile and available models.
+    // This is metadata only; model inference remains in the native engine.
+    settings->setProperty("active_ai_profile",getActiveAIProfileId());
+    Array<var> ai_profile_options;
+    for(const auto& choice:getAvailableAIProfiles()) {
+        auto* option=new DynamicObject();
+        option->setProperty("id",choice.id);
+        option->setProperty("name",choice.name);
+        ai_profile_options.add(var(option));
+    }
+    settings->setProperty("ai_profiles",ai_profile_options);
 
 	Array<var> built_in_presets, user_presets;
 	for (int i = 0; i < model.getPresetCount(); i++)
