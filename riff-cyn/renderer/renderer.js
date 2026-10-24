@@ -196,14 +196,14 @@ async function apply(action){
     await refresh();
   }
 }
-/* Riff's actual stacked navigation treatment:
- * rootscripts/riff app.js + styles.css (MIT).
- * Buttons carry stack-first/mid/last radii, and the shared animated
- * indicator inherits the active button's asymmetric shape on settle.
- * No constant 12px rounding: the first/middle/last shape must differ.
+/* Riff's first/middle/last dock geometry, isolated from animation.
+ * The previous approach set inline radius during transitions, but the
+ * actual Electron computed radius could still resolve to all-14px.
+ * Explicit indicator states now own the corner geometry through CSS,
+ * while movement uses the original Riff 260/340ms stretch/settle timings.
  */
 const stackClasses=["stack-only","stack-first","stack-mid","stack-last"];
-let navTimer=0,navReady=false;
+let navTimer=0,navReady=false,navSequence=0,navTargetTop=null;
 function refreshNavStack(){
   const nav=document.querySelector(".sidebar-nav");
   if(!nav)return;
@@ -217,11 +217,11 @@ function refreshNavStack(){
     for(const name of stackClasses)el.classList.toggle(name,name===desired);
   });
 }
-function navIndicatorRadius(active){
-  const r=getComputedStyle(active).borderRadius;
-  if(r&&parseFloat(r)>0)return r;
-  return getComputedStyle(document.documentElement)
-    .getPropertyValue("--stack-mid").trim()||"14px";
+function navShape(active){
+  if(active.classList.contains("stack-first"))return "first";
+  if(active.classList.contains("stack-last"))return "last";
+  if(active.classList.contains("stack-only"))return "only";
+  return "middle";
 }
 function updateNavIndicator(animate){
   refreshNavStack();
@@ -229,9 +229,12 @@ function updateNavIndicator(animate){
   if(!ind)return;
   const active=document.querySelector(".sidebar-nav .nav-item.active");
   clearTimeout(navTimer);
+  const sequence=++navSequence;
   if(!active||!active.offsetParent){
     ind.classList.add("is-hidden");
+    ind.dataset.cynShape="none";
     navReady=false;
+    navTargetTop=null;
     return;
   }
   const nav=active.closest(".sidebar-nav");
@@ -239,34 +242,35 @@ function updateNavIndicator(animate){
   const r=active.getBoundingClientRect();
   if(!r.height)return;
   const top=Math.round(r.top-nr.top+(r.height-48)/2);
+  const shape=navShape(active);
   ind.classList.remove("is-hidden");
   const reduce=document.body.classList.contains("reduce-motion")||
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const targetRadius=navIndicatorRadius(active);
-  if(!animate||!navReady||reduce){
-    ind.style.transition="opacity .2s ease";
-    ind.style.height="48px";
-    ind.style.transform="translateY("+top+"px)";
-    ind.style.borderRadius=targetRadius;
-    navReady=true;
-    return;
-  }
   const computed=getComputedStyle(ind);
   const curTop=computed.transform==="none"?top:new DOMMatrix(computed.transform).m42;
   const curH=ind.getBoundingClientRect().height||48;
+  if(!animate||!navReady||reduce||navTargetTop===top){
+    ind.style.transition="opacity .2s ease";
+    ind.style.height="48px";
+    ind.style.transform="translateY("+top+"px)";
+    ind.dataset.cynShape=shape;
+    navTargetTop=top;
+    navReady=true;
+    return;
+  }
   const newTop=Math.min(curTop,top);
   const newBottom=Math.max(curTop+curH,top+48);
-  // First stretch into a connected capsule, then settle into the
-  // asymmetrically rounded destination tile, as in Riff.
   ind.style.transition="transform .26s cubic-bezier(.3,0,.8,.15),height .26s cubic-bezier(.3,0,.8,.15),opacity .2s ease";
+  ind.dataset.cynShape="stretch";
   ind.style.transform="translateY("+newTop+"px)";
   ind.style.height=(newBottom-newTop)+"px";
-  ind.style.borderRadius="24px";
+  navTargetTop=top;
   navTimer=setTimeout(()=>{
+    if(sequence!==navSequence)return;
     ind.style.transition="transform .34s cubic-bezier(.2,0,0,1),height .34s cubic-bezier(.2,0,0,1),border-radius .34s cubic-bezier(.2,0,0,1),opacity .2s ease";
     ind.style.transform="translateY("+top+"px)";
     ind.style.height="48px";
-    ind.style.borderRadius=targetRadius;
+    ind.dataset.cynShape=shape;
   },260);
 }
 window.addEventListener("resize",()=>updateNavIndicator(false));
