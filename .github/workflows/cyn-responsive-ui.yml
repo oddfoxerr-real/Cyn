@@ -6,6 +6,9 @@ on:
       - "fxsound/Source/GUI/CynUiMotion.h"
       - "fxsound/Source/GUI/CynExpressiveMotion.h"
       - "fxsound/Source/GUI/FxProView.cpp"
+      - "fxsound/Source/GUI/CynRiffLayout.h"
+      - "fxsound/Source/GUI/FxTheme.cpp"
+      - "scripts/test_riff_native_layout.mjs"
       - "fxsound/Source/GUI/FxProView.h"
       - "fxsound/Source/GUI/CynThemeStudio.h"
       - "scripts/test_fast_ui_motion.mjs"
@@ -28,6 +31,9 @@ jobs:
           node-version: "22"
       - run: |
           node scripts/test_fast_ui_motion.mjs
+          node scripts/test_riff_native_layout.mjs
+          node scripts/test_cyn_ui_polish.mjs
+          node scripts/test_theme_neural.mjs
           node scripts/test_version_controls.mjs
           node scripts/test_ai_hub.mjs
       - run: |
