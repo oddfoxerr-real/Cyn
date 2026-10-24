@@ -146,12 +146,16 @@ test("Riff graphite dock: workspaces above separator, all flyouts below, neutral
     "Drawer selection must target below-divider controls");
   assert(app.includes('function refreshNavStack()'),
     "Riff's actual stack-first/mid/last class assignment must be active");
-  assert(app.includes('function navIndicatorRadius(active)'),
-    "Selection capsule must inherit each button's nonuniform radius");
-  assert(app.includes('ind.style.borderRadius=targetRadius'),
-    "The capsule must settle to first/middle/last geometry");
-  assert(app.includes('ind.style.borderRadius="24px"'),
-    "Selection must stretch into a rounded capsule between icons");
+  assert(app.includes('function navShape(active)'),
+    "Each Riff stack position must produce a dedicated indicator state");
+  assert(app.includes('ind.dataset.cynShape=shape'),
+    "The active dock shape must be set as a stable CSS state");
+  assert(app.includes('ind.dataset.cynShape="stretch"'),
+    "The travelling selection remains a continuous pill");
+  for(const key of ["first","middle","last","stretch"]){
+    assert(css.includes('data-cyn-shape="'+key+'"'),
+      "Indicator missing its CSS shape state: "+key);
+  }
 });
 
 
