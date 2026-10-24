@@ -109,3 +109,22 @@ body.reduce-motion .toggle-track:before{transition:none}
 @media(prefers-reduced-motion:reduce){.content-view.active{animation:none!important}*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 @media(max-width:1050px){.effects-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.control-deck{grid-template-columns:1fr 1fr}.power-field{grid-column:span 2;flex-direction:row;align-items:center}.main-content{padding:25px 24px}}
 @media(max-width:760px){.app-layout{padding:7px;gap:7px}.sidebar{width:57px;border-radius:19px}.nav-indicator{width:43px;height:43px}.nav-active-indicator{width:43px;height:43px;margin-left:-21.5px}.main-content{padding:19px 14px;border-radius:19px}.workspace-header{flex-direction:column}.connection{justify-content:flex-start}.control-deck{grid-template-columns:1fr}.power-field{grid-column:span 1}.effects-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.feature-grid{grid-template-columns:1fr}.desktop-subtitle{display:none}.eq-hero{padding:18px 13px}}
+
+/* The upstream Riff player reserves 120px for its music transport bar.
+   CYN is a system-audio controller: there is no transport bar to reserve.
+   Override that upstream important rule and prevent the real control deck
+   from being squeezed to zero by the content view's minimum height. */
+body:not(.mini) > .app-layout{
+  flex:1 1 auto!important;
+  height:calc(100dvh - 46px)!important;
+  max-height:none!important;
+  min-height:0!important;
+  margin-bottom:0!important;
+}
+.main-content{min-height:0;overflow-y:auto}
+.workspace-header,.control-deck,.content-view{flex-shrink:0}
+.control-deck{min-height:100px}
+@media(max-width:760px){
+  body:not(.mini) > .app-layout{height:calc(100dvh - 46px)!important}
+  .control-deck{min-height:0}
+}
