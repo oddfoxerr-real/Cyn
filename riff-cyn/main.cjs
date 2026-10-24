@@ -36,6 +36,18 @@ function createWindow(){
       (async()=>{
         const directory=path.resolve(process.env.CYN_RIFF_CAPTURE_DIR);
         fs.mkdirSync(directory,{recursive:true});
+        await win.webContents.executeJavaScript(
+          'document.querySelector("[data-view=overview]").click()');
+        const graphiteAudit=JSON.parse(await win.webContents.executeJavaScript(
+          'JSON.stringify((()=>{const ind=document.getElementById("nav-active-indicator");const line=document.querySelector(".rail-lower-divider").getBoundingClientRect();const items=[...document.querySelectorAll(".rail-drawer-trigger")];const drawer=document.getElementById("rail-drawer");return {radius:getComputedStyle(ind).borderTopLeftRadius,selection:getComputedStyle(ind).backgroundColor,drawerColor:getComputedStyle(drawer).backgroundColor,belowDivider:items.length===3&&items.every(el=>el.getBoundingClientRect().top>=line.bottom),mainPages:[...document.querySelectorAll(".sidebar-nav [data-view]")].length};})())'));
+        fs.writeFileSync(path.join(directory,"graphite-dock-audit.json"),JSON.stringify(graphiteAudit,null,2));
+        if(graphiteAudit.radius!=="12px"||
+           graphiteAudit.selection!=="rgb(59, 60, 64)"||
+           graphiteAudit.drawerColor!=="rgb(30, 31, 34)"||
+           !graphiteAudit.belowDivider||
+           graphiteAudit.mainPages!==3){
+          throw new Error("Riff graphite dock regression: "+JSON.stringify(graphiteAudit));
+        }
         const tabs=["overview","equalizer","ai","devices","settings"];
         const layoutDiagnostics=await win.webContents.executeJavaScript(
           'JSON.stringify({viewport:{w:innerWidth,h:innerHeight},body:{height:document.body.getBoundingClientRect().height},elements:[".app-layout",".main-content",".control-deck",".control-field",".error-banner",".workspace-header",".eq-hero"].map(selector=>{const el=document.querySelector(selector);if(!el)return {selector,missing:true};const r=el.getBoundingClientRect();const cs=getComputedStyle(el);return {selector,rect:{x:r.x,y:r.y,width:r.width,height:r.height},display:cs.display,visibility:cs.visibility,opacity:cs.opacity,overflow:cs.overflow,childCount:el.children.length}})})');
