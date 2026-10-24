@@ -39,11 +39,17 @@ assert(view.includes('g.drawText("WORKSPACES"') &&
 assert(view.includes('String("AI ACTIVE  /  ")') &&
        !view.includes('String("AI ACTIVE  •  ")'),
        "Avoid corrupting UTF-8 status separators in Windows build");
-assert(win.includes("FILEVERSION  2,0,70,0") &&
-       juce.includes('versionString  = "2.0.70.0"') &&
-       juce.includes('versionNumber  = 0x2004600') &&
-       jucer.includes('version="2.0.70.0"'),
-       "Installed CYN executable and runtime must report correct version, not 2.0.29");
+const installer = readFileSync(new URL("../Installer/Cyn/Cyn.iss",import.meta.url),"utf8");
+const version = installer.match(/^AppVersion=(\\d+)\\.(\\d+)\\.(\\d+)\\s*$/m);
+assert(version, "Installer must declare a semantic CYN version");
+const major=Number(version[1]),minor=Number(version[2]),patch=Number(version[3]);
+const nativeVersion=`${major}.${minor}.${patch}.0`;
+const nativeHex="0x"+(major*0x1000000+minor*0x10000+patch*0x100).toString(16);
+assert(win.includes(`FILEVERSION  ${major},${minor},${patch},0`) &&
+       juce.includes('versionString  = "'+nativeVersion+'"') &&
+       juce.includes('versionNumber  = '+nativeHex) &&
+       jucer.includes('version="'+nativeVersion+'"'),
+       "Installed CYN executable, JUCE runtime, Projucer and installer versions must match");
 assert(shell.includes('g.drawRoundedRectangle(rim,radius-0.7f') &&
        shell.includes('g.strokePath(corner,PathStrokeType(1.6f))'),
        "Restore the original rounded window-corner frame and accent.");
