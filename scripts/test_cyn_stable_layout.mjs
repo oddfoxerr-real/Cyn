@@ -23,10 +23,11 @@ assert(view.includes('void FxProView::selectSoundFocus(int focus)') &&
        view.includes('audio_controls_.setVisible(sound_focus_!=1)') &&
        view.includes('equalizer_.setVisible(sound_focus_!=2)'),
        "Overview/EQ/FX navigation must actually rearrange live components");
-assert(view.includes('equalizer_.setBounds(eqX,288,eqW,193)') &&
-       view.includes('visualizer_.setBounds(1002,288,282,193)') &&
-       view.includes('audio_controls_.setBounds(eqX,536,eqW,136)'),
-       "Default layout must display actual 31-band EQ, visualizer and DSP effects");
+assert(view.includes('const int eqX=left+14,eqW=1025') &&
+       view.includes('equalizer_.setBounds(eqX,314,eqW,210)') &&
+       view.includes('visualizer_.setBounds(994,270,284,43)') &&
+       view.includes('audio_controls_.setBounds(eqX,555,766,130)'),
+       "Default layout must keep a full-width real EQ, compact spectrum and native DSP");
 assert(fx.includes("getWidth() >= 540") &&
        fx.includes("const int cell=(getWidth()-margin*2-gap*4)/5"),
        "The five real DSP effect sliders must adapt to a wide horizontal rack");
