@@ -8,8 +8,9 @@ namespace CynButtonVisuals
 {
     enum Motion : int { Classic=0, QuickPop=1, Float=2, Ripple=3, Liquid=4, GelPress=5, InkFlow=6, ElasticBounce=7, ViscousSlide=8, InkPulse=9, MotionCount=10 };
     enum Highlight : int { Subtle=0, NeonEdge=1, SoftGlow=2, LiquidEdge=3, GlassSweep=4, WetGloss=5, SprayPaint=6, AerosolMist=7, ChromeLiquid=8, InkMarble=9, ElectricDroplets=10, HighlightCount=11 };
-    constexpr int defaultMotion=Classic;
-    constexpr int defaultHighlight=Subtle;
+    // New installs get tactile ripple/sweep feedback; stored choices win.
+    constexpr int defaultMotion=Ripple;
+    constexpr int defaultHighlight=GlassSweep;
     constexpr int defaultSpeed=100;
     constexpr int defaultIntensity=55;
     inline int motionIndex(int v) { return juce::jlimit(0,(int)MotionCount-1,v); }
