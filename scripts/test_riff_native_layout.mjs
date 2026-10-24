@@ -21,8 +21,8 @@ assert(v.includes('set("riff_icon_rail",true)')&&h.includes('CynRailButton sound
        h.includes('CynRailButton misc_nav_'),"Native icon hit targets missing");
 assert(m.includes("104.0f+58.0f") && m.includes("260.0f") && m.includes("340.0f"),
        "Actual Riff two-stage stretch/settle motion must drive the icon rail");
-for(const x of ["equalizer_.setBounds(eqX,288,eqW,193)",
-                "audio_controls_.setBounds(eqX,536,eqW,136)",
+for(const x of ["equalizer_.setBounds(eqX,314,eqW,210)",
+                "audio_controls_.setBounds(eqX,555,766,130)",
                 "brain_scan_.setBounds(1008,288,271,164)",
                 "embedded_ai_hub_.setBounds(247,250,1053,435)"])
   assert(v.includes(x),"Real DSP/AI native component missing: "+x);
