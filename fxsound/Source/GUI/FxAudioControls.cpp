@@ -94,17 +94,15 @@ void FxAudioControls::resized()
 
 void FxAudioControls::paint(Graphics& g)
 {
-    auto bounds = getLocalBounds().toFloat();
-    g.setColour(Colour(FXCOLOR(PanelBackground)).withAlpha(0.96f));
-    g.fillRoundedRectangle(bounds, 18.0f);
-    g.setColour(Colour(FXCOLOR(RowOutline)).withAlpha(0.82f));
-    g.drawRoundedRectangle(bounds.reduced(0.5f), 18.0f, 1.0f);
-
+    // The parent paints the workspace surface: stop nesting another
+    // opaque black rectangle and repeating the tiny section title.
     auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
-    g.setFont(theme.getSmallFont().withHeight(9.0f));
-    g.setColour(Colour(FXCOLOR(HintText)).withAlpha(0.82f));
-    g.drawText(effects_shown_ ? "SOUND ENHANCEMENTS" : "OUTPUT TUNING", 16, 10,
-               getWidth()>540 ? 300 : 128, 17, Justification::centredLeft, false);
+    if(getWidth()<540) {
+        g.setFont(theme.getSmallFont().withHeight(11.0f));
+        g.setColour(Colour(FXCOLOR(HintText)).withAlpha(.88f));
+        g.drawText(effects_shown_ ? "ENHANCEMENTS" : "OUTPUT TUNING", 14, 9,
+                   getWidth()-28,18,Justification::centredLeft,false);
+    }
 }
 
 FxEffects::FxEffects()
@@ -182,10 +180,11 @@ void FxEffects::resized()
         // Horizontal five-channel rack for Horizon x Depth Sound Studio.
         const int gap=11,margin=14;
         const int cell=(getWidth()-margin*2-gap*4)/5;
+        const int labelY=juce::jmax(43,(getHeight()-76)/2);
         for(int i=EffectType::Fidelity;i<EffectType::NumEffects;++i) {
             const int x=margin+i*(cell+gap);
-            labels_[i]->setBounds(x+3,58,cell-6,LABEL_HEIGHT+4);
-            effects_[i]->setBounds(x+4,90,cell-8,SLIDER_HEIGHT+12);
+            labels_[i]->setBounds(x+3,labelY,cell-6,LABEL_HEIGHT+6);
+            effects_[i]->setBounds(x+4,labelY+28,cell-8,SLIDER_HEIGHT+12);
         }
     } else {
         int y=Y_MARGIN;
