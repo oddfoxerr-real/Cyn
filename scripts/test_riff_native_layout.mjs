@@ -19,7 +19,8 @@ assert(v.includes("g.fillRoundedRectangle(10.0f,8.0f,80.0f,684.0f,28.0f)") &&
        "Riff main and sidebar large floating surfaces missing");
 assert(v.includes('set("riff_icon_rail",true)')&&h.includes('CynRailButton sound_nav_')&&
        h.includes('CynRailButton misc_nav_'),"Native icon hit targets missing");
-assert(m.includes("104.0f + 58.0f"),"Motion geometry must agree with native icon bounds");
+assert(m.includes("104.0f+58.0f") && m.includes("260.0f") && m.includes("340.0f"),
+       "Actual Riff two-stage stretch/settle motion must drive the icon rail");
 for(const x of ["equalizer_.setBounds(eqX,288,eqW,193)",
                 "audio_controls_.setBounds(eqX,536,eqW,136)",
                 "brain_scan_.setBounds(1008,288,271,164)",
