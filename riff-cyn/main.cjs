@@ -80,6 +80,19 @@ function createWindow(){
           await win.webContents.executeJavaScript(
             'document.querySelector("[data-view=\\\"'+tab+'\\\"]").click()');
           await new Promise(resolve=>setTimeout(resolve,650));
+          if(tab==="ai"||tab==="devices"){
+            const fieldAudit=JSON.parse(await win.webContents.executeJavaScript(
+              'JSON.stringify((()=>{const field=document.querySelector("#view-'+tab+' .detail-select-field");const select=field?.querySelector("select");const card=field?.closest(".surface-card");if(!field||!card||!select)return {missing:true};const fieldStyle=getComputedStyle(field);const fieldBox=field.getBoundingClientRect();const cardBox=card.getBoundingClientRect();const selectBox=select.getBoundingClientRect();return {background:fieldStyle.backgroundColor,padding:fieldStyle.padding,fieldWidth:fieldBox.width,cardWidth:cardBox.width,fieldHeight:fieldBox.height,cardHeight:cardBox.height,selectHeight:selectBox.height,insideCard:fieldBox.left>=cardBox.left&&fieldBox.right<=cardBox.right};})())'));
+            fs.writeFileSync(path.join(directory,tab+"-selector-audit.json"),JSON.stringify(fieldAudit,null,2));
+            if(fieldAudit.missing||
+               fieldAudit.background!=="rgba(0, 0, 0, 0)"||
+               fieldAudit.padding!=="0px"||
+               !fieldAudit.insideCard||
+               fieldAudit.fieldHeight>=fieldAudit.cardHeight*.55||
+               fieldAudit.selectHeight<44){
+              throw new Error("Nested CYN selector visual regression: "+JSON.stringify({tab,...fieldAudit}));
+            }
+          }
           const image=await win.webContents.capturePage();
           fs.writeFileSync(path.join(directory,tab+".png"),image.toPNG());
         }
