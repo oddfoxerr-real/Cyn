@@ -751,78 +751,65 @@ void FxProView::paint(Graphics& g)
     const Colour white=colour(DefaultText),muted=colour(HintText);
     const bool reduced=FxTheme::isReducedMotion();
     const float playLevel=jlimit(0.0f,1.0f,theme_audio_level_);
-    g.fillAll(base);
-
-    // One atmospheric mesh, kept underneath everything and anchored to
-    // actual audio telemetry. True black still dominates the interface.
+    // Riff MIT CSS .sidebar/.main-content and Material 3 tonal surfaces,
+    // translated to native JUCE. No Electron renderer is embedded.
+    const bool riffDark=mode==FxThemeMode::DarkMesh;
+    const Colour desktop=riffDark ? CynRiffLayout::background() : base;
+    const Colour mainSurface=riffDark ? CynRiffLayout::main() : panel;
+    const Colour railSurface=riffDark ? CynRiffLayout::rail() : panel2;
+    g.fillAll(desktop);
+    g.setColour(mainSurface);
+    g.fillRoundedRectangle(102.0f,8.0f,1208.0f,684.0f,28.0f);
     {
-        Graphics::ScopedSaveState scene(g);
-        g.reduceClipRegion(juce::Rectangle<int>(229,0,getWidth()-229,getHeight()));
+        Graphics::ScopedSaveState atmosphere(g);
+        g.reduceClipRegion(juce::Rectangle<int>(103,9,1206,146));
         CynThemeAtmosphere::paint(g,mode,
-            reduced ? 0.0f : (float)(Time::getMillisecondCounterHiRes()*.001),
-            playLevel,juce::Rectangle<float>(229.0f,0.0f,getWidth()-229.0f,205.0f));
-        ColourGradient veil(panel.withAlpha(.32f),230.0f,10.0f,
-                            base.withAlpha(.96f),740.0f,208.0f,false);
-        g.setGradientFill(veil); g.fillRect(229,0,getWidth()-229,220);
+            reduced?0.0f:(float)(Time::getMillisecondCounterHiRes()*.001),
+            playLevel,juce::Rectangle<float>(103.0f,9.0f,1206.0f,170.0f));
+        ColourGradient veil(mainSurface.withAlpha(.12f),104.0f,12.0f,
+                            mainSurface.withAlpha(1.0f),680.0f,155.0f,false);
+        g.setGradientFill(veil);
+        g.fillRect(103,9,1206,146);
     }
-
-    // Solid continuous navigation rail, no second row of icon-only buttons.
-    ColourGradient side(base.interpolatedWith(panel,.46f),0.0f,0.0f,
-                         base,228.0f,700.0f,false);
-    g.setGradientFill(side);g.fillRect(0,0,228,getHeight());
-    // Clean continuous sidebar edge: no decorative corner flourish.
-    g.setColour(border.withAlpha(.85f));
-    g.drawLine(228.0f,0.0f,228.0f,(float)getHeight(),.8f);
-    // Native title bar already displays the CYN wordmark. The sidebar
-    // identifies the navigation instead of repeating the same logo.
-    g.setColour(cyan);g.fillRoundedRectangle(26.0f,28.0f,3.0f,24.0f,1.5f);
-    g.setFont(theme.getNormalFont().withHeight(16.0f).boldened());
-    g.setColour(white);g.drawText("WORKSPACES",39,26,165,27,Justification::centredLeft);
-    g.setFont(theme.getNormalFont().withHeight(11.5f));
-    g.setColour(muted);g.drawText("AUDIO CONTROL CENTRE",28,60,179,19,
-                                 Justification::centredLeft);
-    g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,87.0f,203.0f,87.0f,.8f);
-
-    // Riff-inspired M3 tonal hover surfaces, with a retargetable pill
-    // that *moves* between real native controls instead of blinking.
-    for (int i=0; i<6; ++i) {
+    g.setColour(railSurface);
+    g.fillRoundedRectangle(10.0f,8.0f,80.0f,684.0f,28.0f);
+    // Riff's neutral icon-rail indicator is interruptible, not a static box.
+    for(int i=0;i<6;++i) {
         const float hover=expressiveMotion_.hovered[(size_t)i];
-        if (hover < .006f) continue;
-        const float y=104.0f+49.0f*(float)i;
-        g.setColour(cyan.withAlpha(.095f*hover));
-        g.fillRoundedRectangle(22.0f,y,196.0f,42.0f,21.0f);
+        if(hover<.006f) continue;
+        g.setColour(riffDark ? CynRiffLayout::hover().withAlpha(.45f*hover)
+                             : cyan.withAlpha(.10f*hover));
+        g.fillRoundedRectangle(26.0f,104.0f+58.0f*i,48.0f,48.0f,24.0f);
     }
     const float navY=expressiveMotion_.navigationY;
-    const float navDistance=std::abs((104.0f+49.0f*(float)page_)-navY);
-    const float morph=juce::jmin(5.0f,navDistance*.045f);
-    ColourGradient navGlow(colour(MenuHighlightBackground),22.0f,navY,
-                            cyan.interpolatedWith(panel,.79f),
-                            218.0f,navY+42.0f,false);
-    navGlow.addColour(.56,colour(MenuHighlightBackground).interpolatedWith(cyan,.12f));
+    const float navDistance=std::abs((104.0f+58.0f*(float)page_)-navY);
+    const float morph=juce::jmin(6.0f,navDistance*.05f);
+    ColourGradient navGlow(
+        riffDark?CynRiffLayout::active().interpolatedWith(cyan,.16f)
+                :colour(MenuHighlightBackground),26.0f,navY,
+        riffDark?CynRiffLayout::hover().interpolatedWith(cyan,.08f)
+                :cyan.interpolatedWith(panel,.80f),74.0f,navY+48.0f,false);
     g.setGradientFill(navGlow);
-    g.fillRoundedRectangle(22.0f,navY-morph*.5f,196.0f,42.0f+morph,21.0f);
-    g.setColour(cyan.withAlpha(.54f));
-    g.drawRoundedRectangle(22.5f,navY-morph*.5f+.5f,195.0f,41.0f+morph,20.5f,.9f);
-    g.setColour(cyan.withAlpha(.91f));
-    g.fillRoundedRectangle(22.0f,navY+12.0f,3.0f,18.0f,1.5f);
-    g.setColour(border);g.drawLine(27.0f,590.0f,210.0f,590.0f,.8f);
-    g.setColour(panel2);g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
-    g.setColour(border.withAlpha(.38f));g.drawRoundedRectangle(21.5f,524.5f,194.0f,55.0f,12.0f,.8f);
-    g.setColour(muted.withAlpha(.85f));
-    g.setFont(theme.getNormalFont().withHeight(9.0f).boldened());
-    g.drawText("ACTIVE ENGINE",34,528,155,15,Justification::centredLeft);
+    g.fillRoundedRectangle(26.0f,navY-morph*.5f,48.0f,48.0f+morph,24.0f);
+    g.setColour(riffDark?CynRiffLayout::active():border.withAlpha(.45f));
+    g.drawLine(34.0f,474.0f,66.0f,474.0f,.9f);
+    g.drawLine(34.0f,591.0f,66.0f,591.0f,.9f);
+    const bool aiOn=FxController::getInstance().isSmartListening();
+    g.setColour(aiOn?Colour(0xff49dcb3):muted.withAlpha(.55f));
+    g.fillEllipse(46.0f,546.0f,8.0f,8.0f);
+    g.setColour(muted);
+    g.setFont(theme.getNormalFont().withHeight(9.0f));
+    g.drawText("AI",34,560,32,13,Justification::centred);
+    g.drawText("v"+JUCEApplication::getInstance()->getApplicationVersion(),
+               11,675,77,10,Justification::centred);
     const auto model=FxController::getInstance().getActiveAIProfileId();
     const String modelText=model=="apex6m" ? "APEX 6M" :
             model=="yamnet" ? "YAMNet" : model.isNotEmpty() ? model.toUpperCase() : "No model";
-    const bool aiOn=FxController::getInstance().isSmartListening();
-    g.setColour(aiOn?Colour(0xff49dcb3):muted);
-    g.fillEllipse(35.0f,548.0f,8.0f,8.0f);
-    g.setColour(white);g.setFont(theme.getNormalFont().withHeight(13.0f).boldened());
-    g.drawText(modelText,54,542,148,21,Justification::centredLeft,true);
-    g.setColour(muted);g.setFont(theme.getNormalFont().withHeight(10.0f));
-    g.drawText(aiOn?"Processing enabled":"AI standby",54,564,140,13,Justification::centredLeft);
-    g.drawText("CYN  v"+JUCEApplication::getInstance()->getApplicationVersion(),
-               25,669,178,17,Justification::centredLeft);
+
+    // Map all native artwork consistently with interactive child bounds.
+    {
+    Graphics::ScopedSaveState mainCanvas(g);
+    g.addTransform(CynRiffLayout::visualTransform());
 
     auto txt=[&](String value,float x,float y,float width,float height,
                  float size,bool mutedText=false,bool bold=false) {
@@ -834,11 +821,9 @@ void FxProView::paint(Graphics& g)
                    Justification::centredLeft,true);
     };
     auto card=[&](float x,float y,float width,float height,float r=15.0f) {
-        ColourGradient finish(panel2,x,y,panel,x+width,y+height,false);
-        finish.addColour(.55,panel);
-        g.setGradientFill(finish);
+        g.setColour(riffDark?CynRiffLayout::rail():panel2);
         g.fillRoundedRectangle(x,y,width,height,r);
-        g.setColour(border.withAlpha(.23f));
+        g.setColour(border.withAlpha(riffDark?.08f:.23f));
         g.drawRoundedRectangle(x+.5f,y+.5f,width-1.0f,height-1.0f,r-.3f,.8f);
     };
     // Clear hierarchy: a large page title, meaningful status, then real
@@ -990,6 +975,7 @@ void FxProView::paint(Graphics& g)
     // Footer is a real engine-status report, not a fabricated media player.
     g.setColour(border.withAlpha(.50f));
     g.drawLine(245.0f,693.0f,1299.0f,693.0f,.8f);
+    } // End native Riff main-canvas transform.
 }
 void FxProView::refreshAIProfileChoices()
 {
