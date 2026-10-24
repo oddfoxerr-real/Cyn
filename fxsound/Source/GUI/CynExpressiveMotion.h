@@ -11,7 +11,7 @@ inline float easeFactor(float elapsedMs, float durationMs) noexcept {
     if (elapsedMs <= 0.0f) return 0.0f;
     if (durationMs <= 0.0f) return 1.0f;
     // Analytic, time-step-independent smoothing; clamped for inactive windows.
-    return 1.0f - std::exp(-std::min(elapsedMs, 100.0f) / durationMs);
+    return 1.0f - std::exp(-(std::min)(elapsedMs, 100.0f) / durationMs);
 }
 
 inline float interpolate(float current, float target, float factor) noexcept {
@@ -28,8 +28,8 @@ struct State {
     void advance(float elapsedMs, int page, int focus,
                  const std::array<bool, 6>& hoveredTargets,
                  bool reducedMotion) noexcept {
-        page = std::max(0, std::min(page, 4));
-        focus = std::max(0, std::min(focus, 2));
+        page = (std::max)(0, (std::min)(page, 4));
+        focus = (std::max)(0, (std::min)(focus, 2));
         const float targetY = 104.0f + 49.0f * static_cast<float>(page);
         const float targetX = focus == 0 ? 258.0f : focus == 1 ? 392.0f : 526.0f;
         const float targetWidth = focus == 2 ? 164.0f : 126.0f;
