@@ -5,9 +5,9 @@
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:colorAccent">#83B8FF</item>
-        <item name="android:windowBackground">#090D14</item>
-        <item name="android:navigationBarColor">#090D14</item>
-        <item name="android:statusBarColor">#090D14</item>
+        <item name="android:windowBackground">#141416</item>
+        <item name="android:navigationBarColor">#141416</item>
+        <item name="android:statusBarColor">#141416</item>
         <item name="colorPrimary">#83B8FF</item>
         <item name="colorOnPrimary">#07131F</item>
         <item name="colorPrimaryContainer">#243851</item>
@@ -24,33 +24,33 @@
     </style>
 
     <style name="CynPalette0" parent="CynTheme">
-        <item name="colorPrimary">#83b8ff</item>
-        <item name="colorOnPrimary">#090d14</item>
-        <item name="colorPrimaryContainer">#293A55</item>
-        <item name="colorOnPrimaryContainer">#EDF3FF</item>
-        <item name="colorSecondary">#aa8fff</item>
-        <item name="colorOnSecondary">#090d14</item>
-        <item name="colorSecondaryContainer">#303255</item>
-        <item name="colorOnSecondaryContainer">#EDF3FF</item>
-        <item name="colorTertiary">#aa8fff</item>
-        <item name="colorOnTertiary">#090d14</item>
-        <item name="colorSurface">#121b2b</item>
-        <item name="colorOnSurface">#EDF3FF</item>
-        <item name="colorSurfaceVariant">#1A263A</item>
-        <item name="colorOnSurfaceVariant">#BBC9DB</item>
-        <item name="colorSurfaceContainer">#121b2b</item>
-        <item name="colorSurfaceContainerLow">#0E1522</item>
-        <item name="colorSurfaceContainerHigh">#1A263A</item>
-        <item name="colorSurfaceContainerHighest">#202E44</item>
-        <item name="colorSurfaceDim">#090d14</item>
-        <item name="colorSurfaceBright">#202E44</item>
-        <item name="colorOutline">#486691</item>
-        <item name="colorOutlineVariant">#2A3C58</item>
-        <item name="android:colorAccent">#83b8ff</item>
-        <item name="android:colorBackground">#090d14</item>
-        <item name="android:windowBackground">#090d14</item>
-        <item name="android:statusBarColor">#090d14</item>
-        <item name="android:navigationBarColor">#090d14</item>
+        <item name="colorPrimary">#D9DADE</item>
+        <item name="colorOnPrimary">#141416</item>
+        <item name="colorPrimaryContainer">#3B3C40</item>
+        <item name="colorOnPrimaryContainer">#F2F2F4</item>
+        <item name="colorSecondary">#B7B8BE</item>
+        <item name="colorOnSecondary">#191A1D</item>
+        <item name="colorSecondaryContainer">#343539</item>
+        <item name="colorOnSecondaryContainer">#EBEBEF</item>
+        <item name="colorTertiary">#A1A2A8</item>
+        <item name="colorOnTertiary">#141416</item>
+        <item name="colorSurface">#1E1F22</item>
+        <item name="colorOnSurface">#E6E6E8</item>
+        <item name="colorSurfaceVariant">#28292C</item>
+        <item name="colorOnSurfaceVariant">#BFC0C5</item>
+        <item name="colorSurfaceContainer">#1E1F22</item>
+        <item name="colorSurfaceContainerLow">#18191C</item>
+        <item name="colorSurfaceContainerHigh">#28292C</item>
+        <item name="colorSurfaceContainerHighest">#333438</item>
+        <item name="colorSurfaceDim">#141416</item>
+        <item name="colorSurfaceBright">#333438</item>
+        <item name="colorOutline">#4B4C51</item>
+        <item name="colorOutlineVariant">#38393D</item>
+        <item name="android:colorAccent">#D9DADE</item>
+        <item name="android:colorBackground">#141416</item>
+        <item name="android:windowBackground">#141416</item>
+        <item name="android:statusBarColor">#141416</item>
+        <item name="android:navigationBarColor">#141416</item>
     </style>
     <style name="CynPalette1" parent="CynTheme">
         <item name="colorPrimary">#65e4be</item>
