@@ -73,7 +73,7 @@ public class StudioTest {
             }finally{screenshot.recycle();}
         }
     }
-    @Test public void screensAndRapidTransitions()throws Exception{MainActivity a=ready();for(int page:new int[]{0,2,1,3,2,0,3,1}){final int p=page;main(()->{a.page=p;a.build(true);});}Thread.sleep(600);main(()->{assertEquals(4,a.nav.getMenu().size());assertTrue(a.pages.getChildCount()==1);assertNotNull(a.content);});}
+    @Test public void screensAndRapidTransitions()throws Exception{MainActivity a=ready();for(int page:new int[]{0,2,1,3,2,0,3,1}){final int p=page;main(()->{a.page=p;a.build(true);});}Thread.sleep(600);main(()->{assertEquals(5,a.nav.getMenu().size());assertTrue(a.pages.getChildCount()==1);assertNotNull(a.content);});}
     @Test public void rapidBottomTabTapsKeepFinalSelection()throws Exception {
         MainActivity a=ready();
         final com.google.android.material.bottomnavigation.BottomNavigationView[] original={null};
@@ -81,7 +81,7 @@ public class StudioTest {
             a.page=0;
             a.build(false);
             original[0]=a.nav;
-            assertEquals(4,a.nav.getMenu().size());
+            assertEquals(5,a.nav.getMenu().size());
             // Real item clicks, including repeated taps before a posted transition.
             for(int target:new int[]{1,3,2,0,3,1,2}){
                 View item=a.nav.findViewById(target);
@@ -95,7 +95,7 @@ public class StudioTest {
             assertEquals("Final rapid tap controls the content",2,a.page);
             assertEquals("Final rapid tap stays highlighted",2,a.nav.getSelectedItemId());
             assertTrue(a.nav.getMenu().getItem(2).isChecked());
-            assertEquals(4,a.nav.getMenu().size());
+            assertEquals(5,a.nav.getMenu().size());
         });
         for(int target:new int[]{0,1,3,2,0}){
             main(()->{
@@ -109,7 +109,7 @@ public class StudioTest {
                 assertEquals("Tap must open correct page",target,a.page);
                 assertEquals("Selected tab must match page",target,a.nav.getSelectedItemId());
                 assertTrue("Selected menu item remains checked",a.nav.getMenu().findItem(target).isChecked());
-                assertEquals(4,a.nav.getMenu().size());
+                assertEquals(5,a.nav.getMenu().size());
             });
         }
     }
@@ -461,7 +461,7 @@ public class StudioTest {
                 a.page=screen;a.build();
                 assertTrue("The navigation uses native Material BottomNavigationView",
                     a.nav instanceof com.google.android.material.bottomnavigation.BottomNavigationView);
-                assertEquals(4,a.nav.getMenu().size());
+                assertEquals(5,a.nav.getMenu().size());
                 assertEquals("Selected tab follows current page",screen,a.nav.getSelectedItemId());
                 String[] names={"Studio","AI","Library","Style"};
                 for(int tab=0;tab<4;tab++){
@@ -511,7 +511,7 @@ public class StudioTest {
             int w=View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY);
             int h=View.MeasureSpec.makeMeasureSpec(a.dp(80),View.MeasureSpec.EXACTLY);
             a.nav.measure(w,h);a.nav.layout(0,0,width,a.dp(80));
-            assertEquals(4,a.nav.getMenu().size());
+            assertEquals(5,a.nav.getMenu().size());
             String[] labels={"Studio","AI","Library","Style"};
             for(String label:labels)
                 assertTrue("Material nav must display label on one line: "+label,
