@@ -105,9 +105,14 @@
     if(root.contains(event.target)||buttons.some(b=>b.contains(event.target)))return;
     close();
   });
+  let presetSignature="",presetSelect=()=>{};
   function setPresets(status,onSelect){
-    presetBox.replaceChildren();
+    presetSelect=onSelect;
     const presets=[...(status?.presets?.built_in||[]),...(status?.presets?.user_defined||[])];
+    const signature=JSON.stringify({presets,selected:status?.selected_preset,power:status?.power});
+    if(signature===presetSignature)return;
+    presetSignature=signature;
+    presetBox.replaceChildren();
     const badge=document.getElementById("presets-count");
     badge.hidden=presets.length===0;
     badge.textContent=presets.length>99?"99+":String(presets.length);
@@ -120,7 +125,7 @@
       const active=item.name===status?.selected_preset;
       button.classList.toggle("active",active);
       button.setAttribute("aria-pressed",String(active));
-      button.addEventListener("click",()=>onSelect(item.name));
+      button.addEventListener("click",()=>presetSelect(item.name));
       presetBox.append(button);
     }
     if(!presets.length){
