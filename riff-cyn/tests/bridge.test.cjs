@@ -153,3 +153,23 @@ test("Riff graphite dock: workspaces above separator, all flyouts below, neutral
   assert(app.includes('ind.style.borderRadius="24px"'),
     "Selection must stretch into a rounded capsule between icons");
 });
+
+
+test("Engine Profile and device selectors do not inherit top control-strip panel styling",()=>{
+  const root=path.resolve(__dirname,"..");
+  const html=fs.readFileSync(path.join(root,"renderer/index.html"),"utf8");
+  const css=fs.readFileSync(path.join(root,"renderer/cyn.css"),"utf8");
+  const main=fs.readFileSync(path.join(root,"main.cjs"),"utf8");
+  for(const id of ["ai-model","device-page"]){
+    const match=html.match(new RegExp('<label class="([^"]+)"><span>[^<]+</span><select id="'+id+'"'));
+    assert(match,"Expected named selector field "+id);
+    assert.equal(match[1],"detail-select-field");
+  }
+  assert(css.includes(".surface-card .detail-select-field{"),
+    "Nested AI/Device fields need their own style");
+  assert(css.includes("background:transparent"),"Nested field background must be transparent");
+  assert(css.includes(".surface-card .detail-select-field > select:disabled"),
+    "Disconnected CYN model picker must remain legible in charcoal");
+  assert(main.includes("Nested CYN selector visual regression:"),
+    "Electron preview must inspect computed selector layout");
+});
