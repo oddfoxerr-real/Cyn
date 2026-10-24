@@ -16,7 +16,7 @@ const required=[
     "// Three quiet glass tiles",
     "// Tabs sit directly on the workbench",
     "overview_tab_.setBounds(left+12,203,126,34)",
-    "const float navY=expressiveMotion_.navigationY",
+    "const float navY=expressiveMotion_.indicatorTop",
     "sound_nav_.setBounds(navX,104,navW,48)",
     "card(247,252,686,205)",
     "card(944,252,356,205)",
@@ -31,7 +31,7 @@ const required=[
 for(const anchor of required)assert(view.includes(anchor),"UI overlap/layout regression: "+anchor);
 assert(view.includes("expressiveMotion_.hovered") &&
        view.includes("expressiveMotion_.focusX") &&
-       view.includes("expressiveMotion_.navigationY"),
+       view.includes("expressiveMotion_.indicatorHeight"),
        "Expressive navigation and segmented tabs must use live animated state");
 assert(view.includes('g.fillRoundedRectangle(10.0f,8.0f,80.0f,684.0f,28.0f)') &&
        !view.includes('g.drawText("CYN",28,22'),
