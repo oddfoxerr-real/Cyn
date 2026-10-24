@@ -26,36 +26,65 @@ public:
         const float hover=theme.animate(*this,0,hovered || hasKeyboardFocus(true) ? 1.0f : 0.0f);
         const float selected=theme.animate(*this,2,getToggleState() ? 1.0f : 0.0f);
         const float press=theme.animate(*this,1,down ? 1.0f : 0.0f);
-        g.setColour(Colour(FXCOLOR(MenuHighlightBackground)).withAlpha(jmax(hover*.7f,selected)));
-        g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(press),9);
-        g.setColour(Colour(FxTheme::getColor(getToggleState() ? SliderTrack : HintText)).withAlpha(1.0f));
-        const float x = getWidth() / 2.0f, y = getHeight() / 2.0f;
+        const bool compact=(bool)getProperties().getWithDefault("riff_icon_rail",false);
+        // Riff styles.css (.sidebar/.nav-item): floating 48px tonal icon indicators.
+        // Selection is drawn ONCE in FxProView; this button owns the real hit target.
+        if(compact) {
+            if(hover>.01f) {
+                g.setColour(Colour(0xff333438).withAlpha(hover*.82f));
+                g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(press*.5f),24.0f);
+            }
+        } else {
+            g.setColour(Colour(FXCOLOR(MenuHighlightBackground)).withAlpha(jmax(hover*.7f,selected)));
+            g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(press),9);
+        }
+        const float x=getWidth()*.5f, y=getHeight()*.5f;
+        g.setColour(getToggleState()
+            ? Colour(FXCOLOR(SliderHighlight)).withAlpha(1.0f)
+            : Colour(FXCOLOR(HintText)).withAlpha(compact ? .92f : .8f));
         Path glyph;
-        if (symbol_ == 0)
-        {
-            for (int i = -1; i <= 1; ++i)
-                glyph.addRoundedRectangle(x + i * 5 - 1, y - (i == 0 ? 8.0f : 5.0f), 2, i == 0 ? 16 : 10, 1);
+        if(symbol_==0) {
+            for(int i=-1;i<=1;++i)
+                glyph.addRoundedRectangle(x+i*5-1,y-(i==0?8.0f:5.0f),2,i==0?16:10,1);
             g.fillPath(glyph);
-        }
-        else if (symbol_ == 1)
-        {
-            glyph.startNewSubPath(x, y - 9); glyph.lineTo(x + 3, y - 3);
-            glyph.lineTo(x + 9, y); glyph.lineTo(x + 3, y + 3);
-            glyph.lineTo(x, y + 9); glyph.lineTo(x - 3, y + 3);
-            glyph.lineTo(x - 9, y); glyph.lineTo(x - 3, y - 3); glyph.closeSubPath();
-            g.strokePath(glyph, PathStrokeType(1.4f));
-        }
-        else if (symbol_ == 2)
-        {
-            glyph.startNewSubPath(x - 8, y + 5); glyph.lineTo(x - 8, y - 1);
-            glyph.cubicTo(x - 8, y - 12, x + 8, y - 12, x + 8, y - 1);
-            glyph.lineTo(x + 8, y + 5); g.strokePath(glyph, PathStrokeType(1.5f));
-            g.fillRoundedRectangle(x - 9, y, 4, 8, 1.5f);
-            g.fillRoundedRectangle(x + 5, y, 4, 8, 1.5f);
-        }
-        else
-        {
-            for (int i = -1; i <= 1; ++i) g.fillEllipse(x + i * 6 - 1.5f, y - 1.5f, 3, 3);
+        } else if(symbol_==1) {
+            glyph.startNewSubPath(x,y-9);glyph.lineTo(x+3,y-3);glyph.lineTo(x+9,y);
+            glyph.lineTo(x+3,y+3);glyph.lineTo(x,y+9);glyph.lineTo(x-3,y+3);
+            glyph.lineTo(x-9,y);glyph.lineTo(x-3,y-3);glyph.closeSubPath();
+            g.strokePath(glyph,PathStrokeType(1.7f));
+        } else if(symbol_==2) {
+            glyph.startNewSubPath(x-8,y+5);glyph.lineTo(x-8,y-1);
+            glyph.cubicTo(x-8,y-12,x+8,y-12,x+8,y-1);
+            glyph.lineTo(x+8,y+5);g.strokePath(glyph,PathStrokeType(1.7f));
+            g.fillRoundedRectangle(x-9,y,4,8,1.5f);
+            g.fillRoundedRectangle(x+5,y,4,8,1.5f);
+        } else if(symbol_==3) {
+            for(int i=0;i<3;++i) {
+                const float px=x+(i-1)*8.0f,py=y+(i==1?-6.0f:4.0f);
+                g.drawEllipse(px-3,py-3,6,6,1.6f);
+            }
+            g.drawLine(x-6,y+2,x-1,y-5,1.4f);
+            g.drawLine(x+2,y-5,x+6,y+2,1.4f);
+        } else if(symbol_==4) {
+            glyph.startNewSubPath(x-3,y-8);glyph.lineTo(x+6,y-10);
+            glyph.lineTo(x+6,y+5);g.strokePath(glyph,PathStrokeType(1.7f));
+            g.fillEllipse(x-8,y+3,8,6);g.fillEllipse(x+1,y+2,8,6);
+            g.drawLine(x-3,y-3,x+6,y-5,1.6f);
+        } else if(symbol_==5) {
+            for(int i=-1;i<=1;++i) {
+                const float bx=x+i*7;
+                g.drawLine(bx,y-9,bx,y+9,1.7f);
+                g.fillEllipse(bx-2.8f,y+(i==0?3.0f:i<0?-4.0f:-1.0f)-2.8f,5.6f,5.6f);
+            }
+        } else {
+            // Compact settings gear; all seven controls stay keyboard-accessible.
+            for(int i=0;i<8;++i) {
+                const float a=juce::MathConstants<float>::twoPi*(float)i/8.0f;
+                g.drawLine(x+7*std::cos(a),y+7*std::sin(a),
+                           x+10*std::cos(a),y+10*std::sin(a),1.8f);
+            }
+            g.drawEllipse(x-6,y-6,12,12,1.8f);
+            g.fillEllipse(x-2,y-2,4,4);
         }
     }
 private:
@@ -89,7 +118,7 @@ private:
     double lastExpressiveFrameMs_ = 0.0;
     int sound_focus_ = 0; // 0 overview, 1 EQ focus, 2 effects focus.
     void selectSoundFocus(int focus);
-    TextButton misc_nav_{"Misc / AI DJ"},dj_download_{"Download AI DJ"},dj_remove_{"Remove download"},dj_cancel_{"Cancel download"};
+    CynRailButton misc_nav_{"Misc / AI DJ",4},dj_download_{"Download AI DJ"},dj_remove_{"Remove download"},dj_cancel_{"Cancel download"};
     ToggleButton dj_toggle_{"Enable AI DJ"},dj_stereo_{"Move echoes between ears"};
     Slider dj_intensity_{Slider::LinearHorizontal,Slider::TextBoxRight},dj_spacing_{Slider::LinearHorizontal,Slider::TextBoxRight};
     Label dj_status_,dj_recent_;
@@ -107,14 +136,15 @@ private:
     CynAiHubContent embedded_ai_hub_;
     TooltipWindow tool_tip_;
     CynPowerCurtain power_curtain_;
-    TextButton sound_nav_ { "Sound Studio" }, smart_nav_ { "Smart Listening" },
-       devices_nav_ { "Output Devices" }, ai_hub_nav_ { "AI Hub" },
-       studio_nav_ { "CYN Studio" }, ai_status_card_ { "AI status" };
+    CynRailButton sound_nav_ { "Sound Studio",0 }, smart_nav_ { "Smart Listening",1 },
+       devices_nav_ { "Output Devices",2 }, ai_hub_nav_ { "AI Hub",3 },
+       studio_nav_ { "CYN Studio",5 };
+    TextButton ai_status_card_ { "AI status" };
     TextButton overview_tab_ { "Overview" }, eq_focus_tab_ { "Equalizer" },
                effects_focus_tab_ { "Enhancements" };
     CynRailButton home_ { "Sound studio", 0 }, smart_rail_ { "Smart listening", 1 }, devices_rail_ { "Output devices", 2 };
     CynRailButton settings_rail_ { "Settings", 3 };
-    TextButton settings_ { "Settings" };
+    CynRailButton settings_ { "Settings",6 };
     TextButton refresh_ { "Refresh devices" };
     ToggleButton smart_toggle_ { "Smart listening" }, pin_toggle_ { "Keep my selected output" };
     ToggleButton preset_cycling_ { "Auto preset cycling" };
