@@ -1,3 +1,12 @@
+# CYN Studio Android v0.2.29-preview — Graphite Material 3 and Private Connect
+
+- Default Android Material 3 palette now uses CYN Desktop's graphite-gray surfaces. Other saved palettes remain available.
+- The Updates area is now Settings, with saved local presets (load, rename, delete, undo), native model import/export, Theme Studio, motion preferences, updates, credits and Exit CYN.
+- Reduced-motion-aware 350 ms exit animation, preserving saved DSP and audio state.
+- Removed Android MediaProjection screen-sharing permission and the screen recording/sharing consent prompt. Retired capture intents are refused; compatible audio-session EQ and optional device visualizers remain.
+- No screen recording, microphone recording, or phone wireless debugging has been added. Wireless debugging is deferred.
+- Existing package identity, APK signing certificate, APEX/AUDONIC models, library, user data and updater remain unchanged. Version code 33 follows 0.2.28-preview.
+
 # CYN Studio v0.2.11-preview — Live Visuals & Favorite Hearts
 
 - Separate Sound Studio's live spectrum from slower YAMNet/APEX inference: a small, bounded 4096-sample FFT now analyzes the actual decoded 48 kHz PCM stream on a dedicated low-priority worker about 25 times per second.
