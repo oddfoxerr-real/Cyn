@@ -21,7 +21,7 @@ function saveConfig(executable){
 function createWindow(){
   win=new BrowserWindow({
     width:1370,height:840,minWidth:760,minHeight:580,
-    show:false,backgroundColor:"#121214",title:"CYN Riff",
+    show:false,backgroundColor:"#121214",title:"CYN",
     frame:false,
     webPreferences:{
       preload:path.join(__dirname,"preload.cjs"),
