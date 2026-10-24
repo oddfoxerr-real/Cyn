@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - "fxsound/Source/GUI/CynUiMotion.h"
+      - "fxsound/Source/GUI/CynExpressiveMotion.h"
       - "fxsound/Source/GUI/FxProView.cpp"
       - "fxsound/Source/GUI/FxProView.h"
       - "fxsound/Source/GUI/CynThemeStudio.h"
       - "scripts/test_fast_ui_motion.mjs"
       - "tests/cyn_ui_motion_test.cpp"
+      - "tests/cyn_expressive_motion_test.cpp"
       - ".github/workflows/cyn-responsive-ui.yml"
   workflow_dispatch:
 
@@ -31,6 +33,8 @@ jobs:
       - run: |
           g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/cyn_ui_motion_test.cpp -o /tmp/cyn-ui-motion
           /tmp/cyn-ui-motion
+          g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/cyn_expressive_motion_test.cpp -o /tmp/cyn-expressive-motion
+          /tmp/cyn-expressive-motion
 
   windows-native:
     runs-on: windows-2022
