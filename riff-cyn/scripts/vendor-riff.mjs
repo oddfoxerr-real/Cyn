@@ -31,6 +31,6 @@ for(const [name,dest] of [["styles.css","riff.css"],["LICENSE","Riff-LICENSE.txt
 const license=(await import("node:fs/promises")).readFile(resolve(target,"Riff-LICENSE.txt"),"utf8");
 if(!(await license).includes("MIT License"))throw new Error("Riff MIT license is missing");
 await writeFile(resolve(target,"SOURCE.txt"),
-  "Riff by rootscripts\\nRepository: https://github.com/rootscripts/riff\\nPinned commit: "+RIFF_COMMIT+
-  "\\nFiles: styles.css, LICENSE\\nSource remains MIT; CYN/FxSound remains AGPL-3.0-or-later.\\n");
+  "Riff by rootscripts\nRepository: https://github.com/rootscripts/riff\nPinned commit: "+RIFF_COMMIT+
+  "\nFiles: styles.css, LICENSE\nSource remains MIT; CYN/FxSound remains AGPL-3.0-or-later.\n");
 console.log("Vendored Riff CSS and MIT license at pinned commit "+RIFF_COMMIT);
