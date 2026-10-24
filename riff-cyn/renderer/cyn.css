@@ -128,3 +128,106 @@ body:not(.mini) > .app-layout{
   body:not(.mini) > .app-layout{height:calc(100dvh - 46px)!important}
   .control-deck{min-height:0}
 }
+
+
+/* Riff source rail/drawer CSS remains loaded from vendor/riff.css.
+   These selectors only map the original drawer to CYN Material 3 tokens. */
+.sidebar{min-width:79px;overflow:visible}
+.sidebar-nav .nav-item{min-height:48px}
+.sidebar .rail-lower-divider{margin:14px 0 10px}
+.sidebar .rail-action-group{width:100%;align-items:center}
+.sidebar .rail-icon-btn{border-radius:50%;transition:background-color 180ms,color 180ms,transform 180ms}
+.sidebar .rail-icon-btn.active{background:#354966;color:#b9d8ff}
+.sidebar .rail-icon-btn:hover{transform:scale(1.045)}
+.sidebar .nav-indicator{position:relative}
+.sidebar .nav-badge{
+  position:absolute;top:-3px;right:-4px;min-width:16px;min-height:16px;
+  display:flex;align-items:center;justify-content:center;padding:1px 3px;
+  border-radius:99px;background:#e6edf8;color:#232831;font-size:9px;font-weight:750
+}
+.sidebar .nav-badge[hidden]{display:none}
+.sidebar.has-drawer-open{border-top-right-radius:0!important;border-bottom-right-radius:0!important}
+#rail-drawer{
+  left:79px;top:0;bottom:0;width:278px;max-width:min(278px,calc(100vw - 104px));
+  background:#202226;border-radius:0 25px 25px 0;
+  box-shadow:16px 0 32px #06091134;z-index:25;
+  padding:19px 14px;gap:15px;overflow:hidden
+}
+#rail-drawer.drawer-presets-mode{width:278px;max-width:min(278px,calc(100vw - 104px))}
+#rail-drawer .rail-drawer-section{gap:14px;overflow:auto;overscroll-behavior:contain}
+#rail-drawer .rail-drawer-section[style*="display: none"]{display:none!important}
+#rail-drawer .rail-drawer-header{padding:0 4px}
+#rail-drawer .rail-drawer-title{font-size:21px;letter-spacing:-.02em}
+#rail-drawer .presets-chips-container{align-content:flex-start;gap:8px}
+#rail-drawer .preset-chip{font-size:12px;line-height:1.25;padding:8px 12px}
+#rail-drawer .preset-chip:focus-visible,#rail-drawer button:focus-visible{
+  outline:2px solid #a9d1ff;outline-offset:2px
+}
+#rail-drawer .preset-chip:disabled{opacity:.48;cursor:not-allowed}
+#rail-drawer .preset-chip.active{background:#415a7d;color:#ecf4ff}
+#rail-drawer .drawer-helper{margin:0;font-size:12px;color:#a8b2c1;line-height:1.6}
+#rail-drawer .drawer-heading{color:#d9e3ef;font-size:12px;font-weight:700}
+#rail-drawer .drawer-input{display:flex;flex-direction:column;gap:10px;font-size:11px;color:#b1c4dd;font-weight:650;letter-spacing:.06em}
+#rail-drawer .drawer-input select{
+  appearance:none;background:#333b48;border:1px solid #566279;border-radius:12px;
+  color:#edf4ff;padding:12px 13px;font-size:13px;max-width:100%;width:100%;min-height:44px
+}
+#rail-drawer .drawer-action{
+  display:inline-flex;align-items:center;justify-content:center;min-height:44px;
+  border:0;border-radius:100px;background:#364e70;color:#edf4ff;
+  font-size:12px;font-weight:700;cursor:pointer;padding:9px 13px
+}
+#rail-drawer .drawer-accents{display:flex;align-items:center;gap:10px}
+#rail-drawer .accent-choice{
+  height:43px;width:43px;border:2px solid transparent;border-radius:50%;
+  background:#2f343c;display:inline-flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:border-color 180ms,transform 180ms
+}
+#rail-drawer .accent-choice[aria-pressed="true"]{border-color:#d6e6ff}
+#rail-drawer .accent-choice:hover{transform:scale(1.06)}
+#rail-drawer .accent-swatch{width:29px;height:29px;border-radius:50%;display:block}
+#rail-drawer .accent-swatch.blue{background:#90bfff}
+#rail-drawer .accent-swatch.mint{background:#64d7c3}
+#rail-drawer .accent-swatch.violet{background:#bd9fff}
+#rail-drawer .drawer-motion{margin-top:12px}
+body[data-accent="mint"]{
+  --md-sys-color-primary:#82dbc8;--md-sys-color-primary-container:#24564f;
+  --md-sys-color-on-primary-container:#e0fff8
+}
+body[data-accent="violet"]{
+  --md-sys-color-primary:#c5adff;--md-sys-color-primary-container:#4a396a;
+  --md-sys-color-on-primary-container:#f0e9ff
+}
+body[data-accent="mint"] .nav-active-indicator{background:linear-gradient(135deg,#285e55,#22443d)}
+body[data-accent="violet"] .nav-active-indicator{background:linear-gradient(135deg,#564079,#302944)}
+body[data-accent="mint"] input[type="range"]{accent-color:#82dbc8}
+body[data-accent="violet"] input[type="range"]{accent-color:#c5adff}
+
+/* Fix legacy Riff transport/layout constraints and actual control clipping. */
+.control-deck{grid-auto-rows:minmax(112px,auto);min-height:112px}
+.control-deck>.control-field{min-height:112px;align-content:center;justify-content:center}
+.control-deck .control-field select{min-height:43px}
+.control-deck .power-field{justify-content:center;gap:18px}
+.main-content{height:100%;min-height:0;flex:1 1 0;overflow-y:auto;overflow-x:hidden}
+.eq-sliders{
+  display:grid;grid-template-columns:repeat(var(--band-count,31),minmax(23px,1fr));
+  min-width:max(100%,calc(var(--band-count,31)*24px));
+  gap:2px;align-items:stretch
+}
+.eq-band{min-width:0;width:auto;padding:0 2px}
+.eq-band input[type="range"]{width:21px;max-width:100%;height:220px}
+.eq-scroll{overflow-x:auto;max-width:100%;scrollbar-width:thin;scrollbar-color:#6885af #232b3a}
+.eq-scroll::-webkit-scrollbar{height:9px}
+.eq-scroll::-webkit-scrollbar-thumb{background:#6986b0;border-radius:99px}
+.eq-scroll::-webkit-scrollbar-track{background:#242e3a}
+@media(max-width:1050px){
+  .control-deck{grid-auto-rows:minmax(106px,auto)}
+  .control-deck>.control-field{min-height:106px}
+}
+@media(max-width:760px){
+  .sidebar{min-width:57px}
+  #rail-drawer{left:57px;max-width:min(280px,calc(100vw - 80px))}
+  #rail-drawer.drawer-presets-mode{max-width:min(280px,calc(100vw - 80px))}
+  .control-deck{grid-auto-rows:minmax(96px,auto)}
+  .control-deck>.control-field{min-height:96px}
+}
