@@ -486,3 +486,28 @@ body[data-accent="violet"] .eq-curve path[stroke]{
   .surface-card .detail-select-field{margin:14px 0 16px}
   .surface-card .detail-select-field > select{min-height:46px}
 }
+
+
+/* Deterministic dock shape ownership. Native CYN navigation reuses Riff's
+ * stack geometry but the indicator's shape is now controlled by one explicit
+ * state rather than by an inline radius fighting in-flight transitions.
+ * The selector is scoped to CYN's single nav indicator to avoid affecting
+ * shared Riff buttons, other cards or drawer triggers. */
+.sidebar-nav #nav-active-indicator[data-cyn-shape="first"]{
+  border-radius:24px 24px 10px 10px!important;
+}
+.sidebar-nav #nav-active-indicator[data-cyn-shape="middle"]{
+  border-radius:14px!important;
+}
+.sidebar-nav #nav-active-indicator[data-cyn-shape="last"]{
+  border-radius:10px 10px 24px 24px!important;
+}
+.sidebar-nav #nav-active-indicator[data-cyn-shape="only"]{
+  border-radius:24px!important;
+}
+.sidebar-nav #nav-active-indicator[data-cyn-shape="stretch"]{
+  border-radius:24px!important;
+}
+.sidebar-nav #nav-active-indicator[data-cyn-shape="none"]{
+  opacity:0!important;
+}
