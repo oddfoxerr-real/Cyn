@@ -40,7 +40,7 @@ assert(view.includes('String("AI ACTIVE  /  ")') &&
        !view.includes('String("AI ACTIVE  •  ")'),
        "Avoid corrupting UTF-8 status separators in Windows build");
 const installer = readFileSync(new URL("../Installer/Cyn/Cyn.iss",import.meta.url),"utf8");
-const version = installer.match(/^AppVersion=(\\d+)\\.(\\d+)\\.(\\d+)\\s*$/m);
+const version = installer.match(/^AppVersion=(\d+)\.(\d+)\.(\d+)\s*$/m);
 assert(version, "Installer must declare a semantic CYN version");
 const major=Number(version[1]),minor=Number(version[2]),patch=Number(version[3]);
 const nativeVersion=`${major}.${minor}.${patch}.0`;
