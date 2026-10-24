@@ -177,7 +177,8 @@ app.whenReady().then(()=>{
   const ALLOWED_LINKS={
     updates:"https://github.com/oddfoxerr-real/Cyn/releases",
     mobile:"https://github.com/oddfoxerr-real/Cyn/releases?q=android-studio",
-    credits:"https://github.com/oddfoxerr-real/Cyn/blob/main/LICENSE"
+    credits:"https://github.com/oddfoxerr-real/Cyn/blob/main/LICENSE",
+    support:"https://www.fxsound.com/"
   };
   ipcMain.handle("cyn:open-link",(_event,key)=>{
     if(typeof key!=="string"||!Object.prototype.hasOwnProperty.call(ALLOWED_LINKS,key))
