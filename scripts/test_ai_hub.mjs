@@ -90,8 +90,8 @@ assert(view.includes("tool_tip_.setOpaque(false);"),"Tooltip should not show rec
 for (const [button,palette] of [["browse_ai_","MenuHighlightBackground"],["export_ai_","PanelBackground"],["import_ai_","PanelBackground"]]) {
   assert(view.includes(button+".setColour(TextButton::buttonColourId, Colour(FXCOLOR("+palette+")).withAlpha(1.0f));"),button+" fill is transparent");
 }
-assert(view.includes('const float navY=expressiveMotion_.navigationY;') &&
-       view.includes('g.fillRoundedRectangle(26.0f,navY-morph*.5f,48.0f,48.0f+morph') &&
+assert(view.includes('const float navY=expressiveMotion_.indicatorTop;') &&
+       view.includes('g.fillRoundedRectangle(26.0f,navY,48.0f,navH,24.0f)') &&
        view.includes('CynRiffLayout::railIconX') &&
        view.includes('button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));'),
        "Native AI Hub sidebar must keep readable labels and animated selection background");
