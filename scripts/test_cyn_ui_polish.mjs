@@ -16,7 +16,7 @@ const required=[
     "// Three quiet glass tiles",
     "// Tabs sit directly on the workbench",
     "overview_tab_.setBounds(left+12,203,126,34)",
-    "const float navY=104.0f+49.0f*(float)page_",
+    "const float navY=expressiveMotion_.navigationY",
     "sound_nav_.setBounds(navX,104,navW,42)",
     "card(247,252,686,205)",
     "card(944,252,356,205)",
@@ -29,6 +29,10 @@ const required=[
     "equalizer_.setBounds(eqX,288,eqW,193)"
 ];
 for(const anchor of required)assert(view.includes(anchor),"UI overlap/layout regression: "+anchor);
+assert(view.includes("expressiveMotion_.hovered") &&
+       view.includes("expressiveMotion_.focusX") &&
+       view.includes("expressiveMotion_.navigationY"),
+       "Expressive navigation and segmented tabs must use live animated state");
 assert(view.includes('g.drawText("WORKSPACES"') &&
        !view.includes('g.drawText("CYN",28,22'),
        "Don't show two different CYN title bars");
