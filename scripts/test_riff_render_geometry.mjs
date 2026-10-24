@@ -39,13 +39,13 @@ assert(eq.includes("CynEqUiCallbacks::dispatchGain("));
 assert(eq.includes("getNumEqBands()") && eq.includes("setEqBandBoostCut("));
 
 const pages=[
-  ["sound-studio","Sound Studio",[[247,253,795,235],[1053,253,247,235],[247,500,795,188],[1053,500,247,188]]],
+  ["sound-studio","Sound Studio",[[247,253,1053,282],[247,547,790,141],[1046,547,254,141]]],
   ["smart-listening","Smart Listening",[[247,253,743,210],[996,253,304,210],[247,472,1053,216]]],
   ["output-devices","Output Devices",[[247,253,1053,200],[247,465,1053,223]]],
   ["ai-hub","AI Hub",[[247,250,1053,435]]],
   ["ai-dj","Misc / AI DJ",[[247,252,686,205],[944,252,356,205],[247,468,1053,220]]]
 ];
-const topCards=[[247,108,333,78],[587,108,361,78],[955,108,345,78]];
+const topCards=[[247,108,1053,78]];
 for (const c of [...topCards,...pages.flatMap(p=>p[2])]) {
   assert(view.includes("card("+c.join(",")) ||
    (c[0]===247 && c[1]===250 && view.includes("embedded_ai_hub_.setBounds(247,250,1053,435)")),
@@ -75,7 +75,8 @@ function render(page,bands) {
   svg.push(drawLabel(tx(246),97,"SOURCE-LINKED GEOMETRY PREVIEW - NOT A NATIVE SCREENSHOT",11));
   topCards.forEach((c,i)=>{
     svg.push(drawRect(bounds(c),"#25262a",19));
-    svg.push(drawLabel(tx(c[0]+15),135,["PRESET","OUTPUT DEVICE","ACTIVE AI"][i],13));
+    for(const [x,label] of [[262,"PRESET"],[603,"OUTPUT DEVICE"],[972,"ACTIVE AI"]])
+      svg.push(drawLabel(tx(x),135,label,13));
   });
   if(id==="sound-studio"){
     svg.push(drawRect(bounds([254,200,442,40]),"#292c34",20));
@@ -83,7 +84,7 @@ function render(page,bands) {
   }
   cards.forEach(c=>svg.push(drawRect(bounds(c),"#222327",22)));
   if(id==="sound-studio"){
-    const eqBounds=bounds([259,288,eqWidth,193]);
+    const eqBounds=bounds([259,314,eqWidth,210]);
     svg.push(drawRect(eqBounds,"#101217",15));
     const cell=Math.floor((eqBounds[2]-2*eqMargin)/bands);
     assert(cell>=20,"EQ band hit area too narrow for "+bands+" bands");
@@ -94,8 +95,8 @@ function render(page,bands) {
       svg.push(drawRect([x-4,y+40+(i%7)*7,8,12],"#92b9ff",4));
     }
     svg.push(drawLabel(eqBounds[0]+14,eqBounds[1]+17,bands+" EQUALIZER BANDS",11));
-    svg.push(drawLabel(tx(1065),286,"SPECTRUM",12));
-    svg.push(drawLabel(tx(266),530,"ENHANCEMENTS",13));
+    svg.push(drawLabel(tx(1040),286,"SPECTRUM",12));
+    svg.push(drawLabel(tx(266),571,"ENHANCEMENTS",13));
   }else{
     svg.push(drawLabel(tx(267),287,
       id==="smart-listening"?"NEURAL / LEARNING":id==="output-devices"?"DEVICE ROUTING":id==="ai-hub"?"EMBEDDED AI CATALOGUE":"AI DJ CONTROLS",16));

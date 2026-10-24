@@ -39,7 +39,7 @@ public:
             g.setColour(Colour(FXCOLOR(MenuHighlightBackground)).withAlpha(jmax(hover*.7f,selected)));
             g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(press),9);
         }
-        const float x=getWidth()*.5f, y=getHeight()*.5f;
+        const float x=getWidth()*.5f, y=compact?18.5f:getHeight()*.5f;
         g.setColour(getToggleState()
             ? Colour(FXCOLOR(SliderHighlight)).withAlpha(1.0f)
             : Colour(FXCOLOR(HintText)).withAlpha(compact ? .92f : .8f));
@@ -86,6 +86,17 @@ public:
             }
             g.drawEllipse(x-6,y-6,12,12,1.8f);
             g.fillEllipse(x-2,y-2,4,4);
+        }
+        if(compact) {
+            // Tiny but readable labels make the native icon rail useful
+            // without replacing its accessible tooltips or hit regions.
+            static const char* captions[]={"SOUND","SMART","DEVICE","AI HUB",
+                                           "AI DJ","STUDIO","SET"};
+            g.setFont(theme.getNormalFont().withHeight(8.4f).boldened());
+            g.setColour(getToggleState()?Colour(FXCOLOR(SliderHighlight))
+                                        :Colour(FXCOLOR(HintText)));
+            g.drawText(captions[juce::jlimit(0,6,symbol_)],
+                       0,32,getWidth(),13,Justification::centred,false);
         }
     }
 private:

@@ -625,19 +625,21 @@ void FxProView::resized()
     }
     const bool studio=page_==0;
     if(studio) {
-        const int eqX=left+12,eqW=785;
+        // Full-width real EQ stage; spectrum lives in the EQ header instead
+        // of wasting a large, separate column. No audio engine changes.
+        const int eqX=left+14,eqW=1025;
         if(sound_focus_==0) {
-            equalizer_.setBounds(eqX,288,eqW,193);
-            visualizer_.setBounds(1057,288,227,193);
-            audio_controls_.setBounds(eqX,536,eqW,136);
+            equalizer_.setBounds(eqX,314,eqW,210);
+            visualizer_.setBounds(994,270,284,43);
+            audio_controls_.setBounds(eqX,555,766,130);
         } else if(sound_focus_==1) {
-            equalizer_.setBounds(eqX,286,1036,344);
-            visualizer_.setBounds(1002,286,282,100);
-            audio_controls_.setBounds(eqX,522,731,152);
+            equalizer_.setBounds(eqX,311,eqW,330);
+            visualizer_.setBounds(994,270,284,43);
+            audio_controls_.setBounds(eqX,555,766,130);
         } else {
-            audio_controls_.setBounds(eqX,306,1036,296);
-            equalizer_.setBounds(eqX,288,eqW,193);
-            visualizer_.setBounds(1002,288,282,193);
+            audio_controls_.setBounds(eqX+26,338,980,234);
+            equalizer_.setBounds(eqX,314,eqW,210);
+            visualizer_.setBounds(994,270,284,43);
         }
         equalizer_.setVisible(sound_focus_!=2);
         visualizer_.setVisible(sound_focus_==0);
@@ -758,8 +760,15 @@ void FxProView::paint(Graphics& g)
     const Colour mainSurface=riffDark ? CynRiffLayout::main() : panel;
     const Colour railSurface=riffDark ? CynRiffLayout::rail() : panel2;
     g.fillAll(desktop);
-    g.setColour(mainSurface);
+    // Layered Riff desktop surface with a single soft perimeter.
+    juce::ColourGradient canvasGradient(
+        riffDark ? juce::Colour(0xff10151d) : mainSurface,102.0f,8.0f,
+        riffDark ? juce::Colour(0xff1b1d26) : mainSurface.brighter(.07f),
+        1275.0f,690.0f,false);
+    g.setGradientFill(canvasGradient);
     g.fillRoundedRectangle(102.0f,8.0f,1208.0f,684.0f,28.0f);
+    g.setColour(cyan.withAlpha(.085f));
+    g.drawRoundedRectangle(102.7f,8.7f,1206.6f,682.6f,27.5f,1.3f);
     {
         Graphics::ScopedSaveState atmosphere(g);
         g.reduceClipRegion(juce::Rectangle<int>(103,9,1206,146));
@@ -820,11 +829,16 @@ void FxProView::paint(Graphics& g)
         g.drawText(value,roundToInt(x),roundToInt(y),roundToInt(width),roundToInt(height),
                    Justification::centredLeft,true);
     };
+    // Subtle tonal containers, not triple-outlined black rectangles.
     auto card=[&](float x,float y,float width,float height,float r=15.0f) {
-        g.setColour(riffDark?CynRiffLayout::rail():panel2);
+        juce::ColourGradient surface(
+            riffDark?juce::Colour(0xff242832):panel2.brighter(.08f),x,y,
+            riffDark?juce::Colour(0xff191d26):panel2,
+            x+width,y+height,false);
+        g.setGradientFill(surface);
         g.fillRoundedRectangle(x,y,width,height,r);
-        g.setColour(border.withAlpha(riffDark?.08f:.23f));
-        g.drawRoundedRectangle(x+.5f,y+.5f,width-1.0f,height-1.0f,r-.3f,.8f);
+        g.setColour((riffDark?juce::Colour(0xff8fb2e8):border).withAlpha(.12f));
+        g.drawRoundedRectangle(x+.5f,y+.5f,width-1.0f,height-1.0f,r-.3f,.9f);
     };
     // Clear hierarchy: a large page title, meaningful status, then real
     // selectors and page-specific content. No fictitious audio readouts.
@@ -836,20 +850,21 @@ void FxProView::paint(Graphics& g)
         "Explore community and local AI models without leaving CYN.",
         "Optional musical effects and stereo creative controls."
     };
-    txt("CYN  /  "+String(pageNames[page_]).toUpperCase(),246,12,610,20,10.8f,true,true);
-    txt(pageNames[page_],246,34,650,45,29.0f,false,true);
-    txt(subtitles[page_],248,78,750,24,13.0f,true);
+    txt("CYN   /   PERSONAL AUDIO   /   "+String(pageNames[page_]).toUpperCase(),
+        248,13,810,20,11.2f,true,true);
+    txt(pageNames[page_],247,34,720,48,35.0f,false,true);
+    txt(subtitles[page_],250,83,790,22,13.5f,true);
     g.setColour(FxModel::getModel().getPowerState()
         ? Colour(0xff4bdcaa) : muted);
     g.fillEllipse(1147.0f,22.0f,7.0f,7.0f);
     txt(FxModel::getModel().getPowerState()?"AUDIO ON":"PROCESSING OFF",
         1160,16,129,21,11.0f,false,true);
 
-    // Three quiet glass tiles, with the real live selectors above them.
-    // Paint before the child components; their hit targets remain unchanged.
-    card(247,108,333,78,19.0f);
-    card(587,108,361,78,19.0f);
-    card(955,108,345,78,19.0f);
+    // One unified control deck replaces three disconnected tiles.
+    card(247,108,1053,78,19.0f);
+    g.setColour(border.withAlpha(.30f));
+    g.drawLine(581.0f,121.0f,581.0f,174.0f,.9f);
+    g.drawLine(954.0f,121.0f,954.0f,174.0f,.9f);
     txt("PRESET",262,114,260,18,11.5f,true,true);
     txt("OUTPUT DEVICE",603,114,260,18,11.5f,true,true);
     txt("ACTIVE AI",972,114,230,18,11.5f,true,true);
@@ -870,29 +885,31 @@ void FxProView::paint(Graphics& g)
         g.fillRoundedRectangle(selX,202.0f,selW,36.0f,18.0f);
         g.setColour(cyan.withAlpha(.65f));
         g.drawRoundedRectangle(selX+.5f,202.5f,selW-1.0f,35.0f,17.5f,.9f);
-        txt("31 / 35 / 39 BANDS",1110,208,180,23,11.6f,true);
+        txt("FULL-RANGE  /  31 - 39 BANDS",1081,208,209,23,12.0f,true,true);
         if(sound_focus_==0) {
-            card(247,253,795,235,23.0f);
-            card(1053,253,247,235,23.0f);
-            card(247,500,795,188,23.0f);
-            card(1053,500,247,188,23.0f);
-            txt("31-BAND EQUALIZER",263,258,490,23,14.0f,false,true);
-            txt("SPECTRUM",1066,258,210,23,11.5f,true,true);
-            txt("SOUND ENHANCEMENTS",263,505,420,23,14.0f,false,true);
-            txt("AI STATUS",1066,505,210,23,11.5f,true,true);
-            
-            txt(modelText,1066,551,220,25,17.0f,false,true);
-            txt(aiOn?"Adaptive processing":"Manual processing",
-                1066,583,218,20,11.0f,true);
-            
+            card(247,253,1053,282,24.0f);
+            card(247,547,790,141,23.0f);
+            card(1046,547,254,141,23.0f);
+            txt("EQUALIZER",267,263,270,31,20.0f,false,true);
+            txt("Live  /  drag any frequency to shape the output",
+                267,291,602,19,12.0f,true);
+            txt("LIVE SPECTRUM",1040,257,220,17,11.0f,true,true);
+            txt("ENHANCEMENTS",266,555,440,24,17.0f,false,true);
+            txt("AI ENGINE",1065,558,220,19,11.5f,true,true);
+            txt(modelText,1065,586,221,30,21.0f,false,true);
+            txt(aiOn?"Smart processing enabled":"Manual sound processing",
+                1065,619,217,19,11.5f,true);
         } else if(sound_focus_==1) {
-            card(247,253,1053,435,23.0f);
-            txt("EQUALIZER  /  PRECISION VIEW",265,262,650,25,15,false,true);
-            txt("Drag the frequency controls to shape your sound.",265,649,730,21,12,true);
+            card(247,253,1053,435,24.0f);
+            txt("PRECISION EQUALIZER",267,266,660,28,19.0f,false,true);
+            txt("31 / 35 / 39 editable frequency bands",267,652,770,23,13.0f,true);
         } else {
-            card(247,253,1053,435,23.0f);
-            txt("SOUND ENHANCEMENTS  /  STUDIO VIEW",265,262,800,25,15,false,true);
-            txt("Tune clarity, ambience, surround, dynamics and bass.",265,644,900,22,12,true);
+            card(247,253,1053,435,24.0f);
+            txt("SOUND ENHANCEMENTS",267,268,800,28,21.0f,false,true);
+            txt("Make focused adjustments to clarity, space, dynamics and bass.",
+                267,300,898,23,13.0f,true);
+            txt("Changes apply to the real audio engine instantly.",
+                291,607,820,23,13.0f,true);
         }
     } else if(page_==1) {
         txt("REAL AI TELEMETRY  /  PERSONAL LEARNING",267,205,800,25,12,true,true);

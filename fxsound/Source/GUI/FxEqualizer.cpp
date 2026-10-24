@@ -352,21 +352,32 @@ void FxEqualizer::paint(Graphics& g)
 		reinit(num_bands);
     }
 
+    // Full-width gradient EQ graph rather than the old flat black inset.
     auto panelBounds = getLocalBounds().toFloat();
-    g.setColour(Colour(0xff050607).withAlpha(0.94f));
+    juce::ColourGradient eqSurface(Colour(0xff172030),0,0,
+                                   Colour(0xff10151e),getWidth(),getHeight(),false);
+    g.setGradientFill(eqSurface);
     g.fillRoundedRectangle(panelBounds, 18.0f);
-    g.setColour(Colour(0xff18212b).withAlpha(0.82f));
-    g.drawRoundedRectangle(panelBounds.reduced(0.5f), 18.0f, 1.0f);
-
+    g.setColour(Colour(0xff89a9de).withAlpha(.10f));
+    g.drawRoundedRectangle(panelBounds.reduced(.5f),18.0f,1.0f);
+    const float plotTop=(float)Y_MARGIN+16.0f;
+    const float plotBottom=(float)getHeight()-38.0f;
+    if(plotBottom>plotTop) {
+        for(int level=0;level<=4;++level) {
+            const float y=plotTop+(plotBottom-plotTop)*(float)level/4.0f;
+            g.setColour(Colour(0xffa6b5c9).withAlpha(level==2?.23f:.08f));
+            g.drawHorizontalLine(juce::roundToInt(y),15.0f,(float)getWidth()-15.0f);
+        }
+    }
     auto& theme = dynamic_cast<FxTheme&>(getLookAndFeel());
-    g.setFont(theme.getSmallFont().withHeight(9.0f));
-    g.setColour(Colour(FXCOLOR(HintText)).withAlpha(0.82f));
-    g.drawText("EQUALIZER", 14, 7, 120, 14, Justification::centredLeft, false);
+    g.setFont(theme.getSmallFont().withHeight(11.0f));
+    g.setColour(Colour(FXCOLOR(HintText)).withAlpha(.90f));
+    g.drawText("FREQUENCY  /  dB",16,6,210,17,Justification::centredLeft,false);
 
     Path path;
 
     Colour line_colour = Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f);
-    Colour gradient_colour_1 = Colour(FXCOLOR(EqStart)).withAlpha(0.34f);
+    Colour gradient_colour_1 = Colour(FXCOLOR(EqStart)).withAlpha(0.17f);
     Colour gradient_colour_2 = Colour(FXCOLOR(EqEnd)).withAlpha(0.0f);
 
     if (!isEnabled())
@@ -420,7 +431,7 @@ void FxEqualizer::paint(Graphics& g)
         {
             g.setColour(line_colour.withSaturation(0.0));
         }
-        g.strokePath(path, PathStrokeType(1.0));
+        g.strokePath(path, PathStrokeType(2.2f));
         path.clear();
     }
 

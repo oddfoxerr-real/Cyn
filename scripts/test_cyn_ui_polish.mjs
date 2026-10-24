@@ -13,7 +13,7 @@ const required=[
     'txt("PRESET",262,114,260,18',
     'txt("OUTPUT DEVICE",603,114,260,18',
     'txt("ACTIVE AI",972,114,230,18',
-    "// Three quiet glass tiles",
+    "// One unified control deck",
     "// Tabs sit directly on the workbench",
     "overview_tab_.setBounds(left+12,203,126,34)",
     "const float navY=expressiveMotion_.indicatorTop",
@@ -26,7 +26,7 @@ const required=[
     "dj_spacing_.setBounds(left+209,574,565,31)",
     "embedded_ai_hub_.setBounds(247,250,1053,435)",
     "learning_timeline_.setBounds(left+13,288,722,164)",
-    "equalizer_.setBounds(eqX,288,eqW,193)"
+    "equalizer_.setBounds(eqX,314,eqW,210)"
 ];
 for(const anchor of required)assert(view.includes(anchor),"UI overlap/layout regression: "+anchor);
 assert(view.includes("expressiveMotion_.hovered") &&
@@ -59,6 +59,6 @@ assert(eq.includes("const int compactBandHeight=juce::jlimit(65") &&
        eq.includes("Y_MARGIN, thumbWidth, tunedBandHeight )"),
        "Native EQ sliders must fit their panel with working labels at all supported band counts");
 assert(!view.includes("railOutline") && !view.includes("Path railFill(spine)"), "Remove stray curved sidebar flourish entirely");
-assert(view.includes("card(247,253,795,235,23.0f)") && view.includes("card(1053,500,247,188,23.0f)"), "Spectrum and AI status need their own aligned panels");
-assert(view.includes("ColourGradient navGlow(") && view.includes("card(955,108,345,78,19.0f)"),"Gradient selection and native header tile geometry required");
+assert(view.includes("card(247,253,1053,282,24.0f)") && view.includes("card(1046,547,254,141,23.0f)"), "Full-width EQ and compact AI controls must align");
+assert(view.includes("ColourGradient navGlow(") && view.includes("card(247,108,1053,78,19.0f)"),"Gradient selection and unified control deck required");
 console.log("PASS: Riff floating rail, expanded tonal workspace, aligned audio panels and version metadata");
