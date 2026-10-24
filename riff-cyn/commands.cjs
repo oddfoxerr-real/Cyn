@@ -3,7 +3,7 @@
 // No renderer string becomes a shell command.
 function n(x,min,max){return typeof x==="number"&&Number.isFinite(x)&&x>=min&&x<=max;}
 function assert(s,message){if(!s)throw new TypeError(message);}
-function safeName(value){return typeof value==="string"&&value.length>0&&value.length<=160&&!/["\\r\\n\\x00]/.test(value);}
+function safeName(value){return typeof value==="string"&&value.length>0&&value.length<=160&&!/["\r\n\x00]/.test(value);}
 const effectNames=new Set(["clarity","ambience","surround","dynamicboost","bass"]);
 function commandFor(action,status){
   assert(action&&typeof action==="object"&&!Array.isArray(action),"Invalid action");
@@ -21,6 +21,11 @@ function commandFor(action,status){
     case "output": {
       assert(safeName(action.value)&&(status.output_devices||[]).includes(action.value),"Unknown output device");
       return '--output="'+action.value+'"';
+    }
+    case "aiModel": {
+      const profiles=Array.isArray(status.ai_profiles)?status.ai_profiles:[];
+      assert(safeName(action.value)&&profiles.some(p=>p.id===action.value),"AI model is not installed in native CYN");
+      return '--select_ai="'+action.value+'"';
     }
     case "effect": {
       assert(effectNames.has(action.name),"Unknown effect");
