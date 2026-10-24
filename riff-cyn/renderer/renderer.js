@@ -95,6 +95,7 @@ function renderBands(status){
   $("eq-band-mode").textContent=bands.length?bands.length+" BANDS":"NO NATIVE EQ";
   $("eq-mode-label").textContent=bands.length?bands.length+" BAND MODE":"CONNECT ENGINE";
   const signature=bands.map(b=>String(b.index)+":"+String(b.frequency)).join("|");
+  box.style.setProperty("--band-count",String(Math.max(1,bands.length)));
   if(box.dataset.signature!==signature){
     box.replaceChildren();
     for(const b of bands){
