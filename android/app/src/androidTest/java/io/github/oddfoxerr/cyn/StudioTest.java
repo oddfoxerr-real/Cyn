@@ -63,13 +63,13 @@ public class StudioTest {
     }
     @Test public void captureScreens()throws Exception{
         MainActivity a=ready();String output=InstrumentationRegistry.getArguments().getString("additionalTestOutputDir");File folder=output==null?new File(a.getExternalFilesDir(null),"qa"):new File(output);assertTrue(folder.isDirectory()||folder.mkdirs());
-        for(int page=0;page<4;page++){final int p=page;main(()->{a.page=p;a.build(true);});waitForTransition(a);
+        for(int page=0;page<5;page++){final int p=page;main(()->{a.page=p;a.build(true);});waitForTransition(a);
             Bitmap screenshot=captureWindow(a);
             try{
                 try(FileOutputStream out=new FileOutputStream(new File(folder,"screen-"+page+".png"))){assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG,100,out));}
                 assertTextVisible(screenshot,a.shell.getChildAt(0));assertTextVisible(screenshot,a.miniTitle);assertTextVisible(screenshot,a.miniToggle);
                 assertTextVisible(screenshot,a.nav);
-                assertEquals("All bottom navigation destinations remain visible",4,a.nav.getMenu().size());
+                assertEquals("All bottom navigation destinations remain visible",5,a.nav.getMenu().size());
             }finally{screenshot.recycle();}
         }
     }
