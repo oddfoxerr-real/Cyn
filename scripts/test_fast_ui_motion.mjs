@@ -18,7 +18,7 @@ assert(page.includes("page_ = page;") &&
   "The selected AI Hub/Misc pages and native navigation controls must update immediately");
 const liquid=read("fxsound/Source/GUI/CynLiquidScreen.h");
 assert(liquid.includes("g.reduceClipRegion(bounds)") &&
-       page.includes("juce::Rectangle<int>(240,0") &&
+       page.includes("juce::Rectangle<int>(108,0") &&
        page.includes("CynLiquidScreen::render(g,transition_image_,transition_to_image_"),
   "Liquid compositing must clip workspace content without obscuring navigation");
 assert(page.includes("transition_to_image_=createComponentSnapshot(content)") &&
