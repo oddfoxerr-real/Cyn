@@ -17,7 +17,7 @@ const required=[
     "// Tabs sit directly on the workbench",
     "overview_tab_.setBounds(left+12,203,126,34)",
     "const float navY=expressiveMotion_.navigationY",
-    "sound_nav_.setBounds(navX,104,navW,42)",
+    "sound_nav_.setBounds(navX,104,navW,48)",
     "card(247,252,686,205)",
     "card(944,252,356,205)",
     "card(247,468,1053,220)",
