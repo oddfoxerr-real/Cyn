@@ -177,3 +177,18 @@ test("Engine Profile and device selectors do not inherit top control-strip panel
   assert(main.includes("Nested CYN selector visual regression:"),
     "Electron preview must inspect computed selector layout");
 });
+
+test("renderer bindings reference elements present in the current settings markup",()=>{
+  const root=path.resolve(__dirname,"..");
+  const html=fs.readFileSync(path.join(root,"renderer/index.html"),"utf8");
+  const js=fs.readFileSync(path.join(root,"renderer/renderer.js"),"utf8");
+  const settings=fs.readFileSync(path.join(root,"renderer/settings.js"),"utf8");
+  const ids=new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]));
+  for(const [source,content] of [["renderer",js],["settings",settings]]){
+    for(const match of content.matchAll(/\$\("([A-Za-z0-9-]+)"\)/g))
+      assert(ids.has(match[1]),"Missing DOM ID "+match[1]+" referenced by "+source);
+  }
+  assert(settings.includes("cyn:animate-close")===false);
+  assert(settings.includes("window.cyn.onClosing"));
+  assert(js.includes("function transition(view)"));
+});
