@@ -135,7 +135,6 @@ test("Riff graphite dock: workspaces above separator, all flyouts below, neutral
   assert(css.includes("border-radius:12px!important"),"Top selected tile must be a rounded square");
   assert(css.includes("background:#1e1f22!important"),"Riff drawer must use original graphite surface");
   assert(css.includes("background:#414247!important"),"Flyout selected circle must be neutral gray");
-  assert(app.includes('document.querySelector(\\'.sidebar .rail-action-group [data-drawer="\\'+drawer+\\'"]\\')') ||
-    app.includes(".sidebar .rail-action-group [data-drawer="),
+  assert(app.includes(".sidebar .rail-action-group [data-drawer="),
     "Drawer selection must target below-divider controls");
 });
