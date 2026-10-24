@@ -40,6 +40,7 @@ jobs:
           node --check riff-cyn/native-bridge.cjs
           node --check riff-cyn/commands.cjs
           node --check riff-cyn/renderer/renderer.js
+          node --check riff-cyn/renderer/rail-drawer.js
           node --check riff-cyn/scripts/vendor-riff.mjs
           node --test riff-cyn/tests/*.test.cjs
           test -s riff-cyn/renderer/vendor/riff.css
