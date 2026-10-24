@@ -196,50 +196,85 @@ async function apply(action){
     await refresh();
   }
 }
-// Port of Riff app.js's actual stretch-and-settle sidebar indicator algorithm.
-// Preserve current transform/height when retargeting during rapid switches.
+/* Riff's actual stacked navigation treatment:
+ * rootscripts/riff app.js + styles.css (MIT).
+ * Buttons carry stack-first/mid/last radii, and the shared animated
+ * indicator inherits the active button's asymmetric shape on settle.
+ * No constant 12px rounding: the first/middle/last shape must differ.
+ */
+const stackClasses=["stack-only","stack-first","stack-mid","stack-last"];
 let navTimer=0,navReady=false;
+function refreshNavStack(){
+  const nav=document.querySelector(".sidebar-nav");
+  if(!nav)return;
+  const visible=[...nav.children].filter(el=>
+    el.classList.contains("nav-item") &&
+    el.getBoundingClientRect().height>1 &&
+    getComputedStyle(el).display!=="none");
+  visible.forEach((el,i)=>{
+    const desired=visible.length===1?"stack-only":
+      i===0?"stack-first":i===visible.length-1?"stack-last":"stack-mid";
+    for(const name of stackClasses)el.classList.toggle(name,name===desired);
+  });
+}
+function navIndicatorRadius(active){
+  const r=getComputedStyle(active).borderRadius;
+  if(r&&parseFloat(r)>0)return r;
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue("--stack-mid").trim()||"14px";
+}
 function updateNavIndicator(animate){
+  refreshNavStack();
   const ind=$("nav-active-indicator");
-  const active=document.querySelector(".sidebar-nav .nav-item.active");
   if(!ind)return;
-  if(!active){
-    clearTimeout(navTimer);
+  const active=document.querySelector(".sidebar-nav .nav-item.active");
+  clearTimeout(navTimer);
+  if(!active||!active.offsetParent){
     ind.classList.add("is-hidden");
+    navReady=false;
     return;
   }
+  const nav=active.closest(".sidebar-nav");
+  const nr=nav.getBoundingClientRect();
+  const r=active.getBoundingClientRect();
+  if(!r.height)return;
+  const top=Math.round(r.top-nr.top+(r.height-48)/2);
   ind.classList.remove("is-hidden");
-  const nr=active.closest(".sidebar-nav").getBoundingClientRect();
-  const rect=active.getBoundingClientRect();
-  const top=Math.round(rect.top-nr.top+(rect.height-48)/2);
   const reduce=document.body.classList.contains("reduce-motion")||
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  clearTimeout(navTimer);
+  const targetRadius=navIndicatorRadius(active);
   if(!animate||!navReady||reduce){
     ind.style.transition="opacity .2s ease";
     ind.style.height="48px";
     ind.style.transform="translateY("+top+"px)";
-    ind.style.borderRadius="12px";
+    ind.style.borderRadius=targetRadius;
     navReady=true;
     return;
   }
-  const transform=getComputedStyle(ind).transform;
-  const curTop=transform==="none"?top:new DOMMatrix(transform).m42;
+  const computed=getComputedStyle(ind);
+  const curTop=computed.transform==="none"?top:new DOMMatrix(computed.transform).m42;
   const curH=ind.getBoundingClientRect().height||48;
   const newTop=Math.min(curTop,top);
   const newBottom=Math.max(curTop+curH,top+48);
+  // First stretch into a connected capsule, then settle into the
+  // asymmetrically rounded destination tile, as in Riff.
   ind.style.transition="transform .26s cubic-bezier(.3,0,.8,.15),height .26s cubic-bezier(.3,0,.8,.15),opacity .2s ease";
   ind.style.transform="translateY("+newTop+"px)";
   ind.style.height=(newBottom-newTop)+"px";
-  ind.style.borderRadius="12px";
+  ind.style.borderRadius="24px";
   navTimer=setTimeout(()=>{
-    ind.style.transition="transform .34s cubic-bezier(.2,0,0,1),height .34s cubic-bezier(.2,0,0,1),border-radius .34s cubic-bezier(.2,0,0,1)";
+    ind.style.transition="transform .34s cubic-bezier(.2,0,0,1),height .34s cubic-bezier(.2,0,0,1),border-radius .34s cubic-bezier(.2,0,0,1),opacity .2s ease";
     ind.style.transform="translateY("+top+"px)";
     ind.style.height="48px";
+    ind.style.borderRadius=targetRadius;
   },260);
 }
 window.addEventListener("resize",()=>updateNavIndicator(false));
 if(document.fonts?.ready)document.fonts.ready.then(()=>updateNavIndicator(false));
+const navStackRoot=document.querySelector(".sidebar-nav");
+if(navStackRoot && typeof ResizeObserver!=="undefined"){
+  new ResizeObserver(()=>updateNavIndicator(false)).observe(navStackRoot);
+}
 function updateSelectedNav(animate){
   document.querySelectorAll(".sidebar .nav-item,.sidebar .rail-icon-btn").forEach(button=>{
     button.classList.remove("active");
