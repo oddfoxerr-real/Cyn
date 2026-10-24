@@ -1,0 +1,48 @@
+{
+  "name": "cyn-riff-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Riff-based CYN desktop shell backed by CYN native FxSound engine",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "vendor:riff": "node scripts/vendor-riff.mjs",
+    "build:win": "npm run vendor:riff && electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "41.7.1",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "co.cyn.audio.riff",
+    "productName": "CYN Riff",
+    "artifactName": "CYN-Riff-Preview-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "native-bridge.cjs",
+      "commands.cjs",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}
