@@ -9,6 +9,10 @@ on:
       - "fxsound/Source/GUI/CynRiffLayout.h"
       - "fxsound/Source/GUI/FxTheme.cpp"
       - "scripts/test_riff_native_layout.mjs"
+      - "scripts/test_riff_render_geometry.mjs"
+      - "fxsound/Source/GUI/CynEqUiCallbacks.h"
+      - "fxsound/Source/GUI/FxEqualizer.cpp"
+      - "tests/cyn_eq_ui_callback_test.cpp"
       - "fxsound/Source/GUI/FxProView.h"
       - "fxsound/Source/GUI/CynThemeStudio.h"
       - "scripts/test_fast_ui_motion.mjs"
@@ -32,6 +36,7 @@ jobs:
       - run: |
           node scripts/test_fast_ui_motion.mjs
           node scripts/test_riff_native_layout.mjs
+          node scripts/test_riff_render_geometry.mjs
           node scripts/test_cyn_ui_polish.mjs
           node scripts/test_theme_neural.mjs
           node scripts/test_version_controls.mjs
@@ -41,6 +46,15 @@ jobs:
           /tmp/cyn-ui-motion
           g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/cyn_expressive_motion_test.cpp -o /tmp/cyn-expressive-motion
           /tmp/cyn-expressive-motion
+          g++ -std=c++17 -Wall -Wextra -Werror -O2 tests/cyn_eq_ui_callback_test.cpp -o /tmp/cyn-eq-callback
+          /tmp/cyn-eq-callback
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cyn-riff-geometry-previews
+          path: artifacts/riff-render-check/*.svg
+          if-no-files-found: error
+          retention-days: 7
 
   windows-native:
     runs-on: windows-2022
