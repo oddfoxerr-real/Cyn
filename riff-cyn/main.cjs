@@ -6,7 +6,8 @@ const {makeBridge}=require("./native-bridge.cjs");
 if(process.platform==="win32")app.commandLine.appendSwitch("disable-features","CalculateNativeWinOcclusion");
 let win;
 let bridge;
-let overridePath=null;
+let allowClose=false,closeRequested=false;
+let onTop=false;
 const settingsFile=()=>path.join(app.getPath("userData"),"native-engine.json");
 function loadConfig(){
   try{
@@ -118,6 +119,15 @@ function createWindow(){
       })().catch(error=>{console.error("Screenshot capture failed:",error);app.exit(1)});
     });
   }
+  win.on("close",event=>{
+    if(allowClose||process.env.CYN_RIFF_CAPTURE_DIR)return;
+    event.preventDefault();
+    if(closeRequested)return;
+    closeRequested=true;
+    if(!win.webContents.isLoading())win.webContents.send("cyn:animate-close");
+    else {allowClose=true;win.destroy();}
+  });
+  win.on("closed",()=>{win=null;});
   win.loadFile(path.join(__dirname,"renderer","index.html"));
   win.once("ready-to-show",()=>win.show());
   win.webContents.setWindowOpenHandler(()=>({action:"deny"}));
@@ -145,6 +155,34 @@ app.whenReady().then(()=>{
     if(action==="minimize")win.minimize();
     else if(action==="maximize")win.isMaximized()?win.unmaximize():win.maximize();
     else if(action==="close")win.close();
+  });
+  ipcMain.on("cyn:close-complete",event=>{
+    if(!win||win.isDestroyed()||event.sender!==win.webContents)return;
+    if(!closeRequested)return;
+    allowClose=true;
+    win.close();
+  });
+  ipcMain.handle("cyn:on-top",(_event,value)=>{
+    if(typeof value!=="boolean"||!win||win.isDestroyed())throw new Error("Invalid window preference");
+    onTop=value;win.setAlwaysOnTop(onTop,"floating");
+    return onTop;
+  });
+  ipcMain.handle("cyn:open-native",async()=>{
+    const exe=bridge.findExe();
+    if(!exe)throw new Error("Install native CYN or locate Cyn.exe first");
+    const child=require("node:child_process").spawn(exe,[],{detached:true,stdio:"ignore",windowsHide:false});
+    child.unref();
+    return true;
+  });
+  const ALLOWED_LINKS={
+    updates:"https://github.com/oddfoxerr-real/Cyn/releases",
+    mobile:"https://github.com/oddfoxerr-real/Cyn/releases?q=android-studio",
+    credits:"https://github.com/oddfoxerr-real/Cyn/blob/main/LICENSE"
+  };
+  ipcMain.handle("cyn:open-link",(_event,key)=>{
+    if(typeof key!=="string"||!Object.prototype.hasOwnProperty.call(ALLOWED_LINKS,key))
+      throw new Error("Unknown CYN resource");
+    return shell.openExternal(ALLOWED_LINKS[key]);
   });
   createWindow();
 });
