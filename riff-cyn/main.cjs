@@ -37,6 +37,9 @@ function createWindow(){
         const directory=path.resolve(process.env.CYN_RIFF_CAPTURE_DIR);
         fs.mkdirSync(directory,{recursive:true});
         const tabs=["overview","equalizer","ai","devices","settings"];
+        const layoutDiagnostics=await win.webContents.executeJavaScript(
+          'JSON.stringify({viewport:{w:innerWidth,h:innerHeight},body:{height:document.body.getBoundingClientRect().height},elements:[".app-layout",".main-content",".control-deck",".control-field",".error-banner",".workspace-header",".eq-hero"].map(selector=>{const el=document.querySelector(selector);if(!el)return {selector,missing:true};const r=el.getBoundingClientRect();const cs=getComputedStyle(el);return {selector,rect:{x:r.x,y:r.y,width:r.width,height:r.height},display:cs.display,visibility:cs.visibility,opacity:cs.opacity,overflow:cs.overflow,childCount:el.children.length}})})');
+        fs.writeFileSync(path.join(directory,"layout.json"),layoutDiagnostics);
         for(const tab of tabs){
           await win.webContents.executeJavaScript(
             'document.querySelector("[data-view=\\\"'+tab+'\\\"]").click()');
