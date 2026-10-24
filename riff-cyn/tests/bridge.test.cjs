@@ -69,3 +69,41 @@ test("Riff's old playback-bar height does not collapse CYN's real controls",()=>
   assert(css.includes(".workspace-header,.control-deck,.content-view{flex-shrink:0}"));
   assert(css.includes(".control-deck{min-height:100px}"));
 });
+
+test("upstream Riff drawer implementation is connected to real CYN actions",()=>{
+  const root=path.resolve(__dirname,"..");
+  const html=fs.readFileSync(path.join(root,"renderer/index.html"),"utf8");
+  const drawer=fs.readFileSync(path.join(root,"renderer/rail-drawer.js"),"utf8");
+  const app=fs.readFileSync(path.join(root,"renderer/renderer.js"),"utf8");
+  const css=fs.readFileSync(path.join(root,"renderer/cyn.css"),"utf8");
+  assert(html.includes('src="rail-drawer.js"'));
+  assert(html.indexOf('src="rail-drawer.js"')<html.indexOf('src="renderer.js"'));
+  for(const id of ["rail-drawer","btn-toggle-presets-drawer","btn-toggle-ai-drawer",
+    "btn-toggle-theme-drawer","drawer-section-presets","drawer-section-ai",
+    "drawer-section-appearance","btn-close-rail-drawer","drawer-ai-model"]){
+    assert(html.includes('id="'+id+'"'),"Missing functional Riff/CYN control: "+id);
+  }
+  assert(drawer.includes("railDrawerCloseTimeout"));
+  assert(drawer.includes('classList.add("section-switching-out")'));
+  assert(drawer.includes("120")&&drawer.includes("200"));
+  assert(drawer.includes('event.key==="Escape"'));
+  assert(app.includes("window.cynRail.setPresets(status"));
+  assert(app.includes('type:"aiModel"'));
+  assert(css.includes("#rail-drawer"));
+  assert(css.includes("grid-auto-rows:minmax(112px,auto)"));
+  assert(css.includes("repeat(var(--band-count,31),minmax(23px,1fr))"));
+});
+test("CYN is the visible app identity and preview stays separate from native CYN",()=>{
+  const root=path.resolve(__dirname,"..");
+  const html=fs.readFileSync(path.join(root,"renderer/index.html"),"utf8");
+  const pkg=JSON.parse(fs.readFileSync(path.join(root,"package.json"),"utf8"));
+  const win=fs.readFileSync(path.join(root,"main.cjs"),"utf8");
+  assert.equal(pkg.build.productName,"CYN Audio");
+  assert.equal(pkg.name,"cyn-audio-desktop");
+  assert(pkg.build.artifactName.startsWith("CYN-Audio-Preview-"));
+  assert(win.includes('title:"CYN"'));
+  assert(html.includes("<title>CYN — Personal Audio</title>"));
+  assert(html.includes('CYN<span class="brand-slash"> / AUDIO</span>'));
+  assert(!html.includes("CYN Riff"));
+  assert(pkg.build.nsis.deleteAppDataOnUninstall===false);
+});
