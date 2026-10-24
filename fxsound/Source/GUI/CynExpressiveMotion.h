@@ -30,7 +30,7 @@ struct State {
                  bool reducedMotion) noexcept {
         page = (std::max)(0, (std::min)(page, 4));
         focus = (std::max)(0, (std::min)(focus, 2));
-        const float targetY = 104.0f + 49.0f * static_cast<float>(page);
+        const float targetY = 104.0f + 58.0f * static_cast<float>(page);
         const float targetX = focus == 0 ? 258.0f : focus == 1 ? 392.0f : 526.0f;
         const float targetWidth = focus == 2 ? 164.0f : 126.0f;
 
