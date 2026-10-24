@@ -184,31 +184,51 @@ async function apply(action){
     await refresh();
   }
 }
+// Port of Riff app.js's actual stretch-and-settle sidebar indicator algorithm.
+// Preserve current transform/height when retargeting during rapid switches.
+let navTimer=0,navReady=false;
+function updateNavIndicator(animate){
+  const ind=$("nav-active-indicator");
+  const active=document.querySelector(".sidebar-nav .nav-item.active");
+  if(!ind||!active)return;
+  const nr=active.closest(".sidebar-nav").getBoundingClientRect();
+  const rect=active.getBoundingClientRect();
+  const top=Math.round(rect.top-nr.top+(rect.height-48)/2);
+  const reduce=document.body.classList.contains("reduce-motion")||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  clearTimeout(navTimer);
+  if(!animate||!navReady||reduce){
+    ind.style.transition="opacity .2s ease";
+    ind.style.height="48px";
+    ind.style.transform="translateY("+top+"px)";
+    ind.style.borderRadius="24px";
+    navReady=true;
+    return;
+  }
+  const transform=getComputedStyle(ind).transform;
+  const curTop=transform==="none"?top:new DOMMatrix(transform).m42;
+  const curH=ind.getBoundingClientRect().height||48;
+  const newTop=Math.min(curTop,top);
+  const newBottom=Math.max(curTop+curH,top+48);
+  ind.style.transition="transform .26s cubic-bezier(.3,0,.8,.15),height .26s cubic-bezier(.3,0,.8,.15),opacity .2s ease";
+  ind.style.transform="translateY("+newTop+"px)";
+  ind.style.height=(newBottom-newTop)+"px";
+  ind.style.borderRadius="24px";
+  navTimer=setTimeout(()=>{
+    ind.style.transition="transform .34s cubic-bezier(.2,0,0,1),height .34s cubic-bezier(.2,0,0,1),border-radius .34s cubic-bezier(.2,0,0,1)";
+    ind.style.transform="translateY("+top+"px)";
+    ind.style.height="48px";
+  },260);
+}
+window.addEventListener("resize",()=>updateNavIndicator(false));
+if(document.fonts?.ready)document.fonts.ready.then(()=>updateNavIndicator(false));
 function transition(view){
   if(!pages[view]||view===activeView)return;
   const last=document.querySelector('[data-view="'+activeView+'"]');
   const next=document.querySelector('[data-view="'+view+'"]');
-  const rail=$("nav-active-indicator");
-  const nav=document.querySelector(".sidebar-nav");
-  const offset=next.getBoundingClientRect().top-nav.getBoundingClientRect().top;
-  const currentOffset=last.getBoundingClientRect().top-nav.getBoundingClientRect().top;
-  const reduced=document.body.classList.contains("reduce-motion")||
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if(!reduced){
-    const dist=Math.abs(offset-currentOffset);
-    rail.style.transitionDuration="260ms";
-    rail.style.height=(48+dist)+"px";
-    rail.style.transform="translateY("+Math.min(offset,currentOffset)+"px)";
-    requestAnimationFrame(()=>{
-      setTimeout(()=>{
-        rail.style.transitionDuration="340ms";
-        rail.style.height="48px";
-        rail.style.transform="translateY("+offset+"px)";
-      },260);
-    });
-  }else{rail.style.transform="translateY("+offset+"px)";rail.style.height="48px";}
   document.querySelectorAll(".nav-item").forEach(b=>{b.classList.remove("active");b.removeAttribute("aria-current")});
   next.classList.add("active");next.setAttribute("aria-current","page");
+  updateNavIndicator(true);
   document.querySelectorAll(".content-view").forEach(v=>v.classList.remove("active"));
   $("view-"+view).classList.add("active");
   $("page-title").textContent=pages[view][0];
@@ -247,5 +267,6 @@ $("reduced-motion").addEventListener("change",e=>{
   localStorage.setItem("cyn-riff-reduced-motion",e.target.checked?"1":"0");
 });
 renderDisconnected("Checking native CYN installation…");
+requestAnimationFrame(()=>updateNavIndicator(false));
 refresh();
 setInterval(()=>{if(!busy&&!document.hidden)refresh()},4200);
