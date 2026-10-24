@@ -34,7 +34,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     final ArrayList<AiControlMarker> liveControlMarkers=new ArrayList<>();
     Timeline timeline;NeuralView neural;Spectrum spectrum;ApexSpatialBrainView brainScan;
     int page=0,feedbackEffect=4,visibleTracks=60;
-    int bg=0xff090d14,card=0xff121b2b,text=0xffedf3ff,hint=0xffb9c7da,accent=0xff83b8ff,secondary=0xffaa8fff,outline=0xff2b3a50;
+    int bg=0xff141416,card=0xff1e1f22,text=0xffe6e6e8,hint=0xffbcbcc2,accent=0xffd9dade,secondary=0xffa1a2a8,outline=0xff38393d;
     boolean bound,seeking,reduced,libraryBusy,onlyFavorites;
     String query="";
     final ServiceConnection connection=new ServiceConnection(){
@@ -48,14 +48,14 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     String asset(String name)throws IOException{try(InputStream in=getAssets().open(name)){return Streams.text(in);}}
     int dp(float v){return Math.round(v*getResources().getDisplayMetrics().density);}
     static final String[] THEME_NAMES={
-        "Midnight • electric blue","Deep tide • sea glass","Ember dusk • copper pink",
+        "Graphite • Riff charcoal","Deep tide • sea glass","Ember dusk • copper pink",
         "Violet glass • iris","Obsidian ink • silver","Jade pulse • lime",
         "Rose noir • blush","Solar graphite • amber","Arctic mist • frost",
         "Neon city • magenta","Sapphire circuit • cobalt"
     };
     // Accent, secondary, dark background, translucent-surface tone.
     static final int[][] THEME_COLORS={
-        {0xff83b8ff,0xffaa8fff,0xff090d14,0xff121b2b},
+        {0xffd9dade,0xffa1a2a8,0xff141416,0xff1e1f22},
         {0xff65e4be,0xff7aa7ff,0xff061713,0xff102a24},
         {0xffffad82,0xffea8da9,0xff170e11,0xff302027},
         {0xffc0a0ff,0xff86d9f3,0xff100c1b,0xff241b39},
@@ -76,7 +76,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         int t=Math.floorMod(ui.getInt("studio_theme",0),THEME_COLORS.length);
         int[] colors=THEME_COLORS[t];
         accent=colors[0];secondary=colors[1];bg=colors[2];card=colors[3];
-        outline=androidx.core.graphics.ColorUtils.blendARGB(card,accent,.21f);
+        outline=androidx.core.graphics.ColorUtils.blendARGB(card,accent,.14f);
     }
     GradientDrawable shape(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));d.setStroke(dp(1),outline);return d;}
     GradientDrawable gradient(int radius){GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{androidx.core.graphics.ColorUtils.blendARGB(bg,accent,.22f),androidx.core.graphics.ColorUtils.blendARGB(bg,secondary,.22f)});d.setCornerRadius(dp(radius));return d;}
@@ -200,7 +200,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             nav.setItemActiveIndicatorHeight(dp(32));
             // Build the menu once: clearing a live menu during a selection callback
             // can uncheck the destination before Material finishes dispatching it.
-            String[] navigationTitles={"Studio","AI","Library","Style","Updates"};
+            String[] navigationTitles={"Studio","AI","Library","Style","Settings"};
             int[] navigationIcons={R.drawable.ic_cyn_studio,R.drawable.ic_cyn_ai,
                     R.drawable.ic_cyn_library,R.drawable.ic_cyn_style,R.drawable.ic_cyn_updates};
             for(int i=0;i<navigationTitles.length;i++)
@@ -365,17 +365,17 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         externalStatus=label(service.connectionState()+"\n"+service.connectionHint(),12,hint);externalStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(external,externalStatus);
         powerButton=button(service.monitor?"Disconnect CYN":"Connect CYN",()->{
             if(service.monitor) service.stopMonitor();
-            else { startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR)); enableConnectAi(); }
+            else { enableConnectAi(); }
             update();
         });primaryAction(powerButton);add(external,powerButton);
         add(external,button("Try device-wide EQ (experimental)",()->new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle("Try device-wide compatibility?")
             .setMessage("Android's legacy output-mix EQ works only on some phones. It can affect multiple apps, and obtaining effect control does not prove music is being processed. Compare sound with CYN off/on. Disconnect music apps to stop the attempt.")
-            .setPositiveButton("Try",(d,w)->{startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("legacy",true));enableConnectAi();})
+            .setPositiveButton("Try",(d,w)->{startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("legacy",true));offerLiveVisuals();})
             .setNegativeButton("Cancel",null).show()));
         if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)
             add(external,button("Enable live visuals",this::offerLiveVisuals));
-        add(external,button("Enable Connect AI",this::enableConnectAi));
+        add(external,label("No screen recording or screen-sharing permission is used. Compatible session EQ remains available.",12,hint));
         add(external,button("Connection details",this::connectionHelp));
     }
     void bands(int count){float[]old=service.studioEq.clone();int n=service.bandCount;for(int i=0;i<count;i++){float position=i*(n-1f)/(count-1);int lo=(int)position;service.studioEq[i]=old[lo]+(old[Math.min(n-1,lo+1)]-old[lo])*(position-lo);}service.bandCount=count;service.changed();build();}
@@ -670,8 +670,22 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         });
     }
     void updatesPage(){
-        add(content,label("Updates & about",29,text));
-        add(content,label("Version management stays in Updates, separate from Theme Studio.",13,hint));
+        add(content,label("Settings",29,text));
+        add(content,label("CYN / AUDIO · charcoal Material 3 controls, presets and updates.",13,hint));
+        LinearLayout general=section("Presets & controls","Saved sound stays on this device. Editing a preset never changes your learning model.");
+        add(general,button("Save New Preset",()->savePhonePreset()));
+        add(general,button("Load Saved Preset",()->listPhonePresets()));
+        add(general,button("Rename or Delete Preset",()->managePhonePresets()));
+        add(general,button("Undo Preset Changes",()->{if(undoPhoneSnapshot!=null){restorePhonePreset(undoPhoneSnapshot);undoPhoneSnapshot=null;toast("Last preset change undone");}else toast("Nothing to undo");}));
+        LinearLayout appearanceSettings=section("Appearance","Material 3 charcoal with configurable motion.");
+        add(appearanceSettings,button("Theme Studio",()->{page=3;build(true);}));
+        toggle(appearanceSettings,"Smooth animations",!ui.getBoolean("reduce",false),on->{ui.edit().putBoolean("reduce",!on).apply();build();});
+        LinearLayout advanced=section("Application","Device control, credits and account-free installation.");
+        add(advanced,button("Export Personal Model",()->startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("application/json").putExtra(Intent.EXTRA_TITLE,"CYN-phone-preferences.cynai.json"),31)));
+        add(advanced,button("Import Personal Model",()->startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE),30)));
+        add(advanced,button("Add Mobile Version / Source",()->browser("https://github.com/oddfoxerr-real/Cyn/releases?q=android-studio")));
+        add(advanced,button("FxSound credits & CYN license",()->{try{showText("FxSound credits & license",asset("NOTICE.txt")+"\n\n"+asset("LICENSE.txt"));}catch(Exception ex){toast("Could not read credits");}}));
+        add(advanced,button("Exit CYN",this::finishWithMotion));
         LinearLayout updates=section("Updates","Version "+BuildConfig.VERSION_NAME+" · build "+BuildConfig.VERSION_CODE);
         toggle(updates,"Automatic updates · check and download on Wi-Fi",UpdateManager.automatic(this),on->{
             UpdateManager.automatic(this,on);
@@ -688,23 +702,116 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         add(updates,label("Material-style updater · official release checks, live progress and verified installs. Automatic updates download on unmetered networks; installation always needs your approval.",12,hint));
         LinearLayout about=section("CYN for Android","Built on the FxSound open-source foundation.");add(about,button("Audio diagnostics (local only)",()->showText("Audio diagnostics · privacy-safe",service.diagnostics()+"\nAI engine: "+service.currentAi().status)));add(about,button("Source & release history",()->browser("https://github.com/oddfoxerr-real/Cyn/tree/codex/android/android")));add(about,button("FxSound credits, licenses & no warranty",()->{try{showText("FxSound credits & licenses",asset("NOTICE.txt")+"\n\n"+asset("LICENSE.txt"));}catch(Exception e){toast("Could not open licenses");}}));add(about,label("The phone uses the same neural model weights and desktop mixer. Its audio renderer and effects are adapted for Android; identical sound to the Windows FxSound driver is not claimed.",12,hint));add(about,button("Stop CYN audio",()->{service.stopAll();update();}));
     }
+    String undoPhoneSnapshot;
+    String phonePresets(){return ui.getString("phone_presets","{}");}
+    JSONObject presetsJson(){try{return new JSONObject(phonePresets());}catch(JSONException e){return new JSONObject();}}
+    String currentPhonePreset(){
+        if(service==null)return null;
+        try{
+            JSONObject obj=new JSONObject();
+            obj.put("bass",service.bass);obj.put("clarity",service.clarity);
+            obj.put("width",service.width);obj.put("ambience",service.ambience);
+            obj.put("dynamics",service.dynamics);obj.put("headroom",service.headroom);
+            obj.put("bands",service.bandCount);obj.put("smart",service.smart);
+            JSONArray arr=new JSONArray();
+            for(float v:service.studioEq)arr.put((double)v);
+            obj.put("eq",arr);
+            return obj.toString();
+        }catch(JSONException e){return null;}
+    }
+    void restorePhonePreset(String json){
+        if(service==null||json==null)return;
+        try{
+            JSONObject obj=new JSONObject(json);
+            undoPhoneSnapshot=currentPhonePreset();
+            service.bass=(float)obj.getDouble("bass");
+            service.clarity=(float)obj.getDouble("clarity");
+            service.width=(float)obj.getDouble("width");
+            service.ambience=(float)obj.getDouble("ambience");
+            service.dynamics=(float)obj.getDouble("dynamics");
+            service.headroom=(float)obj.getDouble("headroom");
+            int bands=obj.getInt("bands");service.bandCount=(bands==35||bands==39)?bands:31;
+            service.smart=obj.optBoolean("smart",true);
+            JSONArray eq=obj.getJSONArray("eq");
+            for(int i=0;i<service.studioEq.length;i++)service.studioEq[i]=(float)eq.optDouble(i,0);
+            service.changed();build(false);
+        }catch(JSONException|IllegalArgumentException e){toast("Preset is invalid");}
+    }
+    void savePhonePreset(){
+        if(service==null){toast("Audio engine not connected");return;}
+        android.widget.EditText input=new android.widget.EditText(this);
+        input.setSingleLine(true);input.setHint("Preset name");input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(48)});
+        LinearLayout holder=column();holder.setPadding(dp(24),0,dp(24),0);add(holder,input);
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Save new preset").setView(holder)
+            .setPositiveButton("Save",(d,w)->{
+                String name=input.getText().toString().trim();
+                if(name.isEmpty()){toast("Enter a preset name");return;}
+                JSONObject saved=presetsJson();String data=currentPhonePreset();
+                if(data==null)return;
+                try{saved.put(name,new JSONObject(data));ui.edit().putString("phone_presets",saved.toString()).apply();toast("Saved "+name);}
+                catch(JSONException e){toast("Unable to save preset");}
+            }).setNegativeButton("Cancel",null).show();
+    }
+    void listPhonePresets(){
+        JSONObject saved=presetsJson();JSONArray names=saved.names();
+        if(names==null||names.length()==0){toast("No saved presets");return;}
+        String[] entries=new String[names.length()];
+        for(int i=0;i<entries.length;i++)entries[i]=names.optString(i);
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Saved presets").setItems(entries,(d,which)->{
+                JSONObject target=saved.optJSONObject(entries[which]);
+                if(target!=null)restorePhonePreset(target.toString());
+            }).setNegativeButton("Close",null).show();
+    }
+    void managePhonePresets(){
+        JSONObject saved=presetsJson();JSONArray names=saved.names();
+        if(names==null||names.length()==0){toast("No saved presets");return;}
+        String[] entries=new String[names.length()];
+        for(int i=0;i<entries.length;i++)entries[i]=names.optString(i);
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Manage presets").setItems(entries,(d,index)->{
+                String selected=entries[index];
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                  .setTitle(selected).setItems(new String[]{"Rename","Delete"},(dialog,choice)->{
+                    if(choice==1)new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                        .setTitle("Delete "+selected+"?")
+                        .setPositiveButton("Delete",(d2,w)->{saved.remove(selected);ui.edit().putString("phone_presets",saved.toString()).apply();})
+                        .setNegativeButton("Cancel",null).show();
+                    else {
+                        android.widget.EditText input=new android.widget.EditText(this);
+                        input.setSingleLine(true);input.setText(selected);
+                        input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(48)});
+                        LinearLayout holder=column();holder.setPadding(dp(24),0,dp(24),0);add(holder,input);
+                        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                          .setTitle("Rename preset").setView(holder)
+                          .setPositiveButton("Rename",(d3,w)->{
+                            String name=input.getText().toString().trim();if(name.isEmpty())return;
+                            JSONObject record=saved.optJSONObject(selected);if(record==null)return;
+                            saved.remove(selected);
+                            try{saved.put(name,record);ui.edit().putString("phone_presets",saved.toString()).apply();}
+                            catch(JSONException ignored){toast("Rename failed");}
+                          }).setNegativeButton("Cancel",null).show();
+                    }
+                  }).show();
+            }).setNegativeButton("Close",null).show();
+    }
+    void finishWithMotion(){
+        if(isFinishing())return;
+        if(shell==null||reduced||!android.animation.ValueAnimator.areAnimatorsEnabled()){finish();return;}
+        shell.animate().alpha(0).scaleX(.93f).scaleY(.93f).setDuration(350)
+            .setInterpolator(new android.view.animation.AccelerateInterpolator())
+            .withEndAction(this::finish).start();
+    }
+    @Override public void onBackPressed(){
+        if(page!=0){page=0;build(true);}
+        else finishWithMotion();
+    }
     void enableConnectAi(){
-        if(Build.VERSION.SDK_INT<29){offerLiveVisuals();return;}
-        if(service!=null&&service.connectedCapture!=null){toast("Connect AI is already sharing playback");return;}
-        if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){
-            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle("Enable Connect AI")
-                .setMessage("CYN analyzes shared playback on this phone to adjust supported audio effects. Android calls the first permission microphone access; CYN only captures playback. Audio is not saved or uploaded. Next, approve Android's sharing prompt.")
-                .setPositiveButton("Continue",(d,w)->requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},24))
-                .setNegativeButton("Not now",null).show();
-            return;
-        }
-        try {
-            android.media.projection.MediaProjectionManager manager=getSystemService(android.media.projection.MediaProjectionManager.class);
-            Intent consent=Build.VERSION.SDK_INT>=34
-                ?manager.createScreenCaptureIntent(android.media.projection.MediaProjectionConfig.createConfigForDefaultDisplay())
-                :manager.createScreenCaptureIntent();
-            startActivityForResult(consent,72);
-        }catch(RuntimeException error){toast("Playback sharing is unavailable on this device");}
+        // Native audio-session processing only. No MediaProjection or screen-sharing consent.
+        if(service==null)return;
+        if(!service.monitor)startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR));
+        offerLiveVisuals();
     }
     void offerLiveVisuals(){
         if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED){
@@ -718,7 +825,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     }
     void requestAnalysis(){service.smart=true;service.changed();offerLiveVisuals();}
     void notifications(){if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},22);}
-    @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results){super.onRequestPermissionsResult(code,permissions,results);if(service==null)return;if(code==24&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED){enableConnectAi();return;}if(code==23&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)scan();
+    @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] results){super.onRequestPermissionsResult(code,permissions,results);if(service==null)return;if(code==23&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED)scan();
         service.changed();
         if(code==21&&results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED){
             service.refreshVisualization();
@@ -745,7 +852,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     @Override protected void onResume(){super.onResume();handler.removeCallbacks(refresh);handler.post(refresh);}
     @Override protected void onPause(){handler.removeCallbacks(refresh);super.onPause();}
     @Override protected void onDestroy(){handler.removeCallbacksAndMessages(null);searchGeneration++;searchWorker.shutdownNow();filesWorker.shutdown();if(bound)unbindService(connection);super.onDestroy();}
-    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==72){if(result==RESULT_OK&&data!=null){startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.CAPTURE).putExtra("consent",data));}else toast("Playback sharing cancelled · basic EQ remains available");return;}if(request==71){if(getPackageManager().canRequestPackageInstalls())UpdateManager.install(this);return;}if(result!=RESULT_OK||data==null||service==null)return;
+    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==71){if(getPackageManager().canRequestPackageInstalls())UpdateManager.install(this);return;}if(result!=RESULT_OK||data==null||service==null)return;
         if(request==10){ArrayList<Uri>uris=new ArrayList<>();if(data.getClipData()!=null)for(int i=0;i<data.getClipData().getItemCount();i++)uris.add(data.getClipData().getItemAt(i).getUri());else if(data.getData()!=null)uris.add(data.getData());for(Uri uri:uris)try{getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(SecurityException ignored){}AudioLibrary library=service.library;libraryBusy=true;filesWorker.execute(()->{try{ArrayList<AudioLibrary.Track> tracks=new ArrayList<>();for(Uri uri:uris)tracks.add(library.read(uri));library.merge(tracks);handler.post(()->{libraryBusy=false;page=2;build();toast(tracks.size()+" tracks added");});}catch(Exception e){handler.post(()->{libraryBusy=false;toast("Could not add audio files");});}});}
         else if(request==30&&data.getData()!=null){if(service.training){toast("Wait for training to finish");return;}try(InputStream in=getContentResolver().openInputStream(data.getData())){service.learning.importModel(in);toast("Desktop preference weights imported");}catch(Exception e){toast("Model import failed: "+e.getMessage());}}
         else if(request==31&&data.getData()!=null){try(OutputStream out=getContentResolver().openOutputStream(data.getData(),"wt")){out.write(service.learning.exportModel().getBytes(java.nio.charset.StandardCharsets.UTF_8));toast("Personal model exported");}catch(Exception e){toast("Could not export model");}}
