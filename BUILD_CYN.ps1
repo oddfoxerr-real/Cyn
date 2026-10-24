@@ -35,6 +35,8 @@ Copy-Item -Path (Join-Path $root 'ai-hub\community\*') -Destination $aiProfiles 
 Copy-Item -LiteralPath (Join-Path $root 'bin\x64\Factsoft') -Destination $dist -Recurse -Force
 Get-ChildItem -LiteralPath (Join-Path $root 'fxsound\Fonts') -File | Copy-Item -Destination $dist -Force
 Copy-Item -LiteralPath (Join-Path $root 'LICENSE'),(Join-Path $root 'README_CYN.md'),(Join-Path $root 'VALIDATION.md'),(Join-Path $root 'RELEASE_CHECKS.md'),(Join-Path $root 'CYN_CONTROL.ps1'),(Join-Path $root 'LAUNCH_CYN.ps1'),(Join-Path $root 'INSTALL_CYN.ps1') -Destination $dist -Force
+# Include the upstream MIT notice with all binary distributions that adapt Riff UI code.
+Copy-Item -LiteralPath (Join-Path $root 'third_party\riff-LICENSE.txt') -Destination (Join-Path $dist 'RIFF-LICENSE.txt') -Force
 Copy-Item -LiteralPath (Join-Path $root 'third_party\JUCE\LICENSE.md') -Destination (Join-Path $dist 'JUCE-LICENSE.md') -Force
 Copy-Item -LiteralPath (Join-Path $root 'docs\AI-DJ.md') -Destination (Join-Path $dist 'AI-DJ.md') -Force
 # Remove obsolete documentation when reusing an older staged payload.
