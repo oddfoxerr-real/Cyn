@@ -381,29 +381,16 @@ public class StudioTest {
             for(int i=0;i<group.getChildCount();i++)collectLabels(group.getChildAt(i),values);
         }
     }
-    @Test public void updateArtUsesMeasuredDownloadPercentageWithoutFakeFill()throws Exception{
-        MainActivity a=ready();
-        main(()->{
-            UpdateSplash.SplashArt art=new UpdateSplash.SplashArt(a,a.accent,true);
-            art.layout(0,0,440,780);
-            Bitmap bitmap=Bitmap.createBitmap(440,780,Bitmap.Config.ARGB_8888);
-            try {
-                android.graphics.Canvas canvas=new android.graphics.Canvas(bitmap);
-                art.state(UpdateManager.CHECKING,-1);
-                art.draw(canvas);
-                int color=bitmap.getPixel(190,370);
-                assertEquals("Checker stage has no fake filled transfer area",UpdateSplash.INK,color);
-                art.state(UpdateManager.DOWNLOADING,70);
-                art.draw(canvas);
-                // State change must draw without crashing even with reduced motion.
-                art.state(UpdateManager.VERIFYING,100);
-                art.draw(canvas);
-                art.state(UpdateManager.READY,100);
-                art.draw(canvas);
-                assertNotEquals("The mechanical art must draw its second tone",
-                    UpdateSplash.INK,bitmap.getPixel(220,370));
-            }finally{bitmap.recycle();}
-        });
+    @Test public void updaterReportsOnlyMeasuredTransferProgress()throws Exception {
+        // UpdateSplash was rebuilt with Material 3 ProgressIndicator. The old
+        // SplashArt bitmap no longer exists; assert the real state contract.
+        assertEquals("Checking releases",UpdateSplash.progressText(UpdateManager.CHECKING,-1));
+        assertEquals("70% downloaded",UpdateSplash.progressText(UpdateManager.DOWNLOADING,70));
+        assertEquals("100% downloaded",UpdateSplash.progressText(UpdateManager.DOWNLOADING,100));
+        assertEquals("Verifying package",UpdateSplash.progressText(UpdateManager.VERIFYING,100));
+        assertEquals("Verified and ready",UpdateSplash.progressText(UpdateManager.READY,100));
+        assertEquals("Install verified update",UpdateSplash.actionText(UpdateManager.READY,true));
+        assertEquals("Retry update",UpdateSplash.actionText(UpdateManager.FAILED,false));
     }
 
     @Test public void foxArtTracksRealThumbWithoutChangingManualBaseline()throws Exception {
