@@ -8,7 +8,7 @@ const studio=load("fxsound/Source/GUI/CynThemeStudio.h");
 
 assert(header.includes("WIDTH = 1320, HEIGHT = 700"),"Stable workbench must have room for all native controls");
 assert(header.includes('CynAiHubContent embedded_ai_hub_') &&
-       header.includes('studio_nav_ { "CYN Studio" }') &&
+       header.includes('studio_nav_ { "CYN Studio",5 }') &&
        header.includes('ai_status_card_ { "AI status" }') &&
        header.includes("void selectSoundFocus(int focus);"),"Navigational controls must exist as real JUCE Buttons");
 for(const s of ["sound_nav_.onClick","smart_nav_.onClick","devices_nav_.onClick",
@@ -48,9 +48,9 @@ assert(view.includes('modelText=model=="apex6m"') &&
        view.includes('FxController::getInstance().isSmartListening()'),
        "The AI status panel must show actual engine state, not invented model status");
 assert(view.includes("FxThemeMode::DarkMesh") &&
-       view.includes('g.fillRoundedRectangle(22.0f,navY') &&
+       view.includes('g.fillRoundedRectangle(26.0f,navY') &&
        view.includes('CynThemeAtmosphere::paint(g,mode') &&
-       view.includes("reduced ? 0.0f"),
+       view.includes("reduced?0.0f"),
        "Horizon x Depth native shell must retain live Dark Theme and reduced motion");
 assert(!view.includes('g.drawArc(juce::Path(),0)'),"No placeholder painting calls");
 console.log("PASS: native stable-candidate shell, real EQ/DSP/AI widgets, dark continuity");
