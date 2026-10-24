@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="cyn.css">
   <script src="rail-drawer.js" defer></script>
   <script src="renderer.js" defer></script>
+  <script src="settings.js" defer></script>
 </head>
 <body>
   <header class="titlebar">
@@ -153,12 +154,47 @@
 
       <section class="content-view" id="view-settings" aria-labelledby="settings-title">
         <div class="section-heading"><div><span class="section-kicker">CYN / AUDIO</span><h2 id="settings-title">Settings</h2></div></div>
-        <div class="feature-grid">
-          <article class="surface-card"><h3>Native audio engine</h3><p class="support-text">The CYN interface sends commands to your existing Cyn.exe. Audio processing stays in native CYN and your existing presets and models are preserved.</p><button id="select-native" class="button secondary" type="button">Locate Cyn.exe</button><p class="support-text" id="native-path-state">CYN is detected automatically when installed in its default location.</p></article>
-          <article class="surface-card"><h3>Visual preferences</h3><button class="button secondary" id="open-appearance-settings" type="button">Open Appearance</button><p class="support-text">Adjusts CYN interface motion without changing your audio settings.</p></article>
+        <div class="settings-surface">
+          <div class="settings-group-label">Presets</div>
+          <button class="settings-row" data-setting="save-new"><span>Save New Preset</span><span aria-hidden="true">›</span></button>
+          <button class="settings-row" data-setting="overwrite"><span>Overwrite Existing Preset</span><span aria-hidden="true">›</span></button>
+          <button class="settings-row" data-setting="undo"><span>Undo Preset Changes</span><span aria-hidden="true">›</span></button>
+          <button class="settings-row" data-setting="rename"><span>Rename Preset</span><span aria-hidden="true">›</span></button>
+          <button class="settings-row" data-setting="delete"><span>Delete Preset</span><span aria-hidden="true">›</span></button>
+          <div class="settings-divider"></div>
+          <div class="settings-group-label">Management</div>
+          <button class="settings-row" data-setting="native"><span>Import / Export Presets in Native CYN</span><span aria-hidden="true">›</span></button>
+          <button class="settings-row" data-setting="mobile"><span>Add Mobile Version</span><span aria-hidden="true">↗</span></button>
+          <button class="settings-row" data-setting="updates"><span>Check for Updates</span><span aria-hidden="true">↗</span></button>
+          <div class="settings-row settings-info"><span>Automatic Update Checks</span><span class="settings-note">Managed by native CYN</span></div>
+          <div class="settings-divider"></div>
+          <div class="settings-group-label">Appearance & App</div>
+          <button class="settings-row" data-setting="theme"><span>Theme Studio</span><span aria-hidden="true">›</span></button>
+          <label class="settings-row settings-check"><span>Smooth animations</span><input id="smooth-animations" type="checkbox" checked aria-label="Smooth animations"/></label>
+          <label class="settings-row settings-check"><span>Always on Top</span><input id="always-on-top" type="checkbox" aria-label="Always on top"/></label>
+          <button class="settings-row" data-setting="credits"><span>FxSound Credits & CYN License</span><span aria-hidden="true">↗</span></button>
+          <button class="settings-row" data-setting="support"><span>Support the FxSound Engine</span><span aria-hidden="true">↗</span></button>
+          <button class="settings-row settings-exit" data-setting="exit"><span>Exit CYN</span><span aria-hidden="true">×</span></button>
         </div>
-        <p class="legal">CYN Audio · Open-source notices available in the included licenses. This preview does not replace or uninstall native CYN.</p>
+        <article class="settings-native">
+          <div><h3>Native Audio Engine</h3><p class="support-text">Uses your existing CYN DSP, presets, and AI models. Closing this interface does not stop the native audio engine.</p></div>
+          <button id="select-native" class="button secondary" type="button">Locate Cyn.exe</button>
+          <p class="support-text" id="native-path-state">CYN is detected automatically when installed in its default location.</p>
+        </article>
+        <p class="legal">CYN Audio · Riff MIT UI attribution and FxSound AGPL source notices are included in the application.</p>
       </section>
+      <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-dialog-title">
+        <form method="dialog" id="settings-dialog-form">
+          <h3 id="settings-dialog-title">Preset</h3>
+          <p id="settings-dialog-hint">Choose a name.</p>
+          <label id="settings-dialog-label" for="settings-dialog-name">Preset name</label>
+          <input id="settings-dialog-name" maxlength="64" autocomplete="off" required/>
+          <div class="dialog-actions">
+            <button type="button" class="button secondary" id="settings-dialog-cancel">Cancel</button>
+            <button class="button primary" id="settings-dialog-accept" type="submit">Save</button>
+          </div>
+        </form>
+      </dialog>
     </main>
   </div>
 </body>
