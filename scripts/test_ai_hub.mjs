@@ -90,10 +90,11 @@ assert(view.includes("tool_tip_.setOpaque(false);"),"Tooltip should not show rec
 for (const [button,palette] of [["browse_ai_","MenuHighlightBackground"],["export_ai_","PanelBackground"],["import_ai_","PanelBackground"]]) {
   assert(view.includes(button+".setColour(TextButton::buttonColourId, Colour(FXCOLOR("+palette+")).withAlpha(1.0f));"),button+" fill is transparent");
 }
-assert(view.includes('g.fillRoundedRectangle(22.0f,navY') &&
-       view.includes('g.drawRoundedRectangle(22.5f,navY+.5f') &&
+assert(view.includes('const float navY=expressiveMotion_.navigationY;') &&
+       view.includes('g.fillRoundedRectangle(22.0f,navY-morph*.5f') &&
+       view.includes('g.drawRoundedRectangle(22.5f,navY-morph*.5f+.5f') &&
        view.includes('button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));'),
-       "Native AI Hub sidebar must have readable text and a separate painted selection background");
+       "Native AI Hub sidebar must keep readable labels and animated selection background");
 assert(view.includes('browse_ai_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));'),
        "Browse AI action label invisible");
 assert(view.includes("button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));"),"AI profile actions lack opaque labels");

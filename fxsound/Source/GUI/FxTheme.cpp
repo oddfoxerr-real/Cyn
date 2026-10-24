@@ -239,51 +239,67 @@ void FxTheme::drawLinearSlider(Graphics& g, int x, int y, int width, int height,
     const float hover = animate(slider,0,enabled && (slider.isMouseOverOrDragging() || slider.hasKeyboardFocus(true)) ? 1.0f : 0.0f);
     auto glow = Colour(FXCOLOR(SliderHighlight)).withAlpha(hover*.22f);
 
+    // Material 3-inspired detached thumb: the gap makes position readable
+    // at small values, with a bounded hover response and no timer allocation.
     if (style == Slider::LinearHorizontal)
     {
         const float cy = y + height * 0.5f;
-        const float trackH = 4.0f;
-        g.setColour(rail);
-        g.fillRoundedRectangle((float)x, cy - trackH * 0.5f, (float)width, trackH, 3.0f);
-
-        const float filled = jlimit(0.0f, (float)width, sliderPos - (float)x);
-        g.setColour(accent);
-        g.fillRoundedRectangle((float)x, cy - trackH * 0.5f, filled, trackH, 3.0f);
-
-        if (hover > .001f)
-        {
-            g.setColour(glow);
-            g.fillEllipse(sliderPos - 12.0f, cy - 12.0f, 24.0f, 24.0f);
+        const float knobX = jlimit((float)x, (float)(x + width), sliderPos);
+        const float trackHeight = 4.0f;
+        const float gap = 7.0f;
+        const float leftLength = jmax(0.0f, knobX - gap - (float)x);
+        const float rightX = knobX + gap;
+        const float rightLength = jmax(0.0f, (float)(x + width) - rightX);
+        if (leftLength > 0.0f) {
+            g.setColour(accent);
+            g.fillRoundedRectangle((float)x, cy - trackHeight * 0.5f,
+                                   leftLength, trackHeight, 2.0f);
         }
-
-        g.setColour(enabled ? Colour(FXCOLOR(DefaultText)).withAlpha(1.0f) : Colour(FXCOLOR(HintText)).withAlpha(1.0f));
-        g.fillEllipse(sliderPos - 5.5f, cy - 5.5f, 11.0f, 11.0f);
-        g.setColour(accent.withAlpha(enabled ? 0.65f : 0.2f));
-        g.drawEllipse(sliderPos - 5.5f, cy - 5.5f, 11.0f, 11.0f, 1.0f);
+        if (rightLength > 0.0f) {
+            g.setColour(rail);
+            g.fillRoundedRectangle(rightX, cy - trackHeight * 0.5f,
+                                   rightLength, trackHeight, 2.0f);
+        }
+        if (hover > .001f) {
+            g.setColour(glow);
+            g.fillEllipse(knobX - 14.0f, cy - 14.0f, 28.0f, 28.0f);
+        }
+        const float thumbH = 17.0f + hover * 3.0f;
+        g.setColour(enabled ? Colour(FXCOLOR(DefaultText)).withAlpha(1.0f)
+                            : Colour(FXCOLOR(HintText)).withAlpha(.6f));
+        g.fillRoundedRectangle(knobX - 3.2f, cy - thumbH * .5f,
+                               6.4f, thumbH, 3.2f);
         return;
     }
 
     if (style == Slider::LinearVertical)
     {
         const float cx = x + width * 0.5f;
-        const float trackW = 4.0f;
-        g.setColour(rail);
-        g.fillRoundedRectangle(cx - trackW * 0.5f, (float)y, trackW, (float)height, 3.0f);
-
-        const float filledTop = jlimit((float)y, (float)(y + height), sliderPos);
-        g.setColour(accent);
-        g.fillRoundedRectangle(cx - trackW * 0.5f, filledTop, trackW, (float)(y + height) - filledTop, 3.0f);
-
-        if (hover > .001f)
-        {
-            g.setColour(glow);
-            g.fillEllipse(cx - 12.0f, sliderPos - 12.0f, 24.0f, 24.0f);
+        const float knobY = jlimit((float)y, (float)(y + height), sliderPos);
+        const float trackWidth = 4.0f;
+        const float gap = 7.0f;
+        const float upperLength = jmax(0.0f, knobY - gap - (float)y);
+        const float lowerY = knobY + gap;
+        const float lowerLength = jmax(0.0f, (float)(y + height) - lowerY);
+        if (upperLength > 0.0f) {
+            g.setColour(rail);
+            g.fillRoundedRectangle(cx - trackWidth * .5f, (float)y,
+                                   trackWidth, upperLength, 2.0f);
         }
-
-        g.setColour(enabled ? Colour(FXCOLOR(DefaultText)).withAlpha(1.0f) : Colour(FXCOLOR(HintText)).withAlpha(1.0f));
-        g.fillEllipse(cx - 5.5f, sliderPos - 5.5f, 11.0f, 11.0f);
-        g.setColour(accent.withAlpha(enabled ? 0.65f : 0.2f));
-        g.drawEllipse(cx - 5.5f, sliderPos - 5.5f, 11.0f, 11.0f, 1.0f);
+        if (lowerLength > 0.0f) {
+            g.setColour(accent);
+            g.fillRoundedRectangle(cx - trackWidth * .5f, lowerY,
+                                   trackWidth, lowerLength, 2.0f);
+        }
+        if (hover > .001f) {
+            g.setColour(glow);
+            g.fillEllipse(cx - 14.0f, knobY - 14.0f, 28.0f, 28.0f);
+        }
+        const float thumbW = 17.0f + hover * 3.0f;
+        g.setColour(enabled ? Colour(FXCOLOR(DefaultText)).withAlpha(1.0f)
+                            : Colour(FXCOLOR(HintText)).withAlpha(.6f));
+        g.fillRoundedRectangle(cx - thumbW * .5f, knobY - 3.2f,
+                               thumbW, 6.4f, 3.2f);
         return;
     }
 

@@ -17,6 +17,8 @@ assert(updater.includes("$downloadProgress.Value=0"), "Clear stale full progress
 assert(updater.includes("$laterButton.Content='View install log'"), "Make the log accessible after failure.");
 assert(updater.includes("Get-Process -Name FxSound"), "Check for the original audio app before install.");
 assert(installer.includes("CloseApplications=no"), "Do not forcibly terminate audio applications.");
-assert(installer.includes("AppVersion=2.0.79"), "Require a new release rather than overwriting an old asset.");
+const version = installer.match(/^AppVersion=(\d+\.\d+\.\d+)\s*$/m)?.[1];
+assert(version && version.localeCompare("2.0.79", undefined, {numeric:true}) > 0,
+       "Require a version newer than the last published release rather than overwriting its asset.");
 
 console.log("PASS: recoverable installer, persistent logging, error-state UI and driver-safe process policy");
