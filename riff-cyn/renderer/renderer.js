@@ -308,7 +308,7 @@ function transition(view){
 }
 document.addEventListener("cyn:drawer-change",()=>updateSelectedNav(true));
 $("drawer-open-smart").addEventListener("click",()=>transition("ai"));
-$("open-appearance-settings").addEventListener("click",()=>window.cynRail.open("appearance"));
+// Appearance is routed through the Settings action list in settings.js.
 $("drawer-ai-model").addEventListener("change",event=>
   apply({type:"aiModel",value:event.target.value}));
 const accentSetting="cyn-ui-accent";
