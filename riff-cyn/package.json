@@ -1,8 +1,8 @@
 {
-  "name": "cyn-riff-desktop",
-  "version": "0.1.0",
+  "name": "cyn-audio-desktop",
+  "version": "0.2.0",
   "private": true,
-  "description": "Riff-based CYN desktop shell backed by CYN native FxSound engine",
+  "description": "CYN Audio desktop interface connected to the native audio engine",
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
@@ -15,9 +15,9 @@
     "electron-builder": "26.15.3"
   },
   "build": {
-    "appId": "co.cyn.audio.riff",
-    "productName": "CYN Riff",
-    "artifactName": "CYN-Riff-Preview-${version}-${arch}.${ext}",
+    "appId": "co.cyn.audio.desktop.preview",
+    "productName": "CYN Audio",
+    "artifactName": "CYN-Audio-Preview-${version}-${arch}.${ext}",
     "directories": {
       "output": "dist"
     },
