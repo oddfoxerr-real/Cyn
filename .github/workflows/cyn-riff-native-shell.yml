@@ -15,11 +15,11 @@ on:
       - ".github/workflows/cyn-riff-native-shell.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 # Fail old branch builds automatically when a newer Riff UI change lands.
 concurrency:
-  group: cyn-riff-preview-${{ github.head_ref || github.ref_name }}
+  group: cyn-riff-preview-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -97,3 +97,19 @@ jobs:
           path: riff-cyn/dist/CYN-Audio-Preview-*.exe
           if-no-files-found: error
           retention-days: 14
+      - name: Publish standalone CYN Audio desktop preview
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/riff-native-cyn-shell-20261024'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = 'cyn-audio-desktop-v0.2.0-preview'
+          $exe = Get-Item 'riff-cyn/dist/CYN-Audio-Preview-0.2.0-x64.exe'
+          $hash = (Get-FileHash -Algorithm SHA256 $exe.FullName).Hash.ToLowerInvariant()
+          $checksum = "riff-cyn/dist/$($exe.Name).sha256"
+          Set-Content -LiteralPath $checksum -Value "$hash  $($exe.Name)" -Encoding ascii
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) { throw "Preview tag already exists: $tag; no asset overwrite permitted." }
+          gh release create $tag $exe.FullName $checksum --target $env:GITHUB_SHA --title "CYN Audio Desktop 0.2.0 preview" --notes "Separate standalone Riff-based CYN Audio desktop preview with graphite Material 3 Settings and custom close animation. Uses an installed native Cyn.exe audio engine. Riff MIT and FxSound AGPL notices are bundled; this preview is not the stable CYN updater channel." --prerelease --latest=false
+
