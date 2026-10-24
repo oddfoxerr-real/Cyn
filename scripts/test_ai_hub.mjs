@@ -54,8 +54,8 @@ assert(!view.includes('URL("https://github.com/oddfoxerr-real/Cyn/tree/main/ai-h
 const build=readFileSync(path("BUILD_CYN.ps1"),"utf8");
 assert(build.includes("CynAiProfiles"),"Installer must bundle the offline community catalogue");
 const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
-assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
-for(const key of ["ai_hub_nav_.setBounds(navX,251,navW,42)",
+assert(header.includes('ai_hub_nav_ { "AI Hub",3 }'),"Permanent native AI Hub icon navigation button missing");
+for(const key of ["ai_hub_nav_.setBounds(navX,278,navW,48)",
                   "ai_hub_nav_.onClick = [this] { selectPage(3); };",
                   "export_ai_.setBounds(left+456,657,92,27)",
                   "import_ai_.setBounds(left+556,657,92,27)",
