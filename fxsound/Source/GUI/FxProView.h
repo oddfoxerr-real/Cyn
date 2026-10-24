@@ -15,6 +15,7 @@
 #include "CynExpressiveMotion.h"
 #include "CynAiHubDialog.h"
 #include <array>
+#include <cmath>
 
 class CynRailButton : public TextButton
 {
