@@ -6,6 +6,7 @@
 #include "CynThemeAtmosphere.h"
 #include "CynUiMotion.h"
 #include "CynLiquidScreen.h"
+#include "CynRiffLayout.h"
 #include "FxSettingsDialog.h"
 #include "CynAiHubDialog.h"
 #include "CynThemeStudio.h"
@@ -263,7 +264,7 @@ void FxProView::selectSoundFocus(int focus)
     transition_to_image_=Image();
     theme_from_image_=Image();
     theme_to_image_=Image();
-    const juce::Rectangle<int> content(240,0,jmax(0,getWidth()-240),getHeight());
+    const juce::Rectangle<int> content(108,0,jmax(0,getWidth()-108),getHeight());
     const bool animate=isShowing() && !FxTheme::isReducedMotion() && !content.isEmpty();
     if(animate) {
         capturing_liquid_=true;
@@ -293,7 +294,7 @@ void FxProView::selectPage(int page)
     transition_to_image_=Image();
     theme_from_image_=Image();
     theme_to_image_=Image();
-    const juce::Rectangle<int> content(240,0,jmax(0,getWidth()-240),getHeight());
+    const juce::Rectangle<int> content(108,0,jmax(0,getWidth()-108),getHeight());
     const bool animate=isShowing() && !FxTheme::isReducedMotion() && !content.isEmpty();
     if(animate) {
         capturing_liquid_=true;
@@ -582,16 +583,28 @@ void FxProView::resized()
     // functional JUCE widgets, not an image of controls.
     power_curtain_.setBounds(getLocalBounds());
     const int left=245, right=1301, usable=right-left;
-    const int navX=27,navW=186;
-    // Match the actual sidebar selection geometry and free the top-left
-    // from the duplicate title-bar branding.
-    sound_nav_.setBounds(navX,104,navW,42);
-    smart_nav_.setBounds(navX,153,navW,42);
-    devices_nav_.setBounds(navX,202,navW,42);
-    ai_hub_nav_.setBounds(navX,251,navW,42);
-    misc_nav_.setBounds(navX,300,navW,42);
-    studio_nav_.setBounds(navX,349,navW,42);
-    settings_.setBounds(navX,615,navW,42);
+    // Riff styles.css: 80px rounded icon rail, 48px selection targets.
+    const int navX=(int)CynRiffLayout::railIconX,navW=(int)CynRiffLayout::railIconSize;
+    sound_nav_.setBounds(navX,104,navW,48);
+    smart_nav_.setBounds(navX,162,navW,48);
+    devices_nav_.setBounds(navX,220,navW,48);
+    ai_hub_nav_.setBounds(navX,278,navW,48);
+    misc_nav_.setBounds(navX,336,navW,48);
+    studio_nav_.setBounds(navX,394,navW,48);
+    settings_.setBounds(navX,617,navW,48);
+    for(auto* b:std::initializer_list<TextButton*> {
+        &sound_nav_,&smart_nav_,&devices_nav_,&ai_hub_nav_,
+        &misc_nav_,&studio_nav_,&settings_}) {
+        b->getProperties().set("riff_icon_rail",true);
+        b->setMouseCursor(MouseCursor::PointingHandCursor);
+    }
+    sound_nav_.setTooltip("Sound Studio");
+    smart_nav_.setTooltip("Smart Listening");
+    devices_nav_.setTooltip("Output Devices");
+    ai_hub_nav_.setTooltip("AI Hub");
+    misc_nav_.setTooltip("Misc / AI DJ");
+    studio_nav_.setTooltip("CYN Studio");
+    settings_.setTooltip("Settings");
     // Header cards contain live, operable preset/device selectors.
     // Labels occupy a dedicated line above the selectors. Never overlap
     // live JUCE ComboBoxes (the old cards positioned both at y=118).
@@ -696,6 +709,26 @@ void FxProView::resized()
     for(auto* button:std::initializer_list<TextButton*> { &export_ai_, &import_ai_ }) {
         button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
         button->setColour(TextButton::textColourOnId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
+    }
+    // Reflow working JUCE controls into the wider Riff-style workspace.
+    // Interactive bounds (including EQ sliders and all AI buttons) are mapped.
+    for(auto* c:std::initializer_list<Component*> {
+        &preset_list_,&endpoint_list_,&ai_status_card_,&live_status_,
+        &overview_tab_,&eq_focus_tab_,&effects_focus_tab_,
+        &embedded_ai_hub_,&audio_controls_,&equalizer_,&visualizer_,
+        &learning_timeline_,&neural_activity_,&brain_scan_,&scan_toggle_,
+        &listening_mode_,&ai_profile_,&learning_effect_,&more_,&less_,
+        &train_,&resume_,&sensitivity_,&headroom_cap_,
+        &preset_cycling_,&preset_cycling_status_,&audonic_intensity_label_,
+        &audonic_intensity_,&learning_status_,&export_ai_,&import_ai_,
+        &browse_ai_,&starter_,&pin_toggle_,&refresh_,&smart_toggle_,
+        &smart_status_,&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,
+        &dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,
+        &dj_progress_}) {
+        const auto b=c->getBounds();
+        if(!b.isEmpty() && b.getX()>=240)
+            c->setBounds(CynRiffLayout::x(b.getX()),b.getY(),
+                         CynRiffLayout::width(b.getWidth()),b.getHeight());
     }
     power_curtain_.toFront(false);
 }
