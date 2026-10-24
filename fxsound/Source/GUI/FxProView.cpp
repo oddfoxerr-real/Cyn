@@ -403,6 +403,18 @@ void FxProView::update()
 void FxProView::timerCallback()
 {
     if(!isShowing()) return;
+    // Drive both selected indicators and hover tonal states with the existing
+    // UI timer, independent of DSP or screenshot transitions.
+    const double motionNow = Time::getMillisecondCounterHiRes();
+    const float frameMs = lastExpressiveFrameMs_ > 0.0
+        ? (float)juce::jlimit(0.0, 100.0, motionNow - lastExpressiveFrameMs_)
+        : 16.0f;
+    lastExpressiveFrameMs_ = motionNow;
+    expressiveMotion_.advance(frameMs, page_, sound_focus_,
+        {{sound_nav_.isMouseOver(), smart_nav_.isMouseOver(),
+          devices_nav_.isMouseOver(), ai_hub_nav_.isMouseOver(),
+          misc_nav_.isMouseOver(), studio_nav_.isMouseOver()}},
+        FxTheme::isReducedMotion());
     power_curtain_.syncPower(FxModel::getModel().getPowerState());
     // Preserve the visible interface in standby while skipping all hidden
     // 60 Hz telemetry, graph updates, AI hand/flower animations and polling.
@@ -738,15 +750,28 @@ void FxProView::paint(Graphics& g)
                                  Justification::centredLeft);
     g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,87.0f,203.0f,87.0f,.8f);
 
-    const float navY=104.0f+49.0f*(float)page_;
+    // Riff-inspired M3 tonal hover surfaces, with a retargetable pill
+    // that *moves* between real native controls instead of blinking.
+    for (int i=0; i<6; ++i) {
+        const float hover=expressiveMotion_.hovered[(size_t)i];
+        if (hover < .006f) continue;
+        const float y=104.0f+49.0f*(float)i;
+        g.setColour(cyan.withAlpha(.095f*hover));
+        g.fillRoundedRectangle(22.0f,y,196.0f,42.0f,21.0f);
+    }
+    const float navY=expressiveMotion_.navigationY;
+    const float navDistance=std::abs((104.0f+49.0f*(float)page_)-navY);
+    const float morph=juce::jmin(5.0f,navDistance*.045f);
     ColourGradient navGlow(colour(MenuHighlightBackground),22.0f,navY,
-                            cyan.withAlpha(1.0f).interpolatedWith(base,.77f),
+                            cyan.interpolatedWith(panel,.79f),
                             218.0f,navY+42.0f,false);
+    navGlow.addColour(.56,colour(MenuHighlightBackground).interpolatedWith(cyan,.12f));
     g.setGradientFill(navGlow);
-    g.fillRoundedRectangle(22.0f,navY,196.0f,42.0f,15.0f);
-    g.setColour(cyan.withAlpha(.78f));
-    g.drawRoundedRectangle(22.5f,navY+.5f,195.0f,41.0f,14.5f,1.05f);
-    g.fillRoundedRectangle(22.0f,navY+11.0f,3.2f,20.0f,1.5f);
+    g.fillRoundedRectangle(22.0f,navY-morph*.5f,196.0f,42.0f+morph,21.0f);
+    g.setColour(cyan.withAlpha(.54f));
+    g.drawRoundedRectangle(22.5f,navY-morph*.5f+.5f,195.0f,41.0f+morph,20.5f,.9f);
+    g.setColour(cyan.withAlpha(.91f));
+    g.fillRoundedRectangle(22.0f,navY+12.0f,3.0f,18.0f,1.5f);
     g.setColour(border);g.drawLine(27.0f,590.0f,210.0f,590.0f,.8f);
     g.setColour(panel2);g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
     g.setColour(border.withAlpha(.38f));g.drawRoundedRectangle(21.5f,524.5f,194.0f,55.0f,12.0f,.8f);
@@ -814,12 +839,19 @@ void FxProView::paint(Graphics& g)
     // Dedicated workspace band sits BELOW the taller selector cards.
     // Tabs sit directly on the workbench; no surrounding button bar.
     if(page_==0) {
-        const float selX=sound_focus_==0 ? 258.0f : sound_focus_==1 ? 392.0f : 526.0f;
-        const float selW=sound_focus_==2 ? 164.0f : 126.0f;
-        g.setColour(colour(MenuHighlightBackground));
-        g.fillRoundedRectangle(selX,202.0f,selW,36.0f,11.0f);
-        g.setColour(cyan.withAlpha(.75f));
-        g.drawRoundedRectangle(selX+.5f,202.5f,selW-1.0f,35.0f,10.5f,.9f);
+        // Segmented control with the same interruptible, floating selection.
+        g.setColour(panel2.withAlpha(.88f));
+        g.fillRoundedRectangle(254.0f,200.0f,442.0f,40.0f,20.0f);
+        g.setColour(border.withAlpha(.42f));
+        g.drawRoundedRectangle(254.5f,200.5f,441.0f,39.0f,19.5f,.8f);
+        const float selX=expressiveMotion_.focusX;
+        const float selW=expressiveMotion_.focusWidth;
+        ColourGradient pill(colour(MenuHighlightBackground),selX,201.0f,
+                            cyan.interpolatedWith(panel,.82f),selX+selW,239.0f,false);
+        g.setGradientFill(pill);
+        g.fillRoundedRectangle(selX,202.0f,selW,36.0f,18.0f);
+        g.setColour(cyan.withAlpha(.65f));
+        g.drawRoundedRectangle(selX+.5f,202.5f,selW-1.0f,35.0f,17.5f,.9f);
         txt("31 / 35 / 39 BANDS",1110,208,180,23,11.6f,true);
         if(sound_focus_==0) {
             card(247,253,795,235,23.0f);
