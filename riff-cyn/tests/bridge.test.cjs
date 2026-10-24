@@ -62,3 +62,10 @@ test("renderer uses isolated Riff UI and never starts a second audio engine",()=
   assert(!app.includes("AudioContext"));
   assert(preload.includes("contextBridge.exposeInMainWorld"));
 });
+
+test("Riff's old playback-bar height does not collapse CYN's real controls",()=>{
+  const css=fs.readFileSync(path.resolve(__dirname,"../renderer/cyn.css"),"utf8");
+  assert(css.includes("height:calc(100dvh - 46px)!important"));
+  assert(css.includes(".workspace-header,.control-deck,.content-view{flex-shrink:0}"));
+  assert(css.includes(".control-deck{min-height:100px}"));
+});
