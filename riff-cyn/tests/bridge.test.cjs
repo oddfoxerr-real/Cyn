@@ -107,3 +107,35 @@ test("CYN is the visible app identity and preview stays separate from native CYN
   assert(!html.includes("CYN Riff"));
   assert(pkg.build.nsis.deleteAppDataOnUninstall===false);
 });
+
+
+test("Riff graphite dock: workspaces above separator, all flyouts below, neutral square selection",()=>{
+  const root=path.resolve(__dirname,"..");
+  const html=fs.readFileSync(path.join(root,"renderer/index.html"),"utf8");
+  const css=fs.readFileSync(path.join(root,"renderer/cyn.css"),"utf8");
+  const app=fs.readFileSync(path.join(root,"renderer/renderer.js"),"utf8");
+  const navStart=html.indexOf('<nav class="sidebar-nav"');
+  const navEnd=html.indexOf("</nav>",navStart);
+  const toolsStart=html.indexOf('<div class="rail-action-group">',navEnd);
+  const drawerStart=html.indexOf('<div class="rail-drawer hidden"',toolsStart);
+  assert(navStart>=0&&navEnd>navStart&&toolsStart>navEnd&&drawerStart>toolsStart);
+  const nav=html.slice(navStart,navEnd);
+  const tools=html.slice(toolsStart,drawerStart);
+  for(const mode of ["overview","devices","ai"])
+    assert(nav.includes('data-view="'+mode+'"'),"Main workspace missing from top: "+mode);
+  for(const id of ["btn-toggle-presets-drawer","btn-toggle-ai-drawer","btn-toggle-theme-drawer"]){
+    assert(!nav.includes('id="'+id+'"'),"Drawer tool incorrectly placed in top navigation: "+id);
+    assert(tools.includes('id="'+id+'"'),"Drawer tool must sit below divider: "+id);
+  }
+  assert(html.indexOf('class="rail-divider rail-lower-divider"')<toolsStart,
+    "Sidebar separator must precede drawer tools");
+  assert(tools.includes('class="rail-divider rail-tools-divider"'),
+    "Bottom shortcuts must be separated from flyout tools");
+  assert(css.includes("background:#3b3c40!important"),"Top dock selection must be charcoal, not accent purple");
+  assert(css.includes("border-radius:12px!important"),"Top selected tile must be a rounded square");
+  assert(css.includes("background:#1e1f22!important"),"Riff drawer must use original graphite surface");
+  assert(css.includes("background:#414247!important"),"Flyout selected circle must be neutral gray");
+  assert(app.includes('document.querySelector(\\'.sidebar .rail-action-group [data-drawer="\\'+drawer+\\'"]\\')') ||
+    app.includes(".sidebar .rail-action-group [data-drawer="),
+    "Drawer selection must target below-divider controls");
+});
