@@ -1,0 +1,77 @@
+name: CYN Riff Native Shell Preview
+
+on:
+  push:
+    branches:
+      - feature/riff-native-cyn-shell-20261024
+    paths:
+      - "riff-cyn/**"
+      - "fxsound/Source/GUI/FxController.cpp"
+      - ".github/workflows/cyn-riff-native-shell.yml"
+  pull_request:
+    paths:
+      - "riff-cyn/**"
+      - "fxsound/Source/GUI/FxController.cpp"
+      - ".github/workflows/cyn-riff-native-shell.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-riff-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout original Riff at pinned commit
+        uses: actions/checkout@v4
+        with:
+          repository: rootscripts/riff
+          ref: 398c3dac976bd7b4a7a4b4d7a6d7636ea868a0a8
+          path: riff-upstream
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Import Riff styles and copyright
+        run: node riff-cyn/scripts/vendor-riff.mjs
+      - name: Validate renderer, native commands and Riff legal assets
+        run: |
+          node --check riff-cyn/main.cjs
+          node --check riff-cyn/native-bridge.cjs
+          node --check riff-cyn/commands.cjs
+          node --check riff-cyn/renderer/renderer.js
+          node --check riff-cyn/scripts/vendor-riff.mjs
+          node --test riff-cyn/tests/*.test.cjs
+          test -s riff-cyn/renderer/vendor/riff.css
+          test -s riff-cyn/renderer/vendor/Riff-LICENSE.txt
+          grep -q 'MIT License' riff-cyn/renderer/vendor/Riff-LICENSE.txt
+
+  build-windows-riff:
+    needs: verify-riff-shell
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout same original Riff revision
+        uses: actions/checkout@v4
+        with:
+          repository: rootscripts/riff
+          ref: 398c3dac976bd7b4a7a4b4d7a6d7636ea868a0a8
+          path: riff-upstream
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Electron and NSIS packaging tools
+        shell: pwsh
+        working-directory: riff-cyn
+        run: npm install --no-audit --no-fund
+      - name: Build separate CYN Riff preview (does not replace native CYN)
+        shell: pwsh
+        working-directory: riff-cyn
+        run: npm run build:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CYN-Riff-Desktop-Preview
+          path: riff-cyn/dist/CYN-Riff-Preview-*.exe
+          if-no-files-found: error
+          retention-days: 14
