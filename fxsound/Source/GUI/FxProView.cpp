@@ -781,16 +781,16 @@ void FxProView::paint(Graphics& g)
                              : cyan.withAlpha(.10f*hover));
         g.fillRoundedRectangle(26.0f,104.0f+58.0f*i,48.0f,48.0f,24.0f);
     }
-    const float navY=expressiveMotion_.navigationY;
-    const float navDistance=std::abs((104.0f+58.0f*(float)page_)-navY);
-    const float morph=juce::jmin(6.0f,navDistance*.05f);
+    const float navY=expressiveMotion_.indicatorTop;
+    const float navH=expressiveMotion_.indicatorHeight;
+    // Actual Riff two-phase stretch/settle animation from app.js.
     ColourGradient navGlow(
         riffDark?CynRiffLayout::active().interpolatedWith(cyan,.16f)
                 :colour(MenuHighlightBackground),26.0f,navY,
         riffDark?CynRiffLayout::hover().interpolatedWith(cyan,.08f)
-                :cyan.interpolatedWith(panel,.80f),74.0f,navY+48.0f,false);
+                :cyan.interpolatedWith(panel,.80f),74.0f,navY+navH,false);
     g.setGradientFill(navGlow);
-    g.fillRoundedRectangle(26.0f,navY-morph*.5f,48.0f,48.0f+morph,24.0f);
+    g.fillRoundedRectangle(26.0f,navY,48.0f,navH,24.0f);
     g.setColour(riffDark?CynRiffLayout::active():border.withAlpha(.45f));
     g.drawLine(34.0f,474.0f,66.0f,474.0f,.9f);
     g.drawLine(34.0f,591.0f,66.0f,591.0f,.9f);
