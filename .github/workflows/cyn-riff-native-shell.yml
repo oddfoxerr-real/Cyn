@@ -69,6 +69,18 @@ jobs:
         shell: pwsh
         working-directory: riff-cyn
         run: npm run build:win
+      - name: Render five actual Riff/Electron UI screenshots
+        shell: pwsh
+        working-directory: riff-cyn
+        env:
+          CYN_RIFF_CAPTURE_DIR: artifacts/screenshots
+        run: npm start
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CYN-Riff-Visual-Screenshots
+          path: riff-cyn/artifacts/screenshots/*.png
+          if-no-files-found: error
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
           name: CYN-Riff-Desktop-Preview
