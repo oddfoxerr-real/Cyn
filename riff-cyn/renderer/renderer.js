@@ -203,7 +203,11 @@ function updateNavIndicator(animate){
   const ind=$("nav-active-indicator");
   const active=document.querySelector(".sidebar-nav .nav-item.active");
   if(!ind)return;
-  if(!active){ind.classList.add("is-hidden");return;}
+  if(!active){
+    clearTimeout(navTimer);
+    ind.classList.add("is-hidden");
+    return;
+  }
   ind.classList.remove("is-hidden");
   const nr=active.closest(".sidebar-nav").getBoundingClientRect();
   const rect=active.getBoundingClientRect();
@@ -215,7 +219,7 @@ function updateNavIndicator(animate){
     ind.style.transition="opacity .2s ease";
     ind.style.height="48px";
     ind.style.transform="translateY("+top+"px)";
-    ind.style.borderRadius="24px";
+    ind.style.borderRadius="12px";
     navReady=true;
     return;
   }
@@ -227,7 +231,7 @@ function updateNavIndicator(animate){
   ind.style.transition="transform .26s cubic-bezier(.3,0,.8,.15),height .26s cubic-bezier(.3,0,.8,.15),opacity .2s ease";
   ind.style.transform="translateY("+newTop+"px)";
   ind.style.height=(newBottom-newTop)+"px";
-  ind.style.borderRadius="24px";
+  ind.style.borderRadius="12px";
   navTimer=setTimeout(()=>{
     ind.style.transition="transform .34s cubic-bezier(.2,0,0,1),height .34s cubic-bezier(.2,0,0,1),border-radius .34s cubic-bezier(.2,0,0,1)";
     ind.style.transform="translateY("+top+"px)";
@@ -243,7 +247,7 @@ function updateSelectedNav(animate){
   });
   let selected;
   const drawer=window.cynRail.getMode();
-  if(drawer)selected=document.querySelector('.sidebar-nav [data-drawer="'+drawer+'"]');
+  if(drawer)selected=document.querySelector('.sidebar .rail-action-group [data-drawer="'+drawer+'"]');
   else selected=document.querySelector('.sidebar [data-view="'+activeView+'"]');
   if(selected){
     selected.classList.add("active");
