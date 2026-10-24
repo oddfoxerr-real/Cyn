@@ -91,8 +91,8 @@ for (const [button,palette] of [["browse_ai_","MenuHighlightBackground"],["expor
   assert(view.includes(button+".setColour(TextButton::buttonColourId, Colour(FXCOLOR("+palette+")).withAlpha(1.0f));"),button+" fill is transparent");
 }
 assert(view.includes('const float navY=expressiveMotion_.navigationY;') &&
-       view.includes('g.fillRoundedRectangle(22.0f,navY-morph*.5f') &&
-       view.includes('g.drawRoundedRectangle(22.5f,navY-morph*.5f+.5f') &&
+       view.includes('g.fillRoundedRectangle(26.0f,navY-morph*.5f,48.0f,48.0f+morph') &&
+       view.includes('CynRiffLayout::railIconX') &&
        view.includes('button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));'),
        "Native AI Hub sidebar must keep readable labels and animated selection background");
 assert(view.includes('browse_ai_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));'),
