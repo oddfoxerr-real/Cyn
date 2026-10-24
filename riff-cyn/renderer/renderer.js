@@ -15,7 +15,7 @@ const fx=[
   ["bass","Bass boost","Low-frequency weight"]
 ];
 let current=null, activeView="overview", busy=false;
-const value=(n,fallback="—")=>Number.isFinite(Number(n))?Number(n).toFixed(1):fallback;
+const value=(n,fallback="—")=>(n==null||n==="")?fallback:(Number.isFinite(Number(n))?Number(n).toFixed(1):fallback);
 const writable=()=>Boolean(current?.connected)&&!busy;
 function showError(message){
   $("error-banner").textContent=String(message||"");
@@ -132,8 +132,9 @@ function renderConnected(status){
   $("sensitivity-value").textContent=Math.round(Number(status.smart_listening?.sensitivity)||0)+"%";
   $("smart-summary").textContent=String(status.smart_listening?.summary||"Native CYN adaptive processing.");
   $("learning-status").textContent=String(status.smart_listening?.learning||"No learning telemetry available.");
-  $("active-model").textContent=String(status.active_ai_profile||"Native CYN AI");
   const profiles=Array.isArray(status.ai_profiles)?status.ai_profiles:[];
+  const activeProfile=profiles.find(p=>p.id===status.active_ai_profile);
+  $("active-model").textContent=String(activeProfile?.name||status.active_ai_profile||"Native CYN AI");
   $("ai-model").disabled=!writable()||!profiles.length;
   opts($("ai-model"),profiles.length?profiles.map(p=>({value:p.id,label:p.name})):[{value:"",label:"Model selection in native CYN"}],status.active_ai_profile||"");
   const presets=[...(status.presets?.built_in||[]),...(status.presets?.user_defined||[])];
