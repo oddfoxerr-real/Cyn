@@ -18,6 +18,39 @@ function commandFor(action,status){
       assert(safeName(action.value)&&names.includes(action.value),"Preset must exist in CYN");
       return '--preset="'+action.value+'"';
     }
+    case "saveNew": {
+      assert(status.power===true,"Enable native CYN before saving presets");
+      assert(typeof action.value==="string"&&/^[^<>:"/\\|?*\x00-\x1f]{1,64}$/.test(action.value)&&
+        action.value.trim()===action.value,"Choose a valid preset name (1–64 characters)");
+      assert(![...(status.presets?.built_in||[]),...(status.presets?.user_defined||[])]
+        .some(p=>p.name.toLowerCase()===action.value.toLowerCase()),"Preset name already exists");
+      return '--save_preset="'+action.value+'"';
+    }
+    case "overwrite":
+    case "undo":
+    case "rename":
+    case "delete": {
+      assert(status.power===true,"Enable CYN before modifying presets");
+      const all=[...(status.presets?.built_in||[]),...(status.presets?.user_defined||[])];
+      const selected=all.find(p=>p.name===status.selected_preset);
+      assert(selected,"Active preset is unavailable");
+      const own=(status.presets?.user_defined||[]).some(p=>p.name===selected.name);
+      if(action.type==="undo"){
+        assert(selected.modified===true,"Preset has no changes to undo");
+        return "--undo_preset";
+      }
+      assert(own,"Only your saved presets can be changed");
+      if(action.type==="overwrite"){
+        assert(selected.modified===true,"Preset has no changes to overwrite");
+        return "--overwrite_preset";
+      }
+      if(action.type==="delete")return "--delete_preset";
+      assert(selected.modified!==true,"Save or undo changes before renaming");
+      assert(typeof action.value==="string"&&/^[^<>:"/\\|?*\x00-\x1f]{1,64}$/.test(action.value)&&
+        action.value.trim()===action.value,"Choose a valid preset name");
+      assert(!all.some(p=>p.name.toLowerCase()===action.value.toLowerCase()),"Preset name already exists");
+      return '--rename_preset="'+action.value+'"';
+    }
     case "output": {
       assert(safeName(action.value)&&(status.output_devices||[]).includes(action.value),"Unknown output device");
       return '--output="'+action.value+'"';
