@@ -317,15 +317,37 @@ body{background:#111113!important;color:#e6e6e8}
 #rail-drawer .accent-choice{background:#292a2e}
 #rail-drawer .accent-choice[aria-pressed="true"]{border-color:#f0f0f2}
 
-/* The top dock selection is Riff's compact, neutral rounded SQUARE,
-   not a large colour-changing circular pill. */
+/* Riff's neutral stacked dock selection uses changing corner geometry.
+   It stretches as a connected capsule between destinations. */
 .sidebar-nav .nav-active-indicator,
 body[data-accent="blue"] .nav-active-indicator,
 body[data-accent="mint"] .nav-active-indicator,
 body[data-accent="violet"] .nav-active-indicator{
   background:#3b3c40!important;
-  border-radius:12px!important;
   box-shadow:inset 0 0 0 1px #ffffff0b!important;
+}
+/* Riff's original segmented stacking radii on each navigation item.
+ * The animated indicator borrows the computed radius from the active item.
+ * Never override its inline radius with !important here. */
+.sidebar-nav .nav-item{
+  --stack-big:24px;
+  --stack-small:10px;
+  --stack-mid:14px;
+}
+.sidebar-nav .nav-item.stack-first{
+  border-radius:var(--stack-big) var(--stack-big) var(--stack-small) var(--stack-small)!important;
+}
+.sidebar-nav .nav-item.stack-mid{
+  border-radius:var(--stack-mid)!important;
+}
+.sidebar-nav .nav-item.stack-last{
+  border-radius:var(--stack-small) var(--stack-small) var(--stack-big) var(--stack-big)!important;
+}
+.sidebar-nav .nav-item.stack-only{
+  border-radius:var(--stack-big)!important;
+}
+.sidebar-nav .nav-active-indicator{
+  border-radius:24px 24px 10px 10px;
 }
 .sidebar-nav .nav-item.active .nav-indicator{
   color:#f4f4f5!important;
