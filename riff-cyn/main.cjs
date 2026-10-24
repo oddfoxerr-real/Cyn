@@ -40,12 +40,33 @@ function createWindow(){
         const layoutDiagnostics=await win.webContents.executeJavaScript(
           'JSON.stringify({viewport:{w:innerWidth,h:innerHeight},body:{height:document.body.getBoundingClientRect().height},elements:[".app-layout",".main-content",".control-deck",".control-field",".error-banner",".workspace-header",".eq-hero"].map(selector=>{const el=document.querySelector(selector);if(!el)return {selector,missing:true};const r=el.getBoundingClientRect();const cs=getComputedStyle(el);return {selector,rect:{x:r.x,y:r.y,width:r.width,height:r.height},display:cs.display,visibility:cs.visibility,opacity:cs.opacity,overflow:cs.overflow,childCount:el.children.length}})})');
         fs.writeFileSync(path.join(directory,"layout.json"),layoutDiagnostics);
+        const parsed=JSON.parse(layoutDiagnostics);
+        const deck=parsed.elements.find(item=>item.selector===".control-deck");
+        if(!deck||deck.rect.height<100)throw new Error("CYN top control deck is clipped: "+JSON.stringify(deck));
         for(const tab of tabs){
           await win.webContents.executeJavaScript(
             'document.querySelector("[data-view=\\\"'+tab+'\\\"]").click()');
           await new Promise(resolve=>setTimeout(resolve,650));
           const image=await win.webContents.capturePage();
           fs.writeFileSync(path.join(directory,tab+".png"),image.toPNG());
+        }
+        const flyouts=[
+          ["presets","btn-toggle-presets-drawer"],
+          ["ai-hub","btn-toggle-ai-drawer"],
+          ["appearance","btn-toggle-theme-drawer"]
+        ];
+        for(const [label,trigger] of flyouts){
+          await win.webContents.executeJavaScript(
+            'document.getElementById('+JSON.stringify(trigger)+').click()');
+          await new Promise(resolve=>setTimeout(resolve,500));
+          const visible=await win.webContents.executeJavaScript(
+            'getComputedStyle(document.getElementById("rail-drawer")).display!=="none" && document.getElementById("rail-drawer").classList.contains("open")');
+          if(!visible)throw new Error("CYN drawer not visible: "+label);
+          const shot=await win.webContents.capturePage();
+          fs.writeFileSync(path.join(directory,"drawer-"+label+".png"),shot.toPNG());
+          await win.webContents.executeJavaScript(
+            'document.getElementById("btn-close-rail-drawer").click()');
+          await new Promise(resolve=>setTimeout(resolve,240));
         }
         app.quit();
       })().catch(error=>{console.error("Screenshot capture failed:",error);app.exit(1)});
