@@ -29,6 +29,25 @@ function createWindow(){
       webSecurity:true
     }
   });
+  if(process.env.CYN_RIFF_CAPTURE_DIR){
+    // Automated visual review captures the actual Riff/Electron renderer.
+    // This runs only when explicitly requested by preview CI, never in releases.
+    win.webContents.once("did-finish-load",()=>{
+      (async()=>{
+        const directory=path.resolve(process.env.CYN_RIFF_CAPTURE_DIR);
+        fs.mkdirSync(directory,{recursive:true});
+        const tabs=["overview","equalizer","ai","devices","settings"];
+        for(const tab of tabs){
+          await win.webContents.executeJavaScript(
+            'document.querySelector("[data-view=\\\"'+tab+'\\\"]").click()');
+          await new Promise(resolve=>setTimeout(resolve,650));
+          const image=await win.webContents.capturePage();
+          fs.writeFileSync(path.join(directory,tab+".png"),image.toPNG());
+        }
+        app.quit();
+      })().catch(error=>{console.error("Screenshot capture failed:",error);app.exit(1)});
+    });
+  }
   win.loadFile(path.join(__dirname,"renderer","index.html"));
   win.once("ready-to-show",()=>win.show());
   win.webContents.setWindowOpenHandler(()=>({action:"deny"}));
