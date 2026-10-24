@@ -1246,7 +1246,7 @@ void FxProView::paintOverChildren(Graphics& g)
     if(!capturing_liquid_ &&
        transition_image_.isValid() && transition_to_image_.isValid() &&
        !FxTheme::isReducedMotion()) {
-        const auto content=juce::Rectangle<int>(240,0,
+        const auto content=juce::Rectangle<int>(108,0,
             jmax(0,getWidth()-240),getHeight());
         const float p=CynUiMotion::progress(
             Time::getMillisecondCounterHiRes()-transition_start_,
