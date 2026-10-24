@@ -506,11 +506,9 @@ public final class AudioService extends Service {
         if(i==null) { stopSelf(); return START_NOT_STICKY; }
         try {
             String action=i.getAction();
-            if(CAPTURE.equals(action)) {
-                Intent consent=Build.VERSION.SDK_INT>=33?i.getParcelableExtra("consent",Intent.class):i.getParcelableExtra("consent");
-                startCapture(consent);
-                return START_NOT_STICKY;
-            }
+            // Screen recording / MediaProjection has been retired from CYN Android.
+            // Reject even stale intents from an older APK instead of starting playback capture.
+            if(CAPTURE.equals(action))return START_NOT_STICKY;
             if(STOP.equals(action)) { stopAll(); return START_NOT_STICKY; }
             if(MONITOR.equals(action)) {
                 monitor=true; foreground();
@@ -544,7 +542,7 @@ public final class AudioService extends Service {
             type=monitor?ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE:ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK;
             if(monitor&&(playing||preparing)) type|=ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK;
         }
-        if(Build.VERSION.SDK_INT>=29&&projectionForeground)type|=ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION;
+
         if(Build.VERSION.SDK_INT>=29) startForeground(41,notification(),type); else startForeground(41,notification());
     }
     private PendingIntent action(String action) {
