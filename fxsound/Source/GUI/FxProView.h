@@ -119,7 +119,8 @@ private:
     double lastExpressiveFrameMs_ = 0.0;
     int sound_focus_ = 0; // 0 overview, 1 EQ focus, 2 effects focus.
     void selectSoundFocus(int focus);
-    CynRailButton misc_nav_{"Misc / AI DJ",4},dj_download_{"Download AI DJ"},dj_remove_{"Remove download"},dj_cancel_{"Cancel download"};
+    CynRailButton misc_nav_{"Misc / AI DJ",4};
+    TextButton dj_download_{"Download AI DJ"},dj_remove_{"Remove download"},dj_cancel_{"Cancel download"};
     ToggleButton dj_toggle_{"Enable AI DJ"},dj_stereo_{"Move echoes between ears"};
     Slider dj_intensity_{Slider::LinearHorizontal,Slider::TextBoxRight},dj_spacing_{Slider::LinearHorizontal,Slider::TextBoxRight};
     Label dj_status_,dj_recent_;
