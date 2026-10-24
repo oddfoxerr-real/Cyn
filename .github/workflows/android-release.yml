@@ -36,6 +36,15 @@ jobs:
           sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
           pip install numpy==2.2.6 onnxruntime==1.23.2
           python android/scripts/prepare_models.py
+      - name: Verify removed screen-sharing entrypoint
+        run: |
+          set -euo pipefail
+          ! grep -q 'FOREGROUND_SERVICE_MEDIA_PROJECTION' android/app/src/main/AndroidManifest.xml
+          ! grep -q 'mediaProjection' android/app/src/main/AndroidManifest.xml
+          ! grep -q 'createScreenCaptureIntent' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          ! grep -q 'AudioService.CAPTURE' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          grep -q 'Graphite' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          grep -q "versionName '0.2.29-preview'" android/app/build.gradle
       - name: Real DSP, learning and ONNX verification
         run: |
           set -euo pipefail
