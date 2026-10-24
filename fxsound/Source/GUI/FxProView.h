@@ -12,6 +12,7 @@
 #include "CynBrainScan3D.h"
 #include "CynDjTouch.h"
 #include "CynPowerCurtain.h"
+#include "CynExpressiveMotion.h"
 #include "CynAiHubDialog.h"
 #include <array>
 
@@ -84,6 +85,8 @@ private:
     void openSettings();
     void updateDjTouch(double now);
     int page_ = 0;
+    CynExpressiveMotion::State expressiveMotion_;
+    double lastExpressiveFrameMs_ = 0.0;
     int sound_focus_ = 0; // 0 overview, 1 EQ focus, 2 effects focus.
     void selectSoundFocus(int focus);
     TextButton misc_nav_{"Misc / AI DJ"},dj_download_{"Download AI DJ"},dj_remove_{"Remove download"},dj_cancel_{"Cancel download"};
