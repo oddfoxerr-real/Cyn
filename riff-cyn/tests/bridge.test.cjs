@@ -132,9 +132,24 @@ test("Riff graphite dock: workspaces above separator, all flyouts below, neutral
   assert(tools.includes('class="rail-divider rail-tools-divider"'),
     "Bottom shortcuts must be separated from flyout tools");
   assert(css.includes("background:#3b3c40!important"),"Top dock selection must be charcoal, not accent purple");
-  assert(css.includes("border-radius:12px!important"),"Top selected tile must be a rounded square");
+  assert(css.includes("border-radius:var(--stack-big) var(--stack-big) var(--stack-small) var(--stack-small)!important"),
+    "First nav item needs Riff's 24px top / 10px bottom stacking curve");
+  assert(css.includes("border-radius:var(--stack-mid)!important"),
+    "Middle nav item needs Riff's 14px connected-capsule radius");
+  assert(css.includes("border-radius:var(--stack-small) var(--stack-small) var(--stack-big) var(--stack-big)!important"),
+    "Last nav item needs Riff's 10px top / 24px bottom stacking curve");
+  assert(!css.includes("border-radius:12px!important"),
+    "Fixed square border radius must never override actual stacked shapes");
   assert(css.includes("background:#1e1f22!important"),"Riff drawer must use original graphite surface");
   assert(css.includes("background:#414247!important"),"Flyout selected circle must be neutral gray");
   assert(app.includes(".sidebar .rail-action-group [data-drawer="),
     "Drawer selection must target below-divider controls");
+  assert(app.includes('function refreshNavStack()'),
+    "Riff's actual stack-first/mid/last class assignment must be active");
+  assert(app.includes('function navIndicatorRadius(active)'),
+    "Selection capsule must inherit each button's nonuniform radius");
+  assert(app.includes('ind.style.borderRadius=targetRadius'),
+    "The capsule must settle to first/middle/last geometry");
+  assert(app.includes('ind.style.borderRadius="24px"'),
+    "Selection must stretch into a rounded capsule between icons");
 });
