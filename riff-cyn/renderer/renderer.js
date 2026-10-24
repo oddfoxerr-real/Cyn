@@ -5,7 +5,7 @@ const pages={
   equalizer:["Equalizer","Precision control of every active frequency band."],
   ai:["Smart Listening","Native neural processing and adaptive sound."],
   devices:["Output Devices","Control your actual Windows audio hardware."],
-  settings:["Settings","Manage your Riff frontend and native CYN connection."]
+  settings:["Settings","Manage your native CYN connection and appearance."]
 };
 const fx=[
   ["clarity","Clarity","Detail and vocal presence"],
@@ -135,10 +135,17 @@ function renderConnected(status){
   const profiles=Array.isArray(status.ai_profiles)?status.ai_profiles:[];
   const activeProfile=profiles.find(p=>p.id===status.active_ai_profile);
   $("active-model").textContent=String(activeProfile?.name||status.active_ai_profile||"Native CYN AI");
-  $("ai-model").disabled=!writable()||!profiles.length;
-  opts($("ai-model"),profiles.length?profiles.map(p=>({value:p.id,label:p.name})):[{value:"",label:"Model selection in native CYN"}],status.active_ai_profile||"");
+  const aiOptions=profiles.length?profiles.map(p=>({value:p.id,label:p.name})):[{value:"",label:"Model selection in native CYN"}];
+  for(const select of [$("ai-model"),$("drawer-ai-model")]){
+    select.disabled=!writable()||!profiles.length;
+    opts(select,aiOptions,status.active_ai_profile||"");
+  }
+  $("drawer-ai-summary").textContent=activeProfile?.name
+    ? "Selected: "+activeProfile.name
+    : "AI model selection remains in native CYN until this engine exposes its installed profiles.";
   const presets=[...(status.presets?.built_in||[]),...(status.presets?.user_defined||[])];
   opts($("preset"),presets.map(p=>({value:p.name,label:p.name+(p.modified?" *":"")})),status.selected_preset||"");
+  window.cynRail.setPresets(status,name=>apply({type:"preset",value:name}));
   const dev=Array.isArray(status.output_devices)?status.output_devices:[];
   for(const select of [$("device-top"),$("device-page")])opts(select,dev,status.selected_output||"");
   for(const id of ["preset","device-top","device-page","power","smart","pin","sensitivity"])
@@ -155,7 +162,10 @@ function renderDisconnected(message){
   $("sensitivity-value").textContent="—";
   opts($("preset"),[{value:"",label:"Connect CYN"}],"");
   for(const id of ["device-top","device-page"])opts($(id),[{value:"",label:"Connect CYN"}],"");
-  opts($("ai-model"),[{value:"",label:"Unavailable"}],"");
+  for(const id of ["ai-model","drawer-ai-model"])opts($(id),[{value:"",label:"Unavailable"}],"");
+  $("drawer-ai-model").disabled=true;
+  $("drawer-ai-summary").textContent="Start CYN to load installed AI models.";
+  window.cynRail.setPresets(null,()=>{});
   renderEffects(null);
   renderBands(null);
 }
@@ -191,7 +201,9 @@ let navTimer=0,navReady=false;
 function updateNavIndicator(animate){
   const ind=$("nav-active-indicator");
   const active=document.querySelector(".sidebar-nav .nav-item.active");
-  if(!ind||!active)return;
+  if(!ind)return;
+  if(!active){ind.classList.add("is-hidden");return;}
+  ind.classList.remove("is-hidden");
   const nr=active.closest(".sidebar-nav").getBoundingClientRect();
   const rect=active.getBoundingClientRect();
   const top=Math.round(rect.top-nr.top+(rect.height-48)/2);
@@ -223,20 +235,51 @@ function updateNavIndicator(animate){
 }
 window.addEventListener("resize",()=>updateNavIndicator(false));
 if(document.fonts?.ready)document.fonts.ready.then(()=>updateNavIndicator(false));
+function updateSelectedNav(animate){
+  document.querySelectorAll(".sidebar .nav-item,.sidebar .rail-icon-btn").forEach(button=>{
+    button.classList.remove("active");
+    button.removeAttribute("aria-current");
+  });
+  let selected;
+  const drawer=window.cynRail.getMode();
+  if(drawer)selected=document.querySelector('.sidebar-nav [data-drawer="'+drawer+'"]');
+  else selected=document.querySelector('.sidebar [data-view="'+activeView+'"]');
+  if(selected){
+    selected.classList.add("active");
+    selected.setAttribute("aria-current","page");
+  }
+  updateNavIndicator(animate);
+}
 function transition(view){
-  if(!pages[view]||view===activeView)return;
-  const last=document.querySelector('[data-view="'+activeView+'"]');
-  const next=document.querySelector('[data-view="'+view+'"]');
-  document.querySelectorAll(".nav-item").forEach(b=>{b.classList.remove("active");b.removeAttribute("aria-current")});
-  next.classList.add("active");next.setAttribute("aria-current","page");
-  updateNavIndicator(true);
+  if(!pages[view])return;
+  window.cynRail.close();
+  if(view===activeView){updateSelectedNav(true);return;}
+  activeView=view;
+  updateSelectedNav(true);
   document.querySelectorAll(".content-view").forEach(v=>v.classList.remove("active"));
   $("view-"+view).classList.add("active");
   $("page-title").textContent=pages[view][0];
   $("page-subtitle").textContent=pages[view][1];
   $("main-content").scrollTop=0;
-  activeView=view;
 }
+document.addEventListener("cyn:drawer-change",()=>updateSelectedNav(true));
+$("drawer-open-smart").addEventListener("click",()=>transition("ai"));
+$("open-appearance-settings").addEventListener("click",()=>window.cynRail.open("appearance"));
+$("drawer-ai-model").addEventListener("change",event=>
+  apply({type:"aiModel",value:event.target.value}));
+const accentSetting="cyn-ui-accent";
+function setAccent(accent){
+  const valid=["blue","mint","violet"];
+  const choice=valid.includes(accent)?accent:"blue";
+  document.body.dataset.accent=choice;
+  document.querySelectorAll(".accent-choice").forEach(button=>{
+    button.setAttribute("aria-pressed",String(button.dataset.accent===choice));
+  });
+  localStorage.setItem(accentSetting,choice);
+}
+document.querySelectorAll(".accent-choice").forEach(button=>
+  button.addEventListener("click",()=>setAccent(button.dataset.accent)));
+setAccent(localStorage.getItem(accentSetting)||"blue");
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>transition(b.dataset.view)));
 document.querySelectorAll("[data-window]").forEach(b=>b.addEventListener("click",()=>window.cyn.window(b.dataset.window)));
 $("go-eq").addEventListener("click",()=>transition("equalizer"));
@@ -268,6 +311,6 @@ $("reduced-motion").addEventListener("change",e=>{
   localStorage.setItem("cyn-riff-reduced-motion",e.target.checked?"1":"0");
 });
 renderDisconnected("Checking native CYN installation…");
-requestAnimationFrame(()=>updateNavIndicator(false));
+requestAnimationFrame(()=>updateSelectedNav(false));
 refresh();
 setInterval(()=>{if(!busy&&!document.hidden)refresh()},4200);
