@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "FxEqualizer.h"
 #include "FxController.h"
 #include "CynDspUiFollow.h"
+#include "CynEqUiCallbacks.h"
 #include "FxTheme.h"
 
 FxEqualizer::FxEqualizer()
@@ -539,10 +540,12 @@ void FxEqualizer::FxEqSlider::resized()
 
 void FxEqualizer::FxEqSlider::valueChanged()
 {
-    auto value = getValue();
-    if (value != FxController::getInstance().getEqBandBoostCut(band_))
+    const auto value = getValue();
+    auto& controller = FxController::getInstance();
+    if (CynEqUiCallbacks::dispatchGain(band_, value,
+        [&controller](int index) { return controller.getEqBandBoostCut(index); },
+        [&controller](int index, double gain) { controller.setEqBandBoostCut(index, gain); }))
     {
-        FxController::getInstance().setEqBandBoostCut(band_, value);
 
         const auto text = std::abs(value - std::round(value)) < 0.045
             ? String::formatted(value == 0.0 ? "%.0f" : "%+.0f", value)
