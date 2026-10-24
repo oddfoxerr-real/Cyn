@@ -17,6 +17,11 @@ on:
 permissions:
   contents: read
 
+# Fail old branch builds automatically when a newer Riff UI change lands.
+concurrency:
+  group: cyn-riff-preview-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   verify-riff-shell:
     runs-on: ubuntu-latest
@@ -66,10 +71,10 @@ jobs:
         shell: pwsh
         working-directory: riff-cyn
         run: npm install --no-audit --no-fund
-      - name: Build separate CYN Riff preview (does not replace native CYN)
+      - name: Stage original Riff styling for visual verification
         shell: pwsh
         working-directory: riff-cyn
-        run: npm run build:win
+        run: npm run vendor:riff
       - name: Render five actual Riff/Electron UI screenshots
         shell: pwsh
         working-directory: riff-cyn
@@ -82,6 +87,10 @@ jobs:
           path: riff-cyn/artifacts/screenshots/*
           if-no-files-found: error
           retention-days: 14
+      - name: Build CYN Windows NSIS installer after visual QA passes
+        shell: pwsh
+        working-directory: riff-cyn
+        run: npm run build:win
       - uses: actions/upload-artifact@v4
         with:
           name: CYN-Audio-Desktop-Preview
