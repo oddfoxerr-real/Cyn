@@ -48,7 +48,7 @@ assert(view.includes('modelText=model=="apex6m"') &&
        view.includes('FxController::getInstance().isSmartListening()'),
        "The AI status panel must show actual engine state, not invented model status");
 assert(view.includes("FxThemeMode::DarkMesh") &&
-       view.includes('g.fillRoundedRectangle(26.0f,navY') &&
+       view.includes('g.fillRoundedRectangle(26.0f,navY,48.0f,navH') &&
        view.includes('CynThemeAtmosphere::paint(g,mode') &&
        view.includes("reduced?0.0f"),
        "Horizon x Depth native shell must retain live Dark Theme and reduced motion");
