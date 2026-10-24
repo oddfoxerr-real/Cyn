@@ -1167,70 +1167,8 @@ void FxProView::paintOverChildren(Graphics& g)
 {
     // Keep the standby portal above DJ hands, flowers and theme screenshots.
     if(power_curtain_.isVisible()) return;
-    // Paint vector glyphs over TextButton backgrounds: custom hover and
-    // liquid materials are not allowed to obscure navigation icons.
-    const juce::Colour cyan(0xff45bffb),muted(0xff9aadc4);
-    // Fixed-size JUCE vector navigation icons. Distinct silhouettes make
-    // pages recognisable without requiring new textures or per-frame assets.
-    for(int i=0;i<6;++i) {
-        const float y=125.0f+49.0f*i;
-        const Colour iconColour=(i==page_?cyan:muted).withAlpha(i==page_?.92f:.67f);
-        g.setColour(iconColour);
-        switch(i) {
-            case 0: { // Sound Studio: live EQ bars
-                const float heights[]={7.0f,14.0f,10.0f,19.0f,9.0f};
-                for(int b=0;b<5;++b) {
-                    const float x=36.0f+b*4.5f;
-                    g.drawLine(x,y-heights[b]*.5f,x,y+heights[b]*.5f,1.6f);
-                }
-                break;
-            }
-            case 1: { // Neural activity network
-                g.drawLine(38,y+5,44,y-5,1.4f);
-                g.drawLine(44,y-5,51,y+4,1.4f);
-                g.drawLine(38,y+5,51,y+4,1.0f);
-                g.fillEllipse(35.0f,y+2.0f,5.5f,5.5f);
-                g.fillEllipse(41.5f,y-8.0f,5.5f,5.5f);
-                g.fillEllipse(48.5f,y+1.0f,5.5f,5.5f);
-                break;
-            }
-            case 2: { // Output devices / headphones
-                juce::Path cans;
-                cans.addCentredArc(44.0f,y,8.5f,8.5f,0.0f,
-                                   -juce::MathConstants<float>::pi*.85f,
-                                   juce::MathConstants<float>::pi*.85f,true);
-                g.strokePath(cans,juce::PathStrokeType(1.5f));
-                g.fillRoundedRectangle(34.3f,y+.4f,3.6f,8.0f,1.4f);
-                g.fillRoundedRectangle(50.1f,y+.4f,3.6f,8.0f,1.4f);
-                break;
-            }
-            case 3: { // AI Hub: connected model nodes
-                g.drawLine(37.5f,y-4.5f,50.0f,y-4.5f,1.2f);
-                g.drawLine(37.5f,y-4.5f,44.0f,y+7.0f,1.2f);
-                g.drawLine(50.0f,y-4.5f,44.0f,y+7.0f,1.2f);
-                g.fillEllipse(34.5f,y-7.5f,6.0f,6.0f);
-                g.fillEllipse(47.0f,y-7.5f,6.0f,6.0f);
-                g.fillEllipse(41.0f,y+4.0f,6.0f,6.0f);
-                break;
-            }
-            case 4: { // AI DJ: cross-fader and 2 decks
-                g.drawEllipse(34.0f,y-7.0f,10.0f,10.0f,1.4f);
-                g.drawEllipse(47.0f,y-7.0f,10.0f,10.0f,1.4f);
-                g.drawLine(38.0f,y+7.0f,53.0f,y+7.0f,1.3f);
-                g.fillEllipse(44.0f,y+5.0f,4.0f,4.0f);
-                break;
-            }
-            case 5: { // Studio: sliders and material adjustments
-                for(int j=0;j<3;++j) {
-                    const float lineY=y-7.0f+7.0f*j;
-                    g.drawLine(35.0f,lineY,54.0f,lineY,1.1f);
-                    const float knobX=j==0?41.0f:j==1?50.0f:45.0f;
-                    g.fillEllipse(knobX-2.7f,lineY-2.7f,5.4f,5.4f);
-                }
-                break;
-            }
-        }
-    }
+    // The seven JUCE CynRailButton controls now paint their own live vector
+    // glyphs. Do not overlay a second legacy icon set at stale positions.
     if(!capturing_liquid_ &&
        theme_from_image_.isValid() && theme_to_image_.isValid() &&
        !FxTheme::isReducedMotion()) {
@@ -1247,7 +1185,7 @@ void FxProView::paintOverChildren(Graphics& g)
        transition_image_.isValid() && transition_to_image_.isValid() &&
        !FxTheme::isReducedMotion()) {
         const auto content=juce::Rectangle<int>(108,0,
-            jmax(0,getWidth()-240),getHeight());
+            jmax(0,getWidth()-108),getHeight());
         const float p=CynUiMotion::progress(
             Time::getMillisecondCounterHiRes()-transition_start_,
             CynUiMotion::pageDurationMs);
