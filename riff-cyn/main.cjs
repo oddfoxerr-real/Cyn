@@ -38,14 +38,35 @@ function createWindow(){
         fs.mkdirSync(directory,{recursive:true});
         await win.webContents.executeJavaScript(
           'document.querySelector("[data-view=overview]").click()');
+        // Inspect actual Electron computed styles, not just source strings.
+        // A connected-pill navigation must have DIFFERENT top/mid/end
+        // corner radii after the transition has settled.
+        const dockCorners=[];
+        for(const [view,expect] of [
+          ["overview",["24px","24px","10px","10px"]],
+          ["devices",["14px","14px","14px","14px"]],
+          ["ai",["10px","10px","24px","24px"]]
+        ]){
+          await win.webContents.executeJavaScript(
+            'document.querySelector("[data-view='+view+']").click()');
+          await new Promise(resolve=>setTimeout(resolve,700));
+          const found=JSON.parse(await win.webContents.executeJavaScript(
+            'JSON.stringify((()=>{const ind=document.getElementById("nav-active-indicator");const active=document.querySelector(".sidebar-nav .nav-item.active");const cs=getComputedStyle(ind);return {view:active.dataset.view,corners:[cs.borderTopLeftRadius,cs.borderTopRightRadius,cs.borderBottomRightRadius,cs.borderBottomLeftRadius],computedRadius:getComputedStyle(active).borderRadius,selection:cs.backgroundColor,indicatorHeight:ind.getBoundingClientRect().height};})())'));
+          dockCorners.push(found);
+          if(found.view!==view||JSON.stringify(found.corners)!==JSON.stringify(expect)||
+             Math.abs(found.indicatorHeight-48)>1||
+             found.selection!=="rgb(59, 60, 64)"){
+            throw new Error("Riff connected-pill regression: "+JSON.stringify({expect,...found}));
+          }
+          const picture=await win.webContents.capturePage();
+          fs.writeFileSync(path.join(directory,"dock-"+view+".png"),picture.toPNG());
+        }
         const graphiteAudit=JSON.parse(await win.webContents.executeJavaScript(
-          'JSON.stringify((()=>{const ind=document.getElementById("nav-active-indicator");const line=document.querySelector(".rail-lower-divider").getBoundingClientRect();const items=[...document.querySelectorAll(".rail-drawer-trigger")];const drawer=document.getElementById("rail-drawer");return {radius:getComputedStyle(ind).borderTopLeftRadius,selection:getComputedStyle(ind).backgroundColor,drawerColor:getComputedStyle(drawer).backgroundColor,belowDivider:items.length===3&&items.every(el=>el.getBoundingClientRect().top>=line.bottom),mainPages:[...document.querySelectorAll(".sidebar-nav [data-view]")].length};})())'));
+          'JSON.stringify((()=>{const line=document.querySelector(".rail-lower-divider").getBoundingClientRect();const items=[...document.querySelectorAll(".rail-drawer-trigger")];const drawer=document.getElementById("rail-drawer");return {drawerColor:getComputedStyle(drawer).backgroundColor,belowDivider:items.length===3&&items.every(el=>el.getBoundingClientRect().top>=line.bottom),mainPages:[...document.querySelectorAll(".sidebar-nav [data-view]")].length};})())'));
+        graphiteAudit.positions=dockCorners;
         fs.writeFileSync(path.join(directory,"graphite-dock-audit.json"),JSON.stringify(graphiteAudit,null,2));
-        if(graphiteAudit.radius!=="12px"||
-           graphiteAudit.selection!=="rgb(59, 60, 64)"||
-           graphiteAudit.drawerColor!=="rgb(30, 31, 34)"||
-           !graphiteAudit.belowDivider||
-           graphiteAudit.mainPages!==3){
+        if(graphiteAudit.drawerColor!=="rgb(30, 31, 34)"||
+           !graphiteAudit.belowDivider||graphiteAudit.mainPages!==3){
           throw new Error("Riff graphite dock regression: "+JSON.stringify(graphiteAudit));
         }
         const tabs=["overview","equalizer","ai","devices","settings"];
