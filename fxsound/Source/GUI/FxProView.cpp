@@ -6,6 +6,7 @@
 #include "CynThemeAtmosphere.h"
 #include "CynUiMotion.h"
 #include "CynLiquidScreen.h"
+#include "CynRiffLayout.h"
 #include "FxSettingsDialog.h"
 #include "CynAiHubDialog.h"
 #include "CynThemeStudio.h"
@@ -263,7 +264,7 @@ void FxProView::selectSoundFocus(int focus)
     transition_to_image_=Image();
     theme_from_image_=Image();
     theme_to_image_=Image();
-    const juce::Rectangle<int> content(240,0,jmax(0,getWidth()-240),getHeight());
+    const juce::Rectangle<int> content(108,0,jmax(0,getWidth()-108),getHeight());
     const bool animate=isShowing() && !FxTheme::isReducedMotion() && !content.isEmpty();
     if(animate) {
         capturing_liquid_=true;
@@ -293,7 +294,7 @@ void FxProView::selectPage(int page)
     transition_to_image_=Image();
     theme_from_image_=Image();
     theme_to_image_=Image();
-    const juce::Rectangle<int> content(240,0,jmax(0,getWidth()-240),getHeight());
+    const juce::Rectangle<int> content(108,0,jmax(0,getWidth()-108),getHeight());
     const bool animate=isShowing() && !FxTheme::isReducedMotion() && !content.isEmpty();
     if(animate) {
         capturing_liquid_=true;
@@ -582,16 +583,28 @@ void FxProView::resized()
     // functional JUCE widgets, not an image of controls.
     power_curtain_.setBounds(getLocalBounds());
     const int left=245, right=1301, usable=right-left;
-    const int navX=27,navW=186;
-    // Match the actual sidebar selection geometry and free the top-left
-    // from the duplicate title-bar branding.
-    sound_nav_.setBounds(navX,104,navW,42);
-    smart_nav_.setBounds(navX,153,navW,42);
-    devices_nav_.setBounds(navX,202,navW,42);
-    ai_hub_nav_.setBounds(navX,251,navW,42);
-    misc_nav_.setBounds(navX,300,navW,42);
-    studio_nav_.setBounds(navX,349,navW,42);
-    settings_.setBounds(navX,615,navW,42);
+    // Riff styles.css: 80px rounded icon rail, 48px selection targets.
+    const int navX=(int)CynRiffLayout::railIconX,navW=(int)CynRiffLayout::railIconSize;
+    sound_nav_.setBounds(navX,104,navW,48);
+    smart_nav_.setBounds(navX,162,navW,48);
+    devices_nav_.setBounds(navX,220,navW,48);
+    ai_hub_nav_.setBounds(navX,278,navW,48);
+    misc_nav_.setBounds(navX,336,navW,48);
+    studio_nav_.setBounds(navX,394,navW,48);
+    settings_.setBounds(navX,617,navW,48);
+    for(auto* b:std::initializer_list<TextButton*> {
+        &sound_nav_,&smart_nav_,&devices_nav_,&ai_hub_nav_,
+        &misc_nav_,&studio_nav_,&settings_}) {
+        b->getProperties().set("riff_icon_rail",true);
+        b->setMouseCursor(MouseCursor::PointingHandCursor);
+    }
+    sound_nav_.setTooltip("Sound Studio");
+    smart_nav_.setTooltip("Smart Listening");
+    devices_nav_.setTooltip("Output Devices");
+    ai_hub_nav_.setTooltip("AI Hub");
+    misc_nav_.setTooltip("Misc / AI DJ");
+    studio_nav_.setTooltip("CYN Studio");
+    settings_.setTooltip("Settings");
     // Header cards contain live, operable preset/device selectors.
     // Labels occupy a dedicated line above the selectors. Never overlap
     // live JUCE ComboBoxes (the old cards positioned both at y=118).
@@ -697,6 +710,26 @@ void FxProView::resized()
         button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
         button->setColour(TextButton::textColourOnId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));
     }
+    // Reflow working JUCE controls into the wider Riff-style workspace.
+    // Interactive bounds (including EQ sliders and all AI buttons) are mapped.
+    for(auto* c:std::initializer_list<Component*> {
+        &preset_list_,&endpoint_list_,&ai_status_card_,&live_status_,
+        &overview_tab_,&eq_focus_tab_,&effects_focus_tab_,
+        &embedded_ai_hub_,&audio_controls_,&equalizer_,&visualizer_,
+        &learning_timeline_,&neural_activity_,&brain_scan_,&scan_toggle_,
+        &listening_mode_,&ai_profile_,&learning_effect_,&more_,&less_,
+        &train_,&resume_,&sensitivity_,&headroom_cap_,
+        &preset_cycling_,&preset_cycling_status_,&audonic_intensity_label_,
+        &audonic_intensity_,&learning_status_,&export_ai_,&import_ai_,
+        &browse_ai_,&starter_,&pin_toggle_,&refresh_,&smart_toggle_,
+        &smart_status_,&dj_download_,&dj_remove_,&dj_cancel_,&dj_toggle_,
+        &dj_stereo_,&dj_intensity_,&dj_spacing_,&dj_status_,&dj_recent_,
+        &dj_progress_}) {
+        const auto b=c->getBounds();
+        if(!b.isEmpty() && b.getX()>=240)
+            c->setBounds(CynRiffLayout::x(b.getX()),b.getY(),
+                         CynRiffLayout::width(b.getWidth()),b.getHeight());
+    }
     power_curtain_.toFront(false);
 }
 void FxProView::paint(Graphics& g)
@@ -718,78 +751,65 @@ void FxProView::paint(Graphics& g)
     const Colour white=colour(DefaultText),muted=colour(HintText);
     const bool reduced=FxTheme::isReducedMotion();
     const float playLevel=jlimit(0.0f,1.0f,theme_audio_level_);
-    g.fillAll(base);
-
-    // One atmospheric mesh, kept underneath everything and anchored to
-    // actual audio telemetry. True black still dominates the interface.
+    // Riff MIT CSS .sidebar/.main-content and Material 3 tonal surfaces,
+    // translated to native JUCE. No Electron renderer is embedded.
+    const bool riffDark=mode==FxThemeMode::DarkMesh;
+    const Colour desktop=riffDark ? CynRiffLayout::background() : base;
+    const Colour mainSurface=riffDark ? CynRiffLayout::main() : panel;
+    const Colour railSurface=riffDark ? CynRiffLayout::rail() : panel2;
+    g.fillAll(desktop);
+    g.setColour(mainSurface);
+    g.fillRoundedRectangle(102.0f,8.0f,1208.0f,684.0f,28.0f);
     {
-        Graphics::ScopedSaveState scene(g);
-        g.reduceClipRegion(juce::Rectangle<int>(229,0,getWidth()-229,getHeight()));
+        Graphics::ScopedSaveState atmosphere(g);
+        g.reduceClipRegion(juce::Rectangle<int>(103,9,1206,146));
         CynThemeAtmosphere::paint(g,mode,
-            reduced ? 0.0f : (float)(Time::getMillisecondCounterHiRes()*.001),
-            playLevel,juce::Rectangle<float>(229.0f,0.0f,getWidth()-229.0f,205.0f));
-        ColourGradient veil(panel.withAlpha(.32f),230.0f,10.0f,
-                            base.withAlpha(.96f),740.0f,208.0f,false);
-        g.setGradientFill(veil); g.fillRect(229,0,getWidth()-229,220);
+            reduced?0.0f:(float)(Time::getMillisecondCounterHiRes()*.001),
+            playLevel,juce::Rectangle<float>(103.0f,9.0f,1206.0f,170.0f));
+        ColourGradient veil(mainSurface.withAlpha(.12f),104.0f,12.0f,
+                            mainSurface.withAlpha(1.0f),680.0f,155.0f,false);
+        g.setGradientFill(veil);
+        g.fillRect(103,9,1206,146);
     }
-
-    // Solid continuous navigation rail, no second row of icon-only buttons.
-    ColourGradient side(base.interpolatedWith(panel,.46f),0.0f,0.0f,
-                         base,228.0f,700.0f,false);
-    g.setGradientFill(side);g.fillRect(0,0,228,getHeight());
-    // Clean continuous sidebar edge: no decorative corner flourish.
-    g.setColour(border.withAlpha(.85f));
-    g.drawLine(228.0f,0.0f,228.0f,(float)getHeight(),.8f);
-    // Native title bar already displays the CYN wordmark. The sidebar
-    // identifies the navigation instead of repeating the same logo.
-    g.setColour(cyan);g.fillRoundedRectangle(26.0f,28.0f,3.0f,24.0f,1.5f);
-    g.setFont(theme.getNormalFont().withHeight(16.0f).boldened());
-    g.setColour(white);g.drawText("WORKSPACES",39,26,165,27,Justification::centredLeft);
-    g.setFont(theme.getNormalFont().withHeight(11.5f));
-    g.setColour(muted);g.drawText("AUDIO CONTROL CENTRE",28,60,179,19,
-                                 Justification::centredLeft);
-    g.setColour(border.withAlpha(.7f));g.drawLine(25.0f,87.0f,203.0f,87.0f,.8f);
-
-    // Riff-inspired M3 tonal hover surfaces, with a retargetable pill
-    // that *moves* between real native controls instead of blinking.
-    for (int i=0; i<6; ++i) {
+    g.setColour(railSurface);
+    g.fillRoundedRectangle(10.0f,8.0f,80.0f,684.0f,28.0f);
+    // Riff's neutral icon-rail indicator is interruptible, not a static box.
+    for(int i=0;i<6;++i) {
         const float hover=expressiveMotion_.hovered[(size_t)i];
-        if (hover < .006f) continue;
-        const float y=104.0f+49.0f*(float)i;
-        g.setColour(cyan.withAlpha(.095f*hover));
-        g.fillRoundedRectangle(22.0f,y,196.0f,42.0f,21.0f);
+        if(hover<.006f) continue;
+        g.setColour(riffDark ? CynRiffLayout::hover().withAlpha(.45f*hover)
+                             : cyan.withAlpha(.10f*hover));
+        g.fillRoundedRectangle(26.0f,104.0f+58.0f*i,48.0f,48.0f,24.0f);
     }
-    const float navY=expressiveMotion_.navigationY;
-    const float navDistance=std::abs((104.0f+49.0f*(float)page_)-navY);
-    const float morph=juce::jmin(5.0f,navDistance*.045f);
-    ColourGradient navGlow(colour(MenuHighlightBackground),22.0f,navY,
-                            cyan.interpolatedWith(panel,.79f),
-                            218.0f,navY+42.0f,false);
-    navGlow.addColour(.56,colour(MenuHighlightBackground).interpolatedWith(cyan,.12f));
+    const float navY=expressiveMotion_.indicatorTop;
+    const float navH=expressiveMotion_.indicatorHeight;
+    // Actual Riff two-phase stretch/settle animation from app.js.
+    ColourGradient navGlow(
+        riffDark?CynRiffLayout::active().interpolatedWith(cyan,.16f)
+                :colour(MenuHighlightBackground),26.0f,navY,
+        riffDark?CynRiffLayout::hover().interpolatedWith(cyan,.08f)
+                :cyan.interpolatedWith(panel,.80f),74.0f,navY+navH,false);
     g.setGradientFill(navGlow);
-    g.fillRoundedRectangle(22.0f,navY-morph*.5f,196.0f,42.0f+morph,21.0f);
-    g.setColour(cyan.withAlpha(.54f));
-    g.drawRoundedRectangle(22.5f,navY-morph*.5f+.5f,195.0f,41.0f+morph,20.5f,.9f);
-    g.setColour(cyan.withAlpha(.91f));
-    g.fillRoundedRectangle(22.0f,navY+12.0f,3.0f,18.0f,1.5f);
-    g.setColour(border);g.drawLine(27.0f,590.0f,210.0f,590.0f,.8f);
-    g.setColour(panel2);g.fillRoundedRectangle(21.0f,524.0f,195.0f,56.0f,13.0f);
-    g.setColour(border.withAlpha(.38f));g.drawRoundedRectangle(21.5f,524.5f,194.0f,55.0f,12.0f,.8f);
-    g.setColour(muted.withAlpha(.85f));
-    g.setFont(theme.getNormalFont().withHeight(9.0f).boldened());
-    g.drawText("ACTIVE ENGINE",34,528,155,15,Justification::centredLeft);
+    g.fillRoundedRectangle(26.0f,navY,48.0f,navH,24.0f);
+    g.setColour(riffDark?CynRiffLayout::active():border.withAlpha(.45f));
+    g.drawLine(34.0f,474.0f,66.0f,474.0f,.9f);
+    g.drawLine(34.0f,591.0f,66.0f,591.0f,.9f);
+    const bool aiOn=FxController::getInstance().isSmartListening();
+    g.setColour(aiOn?Colour(0xff49dcb3):muted.withAlpha(.55f));
+    g.fillEllipse(46.0f,546.0f,8.0f,8.0f);
+    g.setColour(muted);
+    g.setFont(theme.getNormalFont().withHeight(9.0f));
+    g.drawText("AI",34,560,32,13,Justification::centred);
+    g.drawText("v"+JUCEApplication::getInstance()->getApplicationVersion(),
+               11,675,77,10,Justification::centred);
     const auto model=FxController::getInstance().getActiveAIProfileId();
     const String modelText=model=="apex6m" ? "APEX 6M" :
             model=="yamnet" ? "YAMNet" : model.isNotEmpty() ? model.toUpperCase() : "No model";
-    const bool aiOn=FxController::getInstance().isSmartListening();
-    g.setColour(aiOn?Colour(0xff49dcb3):muted);
-    g.fillEllipse(35.0f,548.0f,8.0f,8.0f);
-    g.setColour(white);g.setFont(theme.getNormalFont().withHeight(13.0f).boldened());
-    g.drawText(modelText,54,542,148,21,Justification::centredLeft,true);
-    g.setColour(muted);g.setFont(theme.getNormalFont().withHeight(10.0f));
-    g.drawText(aiOn?"Processing enabled":"AI standby",54,564,140,13,Justification::centredLeft);
-    g.drawText("CYN  v"+JUCEApplication::getInstance()->getApplicationVersion(),
-               25,669,178,17,Justification::centredLeft);
+
+    // Map all native artwork consistently with interactive child bounds.
+    {
+    Graphics::ScopedSaveState mainCanvas(g);
+    g.addTransform(CynRiffLayout::visualTransform());
 
     auto txt=[&](String value,float x,float y,float width,float height,
                  float size,bool mutedText=false,bool bold=false) {
@@ -801,11 +821,9 @@ void FxProView::paint(Graphics& g)
                    Justification::centredLeft,true);
     };
     auto card=[&](float x,float y,float width,float height,float r=15.0f) {
-        ColourGradient finish(panel2,x,y,panel,x+width,y+height,false);
-        finish.addColour(.55,panel);
-        g.setGradientFill(finish);
+        g.setColour(riffDark?CynRiffLayout::rail():panel2);
         g.fillRoundedRectangle(x,y,width,height,r);
-        g.setColour(border.withAlpha(.23f));
+        g.setColour(border.withAlpha(riffDark?.08f:.23f));
         g.drawRoundedRectangle(x+.5f,y+.5f,width-1.0f,height-1.0f,r-.3f,.8f);
     };
     // Clear hierarchy: a large page title, meaningful status, then real
@@ -957,6 +975,7 @@ void FxProView::paint(Graphics& g)
     // Footer is a real engine-status report, not a fabricated media player.
     g.setColour(border.withAlpha(.50f));
     g.drawLine(245.0f,693.0f,1299.0f,693.0f,.8f);
+    } // End native Riff main-canvas transform.
 }
 void FxProView::refreshAIProfileChoices()
 {
@@ -1148,70 +1167,8 @@ void FxProView::paintOverChildren(Graphics& g)
 {
     // Keep the standby portal above DJ hands, flowers and theme screenshots.
     if(power_curtain_.isVisible()) return;
-    // Paint vector glyphs over TextButton backgrounds: custom hover and
-    // liquid materials are not allowed to obscure navigation icons.
-    const juce::Colour cyan(0xff45bffb),muted(0xff9aadc4);
-    // Fixed-size JUCE vector navigation icons. Distinct silhouettes make
-    // pages recognisable without requiring new textures or per-frame assets.
-    for(int i=0;i<6;++i) {
-        const float y=125.0f+49.0f*i;
-        const Colour iconColour=(i==page_?cyan:muted).withAlpha(i==page_?.92f:.67f);
-        g.setColour(iconColour);
-        switch(i) {
-            case 0: { // Sound Studio: live EQ bars
-                const float heights[]={7.0f,14.0f,10.0f,19.0f,9.0f};
-                for(int b=0;b<5;++b) {
-                    const float x=36.0f+b*4.5f;
-                    g.drawLine(x,y-heights[b]*.5f,x,y+heights[b]*.5f,1.6f);
-                }
-                break;
-            }
-            case 1: { // Neural activity network
-                g.drawLine(38,y+5,44,y-5,1.4f);
-                g.drawLine(44,y-5,51,y+4,1.4f);
-                g.drawLine(38,y+5,51,y+4,1.0f);
-                g.fillEllipse(35.0f,y+2.0f,5.5f,5.5f);
-                g.fillEllipse(41.5f,y-8.0f,5.5f,5.5f);
-                g.fillEllipse(48.5f,y+1.0f,5.5f,5.5f);
-                break;
-            }
-            case 2: { // Output devices / headphones
-                juce::Path cans;
-                cans.addCentredArc(44.0f,y,8.5f,8.5f,0.0f,
-                                   -juce::MathConstants<float>::pi*.85f,
-                                   juce::MathConstants<float>::pi*.85f,true);
-                g.strokePath(cans,juce::PathStrokeType(1.5f));
-                g.fillRoundedRectangle(34.3f,y+.4f,3.6f,8.0f,1.4f);
-                g.fillRoundedRectangle(50.1f,y+.4f,3.6f,8.0f,1.4f);
-                break;
-            }
-            case 3: { // AI Hub: connected model nodes
-                g.drawLine(37.5f,y-4.5f,50.0f,y-4.5f,1.2f);
-                g.drawLine(37.5f,y-4.5f,44.0f,y+7.0f,1.2f);
-                g.drawLine(50.0f,y-4.5f,44.0f,y+7.0f,1.2f);
-                g.fillEllipse(34.5f,y-7.5f,6.0f,6.0f);
-                g.fillEllipse(47.0f,y-7.5f,6.0f,6.0f);
-                g.fillEllipse(41.0f,y+4.0f,6.0f,6.0f);
-                break;
-            }
-            case 4: { // AI DJ: cross-fader and 2 decks
-                g.drawEllipse(34.0f,y-7.0f,10.0f,10.0f,1.4f);
-                g.drawEllipse(47.0f,y-7.0f,10.0f,10.0f,1.4f);
-                g.drawLine(38.0f,y+7.0f,53.0f,y+7.0f,1.3f);
-                g.fillEllipse(44.0f,y+5.0f,4.0f,4.0f);
-                break;
-            }
-            case 5: { // Studio: sliders and material adjustments
-                for(int j=0;j<3;++j) {
-                    const float lineY=y-7.0f+7.0f*j;
-                    g.drawLine(35.0f,lineY,54.0f,lineY,1.1f);
-                    const float knobX=j==0?41.0f:j==1?50.0f:45.0f;
-                    g.fillEllipse(knobX-2.7f,lineY-2.7f,5.4f,5.4f);
-                }
-                break;
-            }
-        }
-    }
+    // The seven JUCE CynRailButton controls now paint their own live vector
+    // glyphs. Do not overlay a second legacy icon set at stale positions.
     if(!capturing_liquid_ &&
        theme_from_image_.isValid() && theme_to_image_.isValid() &&
        !FxTheme::isReducedMotion()) {
@@ -1227,8 +1184,8 @@ void FxProView::paintOverChildren(Graphics& g)
     if(!capturing_liquid_ &&
        transition_image_.isValid() && transition_to_image_.isValid() &&
        !FxTheme::isReducedMotion()) {
-        const auto content=juce::Rectangle<int>(240,0,
-            jmax(0,getWidth()-240),getHeight());
+        const auto content=juce::Rectangle<int>(108,0,
+            jmax(0,getWidth()-108),getHeight());
         const float p=CynUiMotion::progress(
             Time::getMillisecondCounterHiRes()-transition_start_,
             CynUiMotion::pageDurationMs);

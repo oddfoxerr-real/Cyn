@@ -54,8 +54,8 @@ assert(!view.includes('URL("https://github.com/oddfoxerr-real/Cyn/tree/main/ai-h
 const build=readFileSync(path("BUILD_CYN.ps1"),"utf8");
 assert(build.includes("CynAiProfiles"),"Installer must bundle the offline community catalogue");
 const header=readFileSync(path("fxsound/Source/GUI/FxProView.h"),"utf8");
-assert(header.includes('ai_hub_nav_ { "AI Hub" }'),"Permanent AI Hub navigation button missing");
-for(const key of ["ai_hub_nav_.setBounds(navX,251,navW,42)",
+assert(header.includes('ai_hub_nav_ { "AI Hub",3 }'),"Permanent native AI Hub icon navigation button missing");
+for(const key of ["ai_hub_nav_.setBounds(navX,278,navW,48)",
                   "ai_hub_nav_.onClick = [this] { selectPage(3); };",
                   "export_ai_.setBounds(left+456,657,92,27)",
                   "import_ai_.setBounds(left+556,657,92,27)",
@@ -90,9 +90,9 @@ assert(view.includes("tool_tip_.setOpaque(false);"),"Tooltip should not show rec
 for (const [button,palette] of [["browse_ai_","MenuHighlightBackground"],["export_ai_","PanelBackground"],["import_ai_","PanelBackground"]]) {
   assert(view.includes(button+".setColour(TextButton::buttonColourId, Colour(FXCOLOR("+palette+")).withAlpha(1.0f));"),button+" fill is transparent");
 }
-assert(view.includes('const float navY=expressiveMotion_.navigationY;') &&
-       view.includes('g.fillRoundedRectangle(22.0f,navY-morph*.5f') &&
-       view.includes('g.drawRoundedRectangle(22.5f,navY-morph*.5f+.5f') &&
+assert(view.includes('const float navY=expressiveMotion_.indicatorTop;') &&
+       view.includes('g.fillRoundedRectangle(26.0f,navY,48.0f,navH,24.0f)') &&
+       view.includes('CynRiffLayout::railIconX') &&
        view.includes('button->setColour(TextButton::textColourOffId, Colour(FXCOLOR(DefaultText)).withAlpha(1.0f));'),
        "Native AI Hub sidebar must keep readable labels and animated selection background");
 assert(view.includes('browse_ai_.setColour(TextButton::textColourOffId, Colour(FXCOLOR(SliderTrack)).withAlpha(1.0f));'),

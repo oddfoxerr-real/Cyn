@@ -16,8 +16,8 @@ const required=[
     "// Three quiet glass tiles",
     "// Tabs sit directly on the workbench",
     "overview_tab_.setBounds(left+12,203,126,34)",
-    "const float navY=expressiveMotion_.navigationY",
-    "sound_nav_.setBounds(navX,104,navW,42)",
+    "const float navY=expressiveMotion_.indicatorTop",
+    "sound_nav_.setBounds(navX,104,navW,48)",
     "card(247,252,686,205)",
     "card(944,252,356,205)",
     "card(247,468,1053,220)",
@@ -31,11 +31,11 @@ const required=[
 for(const anchor of required)assert(view.includes(anchor),"UI overlap/layout regression: "+anchor);
 assert(view.includes("expressiveMotion_.hovered") &&
        view.includes("expressiveMotion_.focusX") &&
-       view.includes("expressiveMotion_.navigationY"),
+       view.includes("expressiveMotion_.indicatorHeight"),
        "Expressive navigation and segmented tabs must use live animated state");
-assert(view.includes('g.drawText("WORKSPACES"') &&
+assert(view.includes('g.fillRoundedRectangle(10.0f,8.0f,80.0f,684.0f,28.0f)') &&
        !view.includes('g.drawText("CYN",28,22'),
-       "Don't show two different CYN title bars");
+       "Compact icon navigation must not repeat the native CYN title");
 assert(view.includes('String("AI ACTIVE  /  ")') &&
        !view.includes('String("AI ACTIVE  •  ")'),
        "Avoid corrupting UTF-8 status separators in Windows build");
@@ -61,4 +61,4 @@ assert(eq.includes("const int compactBandHeight=juce::jlimit(65") &&
 assert(!view.includes("railOutline") && !view.includes("Path railFill(spine)"), "Remove stray curved sidebar flourish entirely");
 assert(view.includes("card(247,253,795,235,23.0f)") && view.includes("card(1053,500,247,188,23.0f)"), "Spectrum and AI status need their own aligned panels");
 assert(view.includes("ColourGradient navGlow(") && view.includes("card(955,108,345,78,19.0f)"),"Gradient selection and native header tile geometry required");
-console.log("PASS: clean black workspace, bottom sidebar sweep, aligned audio panels and version metadata");
+console.log("PASS: Riff floating rail, expanded tonal workspace, aligned audio panels and version metadata");
