@@ -14,7 +14,7 @@ const fx=[
   ["dynamicboost","Dynamic boost","Energy and contrast"],
   ["bass","Bass boost","Low-frequency weight"]
 ];
-let current=null, activeView="overview", busy=false, refreshTimer=0, selectedModel="";
+let current=null, activeView="overview", busy=false;
 const value=(n,fallback="—")=>Number.isFinite(Number(n))?Number(n).toFixed(1):fallback;
 const writable=()=>Boolean(current?.connected)&&!busy;
 function showError(message){
@@ -246,7 +246,6 @@ $("reduced-motion").addEventListener("change",e=>{
   document.body.classList.toggle("reduce-motion",e.target.checked);
   localStorage.setItem("cyn-riff-reduced-motion",e.target.checked?"1":"0");
 });
-for(const [name] of fx){} // effects create after first status
 renderDisconnected("Checking native CYN installation…");
 refresh();
 setInterval(()=>{if(!busy&&!document.hidden)refresh()},4200);
