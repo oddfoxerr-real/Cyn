@@ -18,6 +18,7 @@ assert.match(installer,/^AppId=\{\{3049F105-E971-49A1-876E-50FDB14EF351\}$/m);
 assert(installer.includes('Source: "{#PayloadDir}\\*"'),"Keep the native driver, assets and Material interface together");
 assert(installer.includes('Filename: "{app}\\CYN-Interface\\CYN Audio.exe"'),"Default CYN launcher must open the Material shell");
 assert(installer.includes('Name: "{autoprograms}\\Cyn (Classic)"'),"Keep the full native AI/driver troubleshooting UI available");
+assert(installer.includes('Parameters: "--classic"'),"The Classic shortcut must launch original CYN audio controls, not reopen Material");
 assert(installer.includes('Name="CYN Audio.exe"'),"Updates must not overwrite an actively running Electron frontend");
 assert(native.includes('path.dirname(process.execPath),"..","Cyn.exe"'),"Locate the native audio processor beside the bundled shell");
 assert(main.includes('bridge.launch().catch'),"Integrated CYN must initialize the native audio engine");
