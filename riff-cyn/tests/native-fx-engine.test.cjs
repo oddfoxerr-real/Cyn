@@ -16,7 +16,7 @@ test("Material CYN exposes FXSound engine and direct Settings/Updates without DS
   assert(app.includes('$("toolbar-settings").addEventListener("click",()=>transition("settings"))'));
   assert(app.includes('$("fx-engine-reconnect").addEventListener("click",async()=>'));
   assert(settings.includes('toolbarUpdates.addEventListener("click",async()=>'));
-  assert(settings.includes("window.cyn.checkUpdates()"));
+  assert(settings.includes("window.cynUpdate.open()"));
   assert(html.includes('data-setting="updates"'));
   assert(html.includes('data-setting="release"'));
 });
