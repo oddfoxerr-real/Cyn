@@ -159,6 +159,18 @@ final class LikedDownloads {
         }finally{if(temp.exists())temp.delete();}
     }
 
+    static void discard(Context context,Uri downloaded){
+        if(downloaded==null)return;
+        try{
+            if("content".equals(downloaded.getScheme()))context.getContentResolver().delete(downloaded,null,null);
+            else if("file".equals(downloaded.getScheme())){
+                String path=downloaded.getPath();
+                File folder=new File(context.getFilesDir(),"offline-music");
+                if(path!=null&&path.startsWith(folder.getCanonicalPath()+File.separator))new File(path).delete();
+            }
+        }catch(Exception ignored){}
+    }
+
     private static void transfer(InputStream in,OutputStream out)throws IOException{
         byte[] bytes=new byte[32768];long total=0;int n;
         while((n=in.read(bytes))!=-1){
