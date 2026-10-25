@@ -92,6 +92,18 @@ function createWindow(){
         const settingsOpen=await win.webContents.executeJavaScript(
           'document.getElementById("view-settings").classList.contains("active") && [...document.querySelectorAll("#view-settings [data-setting=updates]")].length===1');
         if(!settingsOpen)throw new Error("Visible CYN Settings control failed to open native updater panel");
+        // The old release shipped only a blind PowerShell spawn. Prove the
+        // first-class Material update-check dialog is actually visible.
+        await win.webContents.executeJavaScript('document.getElementById("toolbar-updates").click()');
+        await new Promise(resolve=>setTimeout(resolve,100));
+        const updateDialogAudit=JSON.parse(await win.webContents.executeJavaScript(
+          'JSON.stringify((()=>{const e=document.getElementById("cyn-updates-dialog"),b=e?.getBoundingClientRect();return {open:e?.open,phase:e?.dataset.phase,width:b?.width,height:b?.height,checkControls:!!document.getElementById("cyn-updates-install")&&!!document.getElementById("cyn-updates-retry")};})())'));
+        if(!updateDialogAudit.open||updateDialogAudit.width<300||
+           updateDialogAudit.height<230||!updateDialogAudit.checkControls)
+          throw new Error("Native CYN updater dialog is not accessible: "+JSON.stringify(updateDialogAudit));
+        const updaterShot=await win.webContents.capturePage();
+        fs.writeFileSync(path.join(directory,"cyn-in-app-updater.png"),updaterShot.toPNG());
+        await win.webContents.executeJavaScript('document.getElementById("cyn-updates-close").click()');
         await win.webContents.executeJavaScript('document.querySelector("[data-view=overview]").click()');
         const tabs=["overview","equalizer","ai","devices","settings"];
         const layoutDiagnostics=await win.webContents.executeJavaScript(
