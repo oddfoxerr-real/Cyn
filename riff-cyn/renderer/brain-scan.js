@@ -150,7 +150,39 @@
    ["11 INPUTS","12 HIDDEN","5 OUTPUTS"].forEach((label,i)=>ctx.fillText(label,spaces[i],h-12));
  }
  const effectKeys=["clarity","ambience","surround","dynamicboost","bass"];
+ function drawAppliedEqCurve(){
+   // Applied EQ is read from the DSP itself. Do not overwrite the user's
+   // manual controls or fabricate autonomous neural/AI movement.
+   const graph=document.getElementById("eq-curve");
+   if(!graph)return;
+   const values=sample?.applied_bands;
+   const actual=live()&&Array.isArray(values)&&[31,35,39].includes(values.length)&&
+     values.every(value=>Number.isFinite(Number(value)));
+   let line=document.getElementById("eq-ai-applied-curve");
+   if(!actual){
+     if(line)line.remove();
+     return;
+   }
+   const d=values.map((v,i)=>{
+     const x=25+i*950/(values.length-1);
+     const y=112.5-clamp(Number(v),-12,12)*7.8;
+     return (i?"L":"M")+x.toFixed(2)+","+y.toFixed(2);
+   }).join(" ");
+   if(!line){
+     line=document.createElementNS("http://www.w3.org/2000/svg","path");
+     line.id="eq-ai-applied-curve";
+     line.setAttribute("fill","none");
+     line.setAttribute("stroke","#90f4d2");
+     line.setAttribute("stroke-width","2.5");
+     line.setAttribute("stroke-linecap","round");
+     line.setAttribute("stroke-linejoin","round");
+     line.setAttribute("aria-hidden","true");
+     graph.append(line);
+   }
+   line.setAttribute("d",d);
+ }
  function drawAppliedValues(){
+   drawAppliedEqCurve();
    const active=live();
    effectKeys.forEach((key,i)=>{
      const output=document.getElementById("effect-applied-"+key);
@@ -237,10 +269,16 @@
      if(result?.schema===1 && Array.isArray(result.hidden)&&result.hidden.length===12){
        sample=result;lastSample=Date.now();
        if(isShowing())drawRecent();
-       drawAppliedValues();
-       drawSpectrum();
+     }else{
+       sample=null;lastSample=0;
      }
-   }catch{}finally{lastPoll=0;}
+     drawAppliedValues();
+     drawSpectrum();
+   }catch{
+     sample=null;lastSample=0;
+     drawAppliedValues();
+     drawSpectrum();
+   }finally{lastPoll=0;}
  }
  controls.forEach(b=>b.addEventListener("click",()=>{
    mode=b.dataset.brainMode;
