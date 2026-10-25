@@ -145,6 +145,32 @@
    ctx.fillStyle="#aaaab0";ctx.font="10px system-ui";ctx.textAlign="center";
    ["11 INPUTS","12 HIDDEN","5 OUTPUTS"].forEach((label,i)=>ctx.fillText(label,spaces[i],h-12));
  }
+ function drawRecent(){
+   const chart=document.getElementById("learning-waveform");
+   if(!chart)return;
+   const cx=chart.getContext("2d");
+   const rect=chart.getBoundingClientRect();
+   if(rect.width<20)return;
+   const dpr=Math.min(2,window.devicePixelRatio||1);
+   chart.width=Math.round(rect.width*dpr);chart.height=Math.round(rect.height*dpr);
+   cx.setTransform(dpr,0,0,dpr,0,0);
+   const w=rect.width,h=rect.height;
+   cx.fillStyle="#1a1b1e";cx.fillRect(0,0,w,h);
+   const newest=Number(document.getElementById("feedback-from").value)||0;
+   const oldest=Number(document.getElementById("feedback-to").value)||15;
+   cx.fillStyle="#414247";
+   cx.fillRect(w*(1-oldest/60),0,w*((oldest-newest)/60),h);
+   cx.strokeStyle="#3d3e43";cx.beginPath();cx.moveTo(0,h*.5);cx.lineTo(w,h*.5);cx.stroke();
+   const history=Array.isArray(sample?.recent_frames)?sample.recent_frames:[];
+   for(const f of history){
+     const age=Number(f.age_ms),rms=Number(f.rms);
+     if(!Number.isFinite(age)||age<0||age>60000||!Number.isFinite(rms))continue;
+     const x=w*(1-age/60000),amplitude=clamp(Math.sqrt(clamp(rms,0,1))*2.3,0,.96);
+     cx.fillStyle="#b6c6d0";cx.globalAlpha=.25+amplitude*.65;
+     cx.fillRect(x,h/2-amplitude*h*.42,Math.max(2,w/180),amplitude*h*.84);
+   }
+   cx.globalAlpha=1;
+ }
  function frame(now){
    requestAnimationFrame(frame);
    if(!isShowing()||now-lastDraw<(reduce()?450:33))return;
@@ -165,6 +191,7 @@
      const result=await window.cyn.telemetry();
      if(result?.schema===1 && Array.isArray(result.hidden)&&result.hidden.length===12){
        sample=result;lastSample=Date.now();
+       drawRecent();
      }
    }catch{}finally{lastPoll=0;}
  }
