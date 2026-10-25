@@ -33,6 +33,7 @@ assert(release.includes("npx electron-builder --win --x64 --dir"),"Build the Ele
 assert(release.includes("dist/Cyn/CYN-Interface"),"Stage the frontend in the native Inno payload");
 assert(release.includes("Compress-Archive -Path 'dist/Cyn/*'"),"Rebuild the portable archive with frontend included");
 assert(release.includes("Node".toLowerCase())||release.includes("setup-node@v4"));
-assert(notes.includes("normal CYN Windows installer"));
+assert(notes.includes(`CYN Windows ${version}`), "Release notes must match the current Windows version");
+assert(notes.includes("Material"), "Release notes must explain the new default interface");
 assert(!guiWorkflow.includes("AppId={{3049F105-E971-49A1-876E-50FDB14EF351}"),"Standalone preview must not replace native AppId");
 console.log(`PASS: CYN ${version} stable update channel, native DSP retained, Material frontend bundled`);
