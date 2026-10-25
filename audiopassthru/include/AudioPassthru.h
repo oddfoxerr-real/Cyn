@@ -75,6 +75,8 @@ public:
     bool isPlaybackDeviceAvailable();
 	bool checkDeviceChanges();
 	void restoreDefaultPlaybackDevice();
+    // Restore the original FxSound virtual-default endpoint routing after explicit user consent.
+    bool restoreCynRouting();
 
 private:
 	AudioPassthruPrivate *data_;
