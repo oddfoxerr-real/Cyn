@@ -690,3 +690,7 @@ body.cyn-closing .app-layout,body.cyn-closing .titlebar{
 .settings-priority{background:#33363c;border:1px solid #454950;font-weight:750}
 .settings-priority:hover{background:#41464d}
 @media(max-width:640px){.titlebar-action{padding:0 9px;font-size:11px}.titlebar-quick-actions{gap:5px;padding-right:6px}.titlebar-controls{gap:0}.titlebar-btn{width:33px}.fx-engine-panel .button{width:100%}}
+
+.fx-engine-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-shrink:0}
+.fx-engine-actions .button{padding:10px 14px}
+@media(max-width:640px){.fx-engine-actions{width:100%}.fx-engine-actions .button{flex:1 1 120px;width:auto}}
