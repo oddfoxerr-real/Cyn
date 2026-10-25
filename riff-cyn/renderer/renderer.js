@@ -422,6 +422,9 @@ document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",(
 document.querySelectorAll("[data-window]").forEach(b=>b.addEventListener("click",()=>window.cyn.window(b.dataset.window)));
 $("toolbar-settings").addEventListener("click",()=>transition("settings"));
 $("go-eq").addEventListener("click",()=>transition("equalizer"));
+$("fx-engine-repair").addEventListener("click",()=>{
+  window.cyn.openLink("updates").catch(error=>showError("Could not open the CYN installer page: "+error.message));
+});
 $("fx-engine-reconnect").addEventListener("click",async()=>{
   const control=$("fx-engine-reconnect");
   control.disabled=true;
