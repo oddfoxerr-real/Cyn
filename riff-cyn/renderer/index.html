@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="cyn.css">
   <script src="rail-drawer.js" defer></script>
   <script src="renderer.js" defer></script>
+  <script src="brain-scan.js" defer></script>
   <script src="settings.js" defer></script>
 </head>
 <body>
@@ -141,6 +142,32 @@
         <div class="feature-grid">
           <article class="surface-card"><div class="feature-heading"><h3>Adaptive processing</h3><label class="toggle only-toggle"><input type="checkbox" id="smart" disabled><span class="toggle-track"></span></label></div><p class="support-text" id="smart-summary">Connect native CYN to read active processing information.</p><label class="range-row"><span>Sensitivity <output id="sensitivity-value">—</output></span><input type="range" id="sensitivity" min="0" max="100" step="1" disabled></label></article>
           <article class="surface-card"><span class="section-kicker">ENGINE PROFILE</span><h3 id="active-model">Not connected</h3><label class="detail-select-field"><span>SELECT INSTALLED MODEL</span><select id="ai-model" aria-label="CYN AI model" disabled><option value="">Connect CYN</option></select></label><p class="support-text" id="learning-status">Native model inference and training telemetry appear here once connected.</p><p class="support-text">BrainScan and training controls stay in native CYN until their real telemetry bridge is available.</p></article>
+        </div>
+        <div class="neural-workspace" id="neural-workspace">
+          <div class="neural-heading">
+            <div><span class="section-kicker">LIVE NATIVE AI ACTIVITY</span><h3>BrainScan</h3></div>
+            <div class="neural-tools" role="group" aria-label="Neural visualization">
+              <button type="button" class="neural-mode active" data-brain-mode="scan" aria-pressed="true">3D BrainScan</button>
+              <button type="button" class="neural-mode" data-brain-mode="graph" aria-pressed="false">Neural graph</button>
+            </div>
+          </div>
+          <canvas id="brain-canvas" width="940" height="360" role="img" aria-label="Live visualization of CYN neural inference, powered by native activity telemetry"></canvas>
+          <div class="neural-footer"><span id="brain-state">Waiting for native AI telemetry</span><span id="brain-profile">Native CYN · idle</span></div>
+        </div>
+        <div class="feature-grid ai-control-grid">
+          <article class="surface-card">
+            <h3>Music and Movie AI</h3>
+            <label class="detail-select-field"><span>LISTENING MODE</span><select id="listening-mode" disabled><option value="0">Music AI</option><option value="1">Movie / TV AI</option></select></label>
+            <label class="range-row"><span>AI Headroom <output id="headroom-value">—</output></span><input type="range" id="headroom" min="0" max="100" step="1" disabled></label>
+            <label class="toggle ai-aux-switch"><input type="checkbox" id="preset-cycling" disabled><span class="toggle-track"></span><span>Adaptive preset cycling</span></label>
+          </article>
+          <article class="surface-card">
+            <h3>AI training and AUDONIC</h3>
+            <label class="range-row"><span>AUDONIC creative intensity <output id="audonic-intensity-value">—</output></span><input type="range" id="audonic-intensity" min="0" max="100" step="1" disabled></label>
+            <div class="training-meter" aria-label="Local AI training progress"><div class="training-fill" id="training-fill"></div></div>
+            <p class="support-text" id="training-status">Native model ready</p>
+            <button type="button" class="button secondary" id="train-ai" disabled>Train saved feedback</button>
+          </article>
         </div>
       </section>
 
