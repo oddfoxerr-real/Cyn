@@ -2307,6 +2307,62 @@ LRESULT CALLBACK FxController::eventCallback(HWND hwnd, const UINT message, cons
 	return DefWindowProc(hwnd, message, w_param, l_param);
 }
 
+
+void FxController::publishUiTelemetry()
+{
+    // Called exclusively from the existing JUCE message-thread timer, never
+    // on the audio callback. The heartbeat lives in per-user local AppData.
+    // No network service, shared microphone stream, or raw audio is exposed.
+    if (++ui_telemetry_counter_ < 2) return;
+    ui_telemetry_counter_ = 0;
+    const auto rootDir=File::getSpecialLocation(File::userApplicationDataDirectory)
+        .getChildFile("Cyn");
+    const auto heartbeat=rootDir.getChildFile("ui-telemetry-request");
+    if (!heartbeat.existsAsFile()) return;
+    const auto age=Time::currentTimeMillis()-
+        heartbeat.getLastModificationTime().toMilliseconds();
+    if (age < 0 || age > 2500) return;
+
+    NeuralActivitySnapshot sample {};
+    const bool live=FxModel::getModel().getPowerState() &&
+        smart_enabled_ && audio_process_on_ && getLiveNeuralActivity(sample);
+    const bool audonic=getActiveAIProfileId()=="audonic";
+    CynAudonicStudio::Controls creative {};
+    const bool creativeLive=audonic && live && getLiveAudonicControls(creative);
+    auto* telemetry=new DynamicObject();
+    telemetry->setProperty("schema",1);
+    telemetry->setProperty("sampled_at_ms",var((double)Time::currentTimeMillis()));
+    telemetry->setProperty("active",live && (!audonic || creativeLive));
+    telemetry->setProperty("profile",getActiveAIProfileId());
+    telemetry->setProperty("audonic",audonic);
+    telemetry->setProperty("rms",live ? jlimit(0.0f,1.0f,sample.rms) : 0.0f);
+    telemetry->setProperty("training",smart_training_);
+    telemetry->setProperty("training_progress",getSmartTrainingProgress());
+    telemetry->setProperty("listening_mode",smart_mode_);
+    telemetry->setProperty("headroom_cap",smart_headroom_cap_);
+    telemetry->setProperty("preset_cycling",smart_preset_cycling_);
+    telemetry->setProperty("audonic_intensity",getAudonicIntensity());
+    telemetry->setProperty("ai_dj_enabled",dj_worker_ && dj_worker_->enabled());
+
+    Array<var> inputs,hidden,outputs,firstLinks,secondLinks,ready,creativeChannels;
+    for(const auto value:sample.inputs) inputs.add(live?var(value):var(0.0f));
+    for(const auto value:sample.hidden) hidden.add(live?var(value):var(0.0f));
+    for(const auto value:sample.outputs) outputs.add(live?var(value):var(0.0f));
+    for(const auto value:sample.inputConnections) firstLinks.add(live?var(value):var(0.0f));
+    for(const auto value:sample.outputConnections) secondLinks.add(live?var(value):var(0.0f));
+    for(const auto value:sample.ready) ready.add(value);
+    for(const auto value:creative) creativeChannels.add(creativeLive?var(value):var(0.0f));
+    telemetry->setProperty("inputs",inputs);
+    telemetry->setProperty("hidden",hidden);
+    telemetry->setProperty("outputs",outputs);
+    telemetry->setProperty("input_connections",firstLinks);
+    telemetry->setProperty("output_connections",secondLinks);
+    telemetry->setProperty("ready",ready);
+    telemetry->setProperty("creative",creativeChannels);
+    rootDir.getChildFile("ui-telemetry.json").replaceWithText(
+        JSON::toString(var(telemetry),true));
+}
+
 void FxController::timerCallback()
 {
 	if (output_changed_)
@@ -2363,6 +2419,7 @@ void FxController::timerCallback()
         dj_worker_->liveScene(fresh,voice.music,voice.speech,voice.silence,audio_process_on_&&power);
     }
     updateSmartListening();
+    publishUiTelemetry();
 
 	// Auto-save modified preset once per minute if there are unsaved changes
 	static constexpr int AUTO_SAVE_INTERVAL = 600; // 600 ticks * 100ms = 60 seconds
