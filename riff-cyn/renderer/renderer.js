@@ -156,6 +156,19 @@ function renderBands(status){
 }
 function renderConnected(status){
   window.dispatchEvent(new CustomEvent("cyn-native-status",{detail:status}));
+  const fx=status.fx_engine||{};
+  const ready=fx.ready===true;
+  const active=fx.processing===true;
+  $("fx-engine-detail").textContent=!ready
+    ?"Native CYN reported an audio driver or DSP initialization problem."
+    :!status.power
+      ?"Native FxSound DSP loaded. Processing switched off."
+      :active
+        ?"Native FxSound DSP is processing live audio."
+        :"Native FxSound DSP loaded. Waiting for audio from the selected output.";
+  $("fx-engine-output").textContent="Output device: "+String(status.selected_output||"Not selected");
+  $("fx-engine-reconnect").textContent=ready?"Refresh engine":"Reconnect engine";
+  $("fx-engine-reconnect").disabled=false;
   setEngineState(true,(status.power?"ON":"OFF")+" / v"+String(status.version||"?"));
   $("power").checked=Boolean(status.power);
   $("smart").checked=Boolean(status.smart_listening?.enabled);
@@ -219,6 +232,10 @@ function renderConnected(status){
 }
 function renderDisconnected(message){
   window.dispatchEvent(new CustomEvent("cyn-native-status",{detail:null}));
+  $("fx-engine-detail").textContent=String(message||"Native CYN audio engine is offline.");
+  $("fx-engine-output").textContent="Audio effects and neural processing require the real Cyn.exe engine.";
+  $("fx-engine-reconnect").textContent="Reconnect engine";
+  $("fx-engine-reconnect").disabled=false;
   setEngineState(false,"Engine offline");
   for(const id of ["preset","device-top","device-page","power","smart","pin","sensitivity","ai-model"])$(id).disabled=true;
   for(const id of ["listening-mode","headroom","preset-cycling","audonic-intensity","train-ai","feedback-more","feedback-less"])$(id).disabled=true;
@@ -400,7 +417,18 @@ document.querySelectorAll(".accent-choice").forEach(button=>
 setAccent(localStorage.getItem(accentSetting)||"blue");
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>transition(b.dataset.view)));
 document.querySelectorAll("[data-window]").forEach(b=>b.addEventListener("click",()=>window.cyn.window(b.dataset.window)));
+$("toolbar-settings").addEventListener("click",()=>transition("settings"));
 $("go-eq").addEventListener("click",()=>transition("equalizer"));
+$("fx-engine-reconnect").addEventListener("click",async()=>{
+  const control=$("fx-engine-reconnect");
+  control.disabled=true;
+  $("fx-engine-detail").textContent="Connecting to the native CYN engine…";
+  try{
+    const result=await window.cyn.start();
+    if(!result.connected)showError(result.error||"Native FX engine could not start");
+  }catch(error){showError("Native FX engine: "+error.message)}
+  finally{control.disabled=false;await refresh()}
+});
 $("start-native").addEventListener("click",async()=>{
   $("start-native").disabled=true;
   try{const r=await window.cyn.start();if(!r.connected)showError(r.error||"Native CYN is not yet available")}
