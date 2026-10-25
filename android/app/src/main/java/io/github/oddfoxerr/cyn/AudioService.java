@@ -26,6 +26,16 @@ public final class AudioService extends Service {
     final Handler handler=new Handler(Looper.getMainLooper());
     final ArrayList<Frame> frames=new ArrayList<>();
     final LinkedHashMap<Integer,Chain> chains=new LinkedHashMap<>();
+    private Set<String> activePlaybackPackages=Collections.emptySet();
+    private long lastPlaybackRefresh;
+    private final AudioDeviceCallback deviceCallback=new AudioDeviceCallback() {
+        @Override public void onAudioDevicesAdded(AudioDeviceInfo[] devices) { scheduleRouteRecovery(); }
+        @Override public void onAudioDevicesRemoved(AudioDeviceInfo[] devices) { scheduleRouteRecovery(); }
+    };
+    private void scheduleRouteRecovery(){
+        handler.removeCallbacks(routeRecovery);
+        handler.postDelayed(routeRecovery,700);
+    }
     final ExecutorService trainer=Executors.newSingleThreadExecutor();
     LearningStore learning;
     SharedPreferences prefs;
@@ -99,6 +109,15 @@ public final class AudioService extends Service {
     AudioFocusRequest focus;
     boolean monitor, enabled=true, smart, playing, preparing, training, destroyed, resumeOnFocus;
     int trainingEpoch, activeSession=-1, playerSession=-1;
+    private final Runnable routeRecovery=()->{
+        if(destroyed||!monitor)return;
+        // Bluetooth/headphone changes can invalidate effect control without a
+        // corresponding CLOSE broadcast. Recreate existing effects, not audio.
+        for(Chain chain:new ArrayList<>(chains.values()))
+            if(chain.id!=playerSession)chain.reopen();
+        refreshVisualization();
+        updateNotification();
+    };
     float sensitivity=.7f, bass=2, clarity=1, width=0, loudness=0;
     final float[] eq=new float[5];
     String title="Choose a song", status="Ready", analysis="Enable analysis to use Smart listening.";
@@ -151,6 +170,8 @@ public final class AudioService extends Service {
         if(!monitor) return "Connect your music apps for adaptive sound. Library playback is optional.";
         if(!enabled) return "Monitoring is on, but enhancement is switched off.";
         if(connectedCapture!=null)return connectedCapture.status+" · "+(smart?currentAi().status:"AI off");
+        if(ExternalNowPlaying.instance==null)
+            return "Enable CYN media controls in Android Notification Access to identify playing music apps. This does not grant system-wide DSP.";
         if(legacy) return "Experimental output-mix mode: even EQ control does not prove that other apps use it. Compare sound on/off.";
         if(controlledExternalEqCount()>0) return "CYN controls Android's session EQ. Enable Connect AI for neural playback analysis. Effect support depends on the player and device.";
         if(externalSessionCount()>0) {
@@ -383,8 +404,14 @@ public final class AudioService extends Service {
             if(!monitor||legacy) return;
             int id=i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1);
             if(id<=0||id==playerSession) return;
-            if(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION.equals(action)) attach(id,"External playback");
-            else if(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION.equals(action)) detach(id);
+            String sourcePackage=i.getStringExtra(AudioEffect.EXTRA_PACKAGE_NAME);
+            if(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION.equals(action)) {
+                attach(id,"External playback",sourcePackage);
+            } else if(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION.equals(action)) {
+                Chain chain=chains.get(id);
+                if(chain!=null&&(chain.packageName==null||
+                        chain.packageName.equals(sourcePackage)))detach(id);
+            }
         }
     };
     // The legacy overload is only reached below API 33, before exported flags exist.
@@ -406,6 +433,7 @@ public final class AudioService extends Service {
         bass=prefs.getFloat("bass",2); clarity=prefs.getFloat("clarity",1); width=prefs.getFloat("width",0); loudness=prefs.getFloat("loudness",0);
         for(int i=0;i<5;i++) eq[i]=prefs.getFloat("eq"+i,0);
         audio=getSystemService(AudioManager.class);
+        audio.registerAudioDeviceCallback(deviceCallback,handler);
         focus=new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).setAudioAttributes(attributes()).setOnAudioFocusChangeListener(change->{
             if(change==AudioManager.AUDIOFOCUS_LOSS) { resumeOnFocus=false; pause(); }
             else if(change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
@@ -511,7 +539,7 @@ public final class AudioService extends Service {
             if(CAPTURE.equals(action))return START_NOT_STICKY;
             if(STOP.equals(action)) { stopAll(); return START_NOT_STICKY; }
             if(MONITOR.equals(action)) {
-                monitor=true; foreground();
+                monitor=true; lastPlaybackRefresh=0; foreground();
                 if(i.getBooleanExtra("legacy",false)) startLegacy();
                 else {
                     if(legacy) { detach(0); legacy=false; }
@@ -529,7 +557,7 @@ public final class AudioService extends Service {
         return START_NOT_STICKY;
     }
     void stopMonitor() {
-        stopCapture(); monitor=false; legacy=false; releaseOutputVisuals(); connectedMind=null; sessionSpectrum=new float[31]; sessionSpectrumAt=0; clearTrace();
+        stopCapture(); monitor=false; legacy=false; activePlaybackPackages=Collections.emptySet(); handler.removeCallbacks(routeRecovery); releaseOutputVisuals(); connectedMind=null; sessionSpectrum=new float[31]; sessionSpectrumAt=0; clearTrace();
         for(Integer id:new ArrayList<>(chains.keySet())) if(id!=playerSession) detach(id);
         if(playing||preparing) foreground(); else { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); }
 
@@ -626,11 +654,13 @@ public final class AudioService extends Service {
         if(playerSession>0) detach(playerSession); playerSession=-1;
         if(player!=null) { player.release(); player=null; } pcmSpectrum.setActive(false);desktopAi.active=false;desktopAi.reset();playing=false; preparing=false; audio.abandonAudioFocusRequest(focus);
     }
-    void stopAll() { stopCapture(); monitor=false; legacy=false; connectedMind=null; releaseOutputVisuals(); sessionSpectrumAt=0; sessionSpectrum=new float[31]; clearTrace(); releasePlayer(); for(Integer id:new ArrayList<>(chains.keySet())) detach(id); mediaSession.setActive(false); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); status="Stopped"; }
-    private void attach(int id,String owner) {
+    void stopAll() { stopCapture(); monitor=false; legacy=false; activePlaybackPackages=Collections.emptySet(); handler.removeCallbacks(routeRecovery); connectedMind=null; releaseOutputVisuals(); sessionSpectrumAt=0; sessionSpectrum=new float[31]; clearTrace(); releasePlayer(); for(Integer id:new ArrayList<>(chains.keySet())) detach(id); mediaSession.setActive(false); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); status="Stopped"; }
+    private void attach(int id,String owner) { attach(id,owner,null); }
+    private void attach(int id,String owner,String packageName) {
         if(id<0||(!legacy&&id==0)||(legacy&&id!=0)||chains.containsKey(id)) return;
         if(chains.size()>=8) { status="Too many audio sessions; close an unused player."; return; }
-        clearTrace(); Chain c=new Chain(id,owner==null?"Music app":owner); chains.put(id,c); activeSession=id; frames.clear(); c.apply(); c.analyze();
+        clearTrace(); Chain c=new Chain(id,owner==null?"Music app":owner,packageName);
+        chains.put(id,c); activeSession=id; frames.clear(); c.apply(); c.analyze();
         if(monitor) { status=connectionState(); updateNotification(); }
     }
     private void detach(int id) {
@@ -774,26 +804,43 @@ public final class AudioService extends Service {
     private final Runnable tick=new Runnable() {
         @Override public void run() {
             if(destroyed) return;
+            long now=SystemClock.elapsedRealtime();
+            if(monitor&&(lastPlaybackRefresh==0||now-lastPlaybackRefresh>=750)){
+                Set<String> current=ExternalNowPlaying.playingPackages(AudioService.this);
+                if(!activePlaybackPackages.equals(current)){
+                    activePlaybackPackages=current;
+                    for(Chain c:chains.values())c.lastSettings="";
+                    updateNotification();
+                }
+                lastPlaybackRefresh=now;
+            }
             updateNativeControls();
             for(Chain c:chains.values()) { if(SystemClock.elapsedRealtime()-c.lastCapture>900) c.targetBass=c.targetClarity=0; c.bassOffset+=(c.targetBass-c.bassOffset)*.12; c.clarityOffset+=(c.targetClarity-c.clarityOffset)*.12; c.apply(); }
             updateApexVisualTelemetry();
             if(monitor)refreshVisualization();
-            long now=SystemClock.elapsedRealtime();
             if(!playing&&now-traceAt>900) { clearTrace(); if(smart&&enabled) analysis="Waiting for session analysis · enable permission if needed"; }
             long cutoff=System.nanoTime()-60_000_000_000L; while(!frames.isEmpty()&&frames.get(0).id<cutoff) frames.remove(0);
             handler.postDelayed(this,150);
         }
     };
     final class Chain {
-        final int id; final String owner;
+        final int id; final String owner; final String packageName;
         Equalizer equalizer; Virtualizer virtualizer; LoudnessEnhancer enhancer; Visualizer visualizer;
         String failure=""; long lastCapture; double rms,peak,targetBass,targetClarity,bassOffset,clarityOffset;
         String lastSettings=""; float appliedWidth;
-        Chain(int id,String owner) {
-            this.id=id; this.owner=owner;
+        Chain(int id,String owner,String packageName) {
+            this.id=id; this.owner=owner; this.packageName=packageName;
+            initializeEffects();
+        }
+        private void initializeEffects(){
             try { equalizer=new Equalizer(0,id); equalizer.setControlStatusListener((effect,control)->lastSettings=""); } catch(RuntimeException e) { failure="Equalizer unavailable on this session"; }
             try { virtualizer=new Virtualizer(0,id); } catch(RuntimeException ignored) { }
             try { enhancer=new LoudnessEnhancer(id); } catch(RuntimeException ignored) { }
+        }
+        void reopen(){
+            close(); equalizer=null; virtualizer=null; enhancer=null; visualizer=null;
+            failure=""; lastSettings=""; lastCapture=0; targetBass=targetClarity=bassOffset=clarityOffset=0;
+            initializeEffects(); apply(); analyze();
         }
         void analyze() {
             if(!monitor||!enabled||checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED) {
@@ -853,12 +900,12 @@ public final class AudioService extends Service {
             // Never send mix-wide neural decisions to unrelated audio sessions.
             // A system-mix route is eligible only when explicitly selected;
             // otherwise exactly one active external session must be targeted.
-            // Connect is music-only: never modify the global mix, system sounds,
-            // or a session unless an authorized external music player is active.
-            ExternalNowPlaying.Track music=ExternalNowPlaying.current(AudioService.this);
-            boolean selectedMusic=music!=null&&music.playing&&monitor&&!playing;
-            boolean externalRoute=!legacy&&selectedMusic&&id>0&&
-                id!=playerSession&&id==activeSession&&externalSessionCount()==1;
+            // MediaSession metadata alone cannot identify an AudioEffect session.
+            // Prefer the explicit package extra of the player's OPEN broadcast.
+            // A single unlabelled session retains the old compatibility fallback.
+            boolean externalRoute=SessionEffectPolicy.allows(
+                monitor,enabled,playing,legacy,id,playerSession,packageName,
+                activePlaybackPackages,externalSessionCount());
             boolean spatialShared=externalRoute&&capturedAudioFresh()&&smart;
             boolean shared=spatialShared&&appliedAiFresh;
             float[] targets=appliedTargets.clone();
@@ -916,7 +963,7 @@ public final class AudioService extends Service {
         String description() { return owner+" · session "+id+"\n"+(controlsEq()?"EQ enabled and controlled":enabled?"EQ not active":"Enhancement disabled")+(virtualizer!=null?" · width":"")+(enhancer!=null?" · loudness":"")+(failure.isEmpty()?"":"\n"+failure); }
     }
     @Override public void onDestroy() {
-        destroyed=true; stopCapture(); handler.removeCallbacksAndMessages(null); trainer.shutdownNow(); unregisterReceiver(receiver); releaseOutputVisuals(); releasePlayer();
+        destroyed=true; stopCapture(); handler.removeCallbacksAndMessages(null); trainer.shutdownNow(); unregisterReceiver(receiver); audio.unregisterAudioDeviceCallback(deviceCallback); releaseOutputVisuals(); releasePlayer();
         for(Chain c:chains.values()) c.close(); chains.clear(); pcmSpectrum.close();mediaSession.release();desktopAi.closeAfterPlayer(); super.onDestroy();
     }
 }

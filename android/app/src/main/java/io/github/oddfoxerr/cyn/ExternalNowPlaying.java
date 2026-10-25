@@ -10,6 +10,8 @@ import android.media.session.MediaSessionManager;
 import android.media.session.PlaybackState;
 import android.service.notification.NotificationListenerService;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Reads only user-authorized media-session metadata, never notification text. */
 public final class ExternalNowPlaying extends NotificationListenerService {
@@ -52,6 +54,29 @@ public final class ExternalNowPlaying extends NotificationListenerService {
             }
             return paused;
         } catch(RuntimeException ignored) { return null; }
+    }
+    /**
+     * Only package identities of user-authorized, currently playing MediaSessions.
+     * Kept in memory for per-session DSP ownership; never shown in diagnostics.
+     * MediaSession metadata alone cannot expose an effect session identifier.
+     */
+    static Set<String> playingPackages(Context context) {
+        Set<String> playing=new HashSet<>();
+        if(instance==null)return playing;
+        try {
+            MediaSessionManager manager=(MediaSessionManager)
+                context.getSystemService(Context.MEDIA_SESSION_SERVICE);
+            List<MediaController> sessions=manager.getActiveSessions(
+                new ComponentName(context,ExternalNowPlaying.class));
+            for(MediaController controller:sessions) {
+                String pkg=controller.getPackageName();
+                if(pkg==null||pkg.isEmpty()||context.getPackageName().equals(pkg))continue;
+                PlaybackState state=controller.getPlaybackState();
+                if(state!=null&&state.getState()==PlaybackState.STATE_PLAYING)
+                    playing.add(pkg);
+            }
+        } catch(RuntimeException ignored) { playing.clear(); }
+        return playing;
     }
     static void toggle(Track track) {
         if(track==null)return;

@@ -368,6 +368,9 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             else { enableConnectAi(); }
             update();
         });primaryAction(powerButton);add(external,powerButton);
+        if(ExternalNowPlaying.instance==null)
+            add(external,button("Enable music-app detection",()->startActivity(
+                new Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))));
         add(external,button("Try device-wide EQ (experimental)",()->new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle("Try device-wide compatibility?")
             .setMessage("Android's legacy output-mix EQ works only on some phones. It can affect multiple apps, and obtaining effect control does not prove music is being processed. Compare sound with CYN off/on. Disconnect music apps to stop the attempt.")
@@ -385,6 +388,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             "\n\nProcessing: "+service.processingStatus()+
             "\n\n"+service.connectionHint()+
             "\n\nCYN listens to and enhances compatible playback through available Android audio effects. Some players do not expose a controllable session. The optional CYN Library has its own native DSP path."+
+            "\n\nFor app-matched session routing, Android Notification Access must be enabled for CYN media controls. CYN only reads active media-session packages and playback state, not notification message text; Android grants broader notification access at the platform level."+
             "\n\nThis panel does not expose your phone identity, app names or audio session identifiers. For optional local troubleshooting, open Style → Audio diagnostics.";
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle("CYN connection").setMessage(message).setPositiveButton("Done",null).show();
     }
