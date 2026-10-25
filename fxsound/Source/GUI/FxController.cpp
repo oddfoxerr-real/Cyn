@@ -486,6 +486,17 @@ void FxController::applyConfig(const String& commandline)
             dj_worker_->configure(intensity,spacing,stereo);
         }
     }
+    // Preserve CYN's existing automatic updater and Windows integration settings.
+    // Only accept typed 0/1 commands from the local allowlisted Material bridge.
+    const auto automaticUpdates=arg_list.getValueForOption("--cyn_automatic_updates");
+    if(automaticUpdates=="0" || automaticUpdates=="1")
+        setAutoUpdates(automaticUpdates=="1");
+    const auto startup=arg_list.getValueForOption("--cyn_startup");
+    if(startup=="0" || startup=="1")
+        setLaunchOnStartup(startup=="1");
+    const auto hotkeys=arg_list.getValueForOption("--cyn_hotkeys");
+    if(hotkeys=="0" || hotkeys=="1")
+        enableHotkeys(hotkeys=="1" && SysInfo::canSupportHotkeys());
     const auto labelSpec=arg_list.getValueForOption("--label_recent").unquoted();
     if(labelSpec.isNotEmpty() && !smart_training_) {
         const StringArray parts=StringArray::fromTokens(labelSpec,":","");
@@ -792,6 +803,10 @@ void FxController::printStatus()
     settings->setProperty("cyn_build", "identity-2");
     settings->setProperty("theme", FxTheme::getThemeName((int)FxTheme::getThemeMode()));
     settings->setProperty("reduce_motion", FxTheme::isReducedMotion());
+    settings->setProperty("automatic_updates",getAutoUpdates());
+    settings->setProperty("launch_on_startup",isLaunchOnStartup());
+    settings->setProperty("hotkeys_enabled",model.getHotkeySupport());
+    settings->setProperty("hotkeys_supported",SysInfo::canSupportHotkeys());
     auto* smart = new DynamicObject();
     smart->setProperty("enabled", smart_enabled_);
     smart->setProperty("sensitivity", smart_sensitivity_);
