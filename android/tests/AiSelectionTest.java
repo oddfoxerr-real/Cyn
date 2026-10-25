@@ -10,12 +10,20 @@ public final class AiSelectionTest {
         require(AiSelection.APEX_6M.equals(AiSelection.migrate(null,true,false)),"legacy 6M");
         require(AiSelection.APEX_10M.equals(AiSelection.migrate(null,false,true)),"legacy spatial");
         require(AiSelection.APEX_10M.equals(AiSelection.migrate(null,true,true)),"legacy collision");
-        for(String input:new String[]{AiSelection.BASIC,AiSelection.APEX_6M,AiSelection.APEX_10M,AiSelection.AUDONIC,"invalid",""}){
+        for(String input:new String[]{AiSelection.BASIC,AiSelection.APEX_6M,AiSelection.APEX_10M,AiSelection.AUDONIC,AiSelection.LIBERTY,"invalid",""}){
             String selected=AiSelection.normalize(input);
             require(!(AiSelection.usesApex6M(selected)&&AiSelection.usesSpatialPreview(selected)),"two AI paths");
             require(selected.equals(AiSelection.migrate(selected,true,true)),"saved selection priority");
         }
         require(AiSelection.AUDONIC.equals(AiSelection.migrate("audonic",true,true)),"AUDONIC preference preserved");
+        require(AiSelection.LIBERTY.equals(AiSelection.migrate("liberty",true,true)),"LIBERTY preference preserved");
+        require(AiSelection.usesAdaptiveControls("audonic"),"AUDONIC uses its neural policy");
+        require(AiSelection.usesAdaptiveControls("liberty"),"LIBERTY reuses neural policy");
+        require(AiSelection.usesCreativeDsp("audonic"),"AUDONIC stays native creative");
+        require(!AiSelection.usesCreativeDsp("liberty"),"LIBERTY never generates audio");
+        require(AiSelection.usesSessionSafeEq("liberty"),"LIBERTY compatible with session EQ");
+        require(!AiSelection.usesSessionSafeEq("audonic"),"AUDONIC not a Connect AI");
+
         require(AiSelection.usesApex6M("apex6m"),"6M on");
         require(!AiSelection.usesSpatialPreview("apex6m"),"10M off on 6M");
         require(!AiSelection.usesApex6M("apex10m"),"6M off on 10M");
