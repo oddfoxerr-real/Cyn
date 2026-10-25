@@ -122,6 +122,21 @@ function commandFor(action,status){
       assert(safeName(action.value)&&profiles.some(p=>p.id===action.value),"AI model is not installed in native CYN");
       return '--select_ai="'+action.value+'"';
     }
+    case "eqBandCount":
+      assert([31,35,39].includes(action.value),"CYN supports 31, 35 or 39 EQ bands");
+      return "--num_bands="+action.value;
+    case "balance":
+      assert(n(action.value,-20,20),"Balance must be -20 to +20");
+      return "--balance="+action.value.toFixed(2);
+    case "masterGain":
+      assert(n(action.value,-20,20),"Master gain must be -20 to +20");
+      return "--master_gain="+action.value.toFixed(2);
+    case "volumeLeveling":
+      assert(n(action.value,0,4),"Volume leveling must be 0 to 4");
+      return "--volume_leveling="+action.value.toFixed(2);
+    case "filterQ":
+      assert(n(action.value,1,3),"Filter Q must be 1 to 3");
+      return "--filter_q="+action.value.toFixed(2);
     case "effect": {
       assert(effectNames.has(action.name),"Unknown effect");
       assert(n(action.value,0,10),"Effect must be 0–10");
