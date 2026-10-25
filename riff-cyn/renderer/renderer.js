@@ -132,6 +132,25 @@ function renderBands(status){
     if(document.activeElement!==slider){slider.value=Number(b.gain)||0;val.textContent=value(b.gain)}
   }
   renderGraph(bands);
+  const eq=status?.equalizer||{};
+  const mode=$("eq-band-select");
+  mode.disabled=!writable()||!bands.length;
+  if(bands.length)mode.value=String(bands.length);
+  const advanced=[
+    ["eq-balance","balance"],
+    ["eq-master-gain","master_gain"],
+    ["eq-volume-leveling","volume_leveling"],
+    ["eq-filter-q","filter_q"]
+  ];
+  for(const [id,key] of advanced){
+    const control=$(id),output=$(id+"-value");
+    control.disabled=!writable()||!bands.length;
+    const numeric=Number(eq[key]);
+    if(document.activeElement!==control&&Number.isFinite(numeric)){
+      control.value=numeric;
+      output.textContent=numeric.toFixed(1);
+    }
+  }
 }
 function renderConnected(status){
   window.dispatchEvent(new CustomEvent("cyn-native-status",{detail:status}));
@@ -400,6 +419,16 @@ $("sensitivity").addEventListener("change",e=>apply({type:"sensitivity",value:Nu
 $("preset").addEventListener("change",e=>apply({type:"preset",value:e.target.value}));
 for(const id of ["device-top","device-page"])
   $(id).addEventListener("change",e=>apply({type:"output",value:e.target.value}));
+$("eq-band-select").addEventListener("change",e=>apply({type:"eqBandCount",value:Number(e.target.value)}));
+for(const [id,type] of [
+  ["eq-balance","balance"],["eq-master-gain","masterGain"],
+  ["eq-volume-leveling","volumeLeveling"],["eq-filter-q","filterQ"]
+]){
+  $(id).addEventListener("input",event=>{
+    $(id+"-value").textContent=Number(event.target.value).toFixed(1);
+  });
+  $(id).addEventListener("change",event=>apply({type,value:Number(event.target.value)}));
+}
 $("listening-mode").addEventListener("change",e=>apply({type:"listeningMode",value:Number(e.target.value)}));
 $("headroom").addEventListener("input",e=>$("headroom-value").textContent=Math.round(Number(e.target.value))+"%");
 $("headroom").addEventListener("change",e=>apply({type:"headroom",value:Number(e.target.value)}));
