@@ -154,6 +154,23 @@
           <canvas id="brain-canvas" width="940" height="360" role="img" aria-label="Live visualization of CYN neural inference, powered by native activity telemetry"></canvas>
           <div class="neural-footer"><span id="brain-state">Waiting for native AI telemetry</span><span id="brain-profile">Native CYN · idle</span></div>
         </div>
+        <section class="neural-feedback surface-card" aria-labelledby="feedback-title">
+          <div class="section-heading"><div><span class="section-kicker">PRIVATE AUDIO LEARNING</span><h3 id="feedback-title">Teach CYN from recent audio</h3></div><span class="mode-tag">LAST 60 SECONDS</span></div>
+          <canvas id="learning-waveform" width="940" height="86" role="img" aria-label="Recent audio RMS history, no audio recordings"></canvas>
+          <div class="learning-controls">
+            <label class="detail-select-field"><span>EFFECT TO TEACH</span><select id="feedback-effect">
+              <option value="0">Clarity</option><option value="1">Ambience</option>
+              <option value="2">Surround Sound</option><option value="3">Dynamic Boost</option><option value="4">Bass Boost</option>
+            </select></label>
+            <label class="range-row"><span>From now <output id="feedback-from-value">0 s</output></span><input id="feedback-from" type="range" min="0" max="50" value="0" step="1"></label>
+            <label class="range-row"><span>Back to <output id="feedback-to-value">15 s</output></span><input id="feedback-to" type="range" min="1" max="60" value="15" step="1"></label>
+          </div>
+          <div class="learning-actions">
+            <button type="button" class="button secondary" id="feedback-more" disabled>More of this</button>
+            <button type="button" class="button secondary" id="feedback-less" disabled>Less of this</button>
+            <span id="feedback-result" role="status">Play music or a video to collect private learning history</span>
+          </div>
+        </section>
         <div class="feature-grid ai-control-grid">
           <article class="surface-card">
             <h3>Music and Movie AI</h3>
