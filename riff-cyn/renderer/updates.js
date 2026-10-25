@@ -29,7 +29,7 @@
     if(!allowClose()){event.preventDefault();return}
     ++generation;
   });
-  dialog.addEventListener("close",()=>{++generation});
+  dialog.addEventListener("close",()=>{++generation;checking=false;});
   async function inspect(){
     if(checking||openingInstaller)return;
     const token=++generation;
