@@ -71,6 +71,9 @@ jobs:
       - name: Validate bundled CYN Material interface and update integration
         shell: pwsh
         run: node scripts/test_cyn_combined_desktop.mjs
+      - name: Validate native launch, tray and in-place updater UI routing
+        shell: pwsh
+        run: node scripts/test_cyn_material_launch.mjs
 
       - name: Validate installed version and update controls
         shell: pwsh
