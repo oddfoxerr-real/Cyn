@@ -55,6 +55,32 @@ function makeBridge(override){
    if(!pending)pending=statusImpl().catch(e=>({connected:false,error:e.message})).finally(()=>{pending=null;});
    return pending;
  }
+ function telemetry(){
+   // Opt-in local stream only. No raw audio, no network and no need to spawn
+   // a native process every frame on slower Windows machines.
+   if(!isWin()||!lastState||lastState.cyn_build!=="identity-2"||
+      lastState.ui_telemetry_schema!==1)return null;
+   const root=path.join(process.env.APPDATA||"","Cyn");
+   try{
+     fs.mkdirSync(root,{recursive:true});
+     const watch=path.join(root,"ui-telemetry-request");
+     if(!fs.existsSync(watch))fs.writeFileSync(watch,"1",{mode:0o600});
+     const now=new Date();
+     fs.utimesSync(watch,now,now);
+     const file=path.join(root,"ui-telemetry.json");
+     const stat=fs.statSync(file);
+     if(stat.size<16||stat.size>65536||Date.now()-stat.mtimeMs>1350)return null;
+     const sample=JSON.parse(fs.readFileSync(file,"utf8"));
+     if(sample.schema!==1||typeof sample.sampled_at_ms!=="number"||
+        Date.now()-sample.sampled_at_ms>1350||
+        !Array.isArray(sample.hidden)||sample.hidden.length!==12||
+        !Array.isArray(sample.inputs)||sample.inputs.length!==11||
+        !Array.isArray(sample.outputs)||sample.outputs.length!==5||
+        !Array.isArray(sample.input_connections)||sample.input_connections.length!==132||
+        !Array.isArray(sample.output_connections)||sample.output_connections.length!==60)return null;
+     return sample;
+   }catch{return null;}
+ }
  async function launch(){
    if(!isWin())throw new Error("CYN audio processing is Windows-only");
    const exe=locate();
@@ -75,6 +101,6 @@ function makeBridge(override){
    await exec(exe,[arg],{windowsHide:true,timeout:8500,maxBuffer:4096});
    return getStatus();
  }
- return {getStatus,launch,apply,selectNative,findExe:()=>locate()};
+ return {getStatus,telemetry,launch,apply,selectNative,findExe:()=>locate()};
 }
 module.exports={makeBridge};
