@@ -505,6 +505,8 @@ void FxController::applyConfig(const String& commandline)
                 }
                 if(selected.size()>=5)
                     labelAudio(selected,effect,parts[1]=="1");
+                else
+                    smart_learning_message_="No recent audio in this window. Play audio and try again.";
             }
         }
     }
