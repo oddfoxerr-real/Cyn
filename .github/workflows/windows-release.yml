@@ -12,7 +12,9 @@ permissions:
 
 concurrency:
   group: cyn-release
-  cancel-in-progress: false
+  # New main builds supersede obsolete source snapshots. Tag-triggered
+  # verification must not cancel the active release publisher.
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 jobs:
   publish:
