@@ -13,6 +13,24 @@ function commandFor(action,status){
     case "smart": assert(typeof action.value==="boolean","Smart listening must be boolean");return "--smart_listening="+(action.value?"1":"0");
     case "pin": assert(typeof action.value==="boolean","Output pin must be boolean");return "--pin_output="+(action.value?"1":"0");
     case "sensitivity": assert(Number.isInteger(action.value)&&n(action.value,0,100),"Sensitivity out of range");return "--smart_sensitivity="+action.value;
+    case "headroom":
+      assert(Number.isInteger(action.value)&&n(action.value,0,100),"Headroom must be 0–100%");
+      return "--smart_headroom="+action.value;
+    case "listeningMode":
+      assert(Number.isInteger(action.value)&&(action.value===0||action.value===1),"Unknown listening mode");
+      assert(status.smart_listening?.training!==true,"Cannot switch AI modes during training");
+      return "--smart_mode="+action.value;
+    case "presetCycling":
+      assert(typeof action.value==="boolean","Preset cycling must be boolean");
+      assert(status.smart_listening?.listening_mode===0,"Preset cycling requires Music AI");
+      return "--preset_cycling="+(action.value?"1":"0");
+    case "audonicIntensity":
+      assert(Number.isInteger(action.value)&&n(action.value,0,100),"AUDONIC intensity must be 0–100%");
+      assert(status.active_ai_profile==="audonic","AUDONIC model is not selected");
+      return "--audonic_intensity="+action.value;
+    case "train":
+      assert(status.smart_listening?.training!==true,"AI training already running");
+      return "--smart_train";
     case "preset": {
       const names=[...(status.presets?.built_in||[]),...(status.presets?.user_defined||[])].map(p=>p.name);
       assert(safeName(action.value)&&names.includes(action.value),"Preset must exist in CYN");
