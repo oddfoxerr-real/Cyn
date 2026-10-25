@@ -41,7 +41,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         @Override public void onServiceConnected(ComponentName name,IBinder binder){service=((AudioService.LocalBinder)binder).service();build(false);processControlIntent(getIntent());}
         @Override public void onServiceDisconnected(ComponentName name){service=null;build(false);}
     };
-    @Override public void onCreate(Bundle state){ui=getSharedPreferences("ui",0);applyPaletteTheme();super.onCreate(state);if(state!=null){page=state.getInt("page",0);query=state.getString("query","");onlyFavorites=state.getBoolean("favorites");publicQuery=state.getString("publicQuery","");}if(getIntent().getBooleanExtra("updates",false))page=4;build(false);bound=bindService(new Intent(this,AudioService.class),connection,BIND_AUTO_CREATE);UpdateManager.schedule(this);UpdateManager.checkOnLaunch(this);}
+    @Override public void onCreate(Bundle state){ui=getSharedPreferences("ui",0);applyPaletteTheme();super.onCreate(state);installBackNavigation();if(state!=null){page=state.getInt("page",0);query=state.getString("query","");onlyFavorites=state.getBoolean("favorites");publicQuery=state.getString("publicQuery","");}if(getIntent().getBooleanExtra("updates",false))page=4;build(false);bound=bindService(new Intent(this,AudioService.class),connection,BIND_AUTO_CREATE);UpdateManager.schedule(this);UpdateManager.checkOnLaunch(this);}
     @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);state.putInt("page",page);state.putString("query",query);state.putBoolean("favorites",onlyFavorites);state.putString("publicQuery",publicQuery);}
     @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);if(i.getBooleanExtra("updates",false)){page=4;build(false);}processControlIntent(i);}
     void processControlIntent(Intent i){if(service!=null&&AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL.equals(i.getAction())){notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("session",i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1)));i.setAction(null);page=0;build(false);offerLiveVisuals();}}
@@ -803,9 +803,14 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             .setInterpolator(new android.view.animation.AccelerateInterpolator())
             .withEndAction(this::finish).start();
     }
-    @Override public void onBackPressed(){
-        if(page!=0){page=0;build(true);}
-        else finishWithMotion();
+    void installBackNavigation(){
+        getOnBackPressedDispatcher().addCallback(this,
+          new androidx.activity.OnBackPressedCallback(true){
+            @Override public void handleOnBackPressed(){
+                if(page!=0){page=0;build(true);}
+                else finishWithMotion();
+            }
+          });
     }
     void enableConnectAi(){
         // Native audio-session processing only. No MediaProjection or screen-sharing consent.
