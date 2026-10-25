@@ -112,3 +112,8 @@ void AudioPassthru::restoreDefaultPlaybackDevice()
 {
     data_->restoreDefaultPlaybackDevice();
 }
+
+bool AudioPassthru::restoreCynRouting()
+{
+    return data_->restoreCynRouting();
+}
