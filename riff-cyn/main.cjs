@@ -268,8 +268,25 @@ if(primaryInstance)app.whenReady().then(()=>{
       "-File",script,"-CurrentVersion",version,"-Interactive"
     ],{detached:true,windowsHide:false,stdio:"ignore",cwd:root});
     return await new Promise((resolve,reject)=>{
-      child.once("error",error=>reject(new Error("CYN update window could not start: "+error.message)));
-      child.once("spawn",()=>{child.unref();resolve({started:true})});
+      let settled=false;
+      const started=setTimeout(()=>{
+        if(settled)return;
+        settled=true;
+        resolve({started:true});
+      },1200);
+      child.once("spawn",()=>child.unref());
+      child.once("error",error=>{
+        if(settled)return;
+        settled=true;clearTimeout(started);
+        reject(new Error("CYN update window could not start: "+error.message));
+      });
+      child.once("exit",code=>{
+        if(settled)return;
+        settled=true;clearTimeout(started);
+        reject(new Error(code===0
+          ?"CYN updater closed immediately. Another update window may already be running."
+          :"CYN updater exited before opening (code "+code+"). Repair CYN or inspect updater logs."));
+      });
     });
   });
   ipcMain.handle("cyn:open-native",async()=>{
