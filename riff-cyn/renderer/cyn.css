@@ -635,3 +635,31 @@ body.cyn-closing .app-layout,body.cyn-closing .titlebar{
 .dj-buttons{display:flex;gap:10px;flex-wrap:wrap;margin:15px 0}
 .dj-workspace [hidden]{display:none!important}
 @media(max-width:840px){.dj-control-grid{grid-template-columns:1fr}}
+
+/* Live applied DSP (mint marker) is separate from user-authored blue EQ gain. */
+.eq-band{position:relative}
+.eq-applied-marker{
+  position:absolute;left:50%;transform:translateX(-50%);
+  z-index:3;width:19px;height:3px;pointer-events:none;
+  border-radius:99px;background:#93e0c5;
+  box-shadow:0 0 9px #6bdab45c;
+  transition:top 180ms ease-out,opacity 180ms ease-out
+}
+.effect-card .live-effect-label{
+  font-size:11px;color:#bcbcc3;margin-top:10px;white-space:nowrap
+}
+.effect-card .live-effect-label output{color:#93e0c5;font-variant-numeric:tabular-nums}
+.native-spectrum-row{
+  border-top:1px solid #393a3f;margin-top:18px;padding-top:16px;
+  display:flex;flex-direction:column;gap:7px;min-width:0
+}
+.native-spectrum-row canvas{
+  display:block;width:100%;height:90px;border-radius:12px;
+  background:#1a1b1e;border:1px solid #38393e;box-sizing:border-box
+}
+.native-spectrum-row #native-spectrum-state{
+  font-size:10px;color:#9fa0a7;letter-spacing:.06em
+}
+@media(prefers-reduced-motion:reduce){
+ .eq-applied-marker{transition:none}
+}
