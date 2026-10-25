@@ -123,6 +123,11 @@
           <div class="eq-hero-top"><div><h3>Frequency response</h3><p>Current equalizer gain values from CYN</p></div><span class="mode-tag" id="eq-band-mode">— BANDS</span></div>
           <svg class="eq-curve" id="eq-curve" viewBox="0 0 1000 225" preserveAspectRatio="none" role="img" aria-label="Equalizer curve using native band gains"></svg>
           <div class="freq-axis"><span>20 Hz</span><span>100 Hz</span><span>1 kHz</span><span>5 kHz</span><span>20 kHz</span></div>
+          <div class="native-spectrum-row">
+            <div class="section-kicker">NATIVE AUDIO SPECTRUM</div>
+            <canvas id="native-spectrum" width="900" height="92" role="img" aria-label="Live audio frequency bands from the native CYN engine"></canvas>
+            <span id="native-spectrum-state">Waiting for live audio</span>
+          </div>
         </div>
         <div class="section-heading gap-top"><div><span class="section-kicker">DIGITAL SIGNAL PROCESSING</span><h2>Enhancements</h2></div></div>
         <div id="effects-grid" class="effects-grid"></div>
