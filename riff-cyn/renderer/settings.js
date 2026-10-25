@@ -67,7 +67,7 @@
     delete:()=>ask("delete"),
     native:()=>window.cyn.openNative(),
     mobile:()=>window.cyn.openLink("mobile"),
-    updates:()=>window.cyn.openLink("updates"),
+    updates:()=>window.cyn.checkUpdates(),
     theme:()=>window.cynRail.open("appearance"),
     credits:()=>window.cyn.openLink("credits"),
     support:()=>window.cyn.openLink("support"),
