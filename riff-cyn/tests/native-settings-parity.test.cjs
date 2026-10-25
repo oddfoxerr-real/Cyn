@@ -90,3 +90,26 @@ test("CYN updates remain verified, report installation errors and reopen Materia
   assert(!updater.includes("Start-Process -FilePath (Join-Path $PSScriptRoot 'Cyn.exe') -ArgumentList '--view=2'"));
   assert(!updater.includes("} catch {}\n            $script:allowedToClose=$true"));
 });
+
+test("native AI movement is rendered from measured applied EQ and clears on stale telemetry",()=>{
+  const brain=read("riff-cyn/renderer/brain-scan.js");
+  const graph=read("riff-cyn/renderer/renderer.js");
+  const native=read("fxsound/Source/GUI/FxController.cpp");
+  assert(brain.includes('sample?.applied_bands'));
+  assert(brain.includes('line.id="eq-ai-applied-curve"'));
+  assert(brain.includes('appliedDisplay=appliedDisplay.map('));
+  assert(brain.includes('previous+(Number(values[i])-previous)*.23'));
+  assert(brain.includes('if(!actual)'));
+  assert(brain.includes('sample=null;lastSample=0'));
+  assert(graph.includes('svg.querySelector("#eq-ai-applied-curve")'));
+  assert(graph.includes('if(realAppliedLine)svg.append(realAppliedLine)'));
+  assert(native.includes('getAppliedEqBandBoostCut(i)'));
+  assert(!brain.includes("Math.random"));
+});
+
+test("invalid or unavailable Windows startup registry entries never crash native status",()=>{
+  const native=read("fxsound/Source/GUI/FxController.cpp");
+  assert(native.includes('HKEY hkey = nullptr;'));
+  assert(native.includes('if (RegOpenKeyExW('));
+  assert(native.includes('return query == ERROR_SUCCESS && type == REG_SZ'));
+});
