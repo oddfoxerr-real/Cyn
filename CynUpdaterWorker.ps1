@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory=$true)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$CurrentVersion,
     [string]$StatusFile,
     [string]$CacheDirectory,
-    [switch]$Probe
+    [switch]$Probe,
+    [switch]$CheckOnly
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -67,6 +68,23 @@ try {
     if ($Probe) {
         if (!$newest) { throw "Updater regression: No newer release for $CurrentVersion" }
         Write-Output $newest.Version.ToString(3)
+        exit 0
+    }
+    # Material UI performs a read-only, non-downloading check first. The real
+    # native updater remains responsible for all downloading, checksums,
+    # installer elevation, graceful shutdown and restart.
+    if ($CheckOnly) {
+        if (!$newest) {
+            [pscustomobject]@{
+                phase='current'; currentVersion=$CurrentVersion; latestVersion=$CurrentVersion
+            } | ConvertTo-Json -Compress
+        } else {
+            [pscustomobject]@{
+                phase='available'; currentVersion=$CurrentVersion
+                latestVersion=$newest.Version.ToString(3)
+                sizeBytes=[long]$newest.Exe.size
+            } | ConvertTo-Json -Compress
+        }
         exit 0
     }
     if (!$newest) { Send-State 'current' "Cyn $CurrentVersion is already up to date." 100; exit 0 }
