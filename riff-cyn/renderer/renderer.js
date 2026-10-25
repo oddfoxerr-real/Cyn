@@ -134,6 +134,7 @@ function renderBands(status){
   renderGraph(bands);
 }
 function renderConnected(status){
+  window.dispatchEvent(new CustomEvent("cyn-native-status",{detail:status}));
   setEngineState(true,(status.power?"ON":"OFF")+" / v"+String(status.version||"?"));
   $("power").checked=Boolean(status.power);
   $("smart").checked=Boolean(status.smart_listening?.enabled);
@@ -196,6 +197,7 @@ function renderConnected(status){
   renderBands(status);
 }
 function renderDisconnected(message){
+  window.dispatchEvent(new CustomEvent("cyn-native-status",{detail:null}));
   setEngineState(false,"Engine offline");
   for(const id of ["preset","device-top","device-page","power","smart","pin","sensitivity","ai-model"])$(id).disabled=true;
   for(const id of ["listening-mode","headroom","preset-cycling","audonic-intensity","train-ai","feedback-more","feedback-less"])$(id).disabled=true;
