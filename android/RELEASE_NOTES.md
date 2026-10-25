@@ -1,3 +1,17 @@
+# CYN Studio Android v0.2.31-preview — LIBERTY AI and Liked Music Downloads
+
+- Adds **LIBERTY**, a separate non-generative AI mode using AUDONIC's existing on-device control model for CYN Library music. It applies adaptive EQ to original sound rather than triggering creative FX. External music receives bounded session-FFT-driven EQ adjustments **only where Android exposes a compatible, controllable effect session**. Inaccessible third-party audio remains inaccessible.
+- Moves **AUDONIC** to a distinct **Creative Lab · CYN Library only** section so its experimental native creative DSP is no longer presented as a Connect enhancement mode. Selecting it disables external neural creative effects.
+- Adds **Download liked** for Audius tracks whose metadata explicitly allows public downloading. Saved copies live in Music/CYN on Android 10+, play back offline in CYN and are never a disguised stream cache. Already-on-phone music is already offline; non-downloadable tracks are skipped.
+- Adds per-liked-song download action and an **offline saved** indicator. Album/search and favorite handling remain intact.
+- Adds **Clear likes** with explicit confirmation and a long-press **Remove from Liked** action; unliking a track never deletes music from your phone. Individual heart controls still work.
+- Preserves all prior CYN Studio identity, FX/native playback engine, APEX 6M/10M, saved presets, model assets, settings and Android updater.
+- Includes regression checks for session-safe LIBERTY DSP and persisted download/liked state.
+
+**Version:** `0.2.31-preview`, versionCode **35**, `io.github.oddfoxerr.cyn.studio`. The signed preview must verify an in-place upgrade from the existing signed `0.2.30-preview` using the registered CYN Studio certificate.
+
+**Limitations:** LIBERTY's six-control AUDONIC-based model needs actual CYN Library PCM analysis; other apps use the permitted Android session EQ/FFT fallback rather than full AUDONIC inference. Audius download permissions are artist-controlled and may change. Playback on particular streaming apps and phones still requires physical-device checks.
+
 # CYN Studio Android v0.2.30-preview — External Audio Routing Recovery
 
 - Repair Connect CYN session routing: match supported Android audio-effect sessions to *currently playing media apps* using audio-session broadcast package metadata and user-authorized media-session access, rather than disabling external effects whenever more than one session exists.
