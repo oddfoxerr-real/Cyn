@@ -186,6 +186,25 @@
             <button type="button" class="button secondary" id="train-ai" disabled>Train saved feedback</button>
           </article>
         </div>
+        <section class="surface-card dj-workspace" aria-labelledby="dj-title">
+          <div class="section-heading">
+            <div><span class="section-kicker">OPTIONAL NATIVE AI DSP</span><h3 id="dj-title">AI DJ</h3></div>
+            <label class="toggle"><input type="checkbox" id="dj-enable" disabled><span class="toggle-track"></span><span>Enable</span></label>
+          </div>
+          <p class="support-text" id="dj-status">Checking the native AI DJ engine…</p>
+          <div class="dj-buttons">
+            <button class="button secondary" type="button" id="dj-download" disabled>Download AI DJ</button>
+            <button class="button secondary" type="button" id="dj-cancel" hidden>Cancel download</button>
+            <button class="button secondary" type="button" id="dj-remove" hidden>Remove AI DJ</button>
+          </div>
+          <div class="training-meter" id="dj-progress-track" hidden><div class="training-fill" id="dj-progress-fill"></div></div>
+          <div class="dj-control-grid">
+            <label class="range-row"><span>Creative intensity <output id="dj-intensity-value">—</output></span><input type="range" id="dj-intensity" min="0" max="100" step="1" disabled></label>
+            <label class="range-row"><span>Spacing <output id="dj-spacing-value">—</output></span><input type="range" id="dj-spacing" min="4" max="45" step="1" disabled></label>
+            <label class="toggle"><input type="checkbox" id="dj-stereo" disabled><span class="toggle-track"></span><span>Stereo movement</span></label>
+          </div>
+          <p class="support-text" id="dj-recent">No native AI DJ remixes yet</p>
+        </section>
       </section>
 
       <section class="content-view" id="view-devices" aria-labelledby="device-title">
