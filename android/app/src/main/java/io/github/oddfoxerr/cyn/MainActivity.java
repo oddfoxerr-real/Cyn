@@ -633,8 +633,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         toggle(engine,"Smart Listening (master switch)",service.smart,on->{service.smart=on;service.changed();});
         android.widget.RadioGroup aiChoices=new android.widget.RadioGroup(this);
         aiChoices.setOrientation(android.widget.RadioGroup.VERTICAL);
-        String[] profileIds={AiSelection.BASIC,AiSelection.APEX_6M,AiSelection.APEX_10M,AiSelection.AUDONIC};
-        String[] profileLabels={"CYN Base AI · YAMNet + personal preferences","APEX 6M · existing neural spectral guidance","APEX 10M · Experimental AI Release","AUDONIC · Neural Mischief AI (Experimental)"};
+        String[] profileIds={AiSelection.BASIC,AiSelection.APEX_6M,AiSelection.APEX_10M,AiSelection.LIBERTY};
+        String[] profileLabels={"CYN Base AI · YAMNet + personal preferences","APEX 6M · existing neural spectral guidance","APEX 10M · Experimental AI Release","LIBERTY · Adaptive EQ · Connect-compatible where Android permits"};
         int selectedViewId=View.NO_ID;
         for(int i=0;i<profileIds.length;i++){
             com.google.android.material.radiobutton.MaterialRadioButton option=new com.google.android.material.radiobutton.MaterialRadioButton(this);
@@ -662,7 +662,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             }
         });
         add(engine,aiChoices);
-        add(engine,label("One primary AI at a time. APEX 10M is the current experimental neural-spatial release.",12,hint));
+        add(engine,label("One primary AI at a time. LIBERTY adjusts the original audio through supported EQ — it never adds generated sounds.",12,hint));
         if(AiSelection.APEX_10M.equals(service.aiProfile)){
             slider(engine,"Spatial intensity",service.spatialPreviewStrength*100,0,100,"%",v->{service.spatialPreviewStrength=v/100;service.changed();});
             add(engine,label("APEX 10M  ·  95.97% TRAINED",12,accent));
@@ -679,21 +679,41 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             add(engine,label("Library DSP and supported Connect session effects.",12,hint));
 
         }
-        if(AiSelection.AUDONIC.equals(service.aiProfile)){
-            add(engine,label("AUDONIC · Creative AI v0.1",13,accent));
-            add(engine,label("Adaptive harmonic texture, kick bite, stereo movement and musical colour.",12,hint));
-            slider(engine,"Creative intensity",service.audonicIntensity*100,0,100,"%",v->{
+        if(AiSelection.LIBERTY.equals(service.aiProfile)){
+            add(engine,label("LIBERTY · Non-generative AI",13,accent));
+            add(engine,label("Reuses AUDONIC's adaptive control model for Library audio, but applies only EQ-style changes. For other music apps it uses session analysis and compatible Android EQ when available.",12,hint));
+            slider(engine,"LIBERTY intensity",service.audonicIntensity*100,0,100,"%",v->{
                 service.audonicIntensity=v/100;
                 service.changed();
             });
             add(engine,label(service.currentAi().audonicStatus,12,hint));
-            add(engine,label("Native creative DSP in Library · adaptive session effects in Connect",12,hint));
+            add(engine,label("No new sound creation · no mixing extra audio · compatible sessions only",12,hint));
         }
         category(engine,"Content focus (not another AI)",body->{
             toggle(body,"Dialogue / movie tuning",service.movieMode,on->{service.movieMode=on;service.changed();});
         });
         slider(engine,"Sensitivity",service.sensitivity*100,0,100,"%",v->{service.sensitivity=v/100;service.changed();});
         liveStatus=label("",13,accent);add(engine,liveStatus);
+        // AUDONIC is deliberately outside the normal Connect AI picker:
+        // only CYN Library's native PCM processor supports its creative FX.
+        LinearLayout creativeLab=section("Creative Lab · CYN Library only",
+            "AUDONIC changes the character of music using CYN's native creative DSP. It is not available for other apps.");
+        if(AiSelection.AUDONIC.equals(service.aiProfile)){
+            add(creativeLab,label("AUDONIC active · Creative AI v0.1",14,accent));
+            slider(creativeLab,"Creative intensity",service.audonicIntensity*100,0,100,"%",v->{
+                service.audonicIntensity=v/100;
+                service.changed();
+            });
+            add(creativeLab,label(service.currentAi().audonicStatus,12,hint));
+            add(creativeLab,button("Return to LIBERTY (Connect EQ)",()->{
+                service.selectAiProfile(AiSelection.LIBERTY);build();
+            }));
+        }else{
+            add(creativeLab,label("AUDONIC builds creative texture from songs played inside CYN Library. Choose LIBERTY above for session-safe adjustments to external playback.",12,hint));
+            add(creativeLab,button("Choose AUDONIC · Library only",()->{
+                service.selectAiProfile(AiSelection.AUDONIC);build();
+            }));
+        }
         boolean audonicMind=AiSelection.AUDONIC.equals(service.aiProfile);
         if(AiSelection.APEX_10M.equals(service.aiProfile)||audonicMind||service.monitor){
             LinearLayout network=section(audonicMind?"AUDONIC • Creative BrainScan":"CYN • 3D mind map",
