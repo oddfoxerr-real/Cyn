@@ -457,6 +457,15 @@ void FxController::applyConfig(const String& commandline)
     if(reduced=="0" || reduced=="1") setReducedMotion(reduced=="1");
     auto sensitivity = arg_list.getValueForOption("--smart_sensitivity");
     if (sensitivity.isNotEmpty()) setSmartSensitivity(sensitivity.getFloatValue());
+    const auto headroom=arg_list.getValueForOption("--smart_headroom");
+    if(headroom.isNotEmpty()) setSmartHeadroomCap(headroom.getFloatValue());
+    const auto listeningMode=arg_list.getValueForOption("--smart_mode");
+    if(listeningMode=="0" || listeningMode=="1") setSmartListeningMode(listeningMode.getIntValue());
+    const auto cycling=arg_list.getValueForOption("--preset_cycling");
+    if(cycling=="0" || cycling=="1") setSmartPresetCycling(cycling=="1");
+    const auto intensity=arg_list.getValueForOption("--audonic_intensity");
+    if(intensity.isNotEmpty()) setAudonicIntensity(intensity.getFloatValue());
+    if(arg_list.containsOption("--smart_train") && !smart_training_) trainSmartModel();
     auto smart = arg_list.getValueForOption("--smart_listening");
     if (smart == "0" || smart == "1") setSmartListening(smart == "1");
     auto pinned = arg_list.getValueForOption("--pin_output");
@@ -743,6 +752,11 @@ void FxController::printStatus()
     smart->setProperty("enabled", smart_enabled_);
     smart->setProperty("sensitivity", smart_sensitivity_);
     smart->setProperty("headroom_cap",smart_headroom_cap_);
+    smart->setProperty("listening_mode",smart_mode_);
+    smart->setProperty("training",smart_training_);
+    smart->setProperty("training_progress",getSmartTrainingProgress());
+    smart->setProperty("audonic_intensity",getAudonicIntensity());
+    settings->setProperty("ui_telemetry_schema",1);
     smart->setProperty("preset_cycling",smart_preset_cycling_);
     smart->setProperty("cycling_preset",smart_cycling_preset_name_);
     smart->setProperty("summary", getSmartSummary());
