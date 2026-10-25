@@ -131,6 +131,21 @@ function renderConnected(status){
   $("pin").checked=Boolean(status.output_pinned);
   $("sensitivity").value=Number(status.smart_listening?.sensitivity)||0;
   $("sensitivity-value").textContent=Math.round(Number(status.smart_listening?.sensitivity)||0)+"%";
+  const smartMeta=status.smart_listening||{};
+  $("listening-mode").value=String(smartMeta.listening_mode===1?1:0);
+  $("listening-mode").disabled=!writable()||Boolean(smartMeta.training);
+  $("headroom").value=Number(smartMeta.headroom_cap)||0;
+  $("headroom-value").textContent=Math.round(Number(smartMeta.headroom_cap)||0)+"%";
+  $("headroom").disabled=!writable();
+  $("preset-cycling").checked=Boolean(smartMeta.preset_cycling);
+  $("preset-cycling").disabled=!writable()||smartMeta.listening_mode===1;
+  $("audonic-intensity").value=Number(smartMeta.audonic_intensity)||0;
+  $("audonic-intensity-value").textContent=Math.round(Number(smartMeta.audonic_intensity)||0)+"%";
+  $("audonic-intensity").disabled=!writable()||status.active_ai_profile!=="audonic";
+  $("training-fill").style.width=(Math.max(0,Math.min(1,Number(smartMeta.training_progress)||0))*100).toFixed(1)+"%";
+  $("train-ai").disabled=!writable()||Boolean(smartMeta.training);
+  $("training-status").textContent=smartMeta.training?"Native CYN is learning from saved feedback":"Training ready";
+  for(const id of ["feedback-more","feedback-less"])$(id).disabled=!writable()||Boolean(smartMeta.training);
   $("smart-summary").textContent=String(status.smart_listening?.summary||"Native CYN adaptive processing.");
   $("learning-status").textContent=String(status.smart_listening?.learning||"No learning telemetry available.");
   const profiles=Array.isArray(status.ai_profiles)?status.ai_profiles:[];
@@ -157,6 +172,10 @@ function renderConnected(status){
 function renderDisconnected(message){
   setEngineState(false,"Engine offline");
   for(const id of ["preset","device-top","device-page","power","smart","pin","sensitivity","ai-model"])$(id).disabled=true;
+  for(const id of ["listening-mode","headroom","preset-cycling","audonic-intensity","train-ai","feedback-more","feedback-less"])$(id).disabled=true;
+  $("training-fill").style.width="0%";
+  $("training-status").textContent="Connect native CYN for training";
+  $("feedback-result").textContent="Connect CYN to label recent audio activity";
   $("smart-summary").textContent=String(message||"Connect native CYN to access processing");
   $("active-model").textContent="Not connected";
   $("learning-status").textContent="Start native CYN to read its actual learning state.";
@@ -347,6 +366,31 @@ $("sensitivity").addEventListener("change",e=>apply({type:"sensitivity",value:Nu
 $("preset").addEventListener("change",e=>apply({type:"preset",value:e.target.value}));
 for(const id of ["device-top","device-page"])
   $(id).addEventListener("change",e=>apply({type:"output",value:e.target.value}));
+$("listening-mode").addEventListener("change",e=>apply({type:"listeningMode",value:Number(e.target.value)}));
+$("headroom").addEventListener("input",e=>$("headroom-value").textContent=Math.round(Number(e.target.value))+"%");
+$("headroom").addEventListener("change",e=>apply({type:"headroom",value:Number(e.target.value)}));
+$("preset-cycling").addEventListener("change",e=>apply({type:"presetCycling",value:e.target.checked}));
+$("audonic-intensity").addEventListener("input",e=>$("audonic-intensity-value").textContent=Math.round(Number(e.target.value))+"%");
+$("audonic-intensity").addEventListener("change",e=>apply({type:"audonicIntensity",value:Number(e.target.value)}));
+$("train-ai").addEventListener("click",()=>apply({type:"train"}));
+function rangeLabel(){
+  const newer=$("feedback-from"),older=$("feedback-to");
+  if(Number(newer.value)>=Number(older.value)){
+    if(document.activeElement===newer)older.value=Math.min(60,Number(newer.value)+1);
+    else newer.value=Math.max(0,Number(older.value)-1);
+  }
+  $("feedback-from-value").textContent=newer.value+" s";
+  $("feedback-to-value").textContent=older.value+" s";
+}
+for(const id of ["feedback-from","feedback-to"])$(id).addEventListener("input",rangeLabel);
+for(const [id,more] of [["feedback-more",true],["feedback-less",false]]){
+  $(id).addEventListener("click",async()=>{
+    $("feedback-result").textContent="Saving private CYN feedback…";
+    await apply({type:"labelRecent",effect:Number($("feedback-effect").value),
+      more,newest:Number($("feedback-from").value),oldest:Number($("feedback-to").value)});
+    $("feedback-result").textContent="Feedback applied to the selected recent audio window";
+  });
+}
 $("ai-model").addEventListener("change",e=>apply({type:"aiModel",value:e.target.value}));
 $("reduced-motion").checked=localStorage.getItem("cyn-riff-reduced-motion")==="1";
 document.body.classList.toggle("reduce-motion",$("reduced-motion").checked);
