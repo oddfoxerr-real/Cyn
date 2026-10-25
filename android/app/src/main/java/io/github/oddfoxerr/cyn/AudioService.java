@@ -170,6 +170,8 @@ public final class AudioService extends Service {
         if(!monitor) return "Connect your music apps for adaptive sound. Library playback is optional.";
         if(!enabled) return "Monitoring is on, but enhancement is switched off.";
         if(connectedCapture!=null)return connectedCapture.status+" · "+(smart?currentAi().status:"AI off");
+        if(ExternalNowPlaying.instance==null)
+            return "Enable CYN media controls in Android Notification Access to identify playing music apps. This does not grant system-wide DSP.";
         if(legacy) return "Experimental output-mix mode: even EQ control does not prove that other apps use it. Compare sound on/off.";
         if(controlledExternalEqCount()>0) return "CYN controls Android's session EQ. Enable Connect AI for neural playback analysis. Effect support depends on the player and device.";
         if(externalSessionCount()>0) {
@@ -803,7 +805,7 @@ public final class AudioService extends Service {
         @Override public void run() {
             if(destroyed) return;
             long now=SystemClock.elapsedRealtime();
-            if(monitor&&!legacy&&(lastPlaybackRefresh==0||now-lastPlaybackRefresh>=750)){
+            if(monitor&&(lastPlaybackRefresh==0||now-lastPlaybackRefresh>=750)){
                 Set<String> current=ExternalNowPlaying.playingPackages(AudioService.this);
                 if(!activePlaybackPackages.equals(current)){
                     activePlaybackPackages=current;
