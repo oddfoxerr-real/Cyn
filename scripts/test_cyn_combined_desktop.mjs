@@ -19,6 +19,10 @@ assert(native.includes('path.dirname(process.execPath),"..","Cyn.exe"'),"Locate 
 assert(main.includes('bridge.launch().catch'),"Integrated CYN must initialize the native audio engine");
 assert(main.includes('ipcMain.handle("cyn:check-updates"'),"Material CYN needs the actual Windows updater");
 assert(main.includes('"CynUpdater.ps1"'),"Invoke the existing secure SHA-256 updater");
+assert(main.includes('"-CurrentVersion",version[1],"-Interactive"'),
+  "Updater requires the installed native version and an interactive window");
+assert(main.includes('live.status.version'),
+  "Pass the actual native CYN version instead of Electron shell version");
 assert(preload.includes('checkUpdates:()=>ipcRenderer.invoke("cyn:check-updates")'));
 assert(settings.includes('updates:()=>window.cyn.checkUpdates()'));
 assert(release.includes("npx electron-builder --win --x64 --dir"),"Build the Electron frontend, not the separate NSIS installer");
