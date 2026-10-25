@@ -184,8 +184,24 @@ if(primaryInstance)app.whenReady().then(()=>{
     const script=path.join(path.dirname(exe),"CynUpdater.ps1");
     if(!fs.existsSync(script))throw new Error("Native updater was not installed");
     const live=await bridge.getStatus();
-    if(!live.connected)throw new Error(live.error||"Start CYN to check for updates");
-    const version=String(live.status.version||"").match(/^(\d+\.\d+\.\d+)(?:\.\d+)?$/);
+    let reported=live.connected?String(live.status.version||""):"";
+    if(!/^\d+\.\d+\.\d+(?:\.\d+)?$/.test(reported)){
+      // The updater must be able to repair a broken/offline native engine.
+      // Resolve the installed binary's version without executing Cyn.exe.
+      const {execFile}=require("node:child_process");
+      const {promisify}=require("node:util");
+      const inspect=promisify(execFile);
+      const powershell='(Get-Item -LiteralPath $env:CYN_NATIVE_EXE -ErrorAction Stop).VersionInfo.FileVersion';
+      try{
+        const {stdout}=await inspect("powershell.exe",[
+          "-NoProfile","-NonInteractive","-Command",powershell
+        ],{windowsHide:true,timeout:6500,maxBuffer:2048,env:{...process.env,CYN_NATIVE_EXE:exe}});
+        reported=String(stdout).trim();
+      }catch(error){
+        throw new Error("Could not read the installed CYN version. Repair CYN with the latest official installer.");
+      }
+    }
+    const version=reported.match(/^(\d+\.\d+\.\d+)(?:\.\d+)?$/);
     if(!version)throw new Error("Could not verify the installed native CYN version");
     const child=require("node:child_process").spawn("powershell.exe",[
       "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
