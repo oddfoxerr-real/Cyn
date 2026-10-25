@@ -52,7 +52,10 @@ function makeBridge(override){
      error:startupFailure()||"Native FxSound/CYN is not running. Close other FxSound instances from the system tray, then press Connect engine."};
    const statusPath=path.join(process.env.APPDATA||"","Cyn","status.json");
    const previous=fs.existsSync(statusPath)?fs.statSync(statusPath).mtimeMs:0;
-   await exec(exe,["--status"],{windowsHide:true,timeout:8500,maxBuffer:4096});
+   // The 39-band DSP state, presets and neural profile inventory exceed 4 KB.
+   // Never treat valid native CYN telemetry as an engine failure due to a
+   // tiny stdout buffer on console-launched installations.
+   await exec(exe,["--status"],{windowsHide:true,timeout:8500,maxBuffer:262144});
    for(let i=0;i<45;i++){
      await pause(110);
      if(!fs.existsSync(statusPath)||fs.statSync(statusPath).mtimeMs<=previous)continue;
