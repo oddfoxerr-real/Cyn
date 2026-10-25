@@ -36,6 +36,29 @@ final class ConnectedEffects {
             targets[9+b]=clamp(targets[9+b]-cut,-12,12);
         }
     }
+    /**
+     * LIBERTY: spectral corrections from one supported Android session.
+     * Only modifies ordinary EQ gains; does not mix, synthesize, or replay PCM.
+     * Calling code requires a fresh, matched session FFT and EQ ownership.
+     */
+    static void libertySession(float[] targets,float rms,float bassOffset,
+                               float clarityOffset,float intensity){
+        if(targets==null||targets.length<48||!Float.isFinite(rms)||
+            rms<=.01f||!Float.isFinite(bassOffset)||!Float.isFinite(clarityOffset))return;
+        float strength=clamp(intensity,0,1);
+        if(strength<=0)return;
+        int count=Math.round(targets[8]);
+        if(count!=31&&count!=35&&count!=39)return;
+        float bassCorrection=clamp(bassOffset,-1,1)*strength*.7f;
+        float clarityCorrection=clamp(clarityOffset,-1,1)*strength*.7f;
+        for(int band=0;band<count;band++){
+            double hz=20*Math.pow(1000,band/(double)(count-1));
+            double low=1/(1+Math.pow(hz/180,2));
+            double presence=Math.exp(-.5*Math.pow(Math.log(hz/2600)/Math.log(2),2));
+            targets[9+band]=clamp(targets[9+band]+
+                (float)(bassCorrection*low+clarityCorrection*presence),-12,12);
+        }
+    }
     static float width(float manual, float neuralGain, float intensity, boolean selected,
                        boolean neuralEnabled, boolean fresh, float sensitivity) {
         // The neural controller may reduce the requested Android virtualization
