@@ -82,6 +82,11 @@ test("CYN updates remain verified, report installation errors and reopen Materia
   const worker=read("CynUpdaterWorker.ps1");
   assert(main.includes('ipcMain.handle("cyn:check-updates"'));
   assert(main.includes('"-Interactive"'));
+  assert(main.includes("const live=await bridge.getStatus()"));
+  assert(main.includes("CYN_NATIVE_EXE:exe"));
+  assert(main.includes(".VersionInfo.FileVersion"));
+  assert(main.includes('"-NonInteractive","-Command",powershell'));
+  assert(!main.includes('if(!live.connected)throw new Error(live.error||"Start CYN to check for updates")'));
   assert(main.includes('spawn(exe,["--classic"]'));
   assert(worker.includes('SHA256')||worker.includes('SHA-256'));
   assert(updater.includes("CYN-Interface\\CYN Audio.exe"));
