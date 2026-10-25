@@ -466,6 +466,28 @@ void FxController::applyConfig(const String& commandline)
     const auto intensity=arg_list.getValueForOption("--audonic_intensity");
     if(intensity.isNotEmpty()) setAudonicIntensity(intensity.getFloatValue());
     if(arg_list.containsOption("--smart_train") && !smart_training_) trainSmartModel();
+    const auto labelSpec=arg_list.getValueForOption("--label_recent").unquoted();
+    if(labelSpec.isNotEmpty() && !smart_training_) {
+        const StringArray parts=StringArray::fromTokens(labelSpec,":","");
+        if(parts.size()==4) {
+            const int effect=parts[0].getIntValue();
+            const bool validChoice=parts[1]=="0" || parts[1]=="1";
+            const int newest=parts[2].getIntValue();
+            const int oldest=parts[3].getIntValue();
+            if(effect>=0&&effect<5&&validChoice&&newest>=0&&
+               oldest>newest&&oldest<=60) {
+                const auto now=Time::currentTimeMillis();
+                std::vector<AudioFrame> selected;
+                for(const auto& frame:smart_history_) {
+                    const auto age=now-frame.id;
+                    if(age>=newest*1000 && age<=oldest*1000)
+                        selected.push_back(frame);
+                }
+                if(selected.size()>=5)
+                    labelAudio(selected,effect,parts[1]=="1");
+            }
+        }
+    }
     auto smart = arg_list.getValueForOption("--smart_listening");
     if (smart == "0" || smart == "1") setSmartListening(smart == "1");
     auto pinned = arg_list.getValueForOption("--pin_output");
@@ -2356,6 +2378,16 @@ void FxController::publishUiTelemetry()
     telemetry->setProperty("headroom_cap",smart_headroom_cap_);
     telemetry->setProperty("preset_cycling",smart_preset_cycling_);
     telemetry->setProperty("audonic_intensity",getAudonicIntensity());
+    // Last minute of real RMS measurements. No waveform samples leave CYN.
+    Array<var> recent;
+    for(int i=0;i<(int)smart_history_.size();i+=6) {
+        const auto& frame=smart_history_[(size_t)i];
+        auto* segment=new DynamicObject();
+        segment->setProperty("age_ms",var((double)(Time::currentTimeMillis()-frame.id)));
+        segment->setProperty("rms",jlimit(0.0f,1.0f,frame.audio.rms));
+        recent.add(var(segment));
+    }
+    telemetry->setProperty("recent_frames",recent);
     telemetry->setProperty("ai_dj_enabled",dj_worker_ && dj_worker_->enabled());
 
     Array<var> inputs,hidden,outputs,firstLinks,secondLinks,ready,creativeChannels;
