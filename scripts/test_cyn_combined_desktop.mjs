@@ -8,7 +8,7 @@ const preload=read("riff-cyn/preload.cjs");
 const settings=read("riff-cyn/renderer/settings.js");
 const release=read(".github/workflows/windows-release.yml");
 const guiWorkflow=read(".github/workflows/cyn-riff-native-shell.yml");
-const notes=read("RELEASE_NOTES_2.0.84.md");
+const notes=read("RELEASE_NOTES_2.0.85.md");
 assert.match(installer,/^AppVersion=2\.0\.84$/m);
 assert.match(installer,/^AppId=\{\{3049F105-E971-49A1-876E-50FDB14EF351\}$/m);
 assert(installer.includes('Source: "{#PayloadDir}\\*"'),"Keep the native driver, assets and Material interface together");
@@ -27,4 +27,4 @@ assert(release.includes("Compress-Archive -Path 'dist/Cyn/*'"),"Rebuild the port
 assert(release.includes("Node".toLowerCase())||release.includes("setup-node@v4"));
 assert(notes.includes("normal CYN Windows installer"));
 assert(!guiWorkflow.includes("AppId={{3049F105-E971-49A1-876E-50FDB14EF351}"),"Standalone preview must not replace native AppId");
-console.log("PASS: one CYN 2.0.84 update channel, retained FxSound native audio, and bundled Material frontend");
+console.log("PASS: one CYN 2.0.85 update channel, retained FxSound native audio, and bundled Material frontend");
