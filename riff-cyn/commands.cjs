@@ -28,6 +28,17 @@ function commandFor(action,status){
       assert(Number.isInteger(action.value)&&n(action.value,0,100),"AUDONIC intensity must be 0–100%");
       assert(status.active_ai_profile==="audonic","AUDONIC model is not selected");
       return "--audonic_intensity="+action.value;
+    case "labelRecent": {
+      assert(Number.isInteger(action.effect)&&action.effect>=0&&action.effect<5,
+        "Choose a valid CYN DSP effect");
+      assert(typeof action.more==="boolean","Feedback must be More or Less");
+      assert(Number.isInteger(action.newest)&&Number.isInteger(action.oldest)&&
+        action.newest>=0&&action.oldest>action.newest&&action.oldest<=60,
+        "Select a valid recent audio window");
+      assert(status.smart_listening?.training!==true,"Finish training before adding labels");
+      return "--label_recent="+action.effect+":"+(action.more?"1":"0")+":"+
+        action.newest+":"+action.oldest;
+    }
     case "train":
       assert(status.smart_listening?.training!==true,"AI training already running");
       return "--smart_train";
