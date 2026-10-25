@@ -183,6 +183,49 @@ jobs:
           & .\apex-onnx-smoke.exe (Resolve-Path 'dist/Cyn')
           if ($LASTEXITCODE -ne 0) { throw 'Full APEX ONNX failed with Cyn bundled runtime.' }
 
+      - name: Stage original Riff visual foundations
+        if: steps.inspect.outputs.state != 'published'
+        uses: actions/checkout@v4
+        with:
+          repository: rootscripts/riff
+          ref: 398c3dac976bd7b4a7a4b4d7a6d7636ea868a0a8
+          path: riff-upstream
+          persist-credentials: false
+
+      - name: Enable CYN Material frontend packaging
+        if: steps.inspect.outputs.state != 'published'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: riff-cyn/package-lock.json
+
+      - name: Stage Electron GUI inside native CYN installer
+        if: steps.inspect.outputs.state != 'published'
+        shell: pwsh
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          $ErrorActionPreference='Stop'
+          Push-Location riff-cyn
+          try {
+            npm ci --no-audit --no-fund
+            if ($LASTEXITCODE -ne 0) { throw 'Electron dependency install failed' }
+            npm run vendor:riff
+            if ($LASTEXITCODE -ne 0) { throw 'Pinned Riff assets failed validation' }
+            node --test tests/*.test.cjs
+            if ($LASTEXITCODE -ne 0) { throw 'CYN Material UI unit tests failed' }
+            npx electron-builder --win --x64 --dir
+            if ($LASTEXITCODE -ne 0) { throw 'Electron GUI packaging failed' }
+          } finally { Pop-Location }
+          $gui='riff-cyn/dist/win-unpacked'
+          $target='dist/Cyn/CYN-Interface'
+          if (!(Test-Path "$gui/CYN Audio.exe")) { throw 'Native CYN installer missing bundled Material desktop app' }
+          New-Item -ItemType Directory -Path $target -Force | Out-Null
+          Copy-Item -Path "$gui/*" -Destination $target -Recurse -Force
+          if (!(Test-Path "$target/CYN Audio.exe")) { throw 'Material frontend was not staged' }
+          Compress-Archive -Path 'dist/Cyn/*' -DestinationPath 'dist/Cyn-Windows-x64.zip' -Force
+
       - name: Build Windows installer
         if: steps.inspect.outputs.state != 'published'
         shell: pwsh
@@ -201,6 +244,7 @@ jobs:
           $actual = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash
           if ($actual -ine $expected) { throw 'Installer failed SHA-256 verification.' }
           if (!(Test-Path 'dist/Cyn-Windows-x64.zip')) { throw 'Portable build missing.' }
+          if (!(Test-Path 'dist/Cyn/CYN-Interface/CYN Audio.exe')) { throw 'Installer is missing Riff Material CYN interface.' }
           if ('${{ steps.version.outputs.version }}' -eq '2.0.18') {
             foreach($name in @('onnxruntime.dll','yamnet-16k-0p975s.onnx','yamnet-manifest.json')) {
               if (!(Test-Path (Join-Path 'dist/Cyn' $name))) { throw "YAMNet v2.0.18 is missing $name" }
