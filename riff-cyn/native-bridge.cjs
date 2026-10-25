@@ -21,6 +21,17 @@ function candidates(){
   return paths.filter(Boolean);
 }
 function validExe(p){return typeof p==="string"&&path.win32.basename(p).toLowerCase()==="cyn.exe"&&fs.existsSync(p);}
+function startupFailure(){
+  // A diagnostic written by the real JUCE host. Do not present stale
+  // diagnostics after a successful launch or leak private user files.
+  try{
+    const file=path.join(process.env.APPDATA||"","Cyn","engine-startup-error.txt");
+    const stats=fs.statSync(file);
+    if(stats.size<12||stats.size>2048||Date.now()-stats.mtimeMs>300000)return null;
+    const reason=fs.readFileSync(file,"utf8").trim();
+    return reason.length>0&&reason.length<1000?reason:null;
+  }catch{return null;}
+}
 function makeBridge(override){
  let nativeExe=validExe(override)?override:null;
  let pending=null;
@@ -37,10 +48,14 @@ function makeBridge(override){
    if(!isWin())return {connected:false,error:"CYN's native audio engine runs on Windows."};
    const exe=locate();
    if(!exe)return {connected:false,error:"Cyn.exe not found. Locate your installed native CYN engine."};
-   if(!(await running(exe)))return {connected:false,error:"Native CYN is not running. Start the engine to connect."};
+   if(!(await running(exe)))return {connected:false,
+     error:startupFailure()||"Native FxSound/CYN is not running. Close other FxSound instances from the system tray, then press Connect engine."};
    const statusPath=path.join(process.env.APPDATA||"","Cyn","status.json");
    const previous=fs.existsSync(statusPath)?fs.statSync(statusPath).mtimeMs:0;
-   await exec(exe,["--status"],{windowsHide:true,timeout:8500,maxBuffer:4096});
+   // The 39-band DSP state, presets and neural profile inventory exceed 4 KB.
+   // Never treat valid native CYN telemetry as an engine failure due to a
+   // tiny stdout buffer on console-launched installations.
+   await exec(exe,["--status"],{windowsHide:true,timeout:8500,maxBuffer:262144});
    for(let i=0;i<45;i++){
      await pause(110);
      if(!fs.existsSync(statusPath)||fs.statSync(statusPath).mtimeMs<=previous)continue;
@@ -49,7 +64,7 @@ function makeBridge(override){
      lastState=data;
      return {connected:true,status:data};
    }
-   throw new Error("Native CYN did not return a fresh status report.");
+   throw new Error(startupFailure()||"The FxSound DSP host is running but not responding. Try reconnecting or repairing CYN.");
  }
  function getStatus(){
    if(!pending)pending=statusImpl().catch(e=>({connected:false,error:e.message})).finally(()=>{pending=null;});
@@ -84,12 +99,20 @@ function makeBridge(override){
  async function launch(){
    if(!isWin())throw new Error("CYN audio processing is Windows-only");
    const exe=locate();
-   if(!exe)throw new Error("Select an installed Cyn.exe in Settings");
+   if(!exe)throw new Error("The native FxSound DSP executable Cyn.exe is missing. Repair CYN using the official combined Windows installer.");
    if(await running(exe))return getStatus();
    const child=spawn(exe,["--run_minimized"],{detached:true,windowsHide:true,stdio:"ignore"});
    child.unref();
-   await pause(1800);
-   return getStatus();
+   // Windows audio initialization and first-run signed driver activation
+   // can take longer than a fixed 1.8 s delay. Return a real status or error.
+   let result=null;
+   for(let attempt=0;attempt<7;attempt++){
+     await pause(attempt===0?1100:700);
+     result=await getStatus();
+     if(result.connected)return result;
+     if(result.error&&result.error.includes("another process"))break;
+   }
+   return result||{connected:false,error:"The native FxSound DSP did not start."};
  }
  async function apply(action){
    if(!isWin())throw new Error("This backend only runs on Windows");

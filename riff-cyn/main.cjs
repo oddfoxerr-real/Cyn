@@ -79,6 +79,20 @@ function createWindow(){
            !graphiteAudit.belowDivider||graphiteAudit.mainPages!==3){
           throw new Error("Riff graphite dock regression: "+JSON.stringify(graphiteAudit));
         }
+        // The preceding screenshot cycle ends on the AI page; inspect
+        // Sound Studio in its active state, not a legitimately hidden tab.
+        await win.webContents.executeJavaScript('document.querySelector("[data-view=overview]").click()');
+        // Catch a UI regression where the full native CYN Settings and
+        // Update controls exist in markup but cannot be reached by users.
+        const coreControls=JSON.parse(await win.webContents.executeJavaScript(
+          'JSON.stringify((()=>{const ids=["toolbar-settings","toolbar-updates","fx-engine-reconnect","fx-engine-detail"];return ids.map(id=>{const e=document.getElementById(id);if(!e)return {id,missing:true};const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {id,visible:r.width>25&&r.height>10&&s.visibility!=="hidden"&&s.display!=="none",left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:innerWidth,height:innerHeight};})})())'));
+        if(coreControls.some(x=>x.missing||!x.visible||x.left<0||x.right>x.width||x.top<0||x.bottom>x.height))
+          throw new Error("Critical FX engine, Settings or Update controls are inaccessible: "+JSON.stringify(coreControls));
+        await win.webContents.executeJavaScript('document.getElementById("toolbar-settings").click()');
+        const settingsOpen=await win.webContents.executeJavaScript(
+          'document.getElementById("view-settings").classList.contains("active") && [...document.querySelectorAll("#view-settings [data-setting=updates]")].length===1');
+        if(!settingsOpen)throw new Error("Visible CYN Settings control failed to open native updater panel");
+        await win.webContents.executeJavaScript('document.querySelector("[data-view=overview]").click()');
         const tabs=["overview","equalizer","ai","devices","settings"];
         const layoutDiagnostics=await win.webContents.executeJavaScript(
           'JSON.stringify({viewport:{w:innerWidth,h:innerHeight},body:{height:document.body.getBoundingClientRect().height},elements:[".app-layout",".main-content",".control-deck",".control-field",".error-banner",".workspace-header",".eq-hero"].map(selector=>{const el=document.querySelector(selector);if(!el)return {selector,missing:true};const r=el.getBoundingClientRect();const cs=getComputedStyle(el);return {selector,rect:{x:r.x,y:r.y,width:r.width,height:r.height},display:cs.display,visibility:cs.visibility,opacity:cs.opacity,overflow:cs.overflow,childCount:el.children.length}})})');

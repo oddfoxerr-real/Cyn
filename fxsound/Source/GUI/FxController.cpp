@@ -801,6 +801,12 @@ void FxController::printStatus()
 	settings->setProperty("version", ProjectInfo::versionString);
 	settings->setProperty("power", model.getPowerState());
     settings->setProperty("cyn_build", "identity-2");
+    // Authoritative information from the *native* engine; not a UI simulation.
+    auto* engine=new DynamicObject();
+    engine->setProperty("backend","FxSound/CYN native DSP");
+    engine->setProperty("ready",dfx_enabled_);
+    engine->setProperty("processing",dfx_enabled_ && audio_process_on_ && model.getPowerState());
+    settings->setProperty("fx_engine",var(engine));
     settings->setProperty("theme", FxTheme::getThemeName((int)FxTheme::getThemeMode()));
     settings->setProperty("reduce_motion", FxTheme::isReducedMotion());
     settings->setProperty("automatic_updates",getAutoUpdates());
@@ -942,6 +948,10 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 
 		if (audio_passthru_->init() != 0)
 		{
+            const auto failure=File::getSpecialLocation(File::userApplicationDataDirectory)
+                .getChildFile("Cyn").getChildFile("engine-startup-error.txt");
+            failure.getParentDirectory().createDirectory();
+            failure.replaceWithText("The native FxSound audio engine failed to initialise the Windows audio driver. Check the FxSound device and repair CYN using the official installer.");
 			String message(TRANS("Error in system audio configuration. Unable to run Cyn"));
 			AlertWindow::showMessageBox(AlertWindow::AlertIconType::WarningIcon, JUCEApplication::getInstance()->getApplicationName(), message, TRANS("OK"));
 
@@ -967,6 +977,10 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 
 		if (!dfx_enabled_ && !SysInfo::isRemoteSession())
 		{
+            const auto failure=File::getSpecialLocation(File::userApplicationDataDirectory)
+                .getChildFile("Cyn").getChildFile("engine-startup-error.txt");
+            failure.getParentDirectory().createDirectory();
+            failure.replaceWithText("The FxSound virtual audio device is not ready. Reinstall or repair CYN to restore the original signed FxSound driver.");
 			main_window_->removeFromDesktop();
 			FxDeviceErrorMessage error_message;
 			error_message.runModalLoop();
@@ -974,6 +988,9 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 			return;
 		}
 
+        // A new, healthy native host clears any prior startup error.
+        File::getSpecialLocation(File::userApplicationDataDirectory)
+            .getChildFile("Cyn").getChildFile("engine-startup-error.txt").deleteFile();
 		audio_passthru_->registerCallback(this);
 
 		auto path = File(File::addTrailingSeparator(File::getSpecialLocation(File::SpecialLocationType::userApplicationDataDirectory).getFullPathName()) + L"Cyn\\Presets");

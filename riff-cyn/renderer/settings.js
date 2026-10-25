@@ -103,11 +103,19 @@
     native:()=>window.cyn.openNative(),
     mobile:()=>window.cyn.openLink("mobile"),
     updates:()=>window.cyn.checkUpdates(),
+    release:()=>window.cyn.openLink("updates"),
     theme:()=>window.cynRail.open("appearance"),
     credits:()=>window.cyn.openLink("credits"),
     support:()=>window.cyn.openLink("support"),
     exit:()=>window.cyn.window("close")
   };
+  const toolbarUpdates=$("toolbar-updates");
+  toolbarUpdates.addEventListener("click",async()=>{
+    toolbarUpdates.disabled=true;
+    try{await window.cyn.checkUpdates()}
+    catch(error){notify("Update check failed: "+error.message)}
+    finally{toolbarUpdates.disabled=false}
+  });
   items.forEach(button=>{
     const action=actions[button.dataset.setting];
     if(!action)return;
