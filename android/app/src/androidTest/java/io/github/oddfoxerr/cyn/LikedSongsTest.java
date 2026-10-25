@@ -49,6 +49,6 @@ public final class LikedSongsTest {
             assertNotNull(remaining);
             assertFalse(remaining.favorite);
             assertEquals(offline,remaining.offlineUri);
-        }finally{library.remove(stream);}
+        }finally{new AudioLibrary(InstrumentationRegistry.getInstrumentation().getTargetContext()).remove(stream);}
     }
 }
