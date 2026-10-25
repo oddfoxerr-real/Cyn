@@ -26,8 +26,8 @@ assert(shell.includes('inline bool isUiLaunchRequest('));
 assert(!shell.includes('trimmed.contains("--run_minimized")'),
   "DSP background invocation must never redirect into a visible shell");
 assert(header.includes("classic_ui_requested_ = false"),"Classic session must be explicit and nonpersistent");
-assert.equal((native.match(/if \(arg_list\.containsOption\("--classic"\)\)/g)||[]).length,2,
-  "Only an explicit --classic request may enable the old native GUI");
+assert.equal((native.match(/if \(arg_list\.containsOption\("--classic"\)\)/g)||[]).length,3,
+  "Native startup, IPC and explicit classic-view handling must all require --classic");
 assert(!native.includes('arg_list.containsOption("--classic") || arg_list.containsOption("--view")'),
   "Legacy --view is normal CYN UI navigation, not permission to show JUCE");
 assert(native.includes('else if (arg_list.containsOption("--classic"))'),
