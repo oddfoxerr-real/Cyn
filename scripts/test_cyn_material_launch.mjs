@@ -22,6 +22,11 @@ for(const legacy of ["--view=1","--view=2","--view 1","--view 2"]){
 }
 assert(source.includes("Reinstall the complete CYN update."),
   "Broken Material installations must explain repair, not display an unrelated old UI");
+assert(source.includes('launchMaterial ? String("--run_minimized") : commandline'),
+  "Normal UI launch must keep the real DSP host alive and hidden rather than quitting it");
+assert(source.indexOf('FxController::getInstance().init(main_window_.get()')<
+       source.indexOf('if (launchMaterial && !CynMaterialShell::launch())'),
+  "Launch Material only after native DSP initialization to avoid a startup race");
 assert(shell.includes('inline bool isUiLaunchRequest('));
 assert(!shell.includes('trimmed.contains("--run_minimized")'),
   "DSP background invocation must never redirect into a visible shell");
