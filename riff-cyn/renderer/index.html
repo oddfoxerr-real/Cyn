@@ -123,6 +123,15 @@
 
       <section class="content-view active" id="view-overview" aria-labelledby="overview-title">
         <div class="section-heading"><div><span class="section-kicker">LIVE CONTROLS</span><h2 id="overview-title">Sound Studio</h2></div><button class="text-action" id="go-eq" type="button">Fine-tune EQ →</button></div>
+        <section class="fx-engine-panel" aria-labelledby="fx-engine-title">
+          <div class="fx-engine-icon" aria-hidden="true">FX</div>
+          <div class="fx-engine-copy">
+            <h3 id="fx-engine-title">FxSound / CYN Native Engine</h3>
+            <p id="fx-engine-detail" role="status" aria-live="polite">Checking native processing engine and audio driver…</p>
+            <p id="fx-engine-output">Output device: awaiting native CYN</p>
+          </div>
+          <button class="button secondary" type="button" id="fx-engine-reconnect">Connect engine</button>
+        </section>
         <div class="eq-hero">
           <div class="eq-hero-top"><div><h3>Frequency response</h3><p>Current equalizer gain values from CYN</p></div><span class="mode-tag" id="eq-band-mode">— BANDS</span></div>
           <svg class="eq-curve" id="eq-curve" viewBox="0 0 1000 225" preserveAspectRatio="none" role="img" aria-label="Equalizer curve using native band gains"></svg>
@@ -133,15 +142,6 @@
             <span id="native-spectrum-state">Waiting for live audio</span>
           </div>
         </div>
-        <section class="fx-engine-panel" aria-labelledby="fx-engine-title">
-          <div class="fx-engine-icon" aria-hidden="true">FX</div>
-          <div class="fx-engine-copy">
-            <h3 id="fx-engine-title">FxSound / CYN Native Engine</h3>
-            <p id="fx-engine-detail" role="status" aria-live="polite">Checking native processing engine and audio driver…</p>
-            <p id="fx-engine-output">Output device: awaiting native CYN</p>
-          </div>
-          <button class="button secondary" type="button" id="fx-engine-reconnect">Connect engine</button>
-        </section>
         <div class="section-heading gap-top"><div><span class="section-kicker">DIGITAL SIGNAL PROCESSING</span><h2>Enhancements</h2></div></div>
         <div id="effects-grid" class="effects-grid"></div>
       </section>
