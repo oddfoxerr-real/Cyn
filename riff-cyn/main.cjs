@@ -79,6 +79,9 @@ function createWindow(){
            !graphiteAudit.belowDivider||graphiteAudit.mainPages!==3){
           throw new Error("Riff graphite dock regression: "+JSON.stringify(graphiteAudit));
         }
+        // The preceding screenshot cycle ends on the AI page; inspect
+        // Sound Studio in its active state, not a legitimately hidden tab.
+        await win.webContents.executeJavaScript('document.querySelector("[data-view=overview]").click()');
         // Catch a UI regression where the full native CYN Settings and
         // Update controls exist in markup but cannot be reached by users.
         const coreControls=JSON.parse(await win.webContents.executeJavaScript(
