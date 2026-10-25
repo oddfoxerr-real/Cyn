@@ -138,7 +138,13 @@
         <div class="eq-workspace">
           <p class="support-text">Each slider writes to the existing CYN equalizer. Mouse, touch and keyboard adjustments are supported.</p>
           <div class="eq-scroll"><div class="eq-sliders" id="eq-sliders"></div></div>
-          <p class="support-text">Band-count selection remains available in native CYN settings. The current mode is shown above.</p>
+          <div class="eq-advanced-grid" role="group" aria-label="Advanced CYN equalizer controls">
+            <label class="eq-advanced-field"><span>EQ BAND MODE</span><select id="eq-band-select" disabled aria-label="Equalizer number of bands"><option value="31">31 bands</option><option value="35">35 bands</option><option value="39">39 bands</option></select></label>
+            <label class="eq-advanced-field"><span>BALANCE <output id="eq-balance-value">0.0</output></span><input type="range" id="eq-balance" min="-20" max="20" step=".5" value="0" disabled aria-label="Stereo balance"/></label>
+            <label class="eq-advanced-field"><span>MASTER GAIN <output id="eq-master-gain-value">0.0</output></span><input type="range" id="eq-master-gain" min="-20" max="20" step=".5" value="0" disabled aria-label="Master gain"/></label>
+            <label class="eq-advanced-field"><span>VOLUME LEVELING <output id="eq-volume-leveling-value">0.0</output></span><input type="range" id="eq-volume-leveling" min="0" max="4" step=".1" value="0" disabled aria-label="Volume leveling"/></label>
+            <label class="eq-advanced-field"><span>FILTER Q <output id="eq-filter-q-value">1.0</output></span><input type="range" id="eq-filter-q" min="1" max="3" step=".1" value="1" disabled aria-label="Equalizer filter Q"/></label>
+          </div>
         </div>
       </section>
 
@@ -146,7 +152,7 @@
         <div class="section-heading"><div><span class="section-kicker">PERSONAL NEURAL AUDIO</span><h2 id="ai-title">Smart Listening</h2></div></div>
         <div class="feature-grid">
           <article class="surface-card"><div class="feature-heading"><h3>Adaptive processing</h3><label class="toggle only-toggle"><input type="checkbox" id="smart" disabled><span class="toggle-track"></span></label></div><p class="support-text" id="smart-summary">Connect native CYN to read active processing information.</p><label class="range-row"><span>Sensitivity <output id="sensitivity-value">—</output></span><input type="range" id="sensitivity" min="0" max="100" step="1" disabled></label></article>
-          <article class="surface-card"><span class="section-kicker">ENGINE PROFILE</span><h3 id="active-model">Not connected</h3><label class="detail-select-field"><span>SELECT INSTALLED MODEL</span><select id="ai-model" aria-label="CYN AI model" disabled><option value="">Connect CYN</option></select></label><p class="support-text" id="learning-status">Native model inference and training telemetry appear here once connected.</p><p class="support-text">BrainScan and training controls stay in native CYN until their real telemetry bridge is available.</p></article>
+          <article class="surface-card"><span class="section-kicker">ENGINE PROFILE</span><h3 id="active-model">Not connected</h3><label class="detail-select-field"><span>SELECT INSTALLED MODEL</span><select id="ai-model" aria-label="CYN AI model" disabled><option value="">Connect CYN</option></select></label><p class="support-text" id="learning-status">Native model inference and training telemetry appear here once connected.</p><p class="support-text">BrainScan, live neural activity and training controls use the native CYN audio engine.</p></article>
         </div>
         <div class="neural-workspace" id="neural-workspace">
           <div class="neural-heading">
