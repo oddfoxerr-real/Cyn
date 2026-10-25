@@ -52,6 +52,6 @@ assert(updater.includes("Start-Process -FilePath $material -WorkingDirectory"),
   "After an in-place update, restart the actual Material UI, not old JUCE");
 assert(installer.includes('Name: "{autoprograms}\\Cyn"; Filename: "{app}\\CYN-Interface\\CYN Audio.exe"'));
 assert(installer.includes('Name: "{autoprograms}\\Cyn (Classic)"'));
-assert(installer.includes("AppVersion=2.0.88"),"Bump version for new distributable instead of overwriting release");
+assert(installer.includes("AppVersion=2.0.89"),"Bump version for new distributable instead of overwriting release");
 assert(workflow.includes('run: .\\BUILD_INSTALLER.ps1'));
-console.log("PASS: v2.0.88 Material launch and update flow, explicit Classic fallback, protected native DSP");
+console.log("PASS: v2.0.89 Material launch and update flow, explicit Classic fallback, protected native DSP");
