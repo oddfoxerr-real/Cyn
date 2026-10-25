@@ -351,27 +351,29 @@ public class StudioTest {
     }
 
     @Test public void singleUpdateButtonAndMechanicalSplashContract()throws Exception {
+        // Updates now live in Settings, not the retired Style page.
+        // Assert the current Material updater label and status contract.
         MainActivity a=ready();
         main(()->{
-            a.page=3;
+            a.page=4;
             a.build();
             java.util.ArrayList<String> names=new java.util.ArrayList<>();
             collectLabels(a.content,names);
-            assertEquals("One visible entry point controls CYN updates",
-                1,java.util.Collections.frequency(names,"UPDATE CYN"));
-            assertFalse("Old check and download button must be gone",
+            assertEquals("Settings must have one update center entry point",
+                1,java.util.Collections.frequency(names,"Open update center"));
+            assertFalse("Old direct download action must be removed",
                 names.contains("Check and download update"));
-            assertFalse("Old second install button must be gone",
+            assertFalse("Old secondary install button must be removed",
                 names.contains("Install downloaded update"));
-            assertTrue("Automatic update option must explain Wi-Fi behavior",
+            assertTrue("Wi-Fi-only automatic updates must remain configurable",
                 names.contains("Automatic updates · check and download on Wi-Fi"));
         });
-        assertEquals("SEARCHING RELEASES",UpdateSplash.progressText(UpdateManager.CHECKING,-1));
-        assertEquals("VERIFYING APK",UpdateSplash.progressText(UpdateManager.VERIFYING,100));
-        assertEquals("UP TO DATE",UpdateSplash.progressText(UpdateManager.UP_TO_DATE,-1));
-        assertEquals("41%  •  DOWNLOADING",UpdateSplash.progressText(UpdateManager.DOWNLOADING,41));
-        assertEquals("INSTALL VERIFIED APK",UpdateSplash.actionText(UpdateManager.READY,true));
-        assertEquals("RETRY UPDATE",UpdateSplash.actionText(UpdateManager.FAILED,false));
+        assertEquals("Checking releases",UpdateSplash.progressText(UpdateManager.CHECKING,-1));
+        assertEquals("Verifying package",UpdateSplash.progressText(UpdateManager.VERIFYING,100));
+        assertEquals("You're up to date",UpdateSplash.progressText(UpdateManager.UP_TO_DATE,-1));
+        assertEquals("41% downloaded",UpdateSplash.progressText(UpdateManager.DOWNLOADING,41));
+        assertEquals("Install verified update",UpdateSplash.actionText(UpdateManager.READY,true));
+        assertEquals("Retry update",UpdateSplash.actionText(UpdateManager.FAILED,false));
     }
     private static void collectLabels(View root,java.util.List<String> values) {
         if(root instanceof android.widget.TextView)values.add(
