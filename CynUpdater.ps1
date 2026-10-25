@@ -161,6 +161,18 @@ $actionButton.Add_Click({
         $actionButton.IsEnabled=$false
         $laterButton.Visibility='Collapsed'
         Update-Label 'Preparing installation' 'Safely saving audio settings and closing Cyn...'
+        # Material CYN must exit gracefully before Inno overwrites Electron files.
+        # Scope the request to our installed executable, never another Electron app.
+        $material=Join-Path $PSScriptRoot 'CYN-Interface\CYN Audio.exe'
+        if (Test-Path -LiteralPath $material) {
+            foreach($proc in @(Get-Process -Name 'CYN Audio' -ErrorAction SilentlyContinue)) {
+                try {
+                    if ($proc.Path -ieq $material -and $proc.MainWindowHandle -ne 0) {
+                        [void]$proc.CloseMainWindow()
+                    }
+                } catch { Write-Verbose ('Material exit request failed: '+$_.Exception.Message) }
+            }
+        }
         $cyn=Join-Path $PSScriptRoot 'Cyn.exe'
         if (Test-Path -LiteralPath $cyn) {
             try {
@@ -206,7 +218,11 @@ $clock.Add_Tick({
         $running=@(Get-Process -Name Cyn -ErrorAction SilentlyContinue | Where-Object {
             try { $_.Path -ieq (Join-Path $PSScriptRoot 'Cyn.exe') } catch { $false }
         })
-        if ($running.Count -eq 0) {
+        $material=Join-Path $PSScriptRoot 'CYN-Interface\CYN Audio.exe'
+        $materialRunning=@(Get-Process -Name 'CYN Audio' -ErrorAction SilentlyContinue | Where-Object {
+            try { $_.Path -ieq $material } catch { $false }
+        })
+        if ($running.Count -eq 0 -and $materialRunning.Count -eq 0) {
             if (@(Get-Process -Name FxSound -ErrorAction SilentlyContinue).Count -gt 0) {
                 Show-Error 'FxSound is still running. Quit it from the system tray, then retry installation.'
                 return
@@ -251,7 +267,14 @@ $clock.Add_Tick({
     }
     if ($script:phase -eq 'complete') {
         if (([datetime]::UtcNow-$script:finishedAt).TotalMilliseconds -gt 1500) {
-            try { Start-Process -FilePath (Join-Path $PSScriptRoot 'Cyn.exe') -WorkingDirectory $PSScriptRoot | Out-Null } catch {}
+            try {
+                $material=Join-Path $PSScriptRoot 'CYN-Interface\CYN Audio.exe'
+                if (Test-Path -LiteralPath $material) {
+                    Start-Process -FilePath $material -WorkingDirectory (Split-Path -Parent $material) | Out-Null
+                } else {
+                    Start-Process -FilePath (Join-Path $PSScriptRoot 'Cyn.exe') -ArgumentList '--view=2' -WorkingDirectory $PSScriptRoot | Out-Null
+                }
+            } catch {}
             $script:allowedToClose=$true
             $window.Close()
         }
