@@ -21,6 +21,10 @@
  function isShowing(){
    return !document.hidden&&document.getElementById("view-ai").classList.contains("active");
  }
+ function wantsTelemetry(){
+   return !document.hidden&&["view-ai","view-overview","view-equalizer"].some(id=>
+     document.getElementById(id)?.classList.contains("active"));
+ }
  function size(){
    const rect=canvas.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
    if(rect.width<20||rect.height<20)return null;
@@ -145,6 +149,47 @@
    ctx.fillStyle="#aaaab0";ctx.font="10px system-ui";ctx.textAlign="center";
    ["11 INPUTS","12 HIDDEN","5 OUTPUTS"].forEach((label,i)=>ctx.fillText(label,spaces[i],h-12));
  }
+ const effectKeys=["clarity","ambience","surround","dynamicboost","bass"];
+ function drawAppliedValues(){
+   const active=live();
+   effectKeys.forEach((key,i)=>{
+     const output=document.getElementById("effect-applied-"+key);
+     if(!output)return;
+     const value=sample?.applied_effects?.[i];
+     output.textContent=active&&Number.isFinite(Number(value))
+       ?Number(value).toFixed(1):"—";
+   });
+   document.querySelectorAll(".eq-applied-marker").forEach((marker,i)=>{
+     const value=sample?.applied_bands?.[i];
+     const show=active&&Number.isFinite(Number(value));
+     marker.style.opacity=show?"1":"0";
+     if(show)marker.style.top=(18+(12-clamp(value,-12,12))/24*225).toFixed(2)+"px";
+   });
+ }
+ function drawSpectrum(){
+   const chart=document.getElementById("native-spectrum");
+   if(!chart)return;
+   const box=chart.getBoundingClientRect();
+   if(box.width<20||box.height<15)return;
+   const cx=chart.getContext("2d");
+   const dpr=Math.min(2,window.devicePixelRatio||1);
+   chart.width=Math.floor(box.width*dpr);chart.height=Math.floor(box.height*dpr);
+   cx.setTransform(dpr,0,0,dpr,0,0);
+   const w=box.width,h=box.height;
+   cx.fillStyle="#1a1b1e";cx.fillRect(0,0,w,h);
+   const bars=Array.isArray(sample?.spectrum)?sample.spectrum:[];
+   const active=live();
+   const count=bars.length;
+   const stride=w/Math.max(1,count);
+   for(let i=0;i<count;i++){
+     const height=active?clamp(Number(bars[i]),0,1)*Math.max(8,h-9):0;
+     cx.fillStyle="#b4c3cc";cx.globalAlpha=.28+height/Math.max(1,h)*.58;
+     cx.fillRect(i*stride+1,h-height-2,Math.max(1,stride-2),height);
+   }
+   cx.globalAlpha=1;
+   const text=document.getElementById("native-spectrum-state");
+   if(text)text.textContent=active?"Live CYN DSP spectrum":"No active audio";
+ }
  function drawRecent(){
    const chart=document.getElementById("learning-waveform");
    if(!chart)return;
@@ -184,14 +229,16 @@
      (sample?.training?" · LEARNING":"");
  }
  async function poll(){
-   if(!isShowing()||typeof window.cyn?.telemetry!=="function")return;
+   if(!wantsTelemetry()||typeof window.cyn?.telemetry!=="function")return;
    if(lastPoll) return;
    lastPoll=Date.now();
    try{
      const result=await window.cyn.telemetry();
      if(result?.schema===1 && Array.isArray(result.hidden)&&result.hidden.length===12){
        sample=result;lastSample=Date.now();
-       drawRecent();
+       if(isShowing())drawRecent();
+       drawAppliedValues();
+       drawSpectrum();
      }
    }catch{}finally{lastPoll=0;}
  }
