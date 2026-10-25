@@ -43,6 +43,19 @@ public final class ConnectedEffectsTest {
         float[] invalid={Float.NaN,Float.POSITIVE_INFINITY,Float.NaN,Float.NaN,0,Float.NaN};
         ConnectedEffects.audonic(neutral,invalid,1,true);
         for(float v:neutral)check(Float.isFinite(v),"Invalid creative controls rejected");
+        float[] liberty=new float[48];liberty[8]=31;
+        float[] zeroIntensity=liberty.clone();
+        ConnectedEffects.libertySession(zeroIntensity,.3f,.6f,.6f,0);
+        check(java.util.Arrays.equals(zeroIntensity,liberty),"LIBERTY zero intensity preserves original EQ");
+        float[] silent=liberty.clone();
+        ConnectedEffects.libertySession(silent,0,.6f,.6f,1);
+        check(java.util.Arrays.equals(silent,liberty),"LIBERTY does not react to silence");
+        float[] nonFinite=liberty.clone();
+        ConnectedEffects.libertySession(nonFinite,.3f,Float.NaN,.6f,1);
+        check(java.util.Arrays.equals(nonFinite,liberty),"LIBERTY rejects invalid FFT offsets");
+        ConnectedEffects.libertySession(liberty,.3f,.6f,.4f,1);
+        check(liberty[9]>0&&liberty[9+20]>0,"LIBERTY maps measured audio only to EQ");
+        for(float gain:liberty)check(Float.isFinite(gain),"LIBERTY never creates invalid EQ targets");
         System.out.println("PASS Connect EQ interpolation, model effect mapping, stale policy and off transitions");
     }
 }
