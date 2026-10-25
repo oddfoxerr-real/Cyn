@@ -66,6 +66,10 @@ jobs:
       - name: Validate stable Dark Theme and live neural visuals
         shell: pwsh
         run: node scripts/test_theme_neural.mjs
+      - name: Validate bundled CYN Material interface and update integration
+        shell: pwsh
+        run: node scripts/test_cyn_combined_desktop.mjs
+
       - name: Validate installed version and update controls
         shell: pwsh
         run: |
