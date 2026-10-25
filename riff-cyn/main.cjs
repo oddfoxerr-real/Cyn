@@ -204,7 +204,7 @@ if(primaryInstance)app.whenReady().then(()=>{
       throw new Error("The original CYN updater is incomplete. Repair the combined CYN Windows installation.");
     const live=await bridge.getStatus();
     let reported=live.connected?String(live.status.version||""):"";
-    if(!/^\\d+\\.\\d+\\.\\d+(?:\\.\\d+)?$/.test(reported)){
+    if(!/^\d+\.\d+\.\d+(?:\.\d+)?$/.test(reported)){
       const {execFile}=require("node:child_process");
       const {promisify}=require("node:util");
       const inspect=promisify(execFile);
@@ -218,7 +218,7 @@ if(primaryInstance)app.whenReady().then(()=>{
         throw new Error("Could not read the installed CYN version. Repair CYN with the latest official installer.");
       }
     }
-    const version=reported.match(/^(\\d+\\.\\d+\\.\\d+)(?:\\.\\d+)?$/);
+    const version=reported.match(/^(\d+\.\d+\.\d+)(?:\.\d+)?$/);
     if(!version)throw new Error("Could not verify the installed native CYN version.");
     return {exe,root,script,worker,version:version[1]};
   }
@@ -241,7 +241,7 @@ if(primaryInstance)app.whenReady().then(()=>{
     catch{throw new Error("CYN updater returned an invalid release check. Repair the original updater files.")}
     const latest=String(report.latestVersion||"");
     if((report.phase!=="current"&&report.phase!=="available")||
-       report.currentVersion!==version||!/^\\d+\\.\\d+\\.\\d+$/.test(latest))
+       report.currentVersion!==version||!/^\d+\.\d+\.\d+$/.test(latest))
       throw new Error("CYN updater returned an untrusted version result.");
     return {phase:report.phase,currentVersion:version,latestVersion:latest,
       sizeBytes:Number.isSafeInteger(Number(report.sizeBytes))?Number(report.sizeBytes):0};
