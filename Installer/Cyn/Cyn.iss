@@ -57,11 +57,11 @@ Source: "runtime-x86\vcruntime140.dll"; Flags: dontcopy
 Source: "..\..\.build-tools\vc-redist-x64\VC_redist.x64.exe"; Flags: dontcopy
 
 [Icons]
-Name: "{autoprograms}\Cyn"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Parameters: "--view=2"
-Name: "{autodesktop}\Cyn"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Parameters: "--view=2"; Tasks: desktopicon
+Name: "{autoprograms}\Cyn"; Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"\nName: "{autoprograms}\Cyn (Classic)"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Parameters: "--view=2"
+Name: "{autodesktop}\Cyn"; Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\Cyn.exe"; Parameters: "--view=2"; WorkingDir: "{app}"; Description: "Open Cyn"; Flags: nowait postinstall skipifsilent runasoriginaluser
+Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"; Description: "Open Cyn"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [Code]
 var
@@ -93,6 +93,11 @@ begin
     RunningNames := '';
     Processes := Services.ExecQuery('SELECT ProcessId FROM Win32_Process WHERE Name="Cyn.exe"');
     if Processes.Count > 0 then RunningNames := 'Cyn';
+    Processes := Services.ExecQuery('SELECT ProcessId FROM Win32_Process WHERE Name="CYN Audio.exe"');
+    if Processes.Count > 0 then begin
+      if RunningNames <> '' then RunningNames := RunningNames + ' and ';
+      RunningNames := RunningNames + 'CYN Audio';
+    end;
     Processes := Services.ExecQuery('SELECT ProcessId FROM Win32_Process WHERE Name="FxSound.exe"');
     if Processes.Count > 0 then begin
       if RunningNames <> '' then RunningNames := RunningNames + ' and ';
