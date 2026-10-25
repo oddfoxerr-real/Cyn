@@ -167,6 +167,19 @@ app.whenReady().then(()=>{
     onTop=value;win.setAlwaysOnTop(onTop,"floating");
     return onTop;
   });
+  ipcMain.handle("cyn:check-updates",async()=>{
+    if(process.platform!=="win32")throw new Error("CYN Windows updates require Windows");
+    const exe=bridge.findExe();
+    if(!exe)throw new Error("Locate your installed Cyn.exe first");
+    const script=path.join(path.dirname(exe),"CynUpdater.ps1");
+    if(!fs.existsSync(script))throw new Error("Native updater was not installed");
+    const child=require("node:child_process").spawn("powershell.exe",[
+      "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
+      "-File",script
+    ],{detached:true,windowsHide:false,stdio:"ignore",cwd:path.dirname(exe)});
+    child.unref();
+    return true;
+  });
   ipcMain.handle("cyn:open-native",async()=>{
     const exe=bridge.findExe();
     if(!exe)throw new Error("Install native CYN or locate Cyn.exe first");
@@ -186,5 +199,11 @@ app.whenReady().then(()=>{
     return shell.openExternal(ALLOWED_LINKS[key]);
   });
   createWindow();
+  // When installed together, CYN launches its real native processing engine
+  // automatically while Electron owns the visible Material interface.
+  // Do not start an engine in standalone visual-test environments.
+  const bundledNative=path.resolve(path.dirname(process.execPath),"..","Cyn.exe");
+  if(process.env.CYN_RIFF_CAPTURE_DIR===undefined&&fs.existsSync(bundledNative))
+    bridge.launch().catch(error=>console.error("Native CYN engine startup:",error.message));
 });
 app.on("window-all-closed",()=>{app.quit();});
