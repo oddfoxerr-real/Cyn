@@ -1,0 +1,178 @@
+name: CYN Studio Android 0.2.30 signed release
+on:
+  push:
+    branches: ['codex/android', 'feature/android-sound-studio', 'release/android-session-routing-v0.2.30-20261025']
+    paths: ['android/**', '!android/**/*.md', '.github/workflows/android-release.yml']
+  pull_request:
+    branches: ['codex/android']
+    paths: ['android/**', '.github/workflows/android-release.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: cyn-android-release-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 13114758
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install pinned Android tools and model test runtime
+        run: |
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
+          pip install numpy==2.2.6 onnxruntime==1.23.2
+          python android/scripts/prepare_models.py
+      - name: Verify removed screen-sharing entrypoint
+        run: |
+          set -euo pipefail
+          ! grep -q 'FOREGROUND_SERVICE_MEDIA_PROJECTION' android/app/src/main/AndroidManifest.xml
+          ! grep -q 'mediaProjection' android/app/src/main/AndroidManifest.xml
+          ! grep -q 'createScreenCaptureIntent' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          ! grep -q 'AudioService.CAPTURE' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          grep -q 'Graphite' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          grep -q "versionName '0.2.30-preview'" android/app/build.gradle
+      - name: Real DSP, learning and ONNX verification
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/cyn-tests
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/linux" android/tests/native/engine_test.cpp -o /tmp/cyn-tests/engine
+          /tmp/cyn-tests/engine
+          javac -d /tmp/cyn-tests android/app/src/main/java/io/github/oddfoxerr/cyn/{PreferenceModel,AudioFeatures,AndroidRelease,ApexFeatures}.java android/tests/{AudioModelTest,ApexFeaturesTest}.java
+          java -cp /tmp/cyn-tests io.github.oddfoxerr.cyn.AudioModelTest
+          java -cp /tmp/cyn-tests io.github.oddfoxerr.cyn.ApexFeaturesTest /tmp/cyn-tests/features.bin
+          python android/scripts/test_models.py /tmp/cyn-tests/features.bin
+          pwsh -NoProfile -Command '$tokens=$null; $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path "android/scripts/configure_release_key.ps1"), [ref]$tokens, [ref]$errors) | Out-Null; if ($errors.Count) { throw ($errors | Out-String) }'
+      - name: Validate app-matched routing and DSP fail-closed policy
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/cyn-session-policy
+          javac -d /tmp/cyn-session-policy android/app/src/main/java/io/github/oddfoxerr/cyn/SessionEffectPolicy.java android/tests/SessionEffectPolicyTest.java
+          java -cp /tmp/cyn-session-policy io.github.oddfoxerr.cyn.SessionEffectPolicyTest
+      - name: Build and lint
+        run: bash android/gradlew -p android :app:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
+      - name: Enable accelerated Android testing
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Real Android playback, neural models and screens
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: false
+          script: |
+            bash android/gradlew -p android :app:connectedDebugAndroidTest
+      - name: Preserve device reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cyn-Android-device-checks
+          path: |
+            android/app/build/reports/androidTests/
+            android/app/build/outputs/androidTest-results/
+            android/app/build/outputs/connected_android_test_additional_output/
+          if-no-files-found: ignore
+      - name: Stage corresponding source and unsigned build
+        run: |
+          mkdir -p dist/android
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/android/Cyn-Studio-Android-0.2.30-preview-unsigned.apk
+          git archive --format=zip --output=dist/android/Cyn-Studio-Android-0.2.30-Source.zip HEAD android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Cyn-Studio-Android-0.2.30-validated-build
+          path: |
+            dist/android/
+            android/app/build/reports/lint-results-debug.*
+          retention-days: 30
+      - name: Verify Studio signing key and sign release
+        if: github.ref == 'refs/heads/release/android-session-routing-v0.2.30-20261025'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.CYN_STUDIO_ANDROID_KEYSTORE_BASE64 }}
+          CYN_KEY_PASSWORD: ${{ secrets.CYN_STUDIO_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$CYN_KEY_PASSWORD" ]; then
+            echo '::error::Build verified; installable publishing is blocked. Configure the registered CYN Studio key in CYN_STUDIO_ANDROID_KEYSTORE_BASE64 and CYN_STUDIO_ANDROID_KEY_PASSWORD. Restore the protected Studio signing backup; never replace this release key.'
+            exit 1
+          fi
+          keyfile="$RUNNER_TEMP/cyn-studio.jks"
+          trap 'rm -f "$keyfile"' EXIT
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keyfile"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$keyfile" --ks-key-alias cyn-studio --ks-pass env:CYN_KEY_PASSWORD --key-pass env:CYN_KEY_PASSWORD --out dist/android/Cyn-Studio-Android-0.2.30-preview.apk dist/android/Cyn-Studio-Android-0.2.30-preview-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/android/Cyn-Studio-Android-0.2.30-preview.apk > "$RUNNER_TEMP/cyn-cert.txt"
+          grep -F 'certificate SHA-256 digest: 045d9c122b2158d569c0ef8d10bbb08496a9f19e7397b702e99e9330c780bcb7' "$RUNNER_TEMP/cyn-cert.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 dist/android/Cyn-Studio-Android-0.2.30-preview.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.30-preview.apk > "$RUNNER_TEMP/cyn-package.txt"
+          grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='34' versionName='0.2.30-preview'" "$RUNNER_TEMP/cyn-package.txt"
+          cd dist/android
+          sha256sum Cyn-Studio-Android-0.2.30-preview.apk > Cyn-Studio-Android-0.2.30-preview.apk.sha256
+      - name: Verify CYN Studio in-place update from signed 0.2.29
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          signed=dist/android/Cyn-Studio-Android-0.2.30-preview.apk
+          previous="$RUNNER_TEMP/Cyn-Studio-Android-0.2.29-preview.apk"
+          gh release download android-studio-v0.2.29-preview --pattern Cyn-Studio-Android-0.2.29-preview.apk --output "$previous"
+          signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$signer" verify --verbose --print-certs "$previous"
+          "$signer" verify --verbose --print-certs "$signed"
+          old_cert=$("$signer" verify --print-certs "$previous" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
+          new_cert=$("$signer" verify --print-certs "$signed" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
+          test -n "$old_cert" && test "$old_cert" = "$new_cert"
+          old_info=$("$aapt" dump badging "$previous" | grep '^package:')
+          new_info=$("$aapt" dump badging "$signed" | grep '^package:')
+          echo "$old_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='33' versionName='0.2.29-preview'"
+          echo "$new_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='34' versionName='0.2.30-preview'"
+          python - "$old_info" "$new_info" <<'PY'
+          import re, sys
+          old, new = sys.argv[1:]
+          get = lambda value: int(re.search(r"versionCode='(\d+)'", value).group(1))
+          assert get(new) > get(old)
+          print("PASS: signed CYN Studio Android 0.2.29 to 0.2.30 upgrade identity")
+          PY
+          python - <<'PY'
+          import zipfile
+          from pathlib import Path
+          with zipfile.ZipFile("dist/android/Cyn-Studio-Android-0.2.30-preview.apk") as apk:
+              models = Path("android/app/src/main/assets/models")
+              for item in models.iterdir():
+                  if item.is_file():
+                      assert apk.read("assets/models/" + item.name) == item.read_bytes(), item.name
+              for arch in ("arm64-v8a", "x86_64"):
+                  assert any(entry.startswith("lib/" + arch + "/") and entry.endswith(".so")
+                             for entry in apk.namelist()), arch
+          print("PASS: CYN signed APK includes exact model assets and native engines")
+          PY
+      - name: Publish verified Android preview
+        if: github.ref == 'refs/heads/release/android-session-routing-v0.2.30-20261025'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=android-studio-v0.2.30-preview
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo 'Release already exists; refusing to replace its assets.'
+            exit 1
+          fi
+          gh release create "$tag" --target "$GITHUB_SHA" --title 'CYN Studio Android 0.2.30 preview' --notes-file android/RELEASE_NOTES.md --draft --prerelease
+          gh release upload "$tag" dist/android/Cyn-Studio-Android-0.2.30-preview.apk dist/android/Cyn-Studio-Android-0.2.30-preview.apk.sha256 dist/android/Cyn-Studio-Android-0.2.30-Source.zip
+          gh release edit "$tag" --draft=false --prerelease --latest=false
