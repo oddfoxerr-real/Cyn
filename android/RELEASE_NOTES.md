@@ -1,3 +1,18 @@
+# CYN Studio Android v0.2.30-preview — External Audio Routing Recovery
+
+- Repair Connect CYN session routing: match supported Android audio-effect sessions to *currently playing media apps* using audio-session broadcast package metadata and user-authorized media-session access, rather than disabling external effects whenever more than one session exists.
+- Keep other apps, unmatched sessions and ambiguous multiple-session routes disabled by default. Players omitting package information retain the previous strict single-session compatibility fallback.
+- Add an **Enable music-app detection** shortcut to Android Notification Access when necessary; CYN inspects active media-session playback state and package names, not notification message contents. The platform permission itself is broader.
+- After wired, USB or Bluetooth audio-device changes, recover Android audio-effect objects through a debounced non-destructive restart without resetting saved CYN EQ controls or AI selection.
+- Preserve CYN Library's original native PCM/DSP path; APEX 6M, APEX 10M, AUDONIC, YAMNet, BrainScan, learning, Material 3 Graphite, saved presets and updater remain unchanged.
+- Preserve the existing **no screen recording / no MediaProjection** Connect CYN design; no wireless ADB privilege is requested.
+
+**Important limitation:** Android's third-party audio-effects API is optional per music app and device; being able to control an EQ is not proof the player's audible output uses it. This preview does not enable unrestricted interception of other apps' sound or guarantee Spotify/DRM playback enhancement.
+
+**Upgrade identity:** CYN Studio package `io.github.oddfoxerr.cyn.studio`, versionCode **34**, versionName **0.2.30-preview**. Release uses the existing registered CYN Studio signing certificate and installs over signed prior Studio previews (no uninstall required) when Android accepts the verified update.
+
+**Verification:** CI must pass native DSP/model tests, external routing policy tests, full Android build and lint, Android emulator UI tests, signature/package/version checks and a verified upgrade comparison with v0.2.29 before signed binaries are published. Audible support across different phones, streaming apps and Bluetooth implementations remains subject to physical device testing.
+
 # CYN Studio Android v0.2.29-preview — Graphite Material 3 and Private Connect
 
 - Default Android Material 3 palette now uses CYN Desktop's graphite-gray surfaces. Other saved palettes remain available.
