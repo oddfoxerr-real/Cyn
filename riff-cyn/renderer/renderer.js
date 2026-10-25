@@ -156,16 +156,19 @@ function renderBands(status){
 }
 function renderConnected(status){
   window.dispatchEvent(new CustomEvent("cyn-native-status",{detail:status}));
-  const fx=status.fx_engine||{};
-  const ready=fx.ready===true;
-  const active=fx.processing===true;
-  $("fx-engine-detail").textContent=!ready
-    ?"Native CYN reported an audio driver or DSP initialization problem."
-    :!status.power
-      ?"Native FxSound DSP loaded. Processing switched off."
-      :active
-        ?"Native FxSound DSP is processing live audio."
-        :"Native FxSound DSP loaded. Waiting for audio from the selected output.";
+  const fx=status.fx_engine;
+  const hasNativeEngineReport=fx&&typeof fx.ready==="boolean";
+  const ready=hasNativeEngineReport&&fx.ready===true;
+  const active=hasNativeEngineReport&&fx.processing===true;
+  $("fx-engine-detail").textContent=!hasNativeEngineReport
+    ?"Native CYN connected. Update the native engine for live FxSound DSP health reporting."
+    :!ready
+      ?"Native CYN reported an audio driver or DSP initialization problem."
+      :!status.power
+        ?"Native FxSound DSP loaded. Processing switched off."
+        :active
+          ?"Native FxSound DSP is processing live audio."
+          :"Native FxSound DSP loaded. Waiting for audio from the selected output.";
   $("fx-engine-output").textContent="Output device: "+String(status.selected_output||"Not selected");
   $("fx-engine-reconnect").textContent=ready?"Refresh engine":"Reconnect engine";
   $("fx-engine-reconnect").disabled=false;
