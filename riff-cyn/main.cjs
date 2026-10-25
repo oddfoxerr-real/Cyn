@@ -145,6 +145,7 @@ function createWindow(){
 if(primaryInstance)app.whenReady().then(()=>{
   bridge=makeBridge(loadConfig());
   ipcMain.handle("cyn:status",()=>bridge.getStatus());
+  ipcMain.handle("cyn:telemetry",()=>bridge.telemetry());
   ipcMain.handle("cyn:apply",async (_e,action)=>bridge.apply(action));
   ipcMain.handle("cyn:start",()=>bridge.launch());
   ipcMain.handle("cyn:select-native",async()=>{
