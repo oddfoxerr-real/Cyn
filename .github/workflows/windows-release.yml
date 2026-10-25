@@ -252,6 +252,32 @@ jobs:
           if ($actual -ine $expected) { throw 'Installer failed SHA-256 verification.' }
           if (!(Test-Path 'dist/Cyn-Windows-x64.zip')) { throw 'Portable build missing.' }
           if (!(Test-Path 'dist/Cyn/CYN-Interface/CYN Audio.exe')) { throw 'Installer is missing Riff Material CYN interface.' }
+          # Fail the stable release if the bundled UI cannot actually reach
+          # the compiled FxSound/CYN DSP, native presets, updater or AI models.
+          $native='dist/Cyn/Cyn.exe'
+          if (!(Test-Path -LiteralPath $native) -or (Get-Item -LiteralPath $native).Length -lt 100000) {
+            throw 'Compiled native FxSound/CYN audio engine is absent from the release payload.'
+          }
+          $required=@(
+            'dist/Cyn/CynUpdater.ps1',
+            'dist/Cyn/CynUpdaterWorker.ps1',
+            'dist/Cyn/CynUpdateWindow.xaml',
+            'dist/Cyn/onnxruntime.dll',
+            'dist/Cyn/yamnet-16k-0p975s.onnx',
+            'dist/Cyn/apex6m-225.onnx',
+            'dist/Cyn/CYN-Interface/CYN Audio.exe',
+            'dist/Cyn/CYN-Interface/resources/app.asar'
+          )
+          foreach($file in $required){
+            if(!(Test-Path -LiteralPath $file)){throw "Critical native CYN component missing: $file"}
+          }
+          $nativePresets=@(Get-ChildItem -Path 'dist/Cyn/Factsoft' -File -Filter '*.fac' -ErrorAction Stop)
+          if($nativePresets.Count -lt 8){throw 'FxSound native factory presets were not bundled.'}
+          $engine=Get-Item -LiteralPath $native
+          if($engine.VersionInfo.FileVersion -notlike "${{ steps.version.outputs.version }}.*"){
+            # Filesystem version check is also enforced by test_version_controls.mjs.
+            throw "Native engine version does not match release: $($engine.VersionInfo.FileVersion)"
+          }
           if ('${{ steps.version.outputs.version }}' -eq '2.0.18') {
             foreach($name in @('onnxruntime.dll','yamnet-16k-0p975s.onnx','yamnet-manifest.json')) {
               if (!(Test-Path (Join-Path 'dist/Cyn' $name))) { throw "YAMNet v2.0.18 is missing $name" }
