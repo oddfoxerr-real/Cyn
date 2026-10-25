@@ -3242,14 +3242,15 @@ void FxController::setAlwaysOnTop(bool always_on_top)
 
 bool FxController::isLaunchOnStartup()
 {
-	HKEY hkey;
-	RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_QUERY_VALUE, &hkey);
-	DWORD type;
-	DWORD size = 0;
-	RegQueryValueEx(hkey, L"Cyn", NULL, &type, NULL, &size);
-	RegCloseKey(hkey);
-
-	return size > 0;
+    HKEY hkey = nullptr;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                      0, KEY_QUERY_VALUE, &hkey) != ERROR_SUCCESS)
+        return false;
+    DWORD type = 0;
+    DWORD size = 0;
+    const LONG query = RegQueryValueExW(hkey, L"Cyn", nullptr, &type, nullptr, &size);
+    RegCloseKey(hkey);
+    return query == ERROR_SUCCESS && type == REG_SZ && size > sizeof(wchar_t);
 }
 
 void FxController::setLaunchOnStartup(bool launch_on_startup)
