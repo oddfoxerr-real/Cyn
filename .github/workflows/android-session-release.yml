@@ -2,10 +2,10 @@ name: CYN Studio Android 0.2.30 signed release
 on:
   push:
     branches: ['codex/android', 'feature/android-sound-studio', 'release/android-session-routing-v0.2.30-20261025']
-    paths: ['android/**', '!android/**/*.md', '.github/workflows/android-release.yml']
+    paths: ['android/**', '!android/**/*.md', '.github/workflows/android-session-release.yml']
   pull_request:
     branches: ['codex/android']
-    paths: ['android/**', '.github/workflows/android-release.yml']
+    paths: ['android/**', '.github/workflows/android-session-release.yml']
   workflow_dispatch:
 permissions:
   contents: write
