@@ -173,9 +173,13 @@ app.whenReady().then(()=>{
     if(!exe)throw new Error("Locate your installed Cyn.exe first");
     const script=path.join(path.dirname(exe),"CynUpdater.ps1");
     if(!fs.existsSync(script))throw new Error("Native updater was not installed");
+    const live=await bridge.getStatus();
+    if(!live.connected)throw new Error(live.error||"Start CYN to check for updates");
+    const version=String(live.status.version||"").match(/^(\d+\.\d+\.\d+)(?:\.\d+)?$/);
+    if(!version)throw new Error("Could not verify the installed native CYN version");
     const child=require("node:child_process").spawn("powershell.exe",[
       "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
-      "-File",script
+      "-File",script,"-CurrentVersion",version[1],"-Interactive"
     ],{detached:true,windowsHide:false,stdio:"ignore",cwd:path.dirname(exe)});
     child.unref();
     return true;
