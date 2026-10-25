@@ -11,6 +11,8 @@ const isWin=()=>process.platform==="win32";
 function candidates(){
   const paths=[
     process.env.CYN_NATIVE_EXE,
+    // Packaged under {app}/CYN-Interface; native CYN lives one folder higher.
+    path.resolve(path.dirname(process.execPath),"..","Cyn.exe"),
     path.join(process.env.ProgramFiles||"C:\\Program Files","Cyn","Cyn.exe"),
     path.join(process.env.LOCALAPPDATA||"","Programs","Cyn","Cyn.exe"),
     path.resolve(__dirname,"..","dist","Cyn","Cyn.exe"),
