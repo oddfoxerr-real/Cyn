@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import random
 import time
+import subprocess
 
 import mido
 import numpy as np
@@ -142,10 +143,27 @@ def read_examples(args):
             try:
                 # RemoteZip issues HTTPS byte-range requests. It does not copy the
                 # whole 4.76GB archive to the runner, nor store source WAV audio.
-                with sf.SoundFile(io.BytesIO(archive.read(wav))) as source:
-                    sample_rate=source.samplerate
-                    audio=source.read(frames=int(sample_rate*args.seconds_per_file),
-                        dtype="float32",always_2d=True)
+                raw=archive.read(wav)
+                try:
+                    with sf.SoundFile(io.BytesIO(raw)) as source:
+                        sample_rate=source.samplerate
+                        audio=source.read(frames=int(sample_rate*args.seconds_per_file),
+                            dtype="float32",always_2d=True)
+                except (sf.LibsndfileError,ValueError):
+                    # Some Groove archive WAV-named files contain codecs libsndfile
+                    # does not recognize. ffmpeg decodes via headers without trusting
+                    # the extension. No copies of source audio are retained.
+                    if attempts<=2:
+                        print("Audio probe",wav,"magic",raw[:24].hex(),flush=True)
+                    decoded=subprocess.run([
+                        "ffmpeg","-nostdin","-hide_banner","-loglevel","error",
+                        "-i","pipe:0","-t",str(args.seconds_per_file),
+                        "-ar","48000","-ac","2","-f","f32le","pipe:1"
+                    ],input=raw,capture_output=True,timeout=90)
+                    if decoded.returncode:
+                        raise ValueError("ffmpeg decode: "+decoded.stderr[:250].decode(errors="replace"))
+                    sample_rate=48000
+                    audio=np.frombuffer(decoded.stdout,dtype="<f4").reshape(-1,2)
                 kicks=midi_kicks(archive.read(midi))
                 xx,yy,bb=examples(audio,sample_rate,kicks)
                 if len(xx)<5 or not (np.isfinite(xx).all()):
@@ -153,7 +171,7 @@ def read_examples(args):
                 data=collections[split]
                 data["x"].extend(xx);data["y"].extend(yy);data["base"].extend(bb)
                 data["files"]+=1
-            except (OSError,ValueError,EOFError) as error:
+            except (OSError,ValueError,EOFError,sf.LibsndfileError,subprocess.TimeoutExpired) as error:
                 print("SKIP corrupted/unreadable recording:",type(error).__name__,flush=True)
             if attempts%40==0:
                 print("Downloaded/decoded",attempts,"licensed recordings",
