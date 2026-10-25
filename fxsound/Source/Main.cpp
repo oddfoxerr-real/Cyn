@@ -40,6 +40,13 @@ extern "C" {
 //==============================================================================
 class FxSoundApplication : public JUCEApplication
 {
+    static void engineStartupError(const String& message)
+    {
+        const auto file=File::getSpecialLocation(File::userApplicationDataDirectory)
+            .getChildFile("Cyn").getChildFile("engine-startup-error.txt");
+        file.getParentDirectory().createDirectory();
+        file.replaceWithText(message);
+    }
 public:
     //==============================================================================
     FxSoundApplication() { }
@@ -63,6 +70,7 @@ public:
             // Cyn has its own IPC identity, but the shared audio driver must have one host.
             HANDLE snapshot=CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);
             if(snapshot==INVALID_HANDLE_VALUE) {
+                engineStartupError("CYN could not inspect the Windows audio host. Close any existing FxSound/CYN instance and launch CYN again.");
                 AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Unable to check the active audio host. Restart Cyn after closing FxSound.");
                 quit(); return;
             }
@@ -74,12 +82,14 @@ public:
             } while(Process32NextW(snapshot,&process));
             CloseHandle(snapshot);
             if(otherHost) {
+                engineStartupError("Another FxSound or CYN audio host is running. Exit it from its Windows tray menu before connecting the native engine.");
                 AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Close the other FxSound or Cyn audio app from its tray menu, then open Cyn again. Only one host can process the shared audio driver.");
                 quit(); return;
             }
             // Keep the upstream single-host lock while using Cyn's own IPC channel.
             // This also prevents stock FxSound starting later against our driver.
             if(!legacy_audio_lock_.enter(0)) {
+                engineStartupError("The FxSound audio engine lock is owned by another process. Exit the original FxSound/CYN application from its system tray, then reconnect.");
                 AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Another FxSound audio host is active. Exit it from its tray menu, then open Cyn.");
                 quit(); return;
             }
