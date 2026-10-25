@@ -1,0 +1,48 @@
+{
+  "name": "cyn-audio-desktop",
+  "version": "0.2.0",
+  "private": true,
+  "description": "CYN Audio desktop interface connected to the native audio engine",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "vendor:riff": "node scripts/vendor-riff.mjs",
+    "build:win": "npm run vendor:riff && electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "41.7.1",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "co.cyn.audio.desktop.preview",
+    "productName": "CYN Audio",
+    "artifactName": "CYN-Audio-Preview-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "native-bridge.cjs",
+      "commands.cjs",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

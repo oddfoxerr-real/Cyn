@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>CYN — Personal Audio</title>
+  <link rel="stylesheet" href="vendor/riff.css">
+  <link rel="stylesheet" href="cyn.css">
+  <script src="rail-drawer.js" defer></script>
+  <script src="renderer.js" defer></script>
+  <script src="settings.js" defer></script>
+</head>
+<body>
+  <header class="titlebar">
+    <div class="titlebar-drag">
+      <div class="app-logo">
+        <span class="logo-dot" aria-hidden="true"></span>
+        <span class="logo-text">CYN<span class="brand-slash"> / AUDIO</span></span>
+        <span class="desktop-subtitle">Personal audio</span>
+      </div>
+    </div>
+    <div class="titlebar-controls">
+      <button class="titlebar-btn" type="button" data-window="minimize" aria-label="Minimize window">—</button>
+      <button class="titlebar-btn" type="button" data-window="maximize" aria-label="Maximize window">□</button>
+      <button class="titlebar-btn close-btn" type="button" data-window="close" aria-label="Close window">×</button>
+    </div>
+  </header>
+
+  <div class="app-layout">
+    <!-- Dock and expandable drawer use original Riff rail markup/classes:
+         https://github.com/rootscripts/riff (MIT), with CYN-only actions. -->
+    <aside class="sidebar" id="sidebar" aria-label="CYN navigation">
+      <nav class="sidebar-nav" aria-label="Workspaces">
+        <div class="nav-active-indicator" id="nav-active-indicator" aria-hidden="true"></div>
+        <button class="nav-item active" type="button" data-view="overview" title="Sound Studio" aria-label="Sound Studio" aria-current="page">
+          <span class="nav-indicator"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.2 7.8-2.1 6.3-6.3 2.1 2.1-6.3z"/></svg></span>
+        </button>
+        <button class="nav-item" type="button" data-view="devices" title="Output Devices" aria-label="Output Devices">
+          <span class="nav-indicator"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 14v-3a8 8 0 0 1 16 0v3M4 14h4v7H6a2 2 0 0 1-2-2v-5zm16 0h-4v7h2a2 2 0 0 0 2-2v-5z"/></svg></span>
+        </button>
+        <button class="nav-item" type="button" data-view="ai" title="Smart Listening" aria-label="Smart Listening">
+          <span class="nav-indicator"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+        </button>
+      </nav>
+      <div class="rail-divider rail-lower-divider" role="separator"></div>
+      <div class="rail-action-group">
+        <button class="rail-icon-btn rail-drawer-trigger" id="btn-toggle-presets-drawer" type="button" data-drawer="presets" title="Presets" aria-label="Open presets" aria-expanded="false" aria-controls="rail-drawer">
+          <span class="rail-trigger-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.1 3 5.5l7 7z"/></svg><span class="nav-badge" id="presets-count" hidden></span></span>
+        </button>
+        <button class="rail-icon-btn rail-drawer-trigger" id="btn-toggle-ai-drawer" type="button" data-drawer="ai" title="AI Hub" aria-label="Open AI Hub" aria-expanded="false" aria-controls="rail-drawer">
+          <span class="rail-trigger-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="4" r="2"/><circle cx="4" cy="18" r="2"/><circle cx="20" cy="18" r="2"/><path d="m12 6-7 10m7-10 7 10M6 18h12"/></svg></span>
+        </button>
+        <button class="rail-icon-btn rail-drawer-trigger" id="btn-toggle-theme-drawer" type="button" data-drawer="appearance" title="Appearance" aria-label="Open appearance" aria-expanded="false" aria-controls="rail-drawer">
+          <span class="rail-trigger-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M19 5l-2 2M7 17l-2 2"/></svg></span>
+        </button>
+        <div class="rail-divider rail-tools-divider" role="separator"></div>
+        <button class="rail-icon-btn" type="button" data-view="equalizer" title="Precision equalizer" aria-label="Precision equalizer">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 21V3m8 18V3m8 18V3M1 14h6M9 8h6m2 8h6"/></svg>
+        </button>
+        <button class="rail-icon-btn" type="button" data-view="settings" title="CYN settings" aria-label="CYN settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 12H3M16 6H3M12 18H3M21 15V6m-2.5 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/></svg>
+        </button>
+      </div>
+      <div class="rail-drawer hidden" id="rail-drawer" aria-label="CYN tools" aria-hidden="true">
+        <div class="rail-drawer-header">
+          <span class="rail-drawer-title" id="rail-drawer-title">Presets</span>
+          <div class="rail-drawer-header-actions">
+            <button class="btn-icon-pill" type="button" id="btn-close-rail-drawer" title="Close panel" aria-label="Close panel">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="rail-drawer-section" id="drawer-section-presets">
+          <p class="drawer-helper">Choose a real preset saved in CYN.</p>
+          <div class="presets-chips-container" id="presets-container"></div>
+        </div>
+        <div class="rail-drawer-section" id="drawer-section-ai">
+          <label class="drawer-input">ACTIVE AI
+            <select id="drawer-ai-model" aria-label="Installed AI model" disabled><option value="">Connect CYN</option></select>
+          </label>
+          <p class="drawer-helper" id="drawer-ai-summary">AI processing stays in native CYN.</p>
+          <button type="button" class="drawer-action" id="drawer-open-smart">Open Smart Listening</button>
+        </div>
+        <div class="rail-drawer-section" id="drawer-section-appearance">
+          <p class="drawer-helper">Charcoal Material theme. The dock stays neutral.</p>
+          <span class="drawer-heading">Control accent</span>
+          <div class="drawer-accents" role="group" aria-label="Accent colour">
+            <button type="button" class="accent-choice" data-accent="blue" aria-label="Blue accent" aria-pressed="true"><span class="accent-swatch blue"></span></button>
+            <button type="button" class="accent-choice" data-accent="mint" aria-label="Mint accent" aria-pressed="false"><span class="accent-swatch mint"></span></button>
+            <button type="button" class="accent-choice" data-accent="violet" aria-label="Violet accent" aria-pressed="false"><span class="accent-swatch violet"></span></button>
+          </div>
+          <label class="toggle drawer-motion"><input type="checkbox" id="reduced-motion"><span class="toggle-track"></span><span>Reduce animations</span></label>
+        </div>
+      </div>
+      <div class="rail-foot"><span class="rail-led" id="rail-led"></span><span>CYN ENGINE</span></div>
+    </aside>
+
+    <main class="main-content" id="main-content">
+      <div class="workspace-header">
+        <div>
+          <p class="eyebrow">CYN / PERSONAL AUDIO</p>
+          <h1 id="page-title">Sound Studio</h1>
+          <p class="subheading" id="page-subtitle">Your sound, driven by the real native CYN engine.</p>
+        </div>
+        <div class="connection">
+          <div class="status-pill" id="engine-state" role="status"><span class="status-light"></span><span id="engine-label">Checking engine</span></div>
+          <button type="button" class="button primary" id="start-native">Start engine</button>
+        </div>
+      </div>
+
+      <div class="error-banner" id="error-banner" role="alert" hidden></div>
+      <div class="control-deck">
+        <label class="control-field"><span>ACTIVE PRESET</span><select id="preset" aria-label="Active preset"><option>Connect CYN</option></select></label>
+        <label class="control-field"><span>OUTPUT DEVICE</span><select id="device-top" aria-label="Output device"><option>Connect CYN</option></select></label>
+        <div class="control-field power-field"><span>PROCESSING</span><label class="toggle"><input type="checkbox" id="power" disabled><span class="toggle-track"></span><span>Enable audio</span></label></div>
+      </div>
+
+      <section class="content-view active" id="view-overview" aria-labelledby="overview-title">
+        <div class="section-heading"><div><span class="section-kicker">LIVE CONTROLS</span><h2 id="overview-title">Sound Studio</h2></div><button class="text-action" id="go-eq" type="button">Fine-tune EQ →</button></div>
+        <div class="eq-hero">
+          <div class="eq-hero-top"><div><h3>Frequency response</h3><p>Current equalizer gain values from CYN</p></div><span class="mode-tag" id="eq-band-mode">— BANDS</span></div>
+          <svg class="eq-curve" id="eq-curve" viewBox="0 0 1000 225" preserveAspectRatio="none" role="img" aria-label="Equalizer curve using native band gains"></svg>
+          <div class="freq-axis"><span>20 Hz</span><span>100 Hz</span><span>1 kHz</span><span>5 kHz</span><span>20 kHz</span></div>
+        </div>
+        <div class="section-heading gap-top"><div><span class="section-kicker">DIGITAL SIGNAL PROCESSING</span><h2>Enhancements</h2></div></div>
+        <div id="effects-grid" class="effects-grid"></div>
+      </section>
+
+      <section class="content-view" id="view-equalizer" aria-labelledby="equalizer-title">
+        <div class="section-heading"><div><span class="section-kicker">NATIVE DSP / DIRECT CONTROL</span><h2 id="equalizer-title">Precision equalizer</h2></div><span class="mode-tag" id="eq-mode-label">31 / 35 / 39</span></div>
+        <div class="eq-workspace">
+          <p class="support-text">Each slider writes to the existing CYN equalizer. Mouse, touch and keyboard adjustments are supported.</p>
+          <div class="eq-scroll"><div class="eq-sliders" id="eq-sliders"></div></div>
+          <p class="support-text">Band-count selection remains available in native CYN settings. The current mode is shown above.</p>
+        </div>
+      </section>
+
+      <section class="content-view" id="view-ai" aria-labelledby="ai-title">
+        <div class="section-heading"><div><span class="section-kicker">PERSONAL NEURAL AUDIO</span><h2 id="ai-title">Smart Listening</h2></div></div>
+        <div class="feature-grid">
+          <article class="surface-card"><div class="feature-heading"><h3>Adaptive processing</h3><label class="toggle only-toggle"><input type="checkbox" id="smart" disabled><span class="toggle-track"></span></label></div><p class="support-text" id="smart-summary">Connect native CYN to read active processing information.</p><label class="range-row"><span>Sensitivity <output id="sensitivity-value">—</output></span><input type="range" id="sensitivity" min="0" max="100" step="1" disabled></label></article>
+          <article class="surface-card"><span class="section-kicker">ENGINE PROFILE</span><h3 id="active-model">Not connected</h3><label class="detail-select-field"><span>SELECT INSTALLED MODEL</span><select id="ai-model" aria-label="CYN AI model" disabled><option value="">Connect CYN</option></select></label><p class="support-text" id="learning-status">Native model inference and training telemetry appear here once connected.</p><p class="support-text">BrainScan and training controls stay in native CYN until their real telemetry bridge is available.</p></article>
+        </div>
+      </section>
+
+      <section class="content-view" id="view-devices" aria-labelledby="device-title">
+        <div class="section-heading"><div><span class="section-kicker">WINDOWS AUDIO OUTPUT</span><h2 id="device-title">Devices</h2></div></div>
+        <div class="feature-grid">
+          <article class="surface-card"><label class="detail-select-field"><span>SELECT OUTPUT</span><select id="device-page" aria-label="Output device"><option>Connect CYN</option></select></label><p class="support-text">Uses the selected Windows output from the actual CYN processing engine.</p></article>
+          <article class="surface-card"><div class="feature-heading"><h3>Keep preferred device</h3><label class="toggle only-toggle"><input type="checkbox" id="pin" disabled><span class="toggle-track"></span></label></div><p class="support-text">Preserve this audio device as the preferred output when it reconnects.</p></article>
+        </div>
+      </section>
+
+      <section class="content-view" id="view-settings" aria-labelledby="settings-title">
+        <div class="section-heading"><div><span class="section-kicker">CYN / AUDIO</span><h2 id="settings-title">Settings</h2></div></div>
+        <div class="settings-surface">
+          <div class="settings-group-label">Presets</div>
+          <button class="settings-row" data-setting="save-new"><span>Save New Preset</span><span aria-hidden="true">›</span></button>
+          <button class="settings-row" data-setting="overwrite"><span>Overwrite Existing Preset</span><span aria-hidden="true">›</span></button>
+          <button class="settings-row" data-setting="undo"><span>Undo Preset Changes</span><span aria-hidden="true">›</span></button>
+          <button class="settings-row" data-setting="rename"><span>Rename Preset</span><span aria-hidden="true">›</span></button>
+          <button class="settings-row" data-setting="delete"><span>Delete Preset</span><span aria-hidden="true">›</span></button>
+          <div class="settings-divider"></div>
+          <div class="settings-group-label">Management</div>
+          <button class="settings-row" data-setting="native"><span>Import / Export Presets in Native CYN</span><span aria-hidden="true">›</span></button>
+          <button class="settings-row" data-setting="mobile"><span>Add Mobile Version</span><span aria-hidden="true">↗</span></button>
+          <button class="settings-row" data-setting="updates"><span>Check for Updates</span><span aria-hidden="true">↗</span></button>
+          <div class="settings-row settings-info"><span>Automatic Update Checks</span><span class="settings-note">Managed by native CYN</span></div>
+          <div class="settings-divider"></div>
+          <div class="settings-group-label">Appearance & App</div>
+          <button class="settings-row" data-setting="theme"><span>Theme Studio</span><span aria-hidden="true">›</span></button>
+          <label class="settings-row settings-check"><span>Smooth animations</span><input id="smooth-animations" type="checkbox" checked aria-label="Smooth animations"/></label>
+          <label class="settings-row settings-check"><span>Always on Top</span><input id="always-on-top" type="checkbox" aria-label="Always on top"/></label>
+          <button class="settings-row" data-setting="credits"><span>FxSound Credits & CYN License</span><span aria-hidden="true">↗</span></button>
+          <button class="settings-row" data-setting="support"><span>Support the FxSound Engine</span><span aria-hidden="true">↗</span></button>
+          <button class="settings-row settings-exit" data-setting="exit"><span>Exit CYN</span><span aria-hidden="true">×</span></button>
+        </div>
+        <article class="settings-native">
+          <div><h3>Native Audio Engine</h3><p class="support-text">Uses your existing CYN DSP, presets, and AI models. Closing this interface does not stop the native audio engine.</p></div>
+          <button id="select-native" class="button secondary" type="button">Locate Cyn.exe</button>
+          <p class="support-text" id="native-path-state">CYN is detected automatically when installed in its default location.</p>
+        </article>
+        <p class="legal">CYN Audio · Riff MIT UI attribution and FxSound AGPL source notices are included in the application.</p>
+      </section>
+      <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-dialog-title">
+        <form method="dialog" id="settings-dialog-form">
+          <h3 id="settings-dialog-title">Preset</h3>
+          <p id="settings-dialog-hint">Choose a name.</p>
+          <label id="settings-dialog-label" for="settings-dialog-name">Preset name</label>
+          <input id="settings-dialog-name" maxlength="64" autocomplete="off" required/>
+          <div class="dialog-actions">
+            <button type="button" class="button secondary" id="settings-dialog-cancel">Cancel</button>
+            <button class="button primary" id="settings-dialog-accept" type="submit">Save</button>
+          </div>
+        </form>
+      </dialog>
+    </main>
+  </div>
+</body>
+</html>
