@@ -303,7 +303,7 @@ void FxController::initConfig(const String& commandline)
         ? jlimit(0.0f,100.0f,headroom_value):50.0f;
     smart_preset_cycling_=settings_.getBool("cyn_auto_preset_cycling",false);
 	auto arg_list = ArgumentList(File::getSpecialLocation(File::SpecialLocationType::invokedExecutableFile).getFileName(), commandline);
-    if (arg_list.containsOption("--classic") || arg_list.containsOption("--view"))
+    if (arg_list.containsOption("--classic"))
         classic_ui_requested_ = true;
     // Legacy --theme values are ignored: stable CYN has one Dark Theme.
     auto reduced=arg_list.getValueForOption("--reduce_motion");
@@ -437,7 +437,7 @@ void FxController::initConfig(const String& commandline)
 void FxController::applyConfig(const String& commandline)
 {
 	auto arg_list = ArgumentList(File::getSpecialLocation(File::SpecialLocationType::invokedExecutableFile).getFileName(), commandline);
-    if (arg_list.containsOption("--classic") || arg_list.containsOption("--view"))
+    if (arg_list.containsOption("--classic"))
         classic_ui_requested_ = true;
     if (arg_list.containsOption("--cyn-exit-for-update"))
     {
@@ -647,7 +647,7 @@ void FxController::applyConfig(const String& commandline)
 		settings_.setBool("run_minimized", true);
 		hideMainWindow();
 	}
-	else if (arg_list.containsOption("--classic") || view.isNotEmpty())
+	else if (arg_list.containsOption("--classic"))
 	{
         // Audio-status and EQ CLI commands must not bring up JUCE.
 		showMainWindow();
@@ -1109,9 +1109,12 @@ void FxController::hideMainWindow()
 
 void FxController::showMainWindow()
 {
-    if (!classic_ui_requested_ && CynMaterialShell::launch())
+    if (!classic_ui_requested_)
     {
-        // Route tray/menu Open back to CYN Material.
+        // Even if a shell launch fails, never expose the legacy JUCE window
+        // through the normal CYN tray, pinned launcher, or update flow.
+        if (!CynMaterialShell::launch())
+            FxModel::getModel().pushMessage("CYN Material interface could not start. Repair the installation.");
         if (main_window_ != nullptr) hideMainWindow();
         return;
     }
