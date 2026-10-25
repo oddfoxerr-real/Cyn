@@ -13,6 +13,16 @@ function commandFor(action,status){
     case "smart": assert(typeof action.value==="boolean","Smart listening must be boolean");return "--smart_listening="+(action.value?"1":"0");
     case "pin": assert(typeof action.value==="boolean","Output pin must be boolean");return "--pin_output="+(action.value?"1":"0");
     case "sensitivity": assert(Number.isInteger(action.value)&&n(action.value,0,100),"Sensitivity out of range");return "--smart_sensitivity="+action.value;
+    case "automaticUpdates":
+      assert(typeof action.value==="boolean","Automatic updates must be boolean");
+      return "--cyn_automatic_updates="+(action.value?"1":"0");
+    case "launchOnStartup":
+      assert(typeof action.value==="boolean","Launch on startup must be boolean");
+      return "--cyn_startup="+(action.value?"1":"0");
+    case "hotkeysEnabled":
+      assert(typeof action.value==="boolean","Keyboard shortcuts must be boolean");
+      assert(!action.value||status.hotkeys_supported===true,"Windows keyboard shortcuts unavailable");
+      return "--cyn_hotkeys="+(action.value?"1":"0");
     case "headroom":
       assert(Number.isInteger(action.value)&&n(action.value,0,100),"Headroom must be 0–100%");
       return "--smart_headroom="+action.value;
