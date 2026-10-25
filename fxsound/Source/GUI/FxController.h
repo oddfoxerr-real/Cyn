@@ -366,6 +366,8 @@ private:
 	int auto_save_counter_;
 
 	bool minimize_tip_;
+    // Explicit classic mode is session-only; native DSP stays available in all modes.
+    bool classic_ui_requested_ = false;
 	bool survey_tip_;
 	int max_user_presets_;
 
