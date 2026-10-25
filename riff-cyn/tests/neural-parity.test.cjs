@@ -78,3 +78,23 @@ test("no loss of native Music/Movie, AUDONIC, headroom, cycling, training or fee
   for(const type of ["headroom","presetCycling","listeningMode","audonicIntensity",
     "train","labelRecent"])assert(files.renderer.includes('type:"'+type+'"'),"Renderer lost "+type);
 });
+
+test("native AI DJ remains real and installable, never mocked by Electron",()=>{
+ const available={...status,ai_dj:{installed:false,busy:false}};
+ const ready={...status,ai_dj:{installed:true,busy:false}};
+ assert.equal(commandFor({type:"djCommand",value:"download"},available),"--dj_command=download");
+ assert.equal(commandFor({type:"djCommand",value:"remove"},ready),"--dj_command=remove");
+ assert.equal(commandFor({type:"djEnable",value:true},ready),"--dj_enable=1");
+ assert.equal(commandFor({type:"djIntensity",value:72},ready),"--dj_intensity=72");
+ assert.equal(commandFor({type:"djSpacing",value:18},ready),"--dj_spacing=18");
+ assert.equal(commandFor({type:"djStereo",value:false},ready),"--dj_stereo=0");
+ for(const item of [{type:"djEnable",value:true},{type:"djSpacing",value:46},
+   {type:"djIntensity",value:101},{type:"djCommand",value:"remove"}]){
+   assert.throws(()=>commandFor(item,available),TypeError);
+ }
+ for(const option of ["--dj_command","--dj_enable","--dj_intensity","--dj_spacing","--dj_stereo"])
+   assert(files.controller.includes(option),"Native CYN DJ is missing "+option);
+ for(const id of ["dj-download","dj-remove","dj-cancel","dj-enable","dj-intensity","dj-spacing","dj-stereo"])
+   assert(files.html.includes('id="'+id+'"'),"Material UI has no "+id);
+ assert(files.renderer.includes('type:"djEnable"'));
+});
