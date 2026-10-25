@@ -191,17 +191,20 @@ if(primaryInstance)app.whenReady().then(()=>{
     onTop=value;win.setAlwaysOnTop(onTop,"floating");
     return onTop;
   });
-  ipcMain.handle("cyn:check-updates",async()=>{
+  // Resolve the installed native CYN version even if DSP is offline. Neither
+  // the Material UI nor Electron's package version is the update authority.
+  async function resolveUpdater(){
     if(process.platform!=="win32")throw new Error("CYN Windows updates require Windows");
     const exe=bridge.findExe();
-    if(!exe)throw new Error("Locate your installed Cyn.exe first");
-    const script=path.join(path.dirname(exe),"CynUpdater.ps1");
-    if(!fs.existsSync(script))throw new Error("Native updater was not installed");
+    if(!exe)throw new Error("Native Cyn.exe is missing. Repair CYN with the official Windows installer.");
+    const root=path.dirname(exe);
+    const script=path.join(root,"CynUpdater.ps1");
+    const worker=path.join(root,"CynUpdaterWorker.ps1");
+    if(!fs.existsSync(script)||!fs.existsSync(worker))
+      throw new Error("The original CYN updater is incomplete. Repair the combined CYN Windows installation.");
     const live=await bridge.getStatus();
     let reported=live.connected?String(live.status.version||""):"";
-    if(!/^\d+\.\d+\.\d+(?:\.\d+)?$/.test(reported)){
-      // The updater must be able to repair a broken/offline native engine.
-      // Resolve the installed binary's version without executing Cyn.exe.
+    if(!/^\\d+\\.\\d+\\.\\d+(?:\\.\\d+)?$/.test(reported)){
       const {execFile}=require("node:child_process");
       const {promisify}=require("node:util");
       const inspect=promisify(execFile);
@@ -215,14 +218,47 @@ if(primaryInstance)app.whenReady().then(()=>{
         throw new Error("Could not read the installed CYN version. Repair CYN with the latest official installer.");
       }
     }
-    const version=reported.match(/^(\d+\.\d+\.\d+)(?:\.\d+)?$/);
-    if(!version)throw new Error("Could not verify the installed native CYN version");
-    const child=require("node:child_process").spawn("powershell.exe",[
-      "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
-      "-File",script,"-CurrentVersion",version[1],"-Interactive"
-    ],{detached:true,windowsHide:false,stdio:"ignore",cwd:path.dirname(exe)});
-    child.unref();
-    return true;
+    const version=reported.match(/^(\\d+\\.\\d+\\.\\d+)(?:\\.\\d+)?$/);
+    if(!version)throw new Error("Could not verify the installed native CYN version.");
+    return {exe,root,script,worker,version:version[1]};
+  }
+  ipcMain.handle("cyn:updates-inspect",async()=>{
+    const {worker,root,version}=await resolveUpdater();
+    const {promisify}=require("node:util");
+    const {execFile}=require("node:child_process");
+    const exec=promisify(execFile);
+    let stdout;
+    try{
+      ({stdout}=await exec("powershell.exe",[
+        "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass",
+        "-File",worker,"-CurrentVersion",version,"-CheckOnly"
+      ],{cwd:root,windowsHide:true,timeout:65000,maxBuffer:32768}));
+    }catch(error){
+      throw new Error("CYN couldn't check GitHub releases. Verify your connection or try again. "+String(error.message||""));
+    }
+    let report;
+    try{report=JSON.parse(stdout.trim())}
+    catch{throw new Error("CYN updater returned an invalid release check. Repair the original updater files.")}
+    const latest=String(report.latestVersion||"");
+    if((report.phase!=="current"&&report.phase!=="available")||
+       report.currentVersion!==version||!/^\\d+\\.\\d+\\.\\d+$/.test(latest))
+      throw new Error("CYN updater returned an untrusted version result.");
+    return {phase:report.phase,currentVersion:version,latestVersion:latest,
+      sizeBytes:Number.isSafeInteger(Number(report.sizeBytes))?Number(report.sizeBytes):0};
+  });
+  // Keep the original CYN WPF worker, SHA-256 verification, native driver-safe
+  // installer and restart logic. Material shows check results before opening it.
+  ipcMain.handle("cyn:check-updates",async()=>{
+    const {root,script,version}=await resolveUpdater();
+    const {spawn}=require("node:child_process");
+    const child=spawn("powershell.exe",[
+      "-NoProfile","-NonInteractive","-STA","-ExecutionPolicy","Bypass",
+      "-File",script,"-CurrentVersion",version,"-Interactive"
+    ],{detached:true,windowsHide:false,stdio:"ignore",cwd:root});
+    return await new Promise((resolve,reject)=>{
+      child.once("error",error=>reject(new Error("CYN update window could not start: "+error.message)));
+      child.once("spawn",()=>{child.unref();resolve({started:true})});
+    });
   });
   ipcMain.handle("cyn:open-native",async()=>{
     const exe=bridge.findExe();
