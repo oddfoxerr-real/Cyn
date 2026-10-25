@@ -8,8 +8,13 @@ This update fixes the v2.0.85 launch routing regression. The previous installer 
 - Native status/preset/EQ/effect CLI commands keep running in the background and never open the classic window unexpectedly.
 - The native system-tray **Open** action launches CYN Material, and repeated opens focus the existing Electron instance.
 - The native DSP remains in the same installed folder and continues processing Windows system audio, APEX/AUDONIC, and the existing sound preferences.
-- **CYN (Classic)** remains an explicit Start Menu shortcut for legacy training tools and advanced troubleshooting. When the Material executable is missing, native CYN remains usable as a fallback.
+- **CYN (Classic)** remains an explicit Start Menu shortcut for legacy training tools and advanced troubleshooting. Normal CYN launch never silently falls back to the legacy interface if the Material executable cannot open; it instead displays an installation-repair message.
 - Keep the original Windows Inno Setup AppId, signing/update verification, launcher shortcuts and saved configuration. The stable v2.0.85 installer is not overwritten.
+
+## Legacy shortcut compatibility
+- Windows taskbar pins and pre-upgrade shortcuts using `Cyn.exe --view=1`, `--view=2` (and space-separated forms) now open exactly the same redesigned interface as the updated Start Menu shortcut.
+- The native engine continues to accept `--run_minimized`, `--status`, preset, EQ and other audio IPC commands without opening an extra window.
+- The old JUCE display is not a normal launch target. `--classic` remains an explicit diagnostic path for native features still being migrated.
 
 ## Design
 The default interface remains the Riff-derived graphite Material 3 design from the separate CYN Audio Preview 0.2.0: animated connected-pill dock, side drawers for presets/AI Hub/appearance, new Settings and custom close animation. Visual attribution for Riff's MIT code remains in the included notices, without branding the application as "CYN Riff".
