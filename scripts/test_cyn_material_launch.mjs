@@ -10,19 +10,30 @@ const installer=read("Installer/Cyn/Cyn.iss");
 const renderer=read("riff-cyn/main.cjs");
 const workflow=read(".github/workflows/windows-release.yml");
 
-assert.equal((source.match(/commandline\.trim\(\)\.isEmpty\(\) && CynMaterialShell::launch\(\)/g)||[]).length,2,
-  "Both first native launch and subsequent old shortcut invocations must open Material CYN");
+assert.equal((source.match(/CynMaterialShell::isUiLaunchRequest\(commandline\)/g)||[]).length,2,
+  "Both initial launch and running-instance IPC must redirect old pinned shortcuts");
 assert(source.includes('#include "GUI/CynMaterialShell.h"'),"Native entry point must include Material launcher");
 assert(shell.includes('getSiblingFile("CYN-Interface")') && shell.includes('getChildFile("CYN Audio.exe")'),
   "Native launcher must point to the bundled Material executable");
 assert(shell.includes("::ShellExecuteW"),"Use Windows shell launch instead of replacing the audio engine");
+for(const legacy of ["--view=1","--view=2","--view 1","--view 2"]){
+  assert(shell.includes('equalsIgnoreCase("'+legacy+'")'),
+    "Old taskbar launch must open the Material UI: "+legacy);
+}
+assert(source.includes("Reinstall the complete CYN update."),
+  "Broken Material installations must explain repair, not display an unrelated old UI");
+assert(shell.includes('inline bool isUiLaunchRequest('));
+assert(!shell.includes('trimmed.contains("--run_minimized")'),
+  "DSP background invocation must never redirect into a visible shell");
 assert(header.includes("classic_ui_requested_ = false"),"Classic session must be explicit and nonpersistent");
-assert(native.includes('arg_list.containsOption("--classic") || arg_list.containsOption("--view")'),
-  "Preserve explicit native Classic support");
-assert(native.includes('else if (arg_list.containsOption("--classic") || view.isNotEmpty())'),
-  "Native status/EQ commands must never display the old JUCE window");
-assert(native.includes('!classic_ui_requested_ && CynMaterialShell::launch()'),
-  "Native tray and Open actions must route to the Material UI by default");
+assert.equal((native.match(/if \(arg_list\.containsOption\("--classic"\)\)/g)||[]).length,2,
+  "Only an explicit --classic request may enable the old native GUI");
+assert(!native.includes('arg_list.containsOption("--classic") || arg_list.containsOption("--view")'),
+  "Legacy --view is normal CYN UI navigation, not permission to show JUCE");
+assert(native.includes('else if (arg_list.containsOption("--classic"))'),
+  "Native IPC commands must not display the old JUCE window");
+assert(native.includes('if (!classic_ui_requested_)') && native.includes('if (!CynMaterialShell::launch())'),
+  "Native tray opens must try the Material UI and never silently fall through to JUCE");
 assert(!native.includes('settings_.setString("version", app_version);\n\t\t\tsettings_.setBool("run_minimized", false);'),
   "Native version upgrades must not override minimized launch requests");
 assert(renderer.includes("app.requestSingleInstanceLock()"),
