@@ -53,8 +53,11 @@ public:
     {
         // Existing Cyn.exe taskbar pins and Run entries now open CYN Material.
         // All explicit CLI commands still reach the native audio engine.
-        if (commandline.trim().isEmpty() && CynMaterialShell::launch())
+        if (CynMaterialShell::isUiLaunchRequest(commandline))
         {
+            if (!CynMaterialShell::launch())
+                AlertWindow::showMessageBox(AlertWindow::WarningIcon, "CYN",
+                    "The Material interface is missing or could not open. Reinstall the complete CYN update.");
             quit();
             return;
         }
@@ -171,8 +174,13 @@ public:
 
     void anotherInstanceStarted (const String& commandline) override
     {
-        if (commandline.trim().isEmpty() && CynMaterialShell::launch())
+        if (CynMaterialShell::isUiLaunchRequest(commandline))
+        {
+            if (!CynMaterialShell::launch())
+                AlertWindow::showMessageBox(AlertWindow::WarningIcon, "CYN",
+                    "The Material interface could not open. Repair the CYN installation.");
             return;
+        }
         FxController::getInstance().applyConfig(commandline);
     }
 
