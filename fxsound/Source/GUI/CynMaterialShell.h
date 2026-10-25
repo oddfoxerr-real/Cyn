@@ -8,6 +8,19 @@
 
 namespace CynMaterialShell
 {
+    // Old CYN taskbar pins often contain --view=2. It used to open JUCE.
+    // Treat these legacy *UI-only* invocations as Material launches while
+    // preserving real DSP/IPC commands such as --status and --run_minimized.
+    inline bool isUiLaunchRequest(const juce::String& commandline)
+    {
+        const auto trimmed=commandline.trim();
+        return trimmed.isEmpty()
+            || trimmed.equalsIgnoreCase("--view=1")
+            || trimmed.equalsIgnoreCase("--view=2")
+            || trimmed.equalsIgnoreCase("--view 1")
+            || trimmed.equalsIgnoreCase("--view 2");
+    }
+
     inline juce::File executable()
     {
         return juce::File::getSpecialLocation(juce::File::currentExecutableFile)
