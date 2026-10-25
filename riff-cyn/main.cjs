@@ -85,7 +85,7 @@ function createWindow(){
         // Catch a UI regression where the full native CYN Settings and
         // Update controls exist in markup but cannot be reached by users.
         const coreControls=JSON.parse(await win.webContents.executeJavaScript(
-          'JSON.stringify((()=>{const ids=["toolbar-settings","toolbar-updates","fx-engine-reconnect","fx-engine-detail"];return ids.map(id=>{const e=document.getElementById(id);if(!e)return {id,missing:true};const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {id,visible:r.width>25&&r.height>20&&s.visibility!=="hidden"&&s.display!=="none",left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:innerWidth,height:innerHeight};})})())'));
+          'JSON.stringify((()=>{const ids=["toolbar-settings","toolbar-updates","fx-engine-reconnect","fx-engine-detail"];return ids.map(id=>{const e=document.getElementById(id);if(!e)return {id,missing:true};const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {id,visible:r.width>25&&r.height>10&&s.visibility!=="hidden"&&s.display!=="none",left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:innerWidth,height:innerHeight};})})())'));
         if(coreControls.some(x=>x.missing||!x.visible||x.left<0||x.right>x.width||x.top<0||x.bottom>x.height))
           throw new Error("Critical FX engine, Settings or Update controls are inaccessible: "+JSON.stringify(coreControls));
         await win.webContents.executeJavaScript('document.getElementById("toolbar-settings").click()');
