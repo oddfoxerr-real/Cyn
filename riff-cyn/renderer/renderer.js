@@ -183,6 +183,10 @@ function renderConnected(status){
   $("fx-engine-reconnect").textContent=ready?"Refresh engine":"Reconnect engine";
   $("fx-engine-reconnect").disabled=false;
   setEngineState(true,(routed?"ROUTED":ready?"NOT ROUTED":"DRIVER ISSUE")+" / v"+String(status.version||"?"));
+  // Green status means Windows is really routed via FxSound, not merely
+  // that Electron can reach a native process.
+  $("engine-state").classList.toggle("on",routed);
+  $("rail-led").classList.toggle("on",routed);
   $("power").checked=Boolean(status.power);
   $("smart").checked=Boolean(status.smart_listening?.enabled);
   $("pin").checked=Boolean(status.output_pinned);
