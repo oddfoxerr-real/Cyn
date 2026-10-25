@@ -567,3 +567,110 @@ body.cyn-closing .app-layout,body.cyn-closing .titlebar{
   .settings-native{padding:18px}
   .settings-row{min-height:48px}
 }
+
+
+/* Native CYN BrainScan / graph parity inside the Material workspace. */
+.neural-workspace{
+  background:linear-gradient(150deg,#202125,#18191c);
+  border:1px solid #37383c;border-radius:24px;
+  padding:20px;margin-top:18px;min-width:0
+}
+.neural-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.neural-heading h3{font-size:22px;letter-spacing:-.03em;margin-top:5px}
+.neural-tools{display:inline-flex;background:#292a2e;border-radius:99px;padding:4px;gap:3px}
+.neural-mode{
+  appearance:none;min-height:38px;padding:0 15px;background:transparent;
+  color:#bfc0c6;border:0;border-radius:99px;cursor:pointer;font-size:12px;
+  font-weight:650;transition:background .22s,color .22s
+}
+.neural-mode.active{background:#414247;color:#f6f6f8}
+.neural-mode:focus-visible{outline:2px solid #dedee3;outline-offset:2px}
+#brain-canvas{
+  display:block;width:100%;height:clamp(225px,29vw,380px);
+  background:#18191c;border:1px solid #303137;border-radius:18px;
+  margin-top:18px;box-sizing:border-box
+}
+.neural-footer{
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  padding:12px 6px 0;color:#b4b5bc;font-size:11px;
+  font-weight:700;letter-spacing:.075em
+}
+.ai-control-grid{margin-top:18px}
+.ai-control-grid .surface-card{min-height:210px;box-sizing:border-box}
+.ai-control-grid .range-row{margin-top:18px}
+.ai-control-grid .ai-aux-switch{margin-top:23px}
+.training-meter{height:5px;border-radius:100px;background:#414247;overflow:hidden;margin-top:22px}
+.training-fill{width:0;height:100%;background:#9fdac5;transition:width .25s ease}
+#train-ai{margin-top:10px}
+@media(max-width:760px){
+ .neural-workspace{padding:14px;border-radius:18px}
+ .neural-heading h3{font-size:18px}
+ #brain-canvas{height:255px}
+ .neural-mode{padding:0 10px}
+}
+@media(prefers-reduced-motion:reduce){
+ .training-fill,.neural-mode{transition:none}
+}
+
+/* Private, real-audio AI feedback timeline. */
+.neural-feedback{margin-top:18px;min-width:0}
+.neural-feedback h3{font-size:20px;letter-spacing:-.03em;margin-top:5px}
+#learning-waveform{width:100%;height:90px;background:#1a1b1e;border:1px solid #37383c;
+ display:block;border-radius:13px;box-sizing:border-box}
+.learning-controls{display:grid;grid-template-columns:1.4fr 1fr 1fr;align-items:center;gap:15px}
+.learning-controls .detail-select-field{margin:14px 0}
+.learning-controls .range-row{margin:0}
+.learning-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.learning-actions [role="status"]{color:#acadb4;font-size:12px}
+@media(max-width:840px){.learning-controls{grid-template-columns:1fr}}
+
+/* AI DJ: native optional 91 MB model, no browser DSP fork. */
+.dj-workspace{margin-top:18px}
+.dj-workspace .section-heading h3{font-size:21px}
+.dj-control-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;
+  align-items:center;gap:18px;margin-top:18px
+}
+.dj-control-grid .range-row{margin-top:0}
+.dj-buttons{display:flex;gap:10px;flex-wrap:wrap;margin:15px 0}
+.dj-workspace [hidden]{display:none!important}
+@media(max-width:840px){.dj-control-grid{grid-template-columns:1fr}}
+
+/* Live applied DSP (mint marker) is separate from user-authored blue EQ gain. */
+.eq-band{position:relative}
+.eq-applied-marker{
+  position:absolute;left:50%;transform:translateX(-50%);
+  z-index:3;width:19px;height:3px;pointer-events:none;
+  border-radius:99px;background:#93e0c5;
+  box-shadow:0 0 9px #6bdab45c;
+  transition:top 180ms ease-out,opacity 180ms ease-out
+}
+.effect-card .live-effect-label{
+  font-size:11px;color:#bcbcc3;margin-top:10px;white-space:nowrap
+}
+.effect-card .live-effect-label output{color:#93e0c5;font-variant-numeric:tabular-nums}
+.native-spectrum-row{
+  border-top:1px solid #393a3f;margin-top:18px;padding-top:16px;
+  display:flex;flex-direction:column;gap:7px;min-width:0
+}
+.native-spectrum-row canvas{
+  display:block;width:100%;height:90px;border-radius:12px;
+  background:#1a1b1e;border:1px solid #38393e;box-sizing:border-box
+}
+.native-spectrum-row #native-spectrum-state{
+  font-size:10px;color:#9fa0a7;letter-spacing:.06em
+}
+@media(prefers-reduced-motion:reduce){
+ .eq-applied-marker{transition:none}
+}
+
+/* CYN native advanced equalizer controls */
+.eq-advanced-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}
+.eq-advanced-field{display:flex;flex-direction:column;gap:12px;min-width:0;padding:16px 18px;border:1px solid #3d3e44;border-radius:16px;background:#242529}
+.eq-advanced-field>span{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:11px;font-weight:700;letter-spacing:.055em;color:#c8c8ce}
+.eq-advanced-field output{font-variant-numeric:tabular-nums;color:#fff}
+.eq-advanced-field select{width:100%;min-height:44px;border:1px solid #505158;border-radius:11px;padding:0 12px;background:#303136;color:#f5f5f6}
+.eq-advanced-field select:focus-visible,.eq-advanced-field input:focus-visible{outline:2px solid #afc7e8;outline-offset:3px}
+.eq-advanced-field input[type=range]{width:100%;min-height:34px;margin:0;accent-color:var(--cyn-control-accent,#b9cce4)}
+.eq-advanced-field input:disabled,.eq-advanced-field select:disabled{opacity:.5}
+@media(max-width:760px){.eq-advanced-grid{grid-template-columns:minmax(0,1fr)}}

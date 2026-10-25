@@ -269,14 +269,15 @@ $clock.Add_Tick({
         if (([datetime]::UtcNow-$script:finishedAt).TotalMilliseconds -gt 1500) {
             try {
                 $material=Join-Path $PSScriptRoot 'CYN-Interface\CYN Audio.exe'
-                if (Test-Path -LiteralPath $material) {
-                    Start-Process -FilePath $material -WorkingDirectory (Split-Path -Parent $material) | Out-Null
-                } else {
-                    Start-Process -FilePath (Join-Path $PSScriptRoot 'Cyn.exe') -ArgumentList '--view=2' -WorkingDirectory $PSScriptRoot | Out-Null
+                if (!(Test-Path -LiteralPath $material)) {
+                    throw 'The redesigned CYN interface is missing after installation. Repair this installation; do not launch Classic as a fallback.'
                 }
-            } catch {}
-            $script:allowedToClose=$true
-            $window.Close()
+                Start-Process -FilePath $material -WorkingDirectory (Split-Path -Parent $material) -ErrorAction Stop | Out-Null
+                $script:allowedToClose=$true
+                $window.Close()
+            } catch {
+                Show-Error ('CYN updated but could not restart the redesigned interface: '+$_.Exception.Message)
+            }
         }
         return
     }

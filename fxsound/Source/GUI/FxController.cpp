@@ -457,6 +457,70 @@ void FxController::applyConfig(const String& commandline)
     if(reduced=="0" || reduced=="1") setReducedMotion(reduced=="1");
     auto sensitivity = arg_list.getValueForOption("--smart_sensitivity");
     if (sensitivity.isNotEmpty()) setSmartSensitivity(sensitivity.getFloatValue());
+    const auto headroom=arg_list.getValueForOption("--smart_headroom");
+    if(headroom.isNotEmpty()) setSmartHeadroomCap(headroom.getFloatValue());
+    const auto listeningMode=arg_list.getValueForOption("--smart_mode");
+    if(listeningMode=="0" || listeningMode=="1") setSmartListeningMode(listeningMode.getIntValue());
+    const auto cycling=arg_list.getValueForOption("--preset_cycling");
+    if(cycling=="0" || cycling=="1") setSmartPresetCycling(cycling=="1");
+    const auto intensity=arg_list.getValueForOption("--audonic_intensity");
+    if(intensity.isNotEmpty()) setAudonicIntensity(intensity.getFloatValue());
+    if(arg_list.containsOption("--smart_train") && !smart_training_) trainSmartModel();
+    if(dj_worker_) {
+        const auto djCommand=arg_list.getValueForOption("--dj_command");
+        if(djCommand=="download") dj_worker_->download();
+        else if(djCommand=="cancel") dj_worker_->cancelDownload();
+        else if(djCommand=="remove") dj_worker_->remove();
+        const auto enableDj=arg_list.getValueForOption("--dj_enable");
+        if(enableDj=="0" || enableDj=="1") dj_worker_->setEnabled(enableDj=="1");
+        const auto djAmount=arg_list.getValueForOption("--dj_intensity");
+        const auto djSpacing=arg_list.getValueForOption("--dj_spacing");
+        const auto djStereo=arg_list.getValueForOption("--dj_stereo");
+        if(djAmount.isNotEmpty() || djSpacing.isNotEmpty() || djStereo.isNotEmpty()){
+            float intensity=dj_worker_->intensity();
+            float spacing=dj_worker_->spacing();
+            bool stereo=dj_worker_->stereo();
+            if(djAmount.isNotEmpty()) intensity=jlimit(0.0f,1.0f,djAmount.getFloatValue()/100.0f);
+            if(djSpacing.isNotEmpty()) spacing=jlimit(4.0f,45.0f,djSpacing.getFloatValue());
+            if(djStereo=="0" || djStereo=="1") stereo=djStereo=="1";
+            dj_worker_->configure(intensity,spacing,stereo);
+        }
+    }
+    // Preserve CYN's existing automatic updater and Windows integration settings.
+    // Only accept typed 0/1 commands from the local allowlisted Material bridge.
+    const auto automaticUpdates=arg_list.getValueForOption("--cyn_automatic_updates");
+    if(automaticUpdates=="0" || automaticUpdates=="1")
+        setAutoUpdates(automaticUpdates=="1");
+    const auto startup=arg_list.getValueForOption("--cyn_startup");
+    if(startup=="0" || startup=="1")
+        setLaunchOnStartup(startup=="1");
+    const auto hotkeys=arg_list.getValueForOption("--cyn_hotkeys");
+    if(hotkeys=="0" || hotkeys=="1")
+        enableHotkeys(hotkeys=="1" && SysInfo::canSupportHotkeys());
+    const auto labelSpec=arg_list.getValueForOption("--label_recent").unquoted();
+    if(labelSpec.isNotEmpty() && !smart_training_) {
+        const StringArray parts=StringArray::fromTokens(labelSpec,":","");
+        if(parts.size()==4) {
+            const int effect=parts[0].getIntValue();
+            const bool validChoice=parts[1]=="0" || parts[1]=="1";
+            const int newest=parts[2].getIntValue();
+            const int oldest=parts[3].getIntValue();
+            if(effect>=0&&effect<5&&validChoice&&newest>=0&&
+               oldest>newest&&oldest<=60) {
+                const auto now=Time::currentTimeMillis();
+                std::vector<AudioFrame> selected;
+                for(const auto& frame:smart_history_) {
+                    const auto age=now-frame.id;
+                    if(age>=newest*1000 && age<=oldest*1000)
+                        selected.push_back(frame);
+                }
+                if(selected.size()>=5)
+                    labelAudio(selected,effect,parts[1]=="1");
+                else
+                    smart_learning_message_="No recent audio in this window. Play audio and try again.";
+            }
+        }
+    }
     auto smart = arg_list.getValueForOption("--smart_listening");
     if (smart == "0" || smart == "1") setSmartListening(smart == "1");
     auto pinned = arg_list.getValueForOption("--pin_output");
@@ -739,10 +803,19 @@ void FxController::printStatus()
     settings->setProperty("cyn_build", "identity-2");
     settings->setProperty("theme", FxTheme::getThemeName((int)FxTheme::getThemeMode()));
     settings->setProperty("reduce_motion", FxTheme::isReducedMotion());
+    settings->setProperty("automatic_updates",getAutoUpdates());
+    settings->setProperty("launch_on_startup",isLaunchOnStartup());
+    settings->setProperty("hotkeys_enabled",model.getHotkeySupport());
+    settings->setProperty("hotkeys_supported",SysInfo::canSupportHotkeys());
     auto* smart = new DynamicObject();
     smart->setProperty("enabled", smart_enabled_);
     smart->setProperty("sensitivity", smart_sensitivity_);
     smart->setProperty("headroom_cap",smart_headroom_cap_);
+    smart->setProperty("listening_mode",smart_mode_);
+    smart->setProperty("training",smart_training_);
+    smart->setProperty("training_progress",getSmartTrainingProgress());
+    smart->setProperty("audonic_intensity",getAudonicIntensity());
+    settings->setProperty("ui_telemetry_schema",1);
     smart->setProperty("preset_cycling",smart_preset_cycling_);
     smart->setProperty("cycling_preset",smart_cycling_preset_name_);
     smart->setProperty("summary", getSmartSummary());
@@ -759,6 +832,10 @@ void FxController::printStatus()
         dj->setProperty("status",dj_worker_->status());dj->setProperty("accents",int(dj_worker_->effects()));
         dj->setProperty("remixes",int(dj_worker_->effects()));dj->setProperty("audio_processing",audio_process_on_);
         dj->setProperty("intensity",dj_worker_->intensity());dj->setProperty("spacing",dj_worker_->spacing());
+        dj->setProperty("installed",dj_worker_->installed());
+        dj->setProperty("busy",dj_worker_->busy());
+        dj->setProperty("progress",dj_worker_->progress());
+        dj->setProperty("stereo",dj_worker_->stereo());
         dj->setProperty("background_analyses",int(dj_worker_->analyses()));dj->setProperty("last_effect",dj_worker_->lastEffect());
         settings->setProperty("ai_dj",var(dj));
     }
@@ -2307,6 +2384,88 @@ LRESULT CALLBACK FxController::eventCallback(HWND hwnd, const UINT message, cons
 	return DefWindowProc(hwnd, message, w_param, l_param);
 }
 
+
+void FxController::publishUiTelemetry()
+{
+    // Called exclusively from the existing JUCE message-thread timer, never
+    // on the audio callback. The heartbeat lives in per-user local AppData.
+    // No network service, shared microphone stream, or raw audio is exposed.
+    if (++ui_telemetry_counter_ < 2) return;
+    ui_telemetry_counter_ = 0;
+    const auto rootDir=File::getSpecialLocation(File::userApplicationDataDirectory)
+        .getChildFile("Cyn");
+    const auto heartbeat=rootDir.getChildFile("ui-telemetry-request");
+    if (!heartbeat.existsAsFile()) return;
+    const auto age=Time::currentTimeMillis()-
+        heartbeat.getLastModificationTime().toMilliseconds();
+    if (age < 0 || age > 2500) return;
+
+    NeuralActivitySnapshot sample {};
+    const bool live=FxModel::getModel().getPowerState() &&
+        smart_enabled_ && audio_process_on_ && getLiveNeuralActivity(sample);
+    const bool audonic=getActiveAIProfileId()=="audonic";
+    CynAudonicStudio::Controls creative {};
+    const bool creativeLive=audonic && live && getLiveAudonicControls(creative);
+    auto* telemetry=new DynamicObject();
+    telemetry->setProperty("schema",1);
+    telemetry->setProperty("sampled_at_ms",var((double)Time::currentTimeMillis()));
+    telemetry->setProperty("active",live && (!audonic || creativeLive));
+    telemetry->setProperty("profile",getActiveAIProfileId());
+    telemetry->setProperty("audonic",audonic);
+    telemetry->setProperty("rms",live ? jlimit(0.0f,1.0f,sample.rms) : 0.0f);
+    telemetry->setProperty("training",smart_training_);
+    telemetry->setProperty("training_progress",getSmartTrainingProgress());
+    telemetry->setProperty("listening_mode",smart_mode_);
+    telemetry->setProperty("headroom_cap",smart_headroom_cap_);
+    telemetry->setProperty("preset_cycling",smart_preset_cycling_);
+    telemetry->setProperty("audonic_intensity",getAudonicIntensity());
+    // Last minute of real RMS measurements. No waveform samples leave CYN.
+    Array<var> recent;
+    for(int i=0;i<(int)smart_history_.size();i+=6) {
+        const auto& frame=smart_history_[(size_t)i];
+        auto* segment=new DynamicObject();
+        segment->setProperty("age_ms",var((double)(Time::currentTimeMillis()-frame.id)));
+        segment->setProperty("rms",jlimit(0.0f,1.0f,frame.audio.rms));
+        recent.add(var(segment));
+    }
+    telemetry->setProperty("recent_frames",recent);
+    telemetry->setProperty("ai_dj_enabled",dj_worker_ && dj_worker_->enabled());
+
+    Array<var> inputs,hidden,outputs,firstLinks,secondLinks,ready,creativeChannels;
+    for(const auto value:sample.inputs) inputs.add(live?var(value):var(0.0f));
+    for(const auto value:sample.hidden) hidden.add(live?var(value):var(0.0f));
+    for(const auto value:sample.outputs) outputs.add(live?var(value):var(0.0f));
+    for(const auto value:sample.inputConnections) firstLinks.add(live?var(value):var(0.0f));
+    for(const auto value:sample.outputConnections) secondLinks.add(live?var(value):var(0.0f));
+    for(const auto value:sample.ready) ready.add(value);
+    for(const auto value:creative) creativeChannels.add(creativeLive?var(value):var(0.0f));
+    telemetry->setProperty("inputs",inputs);
+    telemetry->setProperty("hidden",hidden);
+    telemetry->setProperty("outputs",outputs);
+    telemetry->setProperty("input_connections",firstLinks);
+    telemetry->setProperty("output_connections",secondLinks);
+    telemetry->setProperty("ready",ready);
+    telemetry->setProperty("creative",creativeChannels);
+    // The manual slider values stay unchanged. These values are the DSP
+    // coefficients that native Smart Listening / AUDONIC actually applied.
+    Array<var> appliedBands,appliedEffects,spectrum;
+    for(int i=0;i<getNumEqBands();++i)
+        appliedBands.add(getAppliedEqBandBoostCut(i));
+    for(auto effect:{FxEffects::Fidelity,FxEffects::Ambience,
+                     FxEffects::Surround,FxEffects::DynamicBoost,
+                     FxEffects::Bass})
+        appliedEffects.add(getAppliedEffectValue(effect)*10.0f);
+    Array<float> spectrumBands;
+    getSpectrumBandValues(spectrumBands);
+    for(const auto value:spectrumBands)
+        spectrum.add(live?var(value):var(0.0f));
+    telemetry->setProperty("applied_bands",appliedBands);
+    telemetry->setProperty("applied_effects",appliedEffects);
+    telemetry->setProperty("spectrum",spectrum);
+    rootDir.getChildFile("ui-telemetry.json").replaceWithText(
+        JSON::toString(var(telemetry),true));
+}
+
 void FxController::timerCallback()
 {
 	if (output_changed_)
@@ -2363,6 +2522,7 @@ void FxController::timerCallback()
         dj_worker_->liveScene(fresh,voice.music,voice.speech,voice.silence,audio_process_on_&&power);
     }
     updateSmartListening();
+    publishUiTelemetry();
 
 	// Auto-save modified preset once per minute if there are unsaved changes
 	static constexpr int AUTO_SAVE_INTERVAL = 600; // 600 ticks * 100ms = 60 seconds
@@ -3082,14 +3242,15 @@ void FxController::setAlwaysOnTop(bool always_on_top)
 
 bool FxController::isLaunchOnStartup()
 {
-	HKEY hkey;
-	RegOpenKeyEx(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, KEY_QUERY_VALUE, &hkey);
-	DWORD type;
-	DWORD size = 0;
-	RegQueryValueEx(hkey, L"Cyn", NULL, &type, NULL, &size);
-	RegCloseKey(hkey);
-
-	return size > 0;
+    HKEY hkey = nullptr;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+                      0, KEY_QUERY_VALUE, &hkey) != ERROR_SUCCESS)
+        return false;
+    DWORD type = 0;
+    DWORD size = 0;
+    const LONG query = RegQueryValueExW(hkey, L"Cyn", nullptr, &type, nullptr, &size);
+    RegCloseKey(hkey);
+    return query == ERROR_SUCCESS && type == REG_SZ && size > sizeof(wchar_t);
 }
 
 void FxController::setLaunchOnStartup(bool launch_on_startup)

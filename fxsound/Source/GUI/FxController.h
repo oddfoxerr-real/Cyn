@@ -373,6 +373,10 @@ private:
 
 	DWORD session_id_;
 
+    // On-demand UI telemetry: sampled on JUCE message thread only, and
+    // emitted while the Electron UI is actively requesting it.
+    void publishUiTelemetry();
+    int ui_telemetry_counter_ = 0;
     void updateSmartListening();
     void rebuildPresetCyclingProfiles();
     void restoreSmartBaseline();

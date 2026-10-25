@@ -50,6 +50,41 @@
     const actual=$("reduced-motion");actual.checked=on;
     document.body.classList.toggle("reduce-motion",on);
   });
+  const nativePrefs=[
+    ["automatic-updates","automaticUpdates","automatic_updates"],
+    ["launch-on-startup","launchOnStartup","launch_on_startup"],
+    ["hotkeys-enabled","hotkeysEnabled","hotkeys_enabled"]
+  ];
+  const syncNativePreferences=status=>{
+    for(const [id,,property] of nativePrefs){
+      const control=$(id);
+      control.checked=Boolean(status?.[property]);
+      control.disabled=!status||(id==="hotkeys-enabled"&&!status.hotkeys_supported);
+    }
+  };
+  window.addEventListener("cyn-native-status",event=>syncNativePreferences(event.detail));
+  for(const [id,type] of nativePrefs){
+    const control=$(id);
+    control.addEventListener("change",async()=>{
+      const selected=control.checked;
+      control.disabled=true;
+      try{
+        const current=await apply({type,value:selected});
+        syncNativePreferences(current);
+        if(id==="automatic-updates"&&selected)
+          notify("Automatic update checks enabled. CYN will check for verified releases.");
+      }catch(e){
+        control.checked=!selected;
+        notify(e.message);
+      }finally{
+        if(id!=="hotkeys-enabled")control.disabled=false;
+        else {
+          try{const result=await window.cyn.status();syncNativePreferences(result.connected?result.status:null)}
+          catch{control.disabled=true}
+        }
+      }
+    });
+  }
   const onTop=$("always-on-top");
   onTop.addEventListener("change",async()=>{
     try{onTop.checked=await window.cyn.alwaysOnTop(onTop.checked)}

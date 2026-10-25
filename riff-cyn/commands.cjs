@@ -13,6 +13,68 @@ function commandFor(action,status){
     case "smart": assert(typeof action.value==="boolean","Smart listening must be boolean");return "--smart_listening="+(action.value?"1":"0");
     case "pin": assert(typeof action.value==="boolean","Output pin must be boolean");return "--pin_output="+(action.value?"1":"0");
     case "sensitivity": assert(Number.isInteger(action.value)&&n(action.value,0,100),"Sensitivity out of range");return "--smart_sensitivity="+action.value;
+    case "automaticUpdates":
+      assert(typeof action.value==="boolean","Automatic updates must be boolean");
+      return "--cyn_automatic_updates="+(action.value?"1":"0");
+    case "launchOnStartup":
+      assert(typeof action.value==="boolean","Launch on startup must be boolean");
+      return "--cyn_startup="+(action.value?"1":"0");
+    case "hotkeysEnabled":
+      assert(typeof action.value==="boolean","Keyboard shortcuts must be boolean");
+      assert(!action.value||status.hotkeys_supported===true,"Windows keyboard shortcuts unavailable");
+      return "--cyn_hotkeys="+(action.value?"1":"0");
+    case "headroom":
+      assert(Number.isInteger(action.value)&&n(action.value,0,100),"Headroom must be 0–100%");
+      return "--smart_headroom="+action.value;
+    case "listeningMode":
+      assert(Number.isInteger(action.value)&&(action.value===0||action.value===1),"Unknown listening mode");
+      assert(status.smart_listening?.training!==true,"Cannot switch AI modes during training");
+      return "--smart_mode="+action.value;
+    case "presetCycling":
+      assert(typeof action.value==="boolean","Preset cycling must be boolean");
+      assert(status.smart_listening?.listening_mode===0,"Preset cycling requires Music AI");
+      return "--preset_cycling="+(action.value?"1":"0");
+    case "audonicIntensity":
+      assert(Number.isInteger(action.value)&&n(action.value,0,100),"AUDONIC intensity must be 0–100%");
+      assert(status.active_ai_profile==="audonic","AUDONIC model is not selected");
+      return "--audonic_intensity="+action.value;
+    case "djCommand":
+      assert(["download","cancel","remove"].includes(action.value),"Unknown AI DJ command");
+      assert(status.ai_dj&&typeof status.ai_dj==="object","Native AI DJ unavailable");
+      if(action.value==="download")assert(!status.ai_dj.installed&&!status.ai_dj.busy,"AI DJ is already installed or downloading");
+      if(action.value==="remove")assert(status.ai_dj.installed&&!status.ai_dj.busy,"AI DJ cannot be removed now");
+      if(action.value==="cancel")assert(status.ai_dj.busy,"AI DJ is not downloading");
+      return "--dj_command="+action.value;
+    case "djEnable":
+      assert(typeof action.value==="boolean","AI DJ enabled state must be boolean");
+      assert(status.ai_dj?.installed&&!status.ai_dj?.busy,"AI DJ is not installed or is busy");
+      return "--dj_enable="+(action.value?"1":"0");
+    case "djIntensity":
+      assert(Number.isInteger(action.value)&&n(action.value,0,100),"AI DJ intensity must be 0–100");
+      assert(status.ai_dj?.installed,"Install AI DJ first");
+      return "--dj_intensity="+action.value;
+    case "djSpacing":
+      assert(Number.isInteger(action.value)&&n(action.value,4,45),"AI DJ spacing must be 4–45 seconds");
+      assert(status.ai_dj?.installed,"Install AI DJ first");
+      return "--dj_spacing="+action.value;
+    case "djStereo":
+      assert(typeof action.value==="boolean","AI DJ stereo must be boolean");
+      assert(status.ai_dj?.installed,"Install AI DJ first");
+      return "--dj_stereo="+(action.value?"1":"0");
+    case "labelRecent": {
+      assert(Number.isInteger(action.effect)&&action.effect>=0&&action.effect<5,
+        "Choose a valid CYN DSP effect");
+      assert(typeof action.more==="boolean","Feedback must be More or Less");
+      assert(Number.isInteger(action.newest)&&Number.isInteger(action.oldest)&&
+        action.newest>=0&&action.oldest>action.newest&&action.oldest<=60,
+        "Select a valid recent audio window");
+      assert(status.smart_listening?.training!==true,"Finish training before adding labels");
+      return "--label_recent="+action.effect+":"+(action.more?"1":"0")+":"+
+        action.newest+":"+action.oldest;
+    }
+    case "train":
+      assert(status.smart_listening?.training!==true,"AI training already running");
+      return "--smart_train";
     case "preset": {
       const names=[...(status.presets?.built_in||[]),...(status.presets?.user_defined||[])].map(p=>p.name);
       assert(safeName(action.value)&&names.includes(action.value),"Preset must exist in CYN");
@@ -60,6 +122,21 @@ function commandFor(action,status){
       assert(safeName(action.value)&&profiles.some(p=>p.id===action.value),"AI model is not installed in native CYN");
       return '--select_ai="'+action.value+'"';
     }
+    case "eqBandCount":
+      assert([31,35,39].includes(action.value),"CYN supports 31, 35 or 39 EQ bands");
+      return "--num_bands="+action.value;
+    case "balance":
+      assert(n(action.value,-20,20),"Balance must be -20 to +20");
+      return "--balance="+action.value.toFixed(2);
+    case "masterGain":
+      assert(n(action.value,-20,20),"Master gain must be -20 to +20");
+      return "--master_gain="+action.value.toFixed(2);
+    case "volumeLeveling":
+      assert(n(action.value,0,4),"Volume leveling must be 0 to 4");
+      return "--volume_leveling="+action.value.toFixed(2);
+    case "filterQ":
+      assert(n(action.value,1,3),"Filter Q must be 1 to 3");
+      return "--filter_q="+action.value.toFixed(2);
     case "effect": {
       assert(effectNames.has(action.name),"Unknown effect");
       assert(n(action.value,0,10),"Effect must be 0–10");

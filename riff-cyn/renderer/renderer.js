@@ -59,9 +59,11 @@ function renderGraph(bands){
     const y=112.5-db*7.8;
     return '<line x1="25" x2="975" y1="'+y+'" y2="'+y+'" stroke="#60728c" stroke-opacity="'+(db===0?".4":".13")+'"/>'
   }).join("");
+  const realAppliedLine=svg.querySelector("#eq-ai-applied-curve");
   svg.innerHTML='<defs><linearGradient id="eqfill" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#88baff" stop-opacity=".3"/><stop offset="1" stop-color="#88baff" stop-opacity="0"/></linearGradient><linearGradient id="eqstroke"><stop stop-color="#85b6ff"/><stop offset="1" stop-color="#67e2c5"/></linearGradient></defs>'+
     lines+'<path d="'+closed+'" fill="url(#eqfill)"/><path d="'+path+'" stroke="url(#eqstroke)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'+
     list.filter((_,i)=>i%Math.max(1,Math.floor(list.length/12))===0).map(p=>'<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#b8d6ff"/>').join("");
+  if(realAppliedLine)svg.append(realAppliedLine);
 }
 function renderEffects(status){
   const box=$("effects-grid");
@@ -77,7 +79,11 @@ function renderEffects(status){
       slider.addEventListener("input",()=>{output.textContent=value(slider.value)});
       slider.addEventListener("change",()=>apply({type:"effect",name,value:Number(slider.value)}));
       const desc=document.createElement("p");desc.textContent=description;
-      article.append(h,output,slider,desc);box.append(article);
+      const live=document.createElement("p");live.className="live-effect-label";
+      live.textContent="Native AI applied: ";
+      const liveValue=document.createElement("output");liveValue.id="effect-applied-"+name;
+      liveValue.textContent="—";live.append(liveValue);
+      article.append(h,output,slider,desc,live);box.append(article);
     }
   }
   for(const [name] of fx){
@@ -112,7 +118,12 @@ function renderBands(status){
       const frequency=document.createElement("span");frequency.className="freq";
       const freq=Number(b.frequency);
       frequency.textContent=freq>=1000?(freq/1000).toFixed(freq%1000?1:0)+"k":String(Math.round(freq));
-      item.append(val,input,frequency);box.append(item);
+      const aiApplied=document.createElement("span");
+      aiApplied.id="band-applied-"+b.index;
+      aiApplied.className="eq-applied-marker";
+      aiApplied.setAttribute("aria-hidden","true");
+      aiApplied.style.opacity="0";
+      item.append(val,input,frequency,aiApplied);box.append(item);
     }
     box.dataset.signature=signature;
   }
@@ -123,14 +134,49 @@ function renderBands(status){
     if(document.activeElement!==slider){slider.value=Number(b.gain)||0;val.textContent=value(b.gain)}
   }
   renderGraph(bands);
+  const eq=status?.equalizer||{};
+  const mode=$("eq-band-select");
+  mode.disabled=!writable()||!bands.length;
+  if(bands.length)mode.value=String(bands.length);
+  const advanced=[
+    ["eq-balance","balance"],
+    ["eq-master-gain","master_gain"],
+    ["eq-volume-leveling","volume_leveling"],
+    ["eq-filter-q","filter_q"]
+  ];
+  for(const [id,key] of advanced){
+    const control=$(id),output=$(id+"-value");
+    control.disabled=!writable()||!bands.length;
+    const numeric=Number(eq[key]);
+    if(document.activeElement!==control&&Number.isFinite(numeric)){
+      control.value=numeric;
+      output.textContent=numeric.toFixed(1);
+    }
+  }
 }
 function renderConnected(status){
+  window.dispatchEvent(new CustomEvent("cyn-native-status",{detail:status}));
   setEngineState(true,(status.power?"ON":"OFF")+" / v"+String(status.version||"?"));
   $("power").checked=Boolean(status.power);
   $("smart").checked=Boolean(status.smart_listening?.enabled);
   $("pin").checked=Boolean(status.output_pinned);
   $("sensitivity").value=Number(status.smart_listening?.sensitivity)||0;
   $("sensitivity-value").textContent=Math.round(Number(status.smart_listening?.sensitivity)||0)+"%";
+  const smartMeta=status.smart_listening||{};
+  $("listening-mode").value=String(smartMeta.listening_mode===1?1:0);
+  $("listening-mode").disabled=!writable()||Boolean(smartMeta.training);
+  $("headroom").value=Number(smartMeta.headroom_cap)||0;
+  $("headroom-value").textContent=Math.round(Number(smartMeta.headroom_cap)||0)+"%";
+  $("headroom").disabled=!writable();
+  $("preset-cycling").checked=Boolean(smartMeta.preset_cycling);
+  $("preset-cycling").disabled=!writable()||smartMeta.listening_mode===1;
+  $("audonic-intensity").value=Number(smartMeta.audonic_intensity)||0;
+  $("audonic-intensity-value").textContent=Math.round(Number(smartMeta.audonic_intensity)||0)+"%";
+  $("audonic-intensity").disabled=!writable()||status.active_ai_profile!=="audonic";
+  $("training-fill").style.width=(Math.max(0,Math.min(1,Number(smartMeta.training_progress)||0))*100).toFixed(1)+"%";
+  $("train-ai").disabled=!writable()||Boolean(smartMeta.training);
+  $("training-status").textContent=smartMeta.training?"Native CYN is learning from saved feedback":"Training ready";
+  for(const id of ["feedback-more","feedback-less"])$(id).disabled=!writable()||Boolean(smartMeta.training);
   $("smart-summary").textContent=String(status.smart_listening?.summary||"Native CYN adaptive processing.");
   $("learning-status").textContent=String(status.smart_listening?.learning||"No learning telemetry available.");
   const profiles=Array.isArray(status.ai_profiles)?status.ai_profiles:[];
@@ -151,12 +197,37 @@ function renderConnected(status){
   for(const select of [$("device-top"),$("device-page")])opts(select,dev,status.selected_output||"");
   for(const id of ["preset","device-top","device-page","power","smart","pin","sensitivity"])
     $(id).disabled=!writable();
+  const dj=status.ai_dj||{};
+  $("dj-status").textContent=String(dj.status||"Native AI DJ unavailable");
+  $("dj-enable").checked=Boolean(dj.enabled);
+  $("dj-enable").disabled=!writable()||!dj.installed||Boolean(dj.busy);
+  $("dj-download").hidden=Boolean(dj.installed)||Boolean(dj.busy);
+  $("dj-download").disabled=!writable()||Boolean(dj.installed)||Boolean(dj.busy);
+  $("dj-cancel").hidden=!dj.busy;
+  $("dj-remove").hidden=!dj.installed||Boolean(dj.busy);
+  $("dj-progress-track").hidden=!dj.busy;
+  $("dj-progress-fill").style.width=(Math.max(0,Math.min(1,Number(dj.progress)||0))*100).toFixed(1)+"%";
+  $("dj-recent").textContent=String(dj.last_effect||"AI DJ ready")+" · "+String(dj.remixes||0)+" remixes";
+  $("dj-intensity").value=Math.round((Number(dj.intensity)||0)*100);
+  $("dj-intensity-value").textContent=Math.round((Number(dj.intensity)||0)*100)+"%";
+  $("dj-spacing").value=Math.round(Number(dj.spacing)||18);
+  $("dj-spacing-value").textContent=$("dj-spacing").value+" s";
+  $("dj-stereo").checked=Boolean(dj.stereo);
+  for(const id of ["dj-intensity","dj-spacing","dj-stereo"])$(id).disabled=!writable()||!dj.installed||Boolean(dj.busy);
   renderEffects(status);
   renderBands(status);
 }
 function renderDisconnected(message){
+  window.dispatchEvent(new CustomEvent("cyn-native-status",{detail:null}));
   setEngineState(false,"Engine offline");
   for(const id of ["preset","device-top","device-page","power","smart","pin","sensitivity","ai-model"])$(id).disabled=true;
+  for(const id of ["listening-mode","headroom","preset-cycling","audonic-intensity","train-ai","feedback-more","feedback-less"])$(id).disabled=true;
+  $("training-fill").style.width="0%";
+  $("training-status").textContent="Connect native CYN for training";
+  $("dj-status").textContent="Native AI DJ unavailable";
+  $("dj-recent").textContent="Connect CYN to read AI DJ status";
+  for(const id of ["dj-enable","dj-download","dj-remove","dj-cancel","dj-intensity","dj-spacing","dj-stereo"])$(id).disabled=true;
+  $("feedback-result").textContent="Connect CYN to label recent audio activity";
   $("smart-summary").textContent=String(message||"Connect native CYN to access processing");
   $("active-model").textContent="Not connected";
   $("learning-status").textContent="Start native CYN to read its actual learning state.";
@@ -183,18 +254,21 @@ async function refresh(){
   }
 }
 async function apply(action){
-  if(!writable())return;
+  if(!writable())return false;
   busy=true;
+  let succeeded=false;
   try{
     const result=await window.cyn.apply(action);
     current=result;
     if(!result.connected)throw new Error(result.error||"Native audio command did not complete");
+    succeeded=true;
     showError("");
   }catch(error){showError(error.message)}
   finally{
     busy=false;
     await refresh();
   }
+  return succeeded;
 }
 /* Riff's first/middle/last dock geometry, isolated from animation.
  * The previous approach set inline radius during transitions, but the
@@ -347,6 +421,53 @@ $("sensitivity").addEventListener("change",e=>apply({type:"sensitivity",value:Nu
 $("preset").addEventListener("change",e=>apply({type:"preset",value:e.target.value}));
 for(const id of ["device-top","device-page"])
   $(id).addEventListener("change",e=>apply({type:"output",value:e.target.value}));
+$("eq-band-select").addEventListener("change",e=>apply({type:"eqBandCount",value:Number(e.target.value)}));
+for(const [id,type] of [
+  ["eq-balance","balance"],["eq-master-gain","masterGain"],
+  ["eq-volume-leveling","volumeLeveling"],["eq-filter-q","filterQ"]
+]){
+  $(id).addEventListener("input",event=>{
+    $(id+"-value").textContent=Number(event.target.value).toFixed(1);
+  });
+  $(id).addEventListener("change",event=>apply({type,value:Number(event.target.value)}));
+}
+$("listening-mode").addEventListener("change",e=>apply({type:"listeningMode",value:Number(e.target.value)}));
+$("headroom").addEventListener("input",e=>$("headroom-value").textContent=Math.round(Number(e.target.value))+"%");
+$("headroom").addEventListener("change",e=>apply({type:"headroom",value:Number(e.target.value)}));
+$("preset-cycling").addEventListener("change",e=>apply({type:"presetCycling",value:e.target.checked}));
+$("audonic-intensity").addEventListener("input",e=>$("audonic-intensity-value").textContent=Math.round(Number(e.target.value))+"%");
+$("audonic-intensity").addEventListener("change",e=>apply({type:"audonicIntensity",value:Number(e.target.value)}));
+$("train-ai").addEventListener("click",()=>apply({type:"train"}));
+$("dj-download").addEventListener("click",()=>apply({type:"djCommand",value:"download"}));
+$("dj-cancel").addEventListener("click",()=>apply({type:"djCommand",value:"cancel"}));
+$("dj-remove").addEventListener("click",()=>apply({type:"djCommand",value:"remove"}));
+$("dj-enable").addEventListener("change",e=>apply({type:"djEnable",value:e.target.checked}));
+$("dj-intensity").addEventListener("input",e=>$("dj-intensity-value").textContent=Math.round(Number(e.target.value))+"%");
+$("dj-intensity").addEventListener("change",e=>apply({type:"djIntensity",value:Number(e.target.value)}));
+$("dj-spacing").addEventListener("input",e=>$("dj-spacing-value").textContent=Math.round(Number(e.target.value))+" s");
+$("dj-spacing").addEventListener("change",e=>apply({type:"djSpacing",value:Number(e.target.value)}));
+$("dj-stereo").addEventListener("change",e=>apply({type:"djStereo",value:e.target.checked}));
+function rangeLabel(){
+  const newer=$("feedback-from"),older=$("feedback-to");
+  if(Number(newer.value)>=Number(older.value)){
+    if(document.activeElement===newer)older.value=Math.min(60,Number(newer.value)+1);
+    else newer.value=Math.max(0,Number(older.value)-1);
+  }
+  $("feedback-from-value").textContent=newer.value+" s";
+  $("feedback-to-value").textContent=older.value+" s";
+}
+for(const id of ["feedback-from","feedback-to"])$(id).addEventListener("input",rangeLabel);
+for(const [id,more] of [["feedback-more",true],["feedback-less",false]]){
+  $(id).addEventListener("click",async()=>{
+    $("feedback-result").textContent="Saving private CYN feedback…";
+    const success=await apply({type:"labelRecent",effect:Number($("feedback-effect").value),
+      more,newest:Number($("feedback-from").value),oldest:Number($("feedback-to").value)});
+    const response=String(current?.status?.smart_listening?.learning||"");
+    $("feedback-result").textContent=success
+      ?(response||"Native CYN processed the label request")
+      :"CYN could not save that feedback";
+  });
+}
 $("ai-model").addEventListener("change",e=>apply({type:"aiModel",value:e.target.value}));
 $("reduced-motion").checked=localStorage.getItem("cyn-riff-reduced-motion")==="1";
 document.body.classList.toggle("reduce-motion",$("reduced-motion").checked);
