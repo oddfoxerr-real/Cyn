@@ -90,6 +90,29 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Version controls regression.' }
           node scripts/test_cyn_vc_runtime.mjs
           if ($LASTEXITCODE -ne 0) { throw 'x64 VC++ runtime installer regression.' }
+      - name: Validate original CYN updater read-only release checks
+        if: steps.inspect.outputs.state != 'published'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ps = Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
+          $args = @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File','CynUpdaterWorker.ps1')
+          $availableText = & $ps @args -CurrentVersion 0.0.1 -CheckOnly
+          if ($LASTEXITCODE -ne 0) { throw 'CYN available-update metadata check failed' }
+          $available = $availableText | ConvertFrom-Json
+          if ($available.phase -ne 'available' -or $available.currentVersion -ne '0.0.1') {
+            throw 'CYN failed to detect an existing published release.'
+          }
+          $currentText = & $ps @args -CurrentVersion 999.0.0 -CheckOnly
+          if ($LASTEXITCODE -ne 0) { throw 'CYN up-to-date metadata check failed' }
+          $current = $currentText | ConvertFrom-Json
+          if ($current.phase -ne 'current' -or $current.currentVersion -ne '999.0.0') {
+            throw 'CYN failed to report that the installation is current.'
+          }
+          Write-Host 'PASS: original updater metadata for available and current versions.'
+
       - name: Validate updater animation XAML
         if: steps.inspect.outputs.state != 'published'
         shell: powershell

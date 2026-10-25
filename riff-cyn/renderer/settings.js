@@ -102,7 +102,7 @@
     delete:()=>ask("delete"),
     native:()=>window.cyn.openNative(),
     mobile:()=>window.cyn.openLink("mobile"),
-    updates:()=>window.cyn.checkUpdates(),
+    updates:()=>window.cynUpdate.open(),
     release:()=>window.cyn.openLink("updates"),
     theme:()=>window.cynRail.open("appearance"),
     credits:()=>window.cyn.openLink("credits"),
@@ -112,8 +112,8 @@
   const toolbarUpdates=$("toolbar-updates");
   toolbarUpdates.addEventListener("click",async()=>{
     toolbarUpdates.disabled=true;
-    try{await window.cyn.checkUpdates()}
-    catch(error){notify("Update check failed: "+error.message)}
+    try{window.cynUpdate.open()}
+    catch(error){notify("Could not open update checker: "+error.message)}
     finally{toolbarUpdates.disabled=false}
   });
   items.forEach(button=>{

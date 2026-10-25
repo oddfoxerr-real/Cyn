@@ -10,6 +10,7 @@
   <script src="rail-drawer.js" defer></script>
   <script src="renderer.js" defer></script>
   <script src="brain-scan.js" defer></script>
+  <script src="updates.js" defer></script>
   <script src="settings.js" defer></script>
 </head>
 <body>
@@ -276,6 +277,27 @@
         </article>
         <p class="legal">CYN Audio · Riff MIT UI attribution and FxSound AGPL source notices are included in the application.</p>
       </section>
+      <dialog id="cyn-updates-dialog" class="cyn-updates-dialog" aria-labelledby="cyn-updates-title" aria-describedby="cyn-updates-detail">
+        <div class="cyn-updates-frame">
+          <div class="cyn-updates-heading">
+            <div><span class="cyn-updates-eyebrow">CYN / SYSTEM UPDATE</span><span class="cyn-updates-trust">SECURE GITHUB RELEASE</span></div>
+            <button id="cyn-updates-close" type="button" aria-label="Close updater" class="cyn-updates-close">×</button>
+          </div>
+          <div id="cyn-updates-orbit" class="cyn-updates-orbit" aria-hidden="true">
+            <div class="cyn-updates-orbit-a"></div><div class="cyn-updates-orbit-b"></div>
+            <div class="cyn-updates-orbit-core">CYN</div>
+          </div>
+          <h3 id="cyn-updates-title">Checking for updates</h3>
+          <p id="cyn-updates-detail" role="status" aria-live="polite">Checking official CYN Windows releases…</p>
+          <div class="cyn-updates-versions"><span>Installed <strong id="cyn-updates-current">—</strong></span><span>Available <strong id="cyn-updates-latest">—</strong></span></div>
+          <div class="cyn-updates-actions">
+            <button id="cyn-updates-retry" class="button secondary" type="button" hidden>Retry check</button>
+            <button id="cyn-updates-install" class="button primary" type="button" hidden>Download &amp; install</button>
+            <button id="cyn-updates-done" class="button secondary" type="button">Close</button>
+          </div>
+          <p class="cyn-updates-footnote">Original CYN updater · Verified SHA-256 download · Preserves the native FxSound engine</p>
+        </div>
+      </dialog>
       <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-dialog-title">
         <form method="dialog" id="settings-dialog-form">
           <h3 id="settings-dialog-title">Preset</h3>

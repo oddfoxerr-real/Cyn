@@ -694,3 +694,42 @@ body.cyn-closing .app-layout,body.cyn-closing .titlebar{
 .fx-engine-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-shrink:0}
 .fx-engine-actions .button{padding:10px 14px}
 @media(max-width:640px){.fx-engine-actions{width:100%}.fx-engine-actions .button{flex:1 1 120px;width:auto}}
+
+/* First-class Material update checker: the original CYN downloader runs after consent. */
+.cyn-updates-dialog{
+  width:min(560px,calc(100vw - 28px));max-width:560px;box-sizing:border-box;
+  border:1px solid #494b50;border-radius:26px;padding:0;margin:auto;
+  background:#1d1e22;color:#f5f6f7;box-shadow:0 30px 105px #000b;
+}
+.cyn-updates-dialog::backdrop{background:#070809c9;backdrop-filter:blur(7px)}
+.cyn-updates-frame{padding:24px 26px 19px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.cyn-updates-heading{width:100%;display:flex;align-items:flex-start;justify-content:space-between;gap:14px;text-align:left}
+.cyn-updates-heading>div{display:flex;flex-direction:column;gap:4px}
+.cyn-updates-eyebrow{font-size:11px;letter-spacing:.14em;font-weight:750;color:#ecf0f4}
+.cyn-updates-trust{font-size:10px;letter-spacing:.07em;color:#9ca7b4}
+.cyn-updates-close{background:#303136;color:#e6e8eb;border:0;border-radius:12px;width:36px;height:36px;cursor:pointer;font-size:21px}
+.cyn-updates-close:hover{background:#3e4148}
+.cyn-updates-orbit{width:154px;height:122px;margin:10px 0 4px;display:grid;place-items:center;position:relative}
+.cyn-updates-orbit-a,.cyn-updates-orbit-b{position:absolute;border:1px solid #69b5c6a0;border-radius:50%;width:130px;height:75px}
+.cyn-updates-orbit-a{transform:rotate(-27deg);animation:cyn-update-orbit-a 7s linear infinite}
+.cyn-updates-orbit-b{transform:rotate(57deg);animation:cyn-update-orbit-b 10s linear infinite}
+.cyn-updates-orbit-core{width:68px;height:68px;display:grid;place-items:center;border-radius:50%;
+ background:radial-gradient(circle at 34% 28%,#648fa6,#2d515f 50%,#19272d 90%);
+ box-shadow:0 0 29px #56bfda30,inset 0 0 1px #ddfaff;color:#d9f6fd;font-size:17px;letter-spacing:.05em;font-weight:850}
+.cyn-updates-dialog[data-phase="current"] .cyn-updates-orbit-core{box-shadow:0 0 26px #70d8a32b}
+.cyn-updates-dialog[data-phase="error"] .cyn-updates-orbit-core{box-shadow:0 0 23px #f6a58d2c}
+@keyframes cyn-update-orbit-a{to{transform:rotate(333deg)}}
+@keyframes cyn-update-orbit-b{to{transform:rotate(-303deg)}}
+.cyn-updates-frame h3{margin:6px 0 0;font-size:24px;font-weight:720;letter-spacing:-.035em}
+#cyn-updates-detail{min-height:39px;margin:10px 0 18px;font-size:13px;line-height:1.5;color:#c3c9d2;overflow-wrap:anywhere}
+.cyn-updates-versions{width:100%;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;
+ background:#292b31;border:1px solid #3c4049;border-radius:15px;padding:12px 13px;
+ font-size:12px;color:#aeb5c0;box-sizing:border-box}
+.cyn-updates-versions>span{display:flex;gap:7px}
+.cyn-updates-versions strong{font-size:13px;color:#eef3f7;font-variant-numeric:tabular-nums}
+.cyn-updates-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin:20px 0 0}
+.cyn-updates-actions .button{min-height:41px}
+.cyn-updates-actions [hidden]{display:none!important}
+.cyn-updates-footnote{margin:16px 0 0;font-size:10px;color:#8795a2;line-height:1.5}
+@media(max-width:600px){.cyn-updates-frame{padding:18px 15px}.cyn-updates-frame h3{font-size:21px}.cyn-updates-actions .button{padding:10px 12px}}
+@media(prefers-reduced-motion:reduce){.cyn-updates-orbit-a,.cyn-updates-orbit-b{animation:none!important}}

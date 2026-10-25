@@ -35,6 +35,24 @@ jobs:
       - name: Verify recoverable installer handoff and diagnostics
         shell: pwsh
         run: node scripts/test_cyn_update_handoff.mjs
+      - name: Verify read-only available and up-to-date checks for Material CYN
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $availableText = & .\CynUpdaterWorker.ps1 -CurrentVersion 0.0.1 -CheckOnly
+          if ($LASTEXITCODE -ne 0) { throw 'CYN read-only available check failed.' }
+          $available = $availableText | ConvertFrom-Json
+          if ($available.phase -ne 'available' -or $available.currentVersion -ne '0.0.1') {
+            throw 'CYN updater did not report available release metadata.'
+          }
+          $currentText = & .\CynUpdaterWorker.ps1 -CurrentVersion 999.0.0 -CheckOnly
+          if ($LASTEXITCODE -ne 0) { throw 'CYN read-only current check failed.' }
+          $current = $currentText | ConvertFrom-Json
+          if ($current.phase -ne 'current' -or $current.currentVersion -ne '999.0.0') {
+            throw 'CYN updater did not report already-up-to-date metadata.'
+          }
+
       - name: Probe updater matching logic
         shell: powershell
         run: .\scripts\diagnose_cyn_updater.ps1
