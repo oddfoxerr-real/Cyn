@@ -166,6 +166,23 @@ function renderConnected(status){
   for(const select of [$("device-top"),$("device-page")])opts(select,dev,status.selected_output||"");
   for(const id of ["preset","device-top","device-page","power","smart","pin","sensitivity"])
     $(id).disabled=!writable();
+  const dj=status.ai_dj||{};
+  $("dj-status").textContent=String(dj.status||"Native AI DJ unavailable");
+  $("dj-enable").checked=Boolean(dj.enabled);
+  $("dj-enable").disabled=!writable()||!dj.installed||Boolean(dj.busy);
+  $("dj-download").hidden=Boolean(dj.installed)||Boolean(dj.busy);
+  $("dj-download").disabled=!writable()||Boolean(dj.installed)||Boolean(dj.busy);
+  $("dj-cancel").hidden=!dj.busy;
+  $("dj-remove").hidden=!dj.installed||Boolean(dj.busy);
+  $("dj-progress-track").hidden=!dj.busy;
+  $("dj-progress-fill").style.width=(Math.max(0,Math.min(1,Number(dj.progress)||0))*100).toFixed(1)+"%";
+  $("dj-recent").textContent=String(dj.last_effect||"AI DJ ready")+" · "+String(dj.remixes||0)+" remixes";
+  $("dj-intensity").value=Math.round((Number(dj.intensity)||0)*100);
+  $("dj-intensity-value").textContent=Math.round((Number(dj.intensity)||0)*100)+"%";
+  $("dj-spacing").value=Math.round(Number(dj.spacing)||18);
+  $("dj-spacing-value").textContent=$("dj-spacing").value+" s";
+  $("dj-stereo").checked=Boolean(dj.stereo);
+  for(const id of ["dj-intensity","dj-spacing","dj-stereo"])$(id).disabled=!writable()||!dj.installed||Boolean(dj.busy);
   renderEffects(status);
   renderBands(status);
 }
@@ -175,6 +192,9 @@ function renderDisconnected(message){
   for(const id of ["listening-mode","headroom","preset-cycling","audonic-intensity","train-ai","feedback-more","feedback-less"])$(id).disabled=true;
   $("training-fill").style.width="0%";
   $("training-status").textContent="Connect native CYN for training";
+  $("dj-status").textContent="Native AI DJ unavailable";
+  $("dj-recent").textContent="Connect CYN to read AI DJ status";
+  for(const id of ["dj-enable","dj-download","dj-remove","dj-cancel","dj-intensity","dj-spacing","dj-stereo"])$(id).disabled=true;
   $("feedback-result").textContent="Connect CYN to label recent audio activity";
   $("smart-summary").textContent=String(message||"Connect native CYN to access processing");
   $("active-model").textContent="Not connected";
@@ -373,6 +393,15 @@ $("preset-cycling").addEventListener("change",e=>apply({type:"presetCycling",val
 $("audonic-intensity").addEventListener("input",e=>$("audonic-intensity-value").textContent=Math.round(Number(e.target.value))+"%");
 $("audonic-intensity").addEventListener("change",e=>apply({type:"audonicIntensity",value:Number(e.target.value)}));
 $("train-ai").addEventListener("click",()=>apply({type:"train"}));
+$("dj-download").addEventListener("click",()=>apply({type:"djCommand",value:"download"}));
+$("dj-cancel").addEventListener("click",()=>apply({type:"djCommand",value:"cancel"}));
+$("dj-remove").addEventListener("click",()=>apply({type:"djCommand",value:"remove"}));
+$("dj-enable").addEventListener("change",e=>apply({type:"djEnable",value:e.target.checked}));
+$("dj-intensity").addEventListener("input",e=>$("dj-intensity-value").textContent=Math.round(Number(e.target.value))+"%");
+$("dj-intensity").addEventListener("change",e=>apply({type:"djIntensity",value:Number(e.target.value)}));
+$("dj-spacing").addEventListener("input",e=>$("dj-spacing-value").textContent=Math.round(Number(e.target.value))+" s");
+$("dj-spacing").addEventListener("change",e=>apply({type:"djSpacing",value:Number(e.target.value)}));
+$("dj-stereo").addEventListener("change",e=>apply({type:"djStereo",value:e.target.checked}));
 function rangeLabel(){
   const newer=$("feedback-from"),older=$("feedback-to");
   if(Number(newer.value)>=Number(older.value)){
