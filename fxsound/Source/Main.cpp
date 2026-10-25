@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "GUI/FxController.h"
 #include "GUI/FxTheme.h"
 #include "GUI/FxMainWindow.h"
+#include "GUI/CynMaterialShell.h"
 #include "AudioPassthru.h"
 #include <dbghelp.h>
 #include <tlhelp32.h>
@@ -50,6 +51,13 @@ public:
     //==============================================================================
     void initialise (const String& commandline) override
     {
+        // Existing Cyn.exe taskbar pins and Run entries now open CYN Material.
+        // All explicit CLI commands still reach the native audio engine.
+        if (commandline.trim().isEmpty() && CynMaterialShell::launch())
+        {
+            quit();
+            return;
+        }
         // This method is where you should put your application's initialisation code..
         try
         {
@@ -163,6 +171,8 @@ public:
 
     void anotherInstanceStarted (const String& commandline) override
     {
+        if (commandline.trim().isEmpty() && CynMaterialShell::launch())
+            return;
         FxController::getInstance().applyConfig(commandline);
     }
 
