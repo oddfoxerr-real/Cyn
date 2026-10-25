@@ -8,6 +8,15 @@ let win;
 let bridge;
 let allowClose=false,closeRequested=false;
 let onTop=false;
+const primaryInstance=app.requestSingleInstanceLock();
+if(!primaryInstance)app.quit();
+else app.on("second-instance",()=>{
+  // Reuse the existing Material CYN window for tray clicks / old shortcuts.
+  if(win&&!win.isDestroyed()){
+    if(win.isMinimized())win.restore();
+    win.show();win.focus();
+  }
+});
 const settingsFile=()=>path.join(app.getPath("userData"),"native-engine.json");
 function loadConfig(){
   try{
@@ -133,7 +142,7 @@ function createWindow(){
   win.webContents.setWindowOpenHandler(()=>({action:"deny"}));
   win.webContents.on("will-navigate",event=>event.preventDefault());
 }
-app.whenReady().then(()=>{
+if(primaryInstance)app.whenReady().then(()=>{
   bridge=makeBridge(loadConfig());
   ipcMain.handle("cyn:status",()=>bridge.getStatus());
   ipcMain.handle("cyn:apply",async (_e,action)=>bridge.apply(action));
