@@ -28,6 +28,29 @@ function commandFor(action,status){
       assert(Number.isInteger(action.value)&&n(action.value,0,100),"AUDONIC intensity must be 0–100%");
       assert(status.active_ai_profile==="audonic","AUDONIC model is not selected");
       return "--audonic_intensity="+action.value;
+    case "djCommand":
+      assert(["download","cancel","remove"].includes(action.value),"Unknown AI DJ command");
+      assert(status.ai_dj&&typeof status.ai_dj==="object","Native AI DJ unavailable");
+      if(action.value==="download")assert(!status.ai_dj.installed&&!status.ai_dj.busy,"AI DJ is already installed or downloading");
+      if(action.value==="remove")assert(status.ai_dj.installed&&!status.ai_dj.busy,"AI DJ cannot be removed now");
+      if(action.value==="cancel")assert(status.ai_dj.busy,"AI DJ is not downloading");
+      return "--dj_command="+action.value;
+    case "djEnable":
+      assert(typeof action.value==="boolean","AI DJ enabled state must be boolean");
+      assert(status.ai_dj?.installed&&!status.ai_dj?.busy,"AI DJ is not installed or is busy");
+      return "--dj_enable="+(action.value?"1":"0");
+    case "djIntensity":
+      assert(Number.isInteger(action.value)&&n(action.value,0,100),"AI DJ intensity must be 0–100");
+      assert(status.ai_dj?.installed,"Install AI DJ first");
+      return "--dj_intensity="+action.value;
+    case "djSpacing":
+      assert(Number.isInteger(action.value)&&n(action.value,4,45),"AI DJ spacing must be 4–45 seconds");
+      assert(status.ai_dj?.installed,"Install AI DJ first");
+      return "--dj_spacing="+action.value;
+    case "djStereo":
+      assert(typeof action.value==="boolean","AI DJ stereo must be boolean");
+      assert(status.ai_dj?.installed,"Install AI DJ first");
+      return "--dj_stereo="+(action.value?"1":"0");
     case "labelRecent": {
       assert(Number.isInteger(action.effect)&&action.effect>=0&&action.effect<5,
         "Choose a valid CYN DSP effect");
