@@ -466,6 +466,26 @@ void FxController::applyConfig(const String& commandline)
     const auto intensity=arg_list.getValueForOption("--audonic_intensity");
     if(intensity.isNotEmpty()) setAudonicIntensity(intensity.getFloatValue());
     if(arg_list.containsOption("--smart_train") && !smart_training_) trainSmartModel();
+    if(dj_worker_) {
+        const auto djCommand=arg_list.getValueForOption("--dj_command");
+        if(djCommand=="download") dj_worker_->download();
+        else if(djCommand=="cancel") dj_worker_->cancelDownload();
+        else if(djCommand=="remove") dj_worker_->remove();
+        const auto enableDj=arg_list.getValueForOption("--dj_enable");
+        if(enableDj=="0" || enableDj=="1") dj_worker_->setEnabled(enableDj=="1");
+        const auto djAmount=arg_list.getValueForOption("--dj_intensity");
+        const auto djSpacing=arg_list.getValueForOption("--dj_spacing");
+        const auto djStereo=arg_list.getValueForOption("--dj_stereo");
+        if(djAmount.isNotEmpty() || djSpacing.isNotEmpty() || djStereo.isNotEmpty()){
+            float intensity=dj_worker_->intensity();
+            float spacing=dj_worker_->spacing();
+            bool stereo=dj_worker_->stereo();
+            if(djAmount.isNotEmpty()) intensity=jlimit(0.0f,1.0f,djAmount.getFloatValue()/100.0f);
+            if(djSpacing.isNotEmpty()) spacing=jlimit(4.0f,45.0f,djSpacing.getFloatValue());
+            if(djStereo=="0" || djStereo=="1") stereo=djStereo=="1";
+            dj_worker_->configure(intensity,spacing,stereo);
+        }
+    }
     const auto labelSpec=arg_list.getValueForOption("--label_recent").unquoted();
     if(labelSpec.isNotEmpty() && !smart_training_) {
         const StringArray parts=StringArray::fromTokens(labelSpec,":","");
@@ -795,6 +815,10 @@ void FxController::printStatus()
         dj->setProperty("status",dj_worker_->status());dj->setProperty("accents",int(dj_worker_->effects()));
         dj->setProperty("remixes",int(dj_worker_->effects()));dj->setProperty("audio_processing",audio_process_on_);
         dj->setProperty("intensity",dj_worker_->intensity());dj->setProperty("spacing",dj_worker_->spacing());
+        dj->setProperty("installed",dj_worker_->installed());
+        dj->setProperty("busy",dj_worker_->busy());
+        dj->setProperty("progress",dj_worker_->progress());
+        dj->setProperty("stereo",dj_worker_->stereo());
         dj->setProperty("background_analyses",int(dj_worker_->analyses()));dj->setProperty("last_effect",dj_worker_->lastEffect());
         settings->setProperty("ai_dj",var(dj));
     }
