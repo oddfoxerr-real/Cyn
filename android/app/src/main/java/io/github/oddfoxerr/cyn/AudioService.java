@@ -620,7 +620,7 @@ public final class AudioService extends Service {
                 @Override public void onPlayerError(androidx.media3.common.PlaybackException error){status="Cannot play this track · "+error.getErrorCodeName();playing=false;preparing=false;desktopAi.active=false;audio.abandonAudioFocusRequest(focus);updateSession();updateNotification();if(!monitor)stopForeground(STOP_FOREGROUND_DETACH);}
             });
             ArrayList<androidx.media3.common.MediaItem> items=new ArrayList<>();
-            for(AudioLibrary.Track track:queue)items.add(new androidx.media3.common.MediaItem.Builder().setUri(track.uri).setMediaId(track.uri.toString()).setMediaMetadata(new androidx.media3.common.MediaMetadata.Builder().setTitle(track.title).setArtist(track.artist).setAlbumTitle(track.album).build()).build());
+            for(AudioLibrary.Track track:queue)items.add(new androidx.media3.common.MediaItem.Builder().setUri(track.playbackUri()).setMediaId(track.uri.toString()).setMediaMetadata(new androidx.media3.common.MediaMetadata.Builder().setTitle(track.title).setArtist(track.artist).setAlbumTitle(track.album).build()).build());
             title=queue.get(index).title;player.setMediaItems(items,index,0);preparing=true;foreground();player.prepare();startPlayback();
         }catch(Exception e){status="Unable to play: "+e.getClass().getSimpleName();releasePlayer();if(!monitor)stopForeground(STOP_FOREGROUND_REMOVE);}
     }
