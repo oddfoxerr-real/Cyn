@@ -53,14 +53,10 @@ public:
     {
         // Existing Cyn.exe taskbar pins and Run entries now open CYN Material.
         // All explicit CLI commands still reach the native audio engine.
-        if (CynMaterialShell::isUiLaunchRequest(commandline))
-        {
-            if (!CynMaterialShell::launch())
-                AlertWindow::showMessageBox(AlertWindow::WarningIcon, "CYN",
-                    "The Material interface is missing or could not open. Reinstall the complete CYN update.");
-            quit();
-            return;
-        }
+        // A normal CYN launch starts the real DSP host minimized, then opens
+        // the Material UI. Do not quit and respawn the native engine: that
+        // races Electron's connection and can leave system audio offline.
+        const bool launchMaterial = CynMaterialShell::isUiLaunchRequest(commandline);
         // This method is where you should put your application's initialisation code..
         try
         {
@@ -102,13 +98,17 @@ public:
 
             setWorkingDirectory();
 
-            FxController::getInstance().initConfig(commandline);
+            FxController::getInstance().initConfig(
+                launchMaterial ? String("--run_minimized") : commandline);
 
             audio_passthru_ = std::make_unique<AudioPassthru>();
             main_window_ = std::make_unique<FxMainWindow>();
             system_tray_view_.reset(new FxSystemTrayView());
 
             FxController::getInstance().init(main_window_.get(), system_tray_view_.get(), audio_passthru_.get());
+            if (launchMaterial && !CynMaterialShell::launch())
+                AlertWindow::showMessageBox(AlertWindow::WarningIcon, "CYN",
+                    "The Material interface is missing or could not open. Reinstall the complete CYN update.");
         }
         catch (const std::exception& e)
         {
