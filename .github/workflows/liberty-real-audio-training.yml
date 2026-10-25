@@ -1,0 +1,59 @@
+name: LIBERTY real music audio training (free hosted runner)
+on:
+  push:
+    branches: ['train/liberty-groove-real-audio-20261025']
+    paths: ['training/train_liberty_groove.py', '.github/workflows/liberty-real-audio-training.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install CPU-only music and ONNX training dependencies
+        run: |
+          python -m pip install --disable-pip-version-check numpy==2.2.6 scipy==1.15.3 mido==1.3.3 soundfile==0.13.1 remotezip==0.12.3 onnx==1.18.0 onnxruntime==1.23.2
+      - name: Test native-equivalent feature extraction, ONNX and MIDI parsing
+        run: |
+          python - <<'PY'
+          import io, pathlib, tempfile
+          import mido
+          import numpy as np
+          from training.train_liberty_groove import midi_kicks, sound_features, examples, export_onnx
+          midi=mido.MidiFile()
+          track=mido.MidiTrack();midi.tracks.append(track)
+          track.append(mido.Message('note_on',note=36,velocity=100,time=480))
+          payload=io.BytesIO();midi.save(file=payload)
+          assert len(midi_kicks(payload.getvalue()))==1
+          sr=22050;t=np.arange(sr*4)/sr
+          audio=np.column_stack([.15*np.sin(2*np.pi*75*t),.15*np.sin(2*np.pi*75*t)])
+          feats=sound_features(audio,sr)
+          assert feats.shape[1]==8 and len(feats)>20 and np.isfinite(feats).all()
+          x,y,b=examples(audio,sr,[1.2,2.2])
+          assert len(x)==len(y)==len(b) and sum(y)>0 and len(x)>2
+          rng=np.random.default_rng(4)
+          model={'w1':rng.normal(0,.01,(160,32)).astype('f4'),'b1':np.zeros(32,'f4'),
+                 'w2':rng.normal(0,.01,(32,1)).astype('f4'),'b2':np.zeros(1,'f4')}
+          with tempfile.TemporaryDirectory() as temp:
+              export_onnx(model,pathlib.Path(temp)/'smoke.onnx')
+          print('PASS: MIDI labels, native-aligned features and exported ONNX inference')
+          PY
+      - name: Train real 100ms bass/kick timing model using publicly licensed audio
+        run: |
+          set -euo pipefail
+          python -u training/train_liberty_groove.py \
+            --max-files 850 --seconds-per-file 30 --max-wav-bytes 65000000 \
+            --epochs 90 --output liberty-training-output
+      - name: Save trained weights, data license and held-out benchmark
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: LIBERTY-open-audio-kick-training
+          path: liberty-training-output/
+          if-no-files-found: warn
+          retention-days: 90
