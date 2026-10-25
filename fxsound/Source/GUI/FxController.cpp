@@ -451,6 +451,36 @@ void FxController::applyConfig(const String& commandline)
 		printStatus();
 		return;
 	}
+    if (arg_list.containsOption("--restore_audio"))
+    {
+        // Use the unchanged FxSound virtual capture -> native DfxDsp ->
+        // selected physical output engine. This is an explicit UI request:
+        // never silently change the user's Windows default playback device.
+        const auto devices=audio_passthru_->getSoundDevices(false);
+        bool virtualReady=false;
+        for (const auto& device:devices)
+            if(device.isDFXDevice && device.isActive) virtualReady=true;
+        if (!dfx_enabled_ || !virtualReady)
+        {
+            logMessage("CYN routing: FxSound virtual audio device is missing or disabled.");
+            return;
+        }
+        const auto physical=FxModel::getModel().getSelectedOutput();
+        if (physical.pwszID.empty() || !physical.isRealDevice || !physical.isActive)
+        {
+            logMessage("CYN routing: choose an active speaker or headphone output first.");
+            return;
+        }
+        if (!audio_passthru_->restoreCynRouting())
+        {
+            logMessage("CYN routing: the original FxSound playback pipeline could not restart.");
+            return;
+        }
+        setPowerState(true);
+        setOutput(String(physical.pwszID.c_str()),false);
+        logMessage("CYN routing: original FxSound default-endpoint processing restarted.");
+        return;
+    }
 
     // Legacy --theme values are ignored: stable CYN has one Dark Theme.
     auto reduced=arg_list.getValueForOption("--reduce_motion");
@@ -804,8 +834,31 @@ void FxController::printStatus()
     // Authoritative information from the *native* engine; not a UI simulation.
     auto* engine=new DynamicObject();
     engine->setProperty("backend","FxSound/CYN native DSP");
-    engine->setProperty("ready",dfx_enabled_);
-    engine->setProperty("processing",dfx_enabled_ && audio_process_on_ && model.getPowerState());
+    // Windows audio can bypass an apparently connected engine if the default
+    // playback endpoint is the speakers rather than the FxSound virtual device.
+    // Report endpoint routing separately from engine/process connectivity.
+    bool virtualPresent=false,virtualActive=false,virtualDefault=false;
+    bool physicalOutputReady=false;
+    const auto selectedPhysical=model.getSelectedOutput().pwszID;
+    for(const auto& device:audio_passthru_->getSoundDevices(false))
+    {
+        if(device.isDFXDevice)
+        {
+            virtualPresent=true;
+            virtualActive=device.isActive;
+            virtualDefault=device.isDefaultDevice;
+        }
+        if(device.isRealDevice && device.isActive && device.pwszID==selectedPhysical)
+            physicalOutputReady=true;
+    }
+    engine->setProperty("virtual_device_present",virtualPresent);
+    engine->setProperty("virtual_device_active",virtualActive);
+    engine->setProperty("virtual_device_default",virtualDefault);
+    engine->setProperty("physical_output_ready",physicalOutputReady);
+    engine->setProperty("ready",dfx_enabled_ && virtualActive && physicalOutputReady);
+    engine->setProperty("route_enabled",virtualActive && virtualDefault && physicalOutputReady && model.getPowerState());
+    engine->setProperty("processing",virtualActive && virtualDefault && physicalOutputReady
+        && audio_process_on_ && model.getPowerState());
     settings->setProperty("fx_engine",var(engine));
     settings->setProperty("theme", FxTheme::getThemeName((int)FxTheme::getThemeMode()));
     settings->setProperty("reduce_motion", FxTheme::isReducedMotion());
