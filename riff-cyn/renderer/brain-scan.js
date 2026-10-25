@@ -13,6 +13,7 @@
  const profile=document.getElementById("brain-profile");
  const controls=[...document.querySelectorAll("[data-brain-mode]")];
  let mode="scan", sample=null,lastSample=0,lastPoll=0,lastDraw=0,angle=.12;
+ let lastCurveDraw=0,appliedDisplay=[];
  const colors=["#ff9674","#ffcb83","#ae99ff","#70dbdb","#de93d1","#72ddb5"];
  const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,Number.isFinite(Number(x))?Number(x):lo));
  const reduce=()=>document.body.classList.contains("reduce-motion")||
@@ -161,9 +162,15 @@
    let line=document.getElementById("eq-ai-applied-curve");
    if(!actual){
      if(line)line.remove();
+     appliedDisplay=[];
      return;
    }
-   const d=values.map((v,i)=>{
+   if(appliedDisplay.length!==values.length)
+     appliedDisplay=values.map(Number);
+   else if(reduce())appliedDisplay=values.map(Number);
+   else appliedDisplay=appliedDisplay.map((previous,i)=>
+     previous+(Number(values[i])-previous)*.23);
+   const d=appliedDisplay.map((v,i)=>{
      const x=25+i*950/(values.length-1);
      const y=112.5-clamp(Number(v),-12,12)*7.8;
      return (i?"L":"M")+x.toFixed(2)+","+y.toFixed(2);
@@ -250,6 +257,11 @@
  }
  function frame(now){
    requestAnimationFrame(frame);
+   if(!document.hidden&&document.getElementById("view-overview")?.classList.contains("active")&&
+      now-lastCurveDraw>=(reduce()?400:33)){
+     lastCurveDraw=now;
+     drawAppliedEqCurve();
+   }
    if(!isShowing()||now-lastDraw<(reduce()?450:33))return;
    lastDraw=now;
    const dims=size();if(!dims)return;
