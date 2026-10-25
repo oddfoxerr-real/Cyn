@@ -32,15 +32,6 @@ public final class AudioService extends Service {
         @Override public void onAudioDevicesAdded(AudioDeviceInfo[] devices) { scheduleRouteRecovery(); }
         @Override public void onAudioDevicesRemoved(AudioDeviceInfo[] devices) { scheduleRouteRecovery(); }
     };
-    private final Runnable routeRecovery=()->{
-        if(destroyed||!monitor)return;
-        // Bluetooth/headphone changes can invalidate effect control without a
-        // corresponding CLOSE broadcast. Recreate existing effects, not audio.
-        for(Chain chain:new ArrayList<>(chains.values()))
-            if(chain.id!=playerSession)chain.reopen();
-        refreshVisualization();
-        updateNotification();
-    };
     private void scheduleRouteRecovery(){
         handler.removeCallbacks(routeRecovery);
         handler.postDelayed(routeRecovery,700);
@@ -118,6 +109,15 @@ public final class AudioService extends Service {
     AudioFocusRequest focus;
     boolean monitor, enabled=true, smart, playing, preparing, training, destroyed, resumeOnFocus;
     int trainingEpoch, activeSession=-1, playerSession=-1;
+    private final Runnable routeRecovery=()->{
+        if(destroyed||!monitor)return;
+        // Bluetooth/headphone changes can invalidate effect control without a
+        // corresponding CLOSE broadcast. Recreate existing effects, not audio.
+        for(Chain chain:new ArrayList<>(chains.values()))
+            if(chain.id!=playerSession)chain.reopen();
+        refreshVisualization();
+        updateNotification();
+    };
     float sensitivity=.7f, bass=2, clarity=1, width=0, loudness=0;
     final float[] eq=new float[5];
     String title="Choose a song", status="Ready", analysis="Enable analysis to use Smart listening.";
