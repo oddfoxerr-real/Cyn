@@ -77,7 +77,11 @@ function renderEffects(status){
       slider.addEventListener("input",()=>{output.textContent=value(slider.value)});
       slider.addEventListener("change",()=>apply({type:"effect",name,value:Number(slider.value)}));
       const desc=document.createElement("p");desc.textContent=description;
-      article.append(h,output,slider,desc);box.append(article);
+      const live=document.createElement("p");live.className="live-effect-label";
+      live.textContent="Native AI applied: ";
+      const liveValue=document.createElement("output");liveValue.id="effect-applied-"+name;
+      liveValue.textContent="—";live.append(liveValue);
+      article.append(h,output,slider,desc,live);box.append(article);
     }
   }
   for(const [name] of fx){
@@ -112,7 +116,12 @@ function renderBands(status){
       const frequency=document.createElement("span");frequency.className="freq";
       const freq=Number(b.frequency);
       frequency.textContent=freq>=1000?(freq/1000).toFixed(freq%1000?1:0)+"k":String(Math.round(freq));
-      item.append(val,input,frequency);box.append(item);
+      const aiApplied=document.createElement("span");
+      aiApplied.id="band-applied-"+b.index;
+      aiApplied.className="eq-applied-marker";
+      aiApplied.setAttribute("aria-hidden","true");
+      aiApplied.style.opacity="0";
+      item.append(val,input,frequency,aiApplied);box.append(item);
     }
     box.dataset.signature=signature;
   }
