@@ -2431,6 +2431,22 @@ void FxController::publishUiTelemetry()
     telemetry->setProperty("output_connections",secondLinks);
     telemetry->setProperty("ready",ready);
     telemetry->setProperty("creative",creativeChannels);
+    // The manual slider values stay unchanged. These values are the DSP
+    // coefficients that native Smart Listening / AUDONIC actually applied.
+    Array<var> appliedBands,appliedEffects,spectrum;
+    for(int i=0;i<getNumEqBands();++i)
+        appliedBands.add(getAppliedEqBandBoostCut(i));
+    for(auto effect:{FxEffects::Fidelity,FxEffects::Ambience,
+                     FxEffects::Surround,FxEffects::DynamicBoost,
+                     FxEffects::Bass})
+        appliedEffects.add(getAppliedEffectValue(effect)*10.0f);
+    Array<float> spectrumBands;
+    getSpectrumBandValues(spectrumBands);
+    for(const auto value:spectrumBands)
+        spectrum.add(live?var(value):var(0.0f));
+    telemetry->setProperty("applied_bands",appliedBands);
+    telemetry->setProperty("applied_effects",appliedEffects);
+    telemetry->setProperty("spectrum",spectrum);
     rootDir.getChildFile("ui-telemetry.json").replaceWithText(
         JSON::toString(var(telemetry),true));
 }
