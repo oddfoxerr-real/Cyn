@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "FxController.h"
+#include "CynMaterialShell.h"
 #include "CynSmartRange.h"
 #include "FxMainWindow.h"
 #include "FxSystemTrayView.h"
@@ -302,6 +303,8 @@ void FxController::initConfig(const String& commandline)
         ? jlimit(0.0f,100.0f,headroom_value):50.0f;
     smart_preset_cycling_=settings_.getBool("cyn_auto_preset_cycling",false);
 	auto arg_list = ArgumentList(File::getSpecialLocation(File::SpecialLocationType::invokedExecutableFile).getFileName(), commandline);
+    if (arg_list.containsOption("--classic") || arg_list.containsOption("--view"))
+        classic_ui_requested_ = true;
     // Legacy --theme values are ignored: stable CYN has one Dark Theme.
     auto reduced=arg_list.getValueForOption("--reduce_motion");
     if(reduced=="0" || reduced=="1") setReducedMotion(reduced=="1");
@@ -434,6 +437,8 @@ void FxController::initConfig(const String& commandline)
 void FxController::applyConfig(const String& commandline)
 {
 	auto arg_list = ArgumentList(File::getSpecialLocation(File::SpecialLocationType::invokedExecutableFile).getFileName(), commandline);
+    if (arg_list.containsOption("--classic") || arg_list.containsOption("--view"))
+        classic_ui_requested_ = true;
     if (arg_list.containsOption("--cyn-exit-for-update"))
     {
         // Close through the existing JUCE single-instance channel, preserving presets.
@@ -642,8 +647,9 @@ void FxController::applyConfig(const String& commandline)
 		settings_.setBool("run_minimized", true);
 		hideMainWindow();
 	}
-	else
+	else if (arg_list.containsOption("--classic") || view.isNotEmpty())
 	{
+        // Audio-status and EQ CLI commands must not bring up JUCE.
 		showMainWindow();
 	}
 
@@ -875,7 +881,7 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 			FxModel::getModel().pushMessage("Cyn / Personal audio");
 
 			settings_.setString("version", app_version);
-			settings_.setBool("run_minimized", false);
+            // Keep the requested minimized state across upgrades.
 		}
 
 		audio_passthru_->setDspProcessingModule(&dfx_dsp_);
@@ -1103,6 +1109,12 @@ void FxController::hideMainWindow()
 
 void FxController::showMainWindow()
 {
+    if (!classic_ui_requested_ && CynMaterialShell::launch())
+    {
+        // Route tray/menu Open back to CYN Material.
+        if (main_window_ != nullptr) hideMainWindow();
+        return;
+    }
 	if (main_window_ != nullptr)
 	{
 		settings_.setBool("run_minimized", false);
