@@ -222,18 +222,21 @@ async function refresh(){
   }
 }
 async function apply(action){
-  if(!writable())return;
+  if(!writable())return false;
   busy=true;
+  let succeeded=false;
   try{
     const result=await window.cyn.apply(action);
     current=result;
     if(!result.connected)throw new Error(result.error||"Native audio command did not complete");
+    succeeded=true;
     showError("");
   }catch(error){showError(error.message)}
   finally{
     busy=false;
     await refresh();
   }
+  return succeeded;
 }
 /* Riff's first/middle/last dock geometry, isolated from animation.
  * The previous approach set inline radius during transitions, but the
@@ -415,9 +418,12 @@ for(const id of ["feedback-from","feedback-to"])$(id).addEventListener("input",r
 for(const [id,more] of [["feedback-more",true],["feedback-less",false]]){
   $(id).addEventListener("click",async()=>{
     $("feedback-result").textContent="Saving private CYN feedback…";
-    await apply({type:"labelRecent",effect:Number($("feedback-effect").value),
+    const success=await apply({type:"labelRecent",effect:Number($("feedback-effect").value),
       more,newest:Number($("feedback-from").value),oldest:Number($("feedback-to").value)});
-    $("feedback-result").textContent="Feedback applied to the selected recent audio window";
+    const response=String(current?.status?.smart_listening?.learning||"");
+    $("feedback-result").textContent=success
+      ?(response||"Native CYN processed the label request")
+      :"CYN could not save that feedback";
   });
 }
 $("ai-model").addEventListener("change",e=>apply({type:"aiModel",value:e.target.value}));
