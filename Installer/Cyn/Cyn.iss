@@ -57,7 +57,8 @@ Source: "runtime-x86\vcruntime140.dll"; Flags: dontcopy
 Source: "..\..\.build-tools\vc-redist-x64\VC_redist.x64.exe"; Flags: dontcopy
 
 [Icons]
-Name: "{autoprograms}\Cyn"; Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"\nName: "{autoprograms}\Cyn (Classic)"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Parameters: "--view=2"
+Name: "{autoprograms}\Cyn"; Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"
+Name: "{autoprograms}\Cyn (Classic)"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Parameters: "--view=2"
 Name: "{autodesktop}\Cyn"; Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"; Tasks: desktopicon
 
 [Run]
