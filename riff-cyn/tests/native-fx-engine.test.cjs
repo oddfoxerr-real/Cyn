@@ -37,6 +37,8 @@ test("engine health is emitted by genuine native FxSound DSP, not fabricated in 
   assert(renderer.includes("status.fx_engine"));
   assert(renderer.includes('fx.processing===true'));
   assert(renderer.includes('status.selected_output'));
+  assert(bridge.includes('maxBuffer:262144'));
+
   assert(!renderer.includes("AudioContext"));
   assert(!renderer.includes("navigator.mediaDevices"));
 });
