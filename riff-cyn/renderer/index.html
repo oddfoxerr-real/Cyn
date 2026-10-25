@@ -21,6 +21,10 @@
         <span class="desktop-subtitle">Personal audio</span>
       </div>
     </div>
+    <div class="titlebar-quick-actions" role="group" aria-label="CYN app controls">
+      <button class="titlebar-action" id="toolbar-updates" type="button" title="Check CYN updates" aria-label="Check for updates"><span aria-hidden="true">↻</span> Updates</button>
+      <button class="titlebar-action" id="toolbar-settings" type="button" title="CYN Settings" aria-label="Open CYN settings"><span aria-hidden="true">⚙</span> Settings</button>
+    </div>
     <div class="titlebar-controls">
       <button class="titlebar-btn" type="button" data-window="minimize" aria-label="Minimize window">—</button>
       <button class="titlebar-btn" type="button" data-window="maximize" aria-label="Maximize window">□</button>
@@ -129,6 +133,15 @@
             <span id="native-spectrum-state">Waiting for live audio</span>
           </div>
         </div>
+        <section class="fx-engine-panel" aria-labelledby="fx-engine-title">
+          <div class="fx-engine-icon" aria-hidden="true">FX</div>
+          <div class="fx-engine-copy">
+            <h3 id="fx-engine-title">FxSound / CYN Native Engine</h3>
+            <p id="fx-engine-detail" role="status" aria-live="polite">Checking native processing engine and audio driver…</p>
+            <p id="fx-engine-output">Output device: awaiting native CYN</p>
+          </div>
+          <button class="button secondary" type="button" id="fx-engine-reconnect">Connect engine</button>
+        </section>
         <div class="section-heading gap-top"><div><span class="section-kicker">DIGITAL SIGNAL PROCESSING</span><h2>Enhancements</h2></div></div>
         <div id="effects-grid" class="effects-grid"></div>
       </section>
@@ -229,6 +242,10 @@
       <section class="content-view" id="view-settings" aria-labelledby="settings-title">
         <div class="section-heading"><div><span class="section-kicker">CYN / AUDIO</span><h2 id="settings-title">Settings</h2></div></div>
         <div class="settings-surface">
+          <div class="settings-group-label">Updates & engine</div>
+          <button class="settings-row settings-priority" type="button" data-setting="updates"><span>Check for CYN Updates</span><span aria-hidden="true">↻</span></button>
+          <button class="settings-row" type="button" data-setting="release"><span>Open latest Windows release</span><span aria-hidden="true">↗</span></button>
+          <div class="settings-divider"></div>
           <div class="settings-group-label">Presets</div>
           <button class="settings-row" data-setting="save-new"><span>Save New Preset</span><span aria-hidden="true">›</span></button>
           <button class="settings-row" data-setting="overwrite"><span>Overwrite Existing Preset</span><span aria-hidden="true">›</span></button>
@@ -239,7 +256,7 @@
           <div class="settings-group-label">Management</div>
           <button class="settings-row" data-setting="native"><span>Import / Export Presets in Native CYN</span><span aria-hidden="true">›</span></button>
           <button class="settings-row" data-setting="mobile"><span>Add Mobile Version</span><span aria-hidden="true">↗</span></button>
-          <button class="settings-row" data-setting="updates"><span>Check for Updates</span><span aria-hidden="true">↗</span></button>
+
           <label class="settings-row settings-check"><span>Automatic update checks</span><input id="automatic-updates" type="checkbox" disabled aria-label="Check for CYN updates automatically"/></label>
           <label class="settings-row settings-check"><span>Launch CYN with Windows</span><input id="launch-on-startup" type="checkbox" disabled aria-label="Launch CYN when Windows starts"/></label>
           <label class="settings-row settings-check"><span>Global keyboard shortcuts</span><input id="hotkeys-enabled" type="checkbox" disabled aria-label="Enable CYN global keyboard shortcuts"/></label>
