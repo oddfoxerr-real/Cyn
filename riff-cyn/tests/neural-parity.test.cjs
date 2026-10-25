@@ -98,3 +98,23 @@ test("native AI DJ remains real and installable, never mocked by Electron",()=>{
    assert(files.html.includes('id="'+id+'"'),"Material UI has no "+id);
  assert(files.renderer.includes('type:"djEnable"'));
 });
+
+test("AI-controlled EQ and effects use applied native DSP, not fake slider values",()=>{
+ const controller=files.controller;
+ const brain=files.brain;
+ for(const required of [
+   "getAppliedEqBandBoostCut(i)",
+   "getAppliedEffectValue(effect)",
+   "getSpectrumBandValues(spectrumBands)",
+   'telemetry->setProperty("applied_bands",appliedBands)',
+   'telemetry->setProperty("applied_effects",appliedEffects)',
+   'telemetry->setProperty("spectrum",spectrum)'
+ ])assert(controller.includes(required),"Native applied DSP data not exposed: "+required);
+ assert(brain.includes("sample?.applied_bands"));
+ assert(brain.includes("sample?.applied_effects"));
+ assert(brain.includes("sample?.spectrum"));
+ assert(files.renderer.includes("eq-applied-marker"));
+ assert(files.renderer.includes('effect-applied-'));
+ assert(files.html.includes('id="native-spectrum"'));
+ assert(!brain.includes("Math.random("),"No synthetic audio movement in BrainScan");
+});
