@@ -27,8 +27,9 @@ test("engine health is emitted by genuine native FxSound DSP, not fabricated in 
   const renderer=read("riff-cyn/renderer/renderer.js");
   const startup=read("fxsound/Source/Main.cpp");
   assert(controller.includes('engine->setProperty("backend","FxSound/CYN native DSP")'));
-  assert(controller.includes('engine->setProperty("ready",dfx_enabled_)'));
-  assert(controller.includes('engine->setProperty("processing",dfx_enabled_ && audio_process_on_ && model.getPowerState())'));
+  assert(controller.includes('engine->setProperty("ready",dfx_enabled_ && virtualActive && physicalOutputReady)'));
+  assert(controller.includes('engine->setProperty("route_enabled",virtualActive && virtualDefault'));
+  assert(controller.includes('engine->setProperty("processing",virtualActive && virtualDefault'));
   assert(controller.includes('settings->setProperty("fx_engine",var(engine))'));
   assert(controller.includes("engine-startup-error.txt"));
   assert(startup.includes("engineStartupError("));
