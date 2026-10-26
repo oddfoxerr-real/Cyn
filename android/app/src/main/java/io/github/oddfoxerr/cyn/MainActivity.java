@@ -25,7 +25,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     final ExecutorService searchWorker=Executors.newSingleThreadExecutor();
     int searchGeneration;
     String publicQuery="";
-    LinearLayout shell,content,mini,libraryRows;
+    LinearLayout shell,content,mini,libraryRows,unifiedSearchRows;
     com.google.android.material.bottomnavigation.BottomNavigationView nav;
     LiquidPage pages;
     SharedPreferences ui;
@@ -428,39 +428,132 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         startActivityForResult(launch,72);
     }
 
-    void buildMusicConnections(){
-        LinearLayout providers=section("Search music services",
-            "Search YouTube Music and SoundCloud inside CYN. Results, playlists and playback come from each service's own website.");
-        EditText providerSearch=new EditText(this);
-        providerSearch.setSingleLine(true);
-        providerSearch.setTextSize(16);
-        providerSearch.setTextColor(text);
-        providerSearch.setHintTextColor(hint);
-        providerSearch.setHint("Find a song, artist or playlist");
-        providerSearch.setContentDescription("Search YouTube Music or SoundCloud");
-        providerSearch.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
-        providerSearch.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
-        providerSearch.setMinHeight(dp(54));
-        providerSearch.setPadding(dp(14),dp(6),dp(14),dp(6));
-        providerSearch.setBackground(shape(card,20));
-        add(providers,providerSearch);
-        buttons(providers,new String[]{"YouTube Music","SoundCloud"},new Runnable[]{
-            ()->openMusicSearch(ProviderBrowserActivity.YOUTUBE,
-                providerSearch.getText().toString().trim()),
-            ()->openMusicSearch(ProviderBrowserActivity.SOUNDCLOUD,
-                providerSearch.getText().toString().trim())
-        });
-        providerSearch.setOnEditorActionListener((view,action,event)->{
+    void buildUnifiedMusicSearch(){
+        LinearLayout panel=section("Find music",
+            "One search across your saved music and Audius. Other services can be checked using the same song name.");
+        EditText input=new EditText(this);
+        input.setSingleLine(true);input.setTextSize(16);input.setTextColor(text);
+        input.setHintTextColor(hint);input.setHint("Song or artist");
+        input.setContentDescription("Search music across connected sources");
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        input.setMinHeight(dp(56));input.setPadding(dp(16),dp(8),dp(16),dp(8));
+        input.setBackground(shape(card,24));input.setText(publicQuery);add(panel,input);
+        TextView search=button("Search music",()->searchUnifiedMusic(input));
+        primaryAction(search);add(panel,search);
+        input.setOnEditorActionListener((view,action,event)->{
             if(action==android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH){
-                openMusicSearch(ProviderBrowserActivity.YOUTUBE,
-                    providerSearch.getText().toString().trim());
-                return true;
+                searchUnifiedMusic(input);return true;
             }
             return false;
         });
-        add(providers,button("Save a shared music link",()->promptMusicLink("")));
-        add(providers,button("Save current music as search shortcut",this::saveCurrentProviderSong));
-        add(providers,label("Tap a provider to search in CYN, then open a result and save its exact link. Some sign-ins or playback may require the original app. Audius remains the native CYN audio source.",12,hint));
+        unifiedSearchRows=column();add(panel,unifiedSearchRows);
+        add(panel,button("Clear search",()->{
+            searchGeneration++;input.setText("");query="";publicQuery="";
+            if(unifiedSearchRows!=null)unifiedSearchRows.removeAllViews();
+            visibleTracks=60;renderTracks();
+        }));
+        add(panel,label("Verified matches appear as Audius tracks, phone files or links already saved in CYN. YouTube Music and SoundCloud need provider API access to confirm catalog availability; unverified services are labeled Search, not Found.",12,hint));
+    }
+
+    void searchUnifiedMusic(EditText input){
+        if(service==null){toast("Audio engine connecting");return;}
+        String term=input.getText().toString().trim();
+        if(term.isEmpty()){input.setError("Enter a song or artist");return;}
+        if(term.length()>180){input.setError("Search is too long");return;}
+        publicQuery=term;query=term;visibleTracks=60;renderTracks();
+        android.view.inputmethod.InputMethodManager keyboard=
+            (android.view.inputmethod.InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);
+        if(keyboard!=null)keyboard.hideSoftInputFromWindow(input.getWindowToken(),0);
+        LinearLayout resultPanel=unifiedSearchRows;
+        if(resultPanel==null)return;
+        final int generation=++searchGeneration;
+        resultPanel.removeAllViews();
+        TextView progress=label("Searching your Library and Audius…",14,hint);
+        progress.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        add(resultPanel,progress);
+        AudioLibrary library=service.library;
+        searchWorker.execute(()->{
+            List<PublicMusic.Song> discovered=Collections.emptyList();
+            boolean audiusAvailable=true;
+            try{discovered=PublicMusic.search(term);}catch(Exception ignored){audiusAvailable=false;}
+            List<UnifiedMusicSearch.Result> combined=
+                UnifiedMusicSearch.combine(term,library.all(),discovered);
+            final boolean online=audiusAvailable;
+            handler.post(()->{
+                if(generation!=searchGeneration||page!=2||isDestroyed()||isFinishing()||
+                   !resultPanel.isAttachedToWindow())return;
+                resultPanel.removeAllViews();
+                TextView status=label(combined.size()+" matching songs · "+
+                    (online?"Audius checked":"Audius unavailable"),13,hint);
+                status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+                add(resultPanel,status);
+                for(int i=0;i<Math.min(25,combined.size());i++){
+                    UnifiedMusicSearch.Result match=combined.get(i);
+                    LinearLayout cardBody=column();cardBody.setPadding(dp(12),dp(10),dp(12),dp(10));
+                    cardBody.setBackground(shape(card,20));
+                    TextView title=label(match.title,16,text);
+                    title.setMaxLines(2);title.setEllipsize(TextUtils.TruncateAt.END);
+                    add(cardBody,title);
+                    add(cardBody,label(match.artist,12,hint));
+                    TextView providers=label(match.availableSources(),12,accent);
+                    providers.setMaxLines(3);add(cardBody,providers);
+                    TextView action=button("Show song sources",()->showMusicSources(match,term));
+                    action.setContentDescription("Show sources for "+match.title+" by "+match.artist);
+                    add(cardBody,action);
+                    add(resultPanel,cardBody);gap(resultPanel,8);
+                }
+                if(combined.isEmpty())
+                    add(resultPanel,label("No confirmed matching tracks in CYN or Audius.",13,hint));
+                add(resultPanel,label("Not yet verified on YouTube Music or SoundCloud:",12,hint));
+                buttons(resultPanel,new String[]{"Search YouTube Music","Search SoundCloud"},new Runnable[]{
+                    ()->openMusicSearch(ProviderBrowserActivity.YOUTUBE,term),
+                    ()->openMusicSearch(ProviderBrowserActivity.SOUNDCLOUD,term)
+                });
+            });
+        });
+    }
+
+    void showMusicSources(UnifiedMusicSearch.Result item,String searchTerm){
+        ArrayList<String> captions=new ArrayList<>();
+        ArrayList<Runnable> actions=new ArrayList<>();
+        AudioLibrary.Track local=item.from("Local");
+        if(local!=null){
+            captions.add("Phone · Play saved track");
+            actions.add(()->playTrack(Collections.singletonList(local),0));
+        }
+        PublicMusic.Song song=item.audius;
+        AudioLibrary.Track savedAudius=item.from("Audius");
+        if(song!=null||savedAudius!=null){
+            captions.add("Audius · Found · Play");
+            actions.add(()->{
+                AudioLibrary.Track source=savedAudius!=null?savedAudius:song.asTrack();
+                playTrack(Collections.singletonList(source),0);
+            });
+            if(song!=null){
+                captions.add("Audius · Add to Library");
+                actions.add(()->savePublicTrack(song));
+                captions.add("Audius · Download if permitted");
+                actions.add(()->savePublicTrack(song,true));
+            }
+        }
+        for(String platform:new String[]{"YouTube Music","SoundCloud"}){
+            AudioLibrary.Track saved=item.from(platform);
+            boolean soundcloud="SoundCloud".equals(platform);
+            if(saved!=null){
+                captions.add(platform+" · Saved link · Open");
+                actions.add(()->openMusicLink(saved.uri));
+            }else{
+                captions.add(platform+" · Search (availability unverified)");
+                actions.add(()->openMusicSearch(soundcloud?
+                    ProviderBrowserActivity.SOUNDCLOUD:ProviderBrowserActivity.YOUTUBE,
+                    (item.title+" "+item.artist).trim()));
+            }
+        }
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(item.title)
+            .setItems(captions.toArray(new String[0]),(dialog,which)->actions.get(which).run())
+            .setNegativeButton("Close",null).show();
     }
 
     void promptMusicLink(String suggestedUrl){
@@ -531,16 +624,13 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         LinearLayout transport=buttons(player,new String[]{"Previous",service.playing?"Pause":"Play","Next"},new Runnable[]{()->service.previous(),()->{if(service.player==null)toast("Choose a track below");else if(service.playing)service.pause();else startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.TOGGLE));build();},()->service.next()});playButton=(TextView)transport.getChildAt(1);transportStyle(transport);
         toggle(player,"Shuffle",service.prefs.getBoolean("shuffle",false),service::shuffle);category(player,"Repeat",body->segments(body,new String[]{"Off","All","One"},service.prefs.getInt("repeat",0)==0?0:service.prefs.getInt("repeat",0)==2?1:2,index->service.repeat(new int[]{0,2,1}[index])));liveStatus=label("",12,accent);add(player,liveStatus);
         buttons(content,new String[]{"Add files","Scan phone"},new Runnable[]{this::pickTracks,this::scanPermission});gap(content,12);
-        buildMusicConnections();
+        buildUnifiedMusicSearch();
 
         LinearLayout saved=section("Saved music","Save any song here without adding it to Favorites. Use the heart to like it, or the download action to save it offline.");
-        EditText search=new EditText(this);search.setSingleLine(true);search.setTextColor(text);search.setHintTextColor(hint);search.setHint("Search saved tracks or artists");search.setContentDescription("Search audio library");search.setText(query);search.setMinHeight(dp(52));search.setPadding(dp(16),dp(8),dp(16),dp(8));search.setBackground(shape(card,28));add(saved,search);
         segments(saved,new String[]{"All songs","Favorites","Downloads"},libraryFilter,index->{libraryFilter=index;visibleTracks=60;renderTracks();});
         gap(saved,12);
         libraryRows=column();add(saved,libraryRows);
-        search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){query=s.toString();visibleTracks=60;renderTracks();}public void afterTextChanged(Editable e){}});
         renderTracks();
-        buildPublicMusic();
         long likedCount=service.library.all().stream().filter(t->t.favorite).count();
         LinearLayout liked=section("Favorites","Unliking only removes the heart, never the song.");
         favoritesCount=label(likedCount+" liked songs",13,hint);add(liked,favoritesCount);
@@ -548,82 +638,6 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         likedDownloadStatus=label(downloadingLikes?"Downloading favorites…":"Downloads require artist permission and are saved to Music/CYN.",12,hint);
         likedDownloadStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         add(liked,likedDownloadStatus);
-    }
-    void buildPublicMusic(){
-        LinearLayout online=section("Audius","Discover music to play through CYN.");
-        com.google.android.material.textfield.TextInputLayout field=new com.google.android.material.textfield.TextInputLayout(this);
-        field.setBoxBackgroundMode(com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE);
-        field.setBoxCornerRadii(dp(20),dp(20),dp(20),dp(20));
-        field.setHint("Song or artist");
-        com.google.android.material.textfield.TextInputEditText input=new com.google.android.material.textfield.TextInputEditText(field.getContext());
-        input.setSingleLine(true);input.setTextColor(text);input.setTextSize(16);
-        input.setMinHeight(dp(56));input.setText(publicQuery);
-        input.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
-        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
-        field.addView(input,new LinearLayout.LayoutParams(-1,-2));add(online,field);gap(online,8);
-        LinearLayout results=column();
-        TextView searchButton=button("Search Audius",()->searchPublicMusic(input,results));
-        primaryAction(searchButton);add(online,searchButton);gap(online,8);add(online,results);
-        input.addTextChangedListener(new TextWatcher(){
-            public void beforeTextChanged(CharSequence value,int start,int count,int after){}
-            public void onTextChanged(CharSequence value,int start,int before,int count){publicQuery=value.toString();}
-            public void afterTextChanged(Editable value){}
-        });
-        input.setOnEditorActionListener((v,action,event)->{
-            if(action==android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH){searchPublicMusic(input,results);return true;}
-            return false;
-        });
-    }
-    void searchPublicMusic(EditText input,LinearLayout results){
-        String term=input.getText().toString().trim();
-        if(term.isEmpty()){input.setError("Enter a song or artist");input.requestFocus();return;}
-        final int generation=++searchGeneration;
-        android.view.inputmethod.InputMethodManager keyboard=(android.view.inputmethod.InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);
-        if(keyboard!=null)keyboard.hideSoftInputFromWindow(input.getWindowToken(),0);
-        results.removeAllViews();
-        com.google.android.material.progressindicator.LinearProgressIndicator progress=new com.google.android.material.progressindicator.LinearProgressIndicator(this);
-        progress.setIndeterminate(true);progress.setIndicatorColor(accent);add(results,progress);
-        TextView status=label("Searching Audius…",13,hint);
-        status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(results,status);
-        searchWorker.execute(()->{
-            try{
-                List<PublicMusic.Song> found=PublicMusic.search(term);
-                handler.post(()->{
-                    if(generation!=searchGeneration||page!=2||!results.isAttachedToWindow())return;
-                    results.removeAllViews();
-                    TextView summary=label(found.isEmpty()?"No playable tracks found. Try another song or artist.":found.size()+" tracks",13,hint);
-                    summary.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(results,summary);
-                    for(PublicMusic.Song song:found){
-                        LinearLayout track=row();track.setPadding(0,dp(4),0,dp(4));
-                        TextView play=button(song.title+"\n"+song.artist,()->{
-                            if(service==null){toast("Audio engine connecting");return;}
-                            try{playTrack(Collections.singletonList(song.asTrack()),0);}
-                            catch(RuntimeException failure){toast("Unable to start stream");}
-                        });
-                        play.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);play.setMaxLines(3);
-                        play.setEllipsize(TextUtils.TruncateAt.END);
-                        play.setContentDescription("Play "+song.title+" by "+song.artist);
-                        track.addView(play,new LinearLayout.LayoutParams(0,-2,1));
-                        TextView save=button("+",()->savePublicTrack(song));
-                        save.setContentDescription("Add "+song.title+" to Library");
-                        save.setPadding(0,0,0,0);save.setMinimumWidth(0);save.setMinWidth(0);
-                        LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(dp(48),dp(52));
-                        size.setMarginStart(dp(8));track.addView(save,size);
-                         TextView download=button("↓",()->savePublicTrack(song,true));
-                         download.setContentDescription("Add and download "+song.title+" if the artist permits it");
-                         download.setPadding(0,0,0,0);download.setMinimumWidth(0);download.setMinWidth(0);
-                         LinearLayout.LayoutParams downloadSize=new LinearLayout.LayoutParams(dp(48),dp(52));
-                         downloadSize.setMarginStart(dp(6));track.addView(download,downloadSize);add(results,track);
-                    }
-                });
-            }catch(Exception failure){handler.post(()->{
-                if(generation!=searchGeneration||page!=2||!results.isAttachedToWindow())return;
-                results.removeAllViews();
-                TextView error=label("Audius is unavailable. Check your connection and retry.",13,hint);
-                error.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(results,error);
-                add(results,button("Retry search",()->searchPublicMusic(input,results)));
-            });}
-        });
     }
     void savePublicTrack(PublicMusic.Song song){savePublicTrack(song,false);}
     void savePublicTrack(PublicMusic.Song song,boolean startDownload){
