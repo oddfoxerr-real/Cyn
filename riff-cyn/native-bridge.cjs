@@ -8,11 +8,15 @@ const exec=promisify(execFile);
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const isWin=()=>process.platform==="win32";
 
+function bundledNative(executable=process.execPath){
+  // The combined installer owns one *authoritative* DSP executable. A saved
+  // manual path from an old preview must never override the adjacent Cyn.exe.
+  return path.resolve(path.dirname(executable),"..","Cyn.exe");
+}
 function candidates(){
   const paths=[
+    bundledNative(),
     process.env.CYN_NATIVE_EXE,
-    // Packaged under {app}/CYN-Interface; native CYN lives one folder higher.
-    path.resolve(path.dirname(process.execPath),"..","Cyn.exe"),
     path.join(process.env.ProgramFiles||"C:\\Program Files","Cyn","Cyn.exe"),
     path.join(process.env.LOCALAPPDATA||"","Programs","Cyn","Cyn.exe"),
     path.resolve(__dirname,"..","dist","Cyn","Cyn.exe"),
@@ -20,7 +24,17 @@ function candidates(){
   ];
   return paths.filter(Boolean);
 }
-function validExe(p){return typeof p==="string"&&path.win32.basename(p).toLowerCase()==="cyn.exe"&&fs.existsSync(p);}
+function validExe(p){
+  return typeof p==="string"&&path.win32.basename(p).toLowerCase()==="cyn.exe"&&
+    fs.existsSync(p)&&fs.statSync(p).isFile();
+}
+// A bundled release must never silently redirect its IPC, updater or DSP
+// commands to an unrelated/old Cyn.exe saved by standalone previews.
+function chooseNative(bundled,saved,paths){
+  if(validExe(bundled))return bundled;
+  if(validExe(saved))return saved;
+  return paths.find(validExe)||null;
+}
 function startupFailure(){
   // A diagnostic written by the real JUCE host. Do not present stale
   // diagnostics after a successful launch or leak private user files.
@@ -36,8 +50,17 @@ function makeBridge(override){
  let nativeExe=validExe(override)?override:null;
  let pending=null;
  let lastState=null;
- function locate(){if(nativeExe&&validExe(nativeExe))return nativeExe;return candidates().find(validExe)||null;}
- function selectNative(p){if(!validExe(p))throw new Error("Select the real Cyn.exe, not another program");nativeExe=p;lastState=null;return true;}
+ let launchPending=null;
+ let autoRestartPending=null;
+ let lastAutoRestart=0;
+ function locate(){return chooseNative(bundledNative(),nativeExe,candidates());}
+ function selectNative(p){
+   if(!validExe(p))throw new Error("Select the real Cyn.exe, not another program");
+   const bundle=bundledNative();
+   if(validExe(bundle)&&path.resolve(p).toLowerCase()!==path.resolve(bundle).toLowerCase())
+     throw new Error("Installed CYN always uses its bundled native FxSound engine. An older standalone Cyn.exe cannot replace it.");
+   nativeExe=p;lastState=null;return true;
+ }
  async function running(exe){
    const command='$found=@(Get-Process -Name Cyn,FxSound -ErrorAction SilentlyContinue | Where-Object { $_.Path -and [string]::Equals($_.Path,$env:CYN_BRIDGE_EXE,[StringComparison]::OrdinalIgnoreCase) }); if($found.Count -gt 0) { Write-Output "RUNNING" }';
    const {stdout}=await exec("powershell.exe",["-NoProfile","-NonInteractive","-Command",command],{
@@ -109,30 +132,56 @@ function makeBridge(override){
      return sample;
    }catch{return null;}
  }
- async function launch(){
+ async function launchImpl(){
    if(!isWin())throw new Error("CYN audio processing is Windows-only");
    const exe=locate();
-   if(!exe)throw new Error("The native FxSound DSP executable Cyn.exe is missing. Repair CYN using the official combined Windows installer.");
+   if(!exe)throw new Error("The original Cyn.exe DSP executable is missing. Repair the complete CYN Windows installation.");
    if(await running(exe))return getStatus();
-   const child=spawn(exe,["--run_minimized"],{detached:true,windowsHide:true,stdio:"ignore"});
+   const child=spawn(exe,["--run_minimized"],{
+     detached:true,windowsHide:true,stdio:"ignore",cwd:path.dirname(exe)
+   });
+   // Do not report a successful launch if Windows refused to start the host.
+   await new Promise((resolve,reject)=>{
+     child.once("error",reject);
+     child.once("spawn",resolve);
+   });
    child.unref();
-   // Windows audio initialization and first-run signed driver activation
-   // can take longer than a fixed 1.8 s delay. Return a real status or error.
    let result=null;
-   for(let attempt=0;attempt<7;attempt++){
-     await pause(attempt===0?1100:700);
+   for(let attempt=0;attempt<8;attempt++){
+     await pause(attempt===0?1100:750);
      result=await getStatus();
      if(result.connected)return result;
-     if(result.error&&result.error.includes("another process"))break;
+     if(result.error&&/another (fxsound|cyn|process|audio host)/i.test(result.error))break;
    }
-   return result||{connected:false,error:"The native FxSound DSP did not start."};
+   return result||{connected:false,error:"The original FxSound/CYN audio host did not become ready."};
+ }
+ function launch(){
+   // Starting the Material window and connecting from its controls may race.
+   // One native host must own the signed virtual audio driver.
+   if(!launchPending)launchPending=launchImpl().finally(()=>{launchPending=null;});
+   return launchPending;
+ }
+ async function ensureRunning(){
+   const status=await getStatus();
+   if(status.connected||!locate())return status;
+   if(/another (fxsound|cyn|audio host)/i.test(status.error||""))return status;
+   if(autoRestartPending)return autoRestartPending;
+   // If the native engine disappears, reconnect automatically; do not require
+   // opening Classic. Cap retries to avoid spawning failures in a loop.
+   if(Date.now()-lastAutoRestart<30000)return status;
+   lastAutoRestart=Date.now();
+   autoRestartPending=launch().catch(error=>({connected:false,error:error.message}))
+     .finally(()=>{autoRestartPending=null;});
+   return autoRestartPending;
  }
  async function apply(action){
    if(!isWin())throw new Error("This backend only runs on Windows");
    const exe=locate();
-   if(!exe||!await running(exe))throw new Error("Start native CYN before changing audio settings");
-   const state=await getStatus();
-   if(!state.connected)throw new Error(state.error);
+   if(!exe)throw new Error("Original Cyn.exe is not installed.");
+   // An action from Material must connect the exact bundled native engine,
+   // instead of requiring the separate Classic window to bootstrap it.
+   const state=await ensureRunning();
+   if(!state.connected)throw new Error(state.error||"Original CYN engine could not start");
    const arg=commandFor(action,state.status);
    await exec(exe,[arg],{windowsHide:true,timeout:8500,maxBuffer:4096});
    // A renderer poll can have started before this native command. Never
@@ -150,6 +199,6 @@ function makeBridge(override){
    }
    return result||{connected:false,error:"CYN did not return fresh native audio state."};
  }
- return {getStatus,telemetry,launch,apply,selectNative,findExe:()=>locate()};
+ return {getStatus,ensureRunning,telemetry,launch,apply,selectNative,findExe:()=>locate()};
 }
-module.exports={makeBridge};
+module.exports={makeBridge,chooseNative,bundledNative};
