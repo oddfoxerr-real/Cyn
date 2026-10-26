@@ -33,7 +33,7 @@ final class AudioLibrary {
             for(int i=0;i<all.length();i++){
                 JSONObject entry=all.getJSONObject(i);
                 Uri uri=Uri.parse(entry.getString("uri"));
-                if(!"content".equals(uri.getScheme())&&!LikedDownloads.isAudiusStream(uri))continue;
+                if(!"content".equals(uri.getScheme())&&!LikedDownloads.isAudiusStream(uri)&&!LinkedMusic.isLinked(uri))continue;
                 Track track=new Track(uri,entry.getString("title"),entry.optString("artist","Unknown artist"),
                     entry.optString("album",""),entry.optLong("duration"),entry.optBoolean("favorite"));
                 String offline=entry.optString("offline_uri","");
