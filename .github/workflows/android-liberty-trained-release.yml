@@ -110,7 +110,7 @@ jobs:
           set -euo pipefail
           grep -Fq 'Download eligible favorites' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
           grep -Fq 'new String[]{"All songs","Favorites","Downloads"}' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
-          grep -Fq 'downloadTrack(t)' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          grep -Fq 'downloadTrack(track)' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
           grep -Fq 'confirmRemoveFromLibrary(track)' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
           grep -Fq 'void buildMusicConnections()' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
           grep -Fq 'void processShareIntent(Intent incoming)' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
