@@ -53,6 +53,6 @@ assert(updater.includes("Start-Process -FilePath $native -WorkingDirectory $PSSc
 assert(installer.includes('Name: "{autoprograms}\\Cyn"; Filename: "{app}\\Cyn.exe"'),"Normal shortcut must start original CYN before Material");
 assert(installer.includes('Name: "{autoprograms}\\Cyn (Classic)"'));
 assert(installer.includes('Parameters: "--classic"'),"Original CYN must remain accessible for audio routing and driver repair");
-assert(installer.includes("AppVersion=2.0.92"),"Bump version for new distributable instead of overwriting release");
+assert(installer.includes("AppVersion=2.0.93"),"Bump version for new distributable instead of overwriting release");
 assert(workflow.includes('run: .\\BUILD_INSTALLER.ps1'));
-console.log("PASS: v2.0.92 Material launch and update flow, explicit Classic fallback, protected native DSP");
+console.log("PASS: v2.0.93 Material launch and update flow, explicit Classic fallback, protected native DSP");
