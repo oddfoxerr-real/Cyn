@@ -90,7 +90,7 @@ test("CYN updates remain verified, report installation errors and reopen Materia
   assert(main.includes('spawn(exe,["--classic"]'));
   assert(worker.includes('SHA256')||worker.includes('SHA-256'));
   assert(updater.includes("CYN-Interface\\CYN Audio.exe"));
-  assert(updater.includes("CYN updated but could not restart the redesigned interface"));
+  assert(updater.includes("CYN updated but could not restart the native engine and redesigned interface"));
   assert(updater.includes("Show-Error ('CYN updated but could not restart"));
   assert(!updater.includes("Start-Process -FilePath (Join-Path $PSScriptRoot 'Cyn.exe') -ArgumentList '--view=2'"));
   assert(!updater.includes("} catch {}\n            $script:allowedToClose=$true"));

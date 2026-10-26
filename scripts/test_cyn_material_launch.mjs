@@ -48,9 +48,9 @@ assert(updater.includes("CYN-Interface\\CYN Audio.exe"),"Updater must know the b
 assert(updater.includes("CloseMainWindow()"),"Request graceful shutdown; do not kill the audio/UI processes");
 assert(updater.includes("$running.Count -eq 0 -and $materialRunning.Count -eq 0"),
   "Inno installation must wait for both native DSP and Electron GUI to close");
-assert(updater.includes("Start-Process -FilePath $material -WorkingDirectory"),
-  "After an in-place update, restart the actual Material UI, not old JUCE");
-assert(installer.includes('Name: "{autoprograms}\\Cyn"; Filename: "{app}\\CYN-Interface\\CYN Audio.exe"'));
+assert(updater.includes("Start-Process -FilePath $native -WorkingDirectory $PSScriptRoot"),
+  "After an in-place update, native CYN must initialize audio before the Material interface opens");
+assert(installer.includes('Name: "{autoprograms}\\Cyn"; Filename: "{app}\\Cyn.exe"'),"Normal shortcut must start original CYN before Material");
 assert(installer.includes('Name: "{autoprograms}\\Cyn (Classic)"'));
 assert(installer.includes('Parameters: "--classic"'),"Original CYN must remain accessible for audio routing and driver repair");
 assert(installer.includes("AppVersion=2.0.92"),"Bump version for new distributable instead of overwriting release");

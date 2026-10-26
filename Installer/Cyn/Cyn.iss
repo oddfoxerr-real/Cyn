@@ -57,12 +57,12 @@ Source: "runtime-x86\vcruntime140.dll"; Flags: dontcopy
 Source: "..\..\.build-tools\vc-redist-x64\VC_redist.x64.exe"; Flags: dontcopy
 
 [Icons]
-Name: "{autoprograms}\Cyn"; Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"
+Name: "{autoprograms}\Cyn"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"
 Name: "{autoprograms}\Cyn (Classic)"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Parameters: "--classic"
-Name: "{autodesktop}\Cyn"; Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"; Tasks: desktopicon
+Name: "{autodesktop}\Cyn"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"; Description: "Open Cyn"; Flags: nowait postinstall skipifsilent runasoriginaluser
+Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Description: "Open Cyn with the Material UI"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [Code]
 var

@@ -1,4 +1,4 @@
-# CYN Windows v2.0.92 — UI-only redesign compatibility fix
+# CYN Windows 2.0.92 — UI-only redesign compatibility fix
 
 CYN's Riff-inspired dark layout is a **new interface for the original CYN application**, not a second audio engine or replacement for the existing FxSound processing pipeline.
 
@@ -18,3 +18,6 @@ CYN's Riff-inspired dark layout is a **new interface for the original CYN applic
 Install this release **over the existing CYN installation** to retain presets and settings. The native FxSound driver and audio path are not replaced with a new implementation. This update changes the UI integration and removes recent routing overrides; it does not guarantee audio will work with every hardware driver until it is tested on that PC.
 
 Riff UI © rootscripts (MIT); FxSound/CYN native DSP © respective contributors (AGPL-3.0-or-later). Windows desktop only.
+
+## Launcher consistency
+The Start Menu, desktop and post-install/update launch now start the original `Cyn.exe` first. That native executable initializes FxSound DSP and then opens the Material layout, rather than starting Electron before the audio host is ready.
