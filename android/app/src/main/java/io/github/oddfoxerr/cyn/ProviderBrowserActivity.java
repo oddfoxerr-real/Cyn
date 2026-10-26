@@ -253,7 +253,7 @@ public final class ProviderBrowserActivity extends AppCompatActivity {
     }
 
     private void saveCurrent(){
-        Uri current=browser==null?null:Uri.parse(browser.getUrl());
+        Uri current=browser==null||browser.getUrl()==null?null:Uri.parse(browser.getUrl());
         if(current==null||!LinkedMusic.isExactItem(current)){
             status.setText("Open a specific track or playlist result first, then tap Save track.");
             Toast.makeText(this,"Select a track or playlist first",Toast.LENGTH_SHORT).show();
