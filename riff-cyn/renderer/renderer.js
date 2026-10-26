@@ -228,7 +228,7 @@ function renderConnected(status){
   opts($("preset"),presets.map(p=>({value:p.name,label:p.name+(p.modified?" *":"")})),status.selected_preset||"");
   window.cynRail.setPresets(status,name=>apply({type:"preset",value:name}));
   const view=deviceTracker.update(status);
-  for(const select of [$("device-top"),$("device-page"]){
+  for(const select of [$("device-top"),$("device-page")]){
     opts(select,view.items,view.selected);
     select.disabled=!writable()||!view.canSelect;
   }
