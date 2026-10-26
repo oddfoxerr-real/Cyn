@@ -1,3 +1,19 @@
+# CYN Studio Android 0.2.34 preview — Music links and easy Library removal
+
+- Adds a visible Remove action to every saved track, whether favorited or not.
+- Removing a Library entry requires confirmation and never deletes original or downloaded audio files.
+- Gives saved songs two-row cards, so titles no longer collide with heart and download actions.
+- Adds YouTube Music and SoundCloud link bookmarks to CYN Library.
+- Supports sharing an exact track or playlist link directly into CYN from another app.
+- Can save a search shortcut for the currently playing YouTube Music or SoundCloud song when Android media-session access is enabled. This is not account library synchronization.
+- Saved provider links open in their original music apps; they never enter the CYN audio player or offline downloader.
+- Preserves independent Favorites, Library membership, Audius artist-permitted downloads, Android DSP, AI profiles and existing local presets.
+- Does not add Spotify login or protected-provider offline downloads.
+
+The release must pass Android build, lint, device tests, original signing-key verification and in-place upgrade from v0.2.33-preview.
+
+---
+
 # CYN Studio Android 0.2.33 preview — Library and layout polish
 
 This update follows the signed 0.2.32-preview build. It preserves the existing Android package identity, trained LIBERTY asset workflow, AI profiles, Connect routing, native DSP, presets, and user data.
