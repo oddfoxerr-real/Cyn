@@ -51,6 +51,24 @@ final class LinkedMusic {
 
     static boolean isLinked(Uri uri){return uri!=null&&parse(uri.toString())!=null;}
 
+    static boolean isExactItem(Uri uri){
+        if(!isLinked(uri)||isSearchShortcut(uri))return false;
+        String host=uri.getHost().toLowerCase(Locale.ROOT);
+        List<String> segments=uri.getPathSegments();
+        if(host.contains("soundcloud")){
+            if(host.equals("on.soundcloud.com"))return segments.size()==1;
+            return segments.size()>=2&&!segments.get(0).equals("search")&&
+                   !segments.get(0).equals("discover")&&!segments.get(0).equals("you")&&
+                   !segments.get(0).equals("stream");
+        }
+        if(host.equals("youtu.be"))return segments.size()==1;
+        if("/watch".equals(uri.getPath()))
+            return uri.getQueryParameter("v")!=null;
+        return "/playlist".equals(uri.getPath())&&uri.getQueryParameter("list")!=null||
+            segments.size()==2&&segments.get(0).equals("shorts");
+    }
+
+
     static String provider(Uri uri){
         if(!isLinked(uri))return "";
         return uri.getHost().toLowerCase(Locale.ROOT).contains("soundcloud")
