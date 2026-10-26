@@ -170,7 +170,9 @@ function createWindow(){
 }
 if(primaryInstance)app.whenReady().then(()=>{
   bridge=makeBridge(loadConfig());
-  ipcMain.handle("cyn:status",()=>bridge.getStatus());
+  // Material boots and reconnects its own bundled original FxSound engine.
+  // Classic remains optional for advanced controls, never an audio prerequisite.
+  ipcMain.handle("cyn:status",()=>bridge.ensureRunning());
   ipcMain.handle("cyn:telemetry",()=>bridge.telemetry());
   ipcMain.handle("cyn:apply",async (_e,action)=>bridge.apply(action));
   ipcMain.handle("cyn:start",()=>bridge.launch());
@@ -313,6 +315,8 @@ if(primaryInstance)app.whenReady().then(()=>{
   // Do not start an engine in standalone visual-test environments.
   const bundledNative=path.resolve(path.dirname(process.execPath),"..","Cyn.exe");
   if(process.env.CYN_RIFF_CAPTURE_DIR===undefined&&fs.existsSync(bundledNative))
-    bridge.launch().catch(error=>console.error("Native CYN engine startup:",error.message));
+    bridge.launch().then(result=>{
+      if(!result.connected)console.error("Bundled native CYN did not start:",result.error);
+    }).catch(error=>console.error("Bundled native CYN startup:",error.message));
 });
 app.on("window-all-closed",()=>{app.quit();});
