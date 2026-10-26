@@ -784,7 +784,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                         (com.google.android.material.button.MaterialButton)
                         button("↓",()->downloadTrack(track));
                     download.setTextSize(22);download.setMinWidth(0);download.setMinimumWidth(0);
-                    download.setPadding(0,0,0,0);download.setInsetLeft(0);download.setInsetRight(0);
+                    download.setPadding(0,0,0,0);
                     download.setContentDescription("Download "+track.title+" for offline listening");
                     LinearLayout.LayoutParams dpParams=new LinearLayout.LayoutParams(dp(48),dp(48));
                     dpParams.setMarginStart(dp(8));actions.addView(download,dpParams);
