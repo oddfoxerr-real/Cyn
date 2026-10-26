@@ -164,7 +164,7 @@ public class StudioTest {
         main(()->{
             try{
                 a.service.library.merge(Collections.singletonList(new AudioLibrary.Track(uri,"Favorite QA","Artist","Album",5000,false)));
-                a.page=2;a.query="Favorite QA";a.onlyFavorites=false;a.build();
+                a.page=2;a.query="Favorite QA";a.libraryFilter=0;a.build();
                 View view=a.libraryRows.findViewWithTag(uri.toString());
                 assertTrue("A native favorite icon must be visible",view instanceof androidx.appcompat.widget.AppCompatImageButton);
                 assertFalse(view.isSelected());
@@ -180,7 +180,7 @@ public class StudioTest {
             }catch(Exception e){throw new AssertionError(e);}
             finally{
                 try{a.service.library.remove(uri);}catch(Exception ignored){}
-                a.query="";a.onlyFavorites=false;a.build();
+                a.query="";a.libraryFilter=0;a.build();
             }
         });
     }
