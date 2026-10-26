@@ -52,7 +52,6 @@ public:
     bool isPlaybackDeviceAvailable();
 	bool checkDeviceChanges();
 	void restoreDefaultPlaybackDevice();
-    bool restoreCynRouting();
 
 private:
 	int sndDeviceHandleToSoundDevices(bool active_devices = true);
