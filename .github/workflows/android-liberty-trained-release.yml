@@ -1,7 +1,7 @@
 name: CYN Studio Android 0.2.33 Library UI signed release
 on:
   push:
-    branches: ['codex/android', 'feature/android-sound-studio', 'release/android-liberty-trained-v0.2.33-20261026']
+    branches: ['codex/android', 'feature/android-sound-studio', 'release/android-library-ui-v0.2.33-20261026']
     paths: ['android/**', '!android/**/*.md', '.github/workflows/android-liberty-trained-release.yml']
   pull_request:
     branches: ['codex/android']
@@ -164,7 +164,7 @@ jobs:
             android/app/build/reports/lint-results-debug.*
           retention-days: 30
       - name: Verify Studio signing key and sign release
-        if: github.ref == 'refs/heads/release/android-liberty-trained-v0.2.33-20261026'
+        if: github.ref == 'refs/heads/release/android-library-ui-v0.2.33-20261026'
         env:
           KEYSTORE_BASE64: ${{ secrets.CYN_STUDIO_ANDROID_KEYSTORE_BASE64 }}
           CYN_KEY_PASSWORD: ${{ secrets.CYN_STUDIO_ANDROID_KEY_PASSWORD }}
@@ -225,7 +225,7 @@ jobs:
           print("PASS: CYN signed APK includes exact model assets and native engines")
           PY
       - name: Publish verified Android preview
-        if: github.ref == 'refs/heads/release/android-liberty-trained-v0.2.33-20261026'
+        if: github.ref == 'refs/heads/release/android-library-ui-v0.2.33-20261026'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
