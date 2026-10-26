@@ -36,11 +36,11 @@ final class LikedDownloads {
     }
 
     static boolean canDownload(AudioLibrary.Track track){
-        return track!=null&&track.favorite&&isAudiusStream(track.uri)&&track.offlineUri==null;
+        return track!=null&&isAudiusStream(track.uri)&&track.offlineUri==null;
     }
 
     static Uri download(Context context,AudioLibrary.Track song)throws Exception{
-        if(!canDownload(song))throw new IOException("Only liked, not-yet-downloaded Audius songs can be downloaded.");
+        if(!canDownload(song))throw new IOException("Only not-yet-downloaded Audius songs can be downloaded.");
         String id=song.uri.getPathSegments().get(2);
         String prefix="https://api.audius.co/v1/tracks/"+Uri.encode(id);
         JSONObject data=fetchMetadata(prefix+"?app_name=CYN");
