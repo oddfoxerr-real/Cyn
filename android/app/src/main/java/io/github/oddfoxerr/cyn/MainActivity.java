@@ -687,6 +687,12 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                 service.changed();
             });
             add(engine,label(service.currentAi().audonicStatus,12,hint));
+            toggle(engine,"Experimental trained kick guard · Library only",service.libertyKickGuardEnabled,on->{
+                service.libertyKickGuardEnabled=on;service.changed();build();
+            });
+            add(engine,label(service.libertyKickGuardEnabled
+                ? service.currentAi().libertyKickStatus+" · Real-audio kick detection; at most 0.6 dB bass headroom reduction. Not available for other apps."
+                : "Optional: detect kicks using 90 epochs of real recorded-drum training. Off by default; streaming apps remain on Android session EQ.",12,hint));
             add(engine,label("No new sound creation · no mixing extra audio · compatible sessions only",12,hint));
         }
         category(engine,"Content focus (not another AI)",body->{
