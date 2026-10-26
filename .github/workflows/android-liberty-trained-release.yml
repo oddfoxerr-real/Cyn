@@ -1,7 +1,7 @@
-name: CYN Studio Android 0.2.34 Unified Library signed release
+name: CYN Studio Android 0.2.35 In-App Provider Search signed release
 on:
   push:
-    branches: ['codex/android', 'feature/android-sound-studio', 'release/android-unified-library-v0.2.34-20261026']
+    branches: ['codex/android', 'feature/android-sound-studio', 'release/android-inapp-music-search-v0.2.35-20261026']
     paths: ['android/**', '!android/**/*.md', '.github/workflows/android-liberty-trained-release.yml']
   pull_request:
     branches: ['codex/android']
@@ -80,7 +80,7 @@ jobs:
           ! grep -q 'createScreenCaptureIntent' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
           ! grep -q 'AudioService.CAPTURE' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
           grep -q 'Graphite' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
-          grep -q "versionName '0.2.34-preview'" android/app/build.gradle
+          grep -q "versionName '0.2.35-preview'" android/app/build.gradle
       - name: Real DSP, learning and ONNX verification
         run: |
           set -euo pipefail
@@ -112,6 +112,12 @@ jobs:
           grep -Fq 'new String[]{"All songs","Favorites","Downloads"}' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
           grep -Fq 'downloadTrack(track)' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
           grep -Fq 'confirmRemoveFromLibrary(track)' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          grep -Fq 'ProviderBrowserActivity.class' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          grep -Fq 'startActivityForResult(launch,72)' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          grep -Fq 'void submitSearch()' android/app/src/main/java/io/github/oddfoxerr/cyn/ProviderBrowserActivity.java
+          grep -Fq 'void saveCurrent()' android/app/src/main/java/io/github/oddfoxerr/cyn/ProviderBrowserActivity.java
+          grep -Fq 'LinkedMusic.isExactItem(current)' android/app/src/main/java/io/github/oddfoxerr/cyn/ProviderBrowserActivity.java
+          grep -Fq 'ProviderBrowserActivity' android/app/src/main/AndroidManifest.xml
           grep -Fq 'void buildMusicConnections()' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
           grep -Fq 'void processShareIntent(Intent incoming)' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
           grep -Fq 'LinkedMusic.isLinked(uri)' android/app/src/main/java/io/github/oddfoxerr/cyn/AudioLibrary.java
@@ -158,17 +164,17 @@ jobs:
       - name: Stage corresponding source and unsigned build
         run: |
           mkdir -p dist/android
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/android/Cyn-Studio-Android-0.2.34-preview-unsigned.apk
-          git archive --format=zip --output=dist/android/Cyn-Studio-Android-0.2.34-Source.zip HEAD android
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/android/Cyn-Studio-Android-0.2.35-preview-unsigned.apk
+          git archive --format=zip --output=dist/android/Cyn-Studio-Android-0.2.35-Source.zip HEAD android
       - uses: actions/upload-artifact@v4
         with:
-          name: Cyn-Studio-Android-0.2.34-validated-build
+          name: Cyn-Studio-Android-0.2.35-validated-build
           path: |
             dist/android/
             android/app/build/reports/lint-results-debug.*
           retention-days: 30
       - name: Verify Studio signing key and sign release
-        if: github.ref == 'refs/heads/release/android-unified-library-v0.2.34-20261026'
+        if: github.ref == 'refs/heads/release/android-inapp-music-search-v0.2.35-20261026'
         env:
           KEYSTORE_BASE64: ${{ secrets.CYN_STUDIO_ANDROID_KEYSTORE_BASE64 }}
           CYN_KEY_PASSWORD: ${{ secrets.CYN_STUDIO_ANDROID_KEY_PASSWORD }}
@@ -181,22 +187,22 @@ jobs:
           keyfile="$RUNNER_TEMP/cyn-studio.jks"
           trap 'rm -f "$keyfile"' EXIT
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keyfile"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$keyfile" --ks-key-alias cyn-studio --ks-pass env:CYN_KEY_PASSWORD --key-pass env:CYN_KEY_PASSWORD --out dist/android/Cyn-Studio-Android-0.2.34-preview.apk dist/android/Cyn-Studio-Android-0.2.34-preview-unsigned.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/android/Cyn-Studio-Android-0.2.34-preview.apk > "$RUNNER_TEMP/cyn-cert.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$keyfile" --ks-key-alias cyn-studio --ks-pass env:CYN_KEY_PASSWORD --key-pass env:CYN_KEY_PASSWORD --out dist/android/Cyn-Studio-Android-0.2.35-preview.apk dist/android/Cyn-Studio-Android-0.2.35-preview-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/android/Cyn-Studio-Android-0.2.35-preview.apk > "$RUNNER_TEMP/cyn-cert.txt"
           grep -F 'certificate SHA-256 digest: 045d9c122b2158d569c0ef8d10bbb08496a9f19e7397b702e99e9330c780bcb7' "$RUNNER_TEMP/cyn-cert.txt"
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 dist/android/Cyn-Studio-Android-0.2.34-preview.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.34-preview.apk > "$RUNNER_TEMP/cyn-package.txt"
-          grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='38' versionName='0.2.34-preview'" "$RUNNER_TEMP/cyn-package.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 dist/android/Cyn-Studio-Android-0.2.35-preview.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.35-preview.apk > "$RUNNER_TEMP/cyn-package.txt"
+          grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='39' versionName='0.2.35-preview'" "$RUNNER_TEMP/cyn-package.txt"
           cd dist/android
-          sha256sum Cyn-Studio-Android-0.2.34-preview.apk > Cyn-Studio-Android-0.2.34-preview.apk.sha256
-      - name: Verify CYN Studio in-place update from signed 0.2.33
+          sha256sum Cyn-Studio-Android-0.2.35-preview.apk > Cyn-Studio-Android-0.2.35-preview.apk.sha256
+      - name: Verify CYN Studio in-place update from signed 0.2.34
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          signed=dist/android/Cyn-Studio-Android-0.2.34-preview.apk
-          previous="$RUNNER_TEMP/Cyn-Studio-Android-0.2.33-preview.apk"
-          gh release download android-studio-v0.2.33-preview --pattern Cyn-Studio-Android-0.2.33-preview.apk --output "$previous"
+          signed=dist/android/Cyn-Studio-Android-0.2.35-preview.apk
+          previous="$RUNNER_TEMP/Cyn-Studio-Android-0.2.34-preview.apk"
+          gh release download android-studio-v0.2.34-preview --pattern Cyn-Studio-Android-0.2.34-preview.apk --output "$previous"
           signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
           "$signer" verify --verbose --print-certs "$previous"
@@ -206,19 +212,19 @@ jobs:
           test -n "$old_cert" && test "$old_cert" = "$new_cert"
           old_info=$("$aapt" dump badging "$previous" | grep '^package:')
           new_info=$("$aapt" dump badging "$signed" | grep '^package:')
-          echo "$old_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='37' versionName='0.2.33-preview'"
-          echo "$new_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='38' versionName='0.2.34-preview'"
+          echo "$old_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='38' versionName='0.2.34-preview'"
+          echo "$new_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='39' versionName='0.2.35-preview'"
           python - "$old_info" "$new_info" <<'PY'
           import re, sys
           old, new = sys.argv[1:]
           get = lambda value: int(re.search(r"versionCode='(\d+)'", value).group(1))
           assert get(new) > get(old)
-          print("PASS: signed CYN Studio Android 0.2.33 to 0.2.34 upgrade identity")
+          print("PASS: signed CYN Studio Android 0.2.34 to 0.2.35 upgrade identity")
           PY
           python - <<'PY'
           import zipfile
           from pathlib import Path
-          with zipfile.ZipFile("dist/android/Cyn-Studio-Android-0.2.34-preview.apk") as apk:
+          with zipfile.ZipFile("dist/android/Cyn-Studio-Android-0.2.35-preview.apk") as apk:
               models = Path("android/app/src/main/assets/models")
               for item in models.iterdir():
                   if item.is_file():
@@ -229,16 +235,16 @@ jobs:
           print("PASS: CYN signed APK includes exact model assets and native engines")
           PY
       - name: Publish verified Android preview
-        if: github.ref == 'refs/heads/release/android-unified-library-v0.2.34-20261026'
+        if: github.ref == 'refs/heads/release/android-inapp-music-search-v0.2.35-20261026'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag=android-studio-v0.2.34-preview
+          tag=android-studio-v0.2.35-preview
           if gh release view "$tag" >/dev/null 2>&1; then
             echo 'Release already exists; refusing to replace its assets.'
             exit 1
           fi
-          gh release create "$tag" --target "$GITHUB_SHA" --title 'CYN Studio Android 0.2.34 preview' --notes-file android/RELEASE_NOTES.md --draft --prerelease
-          gh release upload "$tag" dist/android/Cyn-Studio-Android-0.2.34-preview.apk dist/android/Cyn-Studio-Android-0.2.34-preview.apk.sha256 dist/android/Cyn-Studio-Android-0.2.34-Source.zip
+          gh release create "$tag" --target "$GITHUB_SHA" --title 'CYN Studio Android 0.2.35 preview' --notes-file android/RELEASE_NOTES.md --draft --prerelease
+          gh release upload "$tag" dist/android/Cyn-Studio-Android-0.2.35-preview.apk dist/android/Cyn-Studio-Android-0.2.35-preview.apk.sha256 dist/android/Cyn-Studio-Android-0.2.35-Source.zip
           gh release edit "$tag" --draft=false --prerelease --latest=false
