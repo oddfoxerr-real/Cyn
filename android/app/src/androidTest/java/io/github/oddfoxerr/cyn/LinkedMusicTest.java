@@ -48,6 +48,23 @@ public final class LinkedMusicTest {
         }finally{new AudioLibrary(InstrumentationRegistry.getInstrumentation().getTargetContext()).remove(link);}
     }
 
+    @Test public void removeWorksWithoutFavoritingOrDeletingAudio()throws Exception{
+        AudioLibrary library=new AudioLibrary(InstrumentationRegistry.getInstrumentation().getTargetContext());
+        Uri link=Uri.parse("https://soundcloud.com/cyn-test-artist/cyn-unfavorited-test-track");
+        try{
+            library.merge(Collections.singletonList(
+                new AudioLibrary.Track(link,"Unfavorited removal test","Artist","Linked music",0,false)));
+            AudioLibrary.Track original=null;
+            for(AudioLibrary.Track item:library.all())if(item.uri.equals(link))original=item;
+            assertNotNull(original);
+            assertFalse(original.favorite);
+            library.remove(link);
+            AudioLibrary after=new AudioLibrary(InstrumentationRegistry.getInstrumentation().getTargetContext());
+            assertFalse("Remove must clear nonfavorite Library entries",
+                after.all().stream().anyMatch(item->item.uri.equals(link)));
+        }finally{library.remove(link);}
+    }
+
     @Test public void shortcutsAreSearchLinksNotDirectStreams(){
         Uri music=Uri.parse("https://music.youtube.com/search?q=Test%20song");
         Uri soundcloud=Uri.parse("https://soundcloud.com/search/sounds?q=Test%20song");
