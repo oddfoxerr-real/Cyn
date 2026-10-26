@@ -15,6 +15,8 @@ const fx=[
   ["bass","Bass boost","Low-frequency weight"]
 ];
 let current=null, activeView="overview", busy=false;
+let refreshInFlight=null, actionRevision=0, actionError="", hadNativeSnapshot=false;
+const deviceTracker=window.cynDeviceState.makeTracker();
 const value=(n,fallback="—")=>(n==null||n==="")?fallback:(Number.isFinite(Number(n))?Number(n).toFixed(1):fallback);
 const writable=()=>Boolean(current?.connected)&&!busy;
 function showError(message){
@@ -28,6 +30,8 @@ function setEngineState(on,label){
   $("start-native").hidden=on;
 }
 function opts(select,items,selected){
+  // Never replace a select's children while the user is choosing an item.
+  if(document.activeElement===select)return;
   const normalized=items.map(item=>typeof item==="string"?{value:item,label:item}:item);
   const signature=JSON.stringify(normalized);
   if(select.dataset.signature!==signature){
@@ -187,7 +191,7 @@ function renderConnected(status){
   // that Electron can reach a native process.
   $("engine-state").classList.toggle("on",routed);
   $("rail-led").classList.toggle("on",routed);
-  $("power").checked=Boolean(status.power);
+  if(typeof status.power==="boolean")$("power").checked=status.power;
   $("smart").checked=Boolean(status.smart_listening?.enabled);
   $("pin").checked=Boolean(status.output_pinned);
   $("sensitivity").value=Number(status.smart_listening?.sensitivity)||0;
@@ -223,9 +227,16 @@ function renderConnected(status){
   const presets=[...(status.presets?.built_in||[]),...(status.presets?.user_defined||[])];
   opts($("preset"),presets.map(p=>({value:p.name,label:p.name+(p.modified?" *":"")})),status.selected_preset||"");
   window.cynRail.setPresets(status,name=>apply({type:"preset",value:name}));
-  const dev=Array.isArray(status.output_devices)?status.output_devices:[];
-  for(const select of [$("device-top"),$("device-page")])opts(select,dev,status.selected_output||"");
-  for(const id of ["preset","device-top","device-page","power","smart","pin","sensitivity"])
+  const view=deviceTracker.update(status);
+  for(const select of [$("device-top"),$("device-page"]){
+    opts(select,view.items,view.selected);
+    select.disabled=!writable()||!view.canSelect;
+  }
+  if(view.stale&&view.selected){
+    $("fx-engine-output").textContent="Last selected output: "+view.selected+
+      " · Device connection not yet confirmed by Windows";
+  }
+  for(const id of ["preset","power","smart","pin","sensitivity"])
     $(id).disabled=!writable();
   const dj=status.ai_dj||{};
   $("dj-status").textContent=String(dj.status||"Native AI DJ unavailable");
@@ -269,40 +280,82 @@ function renderDisconnected(message){
   $("learning-status").textContent="Start native CYN to read its actual learning state.";
   $("sensitivity-value").textContent="—";
   opts($("preset"),[{value:"",label:"Connect CYN"}],"");
-  for(const id of ["device-top","device-page"])opts($(id),[{value:"",label:"Connect CYN"}],"");
+  const lastKnown=deviceTracker.offline();
+  for(const id of ["device-top","device-page"]){
+    if(hadNativeSnapshot)opts($(id),lastKnown.items,lastKnown.selected);
+    else opts($(id),[{value:"",label:"Connect CYN"}],"");
+    $(id).disabled=true;
+  }
   for(const id of ["ai-model","drawer-ai-model"])opts($(id),[{value:"",label:"Unavailable"}],"");
   $("drawer-ai-model").disabled=true;
   $("drawer-ai-summary").textContent="Start CYN to load installed AI models.";
   window.cynRail.setPresets(null,()=>{});
-  renderEffects(null);
-  renderBands(null);
+  if(!hadNativeSnapshot){
+    renderEffects(null);
+    renderBands(null);
+  }else{
+    // A momentary IPC failure is not permission to erase the user's 39-band
+    // EQ, selected devices or knob positions. Disable editing until verified.
+    for(const [name] of fx){
+      const slider=$("effect-"+name);if(slider)slider.disabled=true;
+    }
+    for(const input of $("eq-sliders").querySelectorAll("input"))input.disabled=true;
+    for(const id of ["eq-band-select","eq-balance","eq-master-gain","eq-volume-leveling","eq-filter-q"])
+      $(id).disabled=true;
+  }
 }
 async function refresh(){
   if(busy)return;
-  try{
-    const result=await window.cyn.status();
-    current=result;
-    if(result.connected){renderConnected(result.status);showError("")}
-    else renderDisconnected(result.error);
-  }catch(error){
-    current={connected:false,error:error.message};
-    renderDisconnected(error.message);
-  }
+  if(refreshInFlight)return refreshInFlight;
+  const revision=actionRevision;
+  const work=(async()=>{
+    try{
+      const result=await window.cyn.status();
+      // A pre-click poll must never overwrite the user's subsequent output
+      // or power change while the native command is being applied.
+      if(busy||revision!==actionRevision)return;
+      current=result;
+      if(result.connected&&result.status?.cyn_build==="identity-2"){
+        hadNativeSnapshot=true;
+        renderConnected(result.status);
+        if(!actionError)showError("");
+      }else renderDisconnected(result.error||"CYN's native status could not be verified.");
+    }catch(error){
+      if(busy||revision!==actionRevision)return;
+      current={connected:false,error:error.message};
+      renderDisconnected(error.message);
+    }
+  })();
+  refreshInFlight=work;
+  try{return await work}
+  finally{if(refreshInFlight===work)refreshInFlight=null}
 }
 async function apply(action){
   if(!writable())return false;
+  ++actionRevision; // invalidate an in-flight read before changing Windows audio
   busy=true;
   let succeeded=false;
   try{
     const result=await window.cyn.apply(action);
+    if(!result.connected||!result.status)throw new Error(result.error||"Native audio command did not complete");
+    // The command process exiting only means Windows received the CLI command.
+    // Verify the actual native response before accepting a power/output change.
+    if(action.type==="power"&&result.status.power!==action.value)
+      throw new Error("CYN did not confirm the processing switch. Check the native engine and audio driver.");
+    if(action.type==="output"&&result.status.selected_output!==action.value)
+      throw new Error("Windows did not confirm the selected output. The previous device is preserved.");
     current=result;
-    if(!result.connected)throw new Error(result.error||"Native audio command did not complete");
     succeeded=true;
+    actionError="";
     showError("");
-  }catch(error){showError(error.message)}
-  finally{
+  }catch(error){
+    actionError=String(error.message||error);
+    showError(actionError);
+  }finally{
     busy=false;
+    if(refreshInFlight)await refreshInFlight;
     await refresh();
+    if(actionError)showError(actionError);
   }
   return succeeded;
 }
