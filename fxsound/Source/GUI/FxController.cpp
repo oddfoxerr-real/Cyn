@@ -839,8 +839,12 @@ void FxController::printStatus()
     // Report endpoint routing separately from engine/process connectivity.
     bool virtualPresent=false,virtualActive=false,virtualDefault=false;
     bool physicalOutputReady=false;
+    // A single enumeration must drive both health and the exposed device list.
+    // Two consecutive Windows endpoint scans can disagree while a Bluetooth
+    // device is reconnecting, making Material CYN clear a still-valid choice.
+    const auto deviceSnapshot=audio_passthru_->getSoundDevices(false);
     const auto selectedPhysical=model.getSelectedOutput().pwszID;
-    for(const auto& device:audio_passthru_->getSoundDevices(false))
+    for(const auto& device:deviceSnapshot)
     {
         if(device.isDFXDevice)
         {
@@ -933,9 +937,9 @@ void FxController::printStatus()
 	settings->setProperty("selected_preset", model.getPreset(model.getSelectedPreset()).name);
 
 	Array<var> output_devices;
-	for (auto& device : audio_passthru_->getSoundDevices())
+	for (const auto& device : deviceSnapshot)
 	{
-		if (device.isRealDevice)
+		if (device.isRealDevice && device.isActive)
 			output_devices.add(String(device.deviceFriendlyName.c_str()));
 	}
 	settings->setProperty("output_devices", output_devices);
