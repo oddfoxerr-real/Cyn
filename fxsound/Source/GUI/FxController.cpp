@@ -451,37 +451,6 @@ void FxController::applyConfig(const String& commandline)
 		printStatus();
 		return;
 	}
-    if (arg_list.containsOption("--restore_audio"))
-    {
-        // Use the unchanged FxSound virtual capture -> native DfxDsp ->
-        // selected physical output engine. This is an explicit UI request:
-        // never silently change the user's Windows default playback device.
-        const auto devices=audio_passthru_->getSoundDevices(false);
-        bool virtualReady=false;
-        for (const auto& device:devices)
-            if(device.isDFXDevice && device.isActive) virtualReady=true;
-        if (!dfx_enabled_ || !virtualReady)
-        {
-            logMessage("CYN routing: FxSound virtual audio device is missing or disabled.");
-            return;
-        }
-        const auto physical=FxModel::getModel().getSelectedOutput();
-        if (physical.pwszID.empty() || !physical.isRealDevice || !physical.isActive)
-        {
-            logMessage("CYN routing: choose an active speaker or headphone output first.");
-            return;
-        }
-        if (!audio_passthru_->restoreCynRouting())
-        {
-            logMessage("CYN routing: the original FxSound playback pipeline could not restart.");
-            return;
-        }
-        setPowerState(true);
-        setOutput(String(physical.pwszID.c_str()),false);
-        logMessage("CYN routing: original FxSound default-endpoint processing restarted.");
-        return;
-    }
-
     // Legacy --theme values are ignored: stable CYN has one Dark Theme.
     auto reduced=arg_list.getValueForOption("--reduce_motion");
     if(reduced=="0" || reduced=="1") setReducedMotion(reduced=="1");
