@@ -10,12 +10,12 @@
   function makeTracker(){
     let knownDevices=[],selected="";
     function validName(name){return typeof name==="string"&&name.length>0&&name.length<=256}
-    function view(names,choice,confirmed){
+    function view(names,choice,confirmed,canSelect){
       const items=names.map(name=>({value:name,label:name}));
       if(choice&&!names.includes(choice))
         items.unshift({value:choice,label:choice+" (temporarily unavailable)"});
       if(!items.length)items.push({value:"",label:"No active output detected"});
-      return {items,selected:choice,confirmed,canSelect:!!names.length,stale:!confirmed};
+      return {items,selected:choice,confirmed,canSelect:Boolean(canSelect),stale:!confirmed};
     }
     function update(status){
       const live=Array.isArray(status?.output_devices)
@@ -27,9 +27,9 @@
       if(live.length)knownDevices=live;
       if(confirmed)selected=native;
       else if(!selected&&native)selected=native;
-      return view(live.length?live:knownDevices,confirmed?native:selected,confirmed);
+      return view(live.length?live:knownDevices,confirmed?native:selected,confirmed,live.length>0);
     }
-    function offline(){return view(knownDevices,selected,false)}
+    function offline(){return view(knownDevices,selected,false,false)}
     return {update,offline};
   }
   return Object.freeze({makeTracker});
