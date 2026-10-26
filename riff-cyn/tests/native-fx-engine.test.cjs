@@ -36,7 +36,7 @@ test("engine health is emitted by genuine native FxSound DSP, not fabricated in 
   assert(bridge.includes("function startupFailure()"));
   assert(bridge.includes('Get-Process -Name Cyn,FxSound'));
   assert(renderer.includes("status.fx_engine"));
-  assert(renderer.includes('fx.processing===true'));
+  assert(renderer.includes('engine.processing===true'));
   assert(renderer.includes('status.selected_output'));
   assert(bridge.includes('maxBuffer:262144'));
 
