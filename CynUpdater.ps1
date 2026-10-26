@@ -272,11 +272,17 @@ $clock.Add_Tick({
                 if (!(Test-Path -LiteralPath $material)) {
                     throw 'The redesigned CYN interface is missing after installation. Repair this installation; do not launch Classic as a fallback.'
                 }
-                Start-Process -FilePath $material -WorkingDirectory (Split-Path -Parent $material) -ErrorAction Stop | Out-Null
+                # Start the original native CYN audio host first. Its startup
+                # initializes FxSound audio/DSP before opening the Material UI.
+                $native=Join-Path $PSScriptRoot 'Cyn.exe'
+                if (!(Test-Path -LiteralPath $native)) {
+                    throw 'The original Cyn.exe audio engine is missing after installation.'
+                }
+                Start-Process -FilePath $native -WorkingDirectory $PSScriptRoot -ErrorAction Stop | Out-Null
                 $script:allowedToClose=$true
                 $window.Close()
             } catch {
-                Show-Error ('CYN updated but could not restart the redesigned interface: '+$_.Exception.Message)
+                Show-Error ('CYN updated but could not restart the native engine and redesigned interface: '+$_.Exception.Message)
             }
         }
         return

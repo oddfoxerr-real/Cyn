@@ -645,24 +645,6 @@ void AudioPassthruPrivate::restoreDefaultPlaybackDevice()
 		return;
 }
 
-// Restore the original FxSound virtual endpoint and retry native playback.
-// This is invoked only when a user explicitly requests routing recovery.
-bool AudioPassthruPrivate::restoreCynRouting()
-{
-    if (sndDevicesSetDefaultDeviceSelectionMode(
-            hp_sndDevices_, SND_DEVICES_AUTO_SELECT_DEFAULT_DEVICE_ON) != OKAY)
-        return false;
-
-    int timedOut = IS_FALSE;
-    if (killProcessingThread(&timedOut) != OKAY || timedOut != IS_FALSE)
-        return false;
-
-    // Clear the sticky no-device sentinel only after an explicit user request.
-    // The original processTimer() then reinitializes the real audio pipeline.
-    s_sndDevices_.playbackDeviceIsUnavailable = FALSE;
-    return true;
-}
-
 int AudioPassthruPrivate::setTargetedRealPlaybackDevice(const std::wstring sound_device_guid)
 {
 	int i_resultFlag;

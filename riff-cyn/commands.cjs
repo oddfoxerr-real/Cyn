@@ -9,14 +9,6 @@ function commandFor(action,status){
   assert(action&&typeof action==="object"&&!Array.isArray(action),"Invalid action");
   assert(status&&status.cyn_build==="identity-2","Native CYN status is required");
   switch(action.type){
-    case "restoreAudio":
-      assert(status.fx_engine?.virtual_device_active===true,
-        "CYN's original FxSound virtual audio driver is missing or disabled. Repair the signed driver first.");
-      assert(status.fx_engine?.physical_output_ready===true,
-        "Choose a connected physical speaker or headphone output before routing Windows audio through CYN.");
-      // Explicit user action. The native FxSound host alone selects Windows
-      // default playback and restarts its capture/DSP/playback thread.
-      return "--restore_audio";
     case "power": assert(typeof action.value==="boolean","Power must be boolean");return "--power="+(action.value?"1":"0");
     case "smart": assert(typeof action.value==="boolean","Smart listening must be boolean");return "--smart_listening="+(action.value?"1":"0");
     case "pin": assert(typeof action.value==="boolean","Output pin must be boolean");return "--pin_output="+(action.value?"1":"0");

@@ -74,3 +74,26 @@ test("polling cannot overwrite a later native output/power command",()=>{
   assert(bridge.includes('if(action.type==="power"&&result.status.power!==action.value)'));
   assert(bridge.includes("data=JSON.parse(fs.readFileSync(statusPath,\"utf8\"))"));
 });
+
+test("native CYN output always beats an earlier cached Bluetooth label",()=>{
+  const tracker=makeTracker();
+  tracker.update({
+    output_devices:["Headphones (JBL Tune 520BT)"],
+    selected_output:"Headphones (JBL Tune 520BT)"
+  });
+  const mismatched=tracker.update({
+    output_devices:["Headphones (JBL Tune 520BT)"],
+    selected_output:"Speakers (High Definition Audio Device)"
+  });
+  assert.equal(mismatched.selected,"Speakers (High Definition Audio Device)");
+  assert.equal(mismatched.confirmed,false);
+  assert.match(mismatched.items[0].label,/temporarily unavailable/);
+  assert.notEqual(mismatched.selected,"Headphones (JBL Tune 520BT)",
+    "A remembered JBL device must not masquerade as the native CYN selection");
+  const confirmed=tracker.update({
+    output_devices:["Headphones (JBL Tune 520BT)"],
+    selected_output:"Headphones (JBL Tune 520BT)"
+  });
+  assert.equal(confirmed.selected,"Headphones (JBL Tune 520BT)");
+  assert.equal(confirmed.confirmed,true);
+});
