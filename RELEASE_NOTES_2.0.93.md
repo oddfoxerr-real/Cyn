@@ -1,4 +1,4 @@
-# CYN Windows v2.0.93 — Bundled Original FxSound Engine Starts Without Classic
+# CYN Windows 2.0.93 — Bundled Original FxSound Engine Starts Without Classic
 
 This maintenance release builds directly on the original CYN/FxSound engine restoration and **native-first CYN launcher** in v2.0.92. It fixes a remaining problem where the redesigned Material interface could connect to an outdated manually selected `Cyn.exe` or show disconnected controls until Classic was opened.
 
