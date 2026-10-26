@@ -99,6 +99,7 @@ public final class AudioService extends Service {
     String aiProfile=AiSelection.BASIC;
     float spatialPreviewStrength=0.4f;
     float audonicIntensity=0.45f;
+    boolean libertyKickGuardEnabled=false;
     private long libraryFrame, libraryTrace;
     // UI telemetry is captured from PCM and inference in a 150ms service tick.
     // Indexes: bass, kick/transient, spatial DSP, neural decision intensity.
@@ -359,7 +360,8 @@ public final class AudioService extends Service {
         if(!enabled)return "Enhancement off · original sound";
         if(playing) {
             if(AiSelection.AUDONIC.equals(aiProfile))return "AUDONIC Library creative DSP · "+desktopAi.audonicStatus;
-            if(AiSelection.LIBERTY.equals(aiProfile))return "LIBERTY · Adaptive EQ, no creative sound DSP · "+desktopAi.audonicStatus;
+            if(AiSelection.LIBERTY.equals(aiProfile))return "LIBERTY · Adaptive EQ, no creative sound DSP · "+
+                (libertyKickGuardEnabled?desktopAi.libertyKickStatus:desktopAi.audonicStatus);
             if(spatialPreviewEnabled)return partialNeuralPreview
                 ? "APEX 10M Experimental Release · "+desktopAi.partialStatus
                 : "APEX 10M · Classic Spatial DSP";
@@ -429,6 +431,7 @@ public final class AudioService extends Service {
         spatialPreviewEnabled=AiSelection.usesSpatialPreview(aiProfile);
         spatialPreviewStrength=Math.max(0f,Math.min(1f,prefs.getFloat("spatial10m_strength",.4f)));
         audonicIntensity=Math.max(0f,Math.min(1f,prefs.getFloat("audonic_intensity",.45f)));
+        libertyKickGuardEnabled=prefs.getBoolean("liberty_kick_guard",false);
         partialNeuralPreview=prefs.getBoolean("apex10m_partial_opt_in",false);
         for(int i=0;i<39;i++)studioEq[i]=prefs.getFloat("studioEq"+i,0);
         enabled=prefs.getBoolean("enabled",true); smart=prefs.getBoolean("smart",true); sensitivity=prefs.getFloat("sensitivity",.7f);
@@ -693,7 +696,7 @@ public final class AudioService extends Service {
         aiProfile=AiSelection.normalize(aiProfile);
         useApex=AiSelection.usesApex6M(aiProfile);
         spatialPreviewEnabled=AiSelection.usesSpatialPreview(aiProfile);
-        SharedPreferences.Editor e=prefs.edit().putString("ai_profile",aiProfile).putBoolean("apex10m_partial_opt_in",partialNeuralPreview).putBoolean("spatial10m_preview",spatialPreviewEnabled).putFloat("spatial10m_strength",spatialPreviewStrength).putFloat("audonic_intensity",audonicIntensity).putBoolean("enabled",enabled).putBoolean("smart",smart).putFloat("sensitivity",sensitivity).putFloat("bass",bass).putFloat("clarity",clarity).putFloat("width",width).putFloat("loudness",loudness);
+        SharedPreferences.Editor e=prefs.edit().putString("ai_profile",aiProfile).putBoolean("apex10m_partial_opt_in",partialNeuralPreview).putBoolean("spatial10m_preview",spatialPreviewEnabled).putFloat("spatial10m_strength",spatialPreviewStrength).putFloat("audonic_intensity",audonicIntensity).putBoolean("liberty_kick_guard",libertyKickGuardEnabled).putBoolean("enabled",enabled).putBoolean("smart",smart).putFloat("sensitivity",sensitivity).putFloat("bass",bass).putFloat("clarity",clarity).putFloat("width",width).putFloat("loudness",loudness);
         for(int i=0;i<5;i++) e.putFloat("eq"+i,eq[i]);
         e.putFloat("ambience",ambience).putFloat("dynamics",dynamics).putFloat("headroom",headroom).putInt("bands",bandCount).putBoolean("apex",useApex).putBoolean("movie",movieMode);
         for(int i=0;i<39;i++)e.putFloat("studioEq"+i,studioEq[i]);e.apply();updateNativeControls();
@@ -716,6 +719,10 @@ public final class AudioService extends Service {
         desktopAi.active=(playing||capturedAudioFresh())&&enabled&&smart;
         desktopAi.apexEnabled=useApex;
         desktopAi.audonicEnabled=AiSelection.usesAdaptiveControls(aiProfile)&&desktopAi.active;
+        // Trained LIBERTY is only inferred on actually decoded Library PCM.
+        // Third-party players still use supported session EQ and never fake this inference.
+        desktopAi.libertyKickEnabled=AiSelection.LIBERTY.equals(aiProfile)&&
+            libertyKickGuardEnabled&&playing&&desktopAi.active;
         desktopAi.movie=movieMode;
         boolean wantsPartial=spatialPreviewEnabled&&partialNeuralPreview&&desktopAi.active;
         if(desktopAi.partialEnabled!=wantsPartial) {
@@ -748,6 +755,15 @@ public final class AudioService extends Service {
             DesktopAi.AudonicPolicy policy=desktopAi.audonicPolicy;
             ConnectedEffects.audonic(p,policy==null?null:policy.effects,audonicIntensity,
                 desktopAi.audonicEnabled&&policy!=null&&SystemClock.elapsedRealtime()-policy.at<2500);
+            // Opt-in. Only apply to native CYN Library PCM. Reduces low EQ
+            // headroom by <=0.6 dB when a fresh measured kick is confidently
+            // recognized and clipping margin is small; never adds audio.
+            DesktopAi.LibertyKickDecision kick=desktopAi.libertyKickDecision;
+            float reduction=LibertyKickGuard.attenuationDb(
+                kick==null?0f:kick.confidence,kick==null?1f:kick.headroom,
+                audonicIntensity,kick!=null&&SystemClock.elapsedRealtime()-kick.at<900,
+                libertyKickGuardEnabled&&smart&&enabled,playing);
+            LibertyKickGuard.apply(p,reduction,bandCount);
         }
         float changeDb=Math.max(Math.abs(p[1]-bass),Math.abs(p[2]-clarity));
         int changedBands=0;
