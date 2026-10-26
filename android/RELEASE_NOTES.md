@@ -1,3 +1,20 @@
+# CYN Studio Android v0.2.36-preview — One music search
+
+- Replaces separate YouTube Music, SoundCloud and Audius search boxes with one simple Library search field.
+- Runs the entered query against locally saved songs and the Audius public catalog, combining matching song/artist pairs into one list.
+- Each result identifies actual available sources: Audius catalog matches, local files, and previously saved provider links.
+- The result's Sources action offers playback, save and artist-permitted Audius download without auto-favoriting.
+- YouTube Music and SoundCloud source searches reuse the same song query, but are explicitly marked unverified until provider API credentials or saved exact links exist. No false "Found" badges.
+- Removes the duplicate Audius search and redundant service selector from the Library main screen.
+- Keeps the original source browser for exact linked tracks and further provider exploration.
+- Preserves Library Remove, independent favorites, existing offline files, AI, DSP, Connect and authenticated APK updates.
+
+YouTube Data API search and SoundCloud catalog search require access credentials. This build makes the one-search workflow simpler without falsely claiming cross-provider availability or bypassing providers' playback restrictions.
+
+Signed in-place upgrade from v0.2.35-preview (versionCode 39) to v0.2.36-preview (versionCode 40) requires successful build, lint, Android tests, signing and integrity checks.
+
+---
+
 # CYN Studio Android v0.2.35-preview — Search music inside CYN
 
 - Replaces the YouTube Music and SoundCloud launch-only buttons with an in-app search browser.
