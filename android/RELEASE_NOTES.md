@@ -1,3 +1,19 @@
+# CYN Studio Android v0.2.35-preview — Search music inside CYN
+
+- Replaces the YouTube Music and SoundCloud launch-only buttons with an in-app search browser.
+- Uses the official providers' own search pages, including song, artist and playlist exploration in CYN, with a search field and provider tabs.
+- Allows opening a specific result and saving its exact track/playlist URL to CYN Library without favoriting it.
+- Saved music links now reopen in CYN's search/browser screen instead of immediately launching another app.
+- Saves through CYN's active Library service; new items appear in the Library without restarting the application.
+- Includes explicit Open original fallback when a provider restricts embedded browsing, playback or sign-in.
+- Preserves the v0.2.34 visible Remove control, independent Favorites, offline Audius downloads, local audio, Connect and AI models.
+- This is provider-site browsing, not direct YouTube Music account sync or SoundCloud OAuth API access. Provider authentication restrictions and rights continue to apply.
+- No Spotify sign-in, unofficial API extraction, streaming bypass or protected music downloads.
+
+Build 39. The installer must pass Android build/lint, on-device tests, original signing identity and 0.2.34 to 0.2.35 upgrade verification.
+
+---
+
 # CYN Studio Android 0.2.34 preview — Music links and easy Library removal
 
 - Adds a visible Remove action to every saved track, whether favorited or not.
