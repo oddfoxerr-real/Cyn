@@ -1,4 +1,4 @@
-# CYN Windows v2.0.91 — Stable JBL/headphone selection and native DSP controls
+# CYN Windows 2.0.91 — Stable JBL/headphone selection and native DSP controls
 
 CYN Windows v2.0.91 repairs an issue where Material CYN repeatedly lost the selected Bluetooth/USB audio device and incorrectly reset controls while the native FxSound/CYN engine was reconnecting or reporting transiently incomplete Windows device scans.
 
