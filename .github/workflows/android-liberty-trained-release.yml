@@ -117,6 +117,7 @@ jobs:
           grep -Fq 'void submitSearch()' android/app/src/main/java/io/github/oddfoxerr/cyn/ProviderBrowserActivity.java
           grep -Fq 'void saveCurrent()' android/app/src/main/java/io/github/oddfoxerr/cyn/ProviderBrowserActivity.java
           grep -Fq 'UnifiedMusicSearch.combine' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          grep -Fq '# CYN Studio Android v0.2.36-preview — One music search' android/RELEASE_NOTES.md
           grep -Fq 'Search music' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
           grep -Fq 'Audius · found' android/app/src/main/java/io/github/oddfoxerr/cyn/UnifiedMusicSearch.java
           ! grep -Fq 'buildPublicMusic()' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
