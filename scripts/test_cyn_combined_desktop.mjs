@@ -20,8 +20,8 @@ assert(installer.includes('Name: "{autoprograms}\\Cyn"; Filename: "{app}\\Cyn.ex
 assert(installer.includes('Name: "{autoprograms}\\Cyn (Classic)"'),"Keep the full native AI/driver troubleshooting UI available");
 assert(installer.includes('Parameters: "--classic"'),"The Classic shortcut must launch original CYN audio controls, not reopen Material");
 assert(installer.includes('Name="CYN Audio.exe"'),"Updates must not overwrite an actively running Electron frontend");
-assert(native.includes('path.dirname(process.execPath),"..","Cyn.exe"'),"Locate the native audio processor beside the bundled shell");
-assert(main.includes('bridge.launch().catch'),"Integrated CYN must initialize the native audio engine");
+assert(native.includes('function bundledNative(executable=process.execPath)') && native.includes('path.dirname(executable),"..","Cyn.exe"') && native.includes('chooseNative(bundledNative(),nativeExe,candidates())'),"Use the bundled original audio processor beside Material instead of stale saved executables");
+assert(main.includes('bridge.launch().then(result=>') && main.includes('bridge.ensureRunning()'),"Material must initialize/reconnect original native CYN independently of Classic");
 assert(main.includes('ipcMain.handle("cyn:check-updates"'),"Material CYN needs the actual Windows updater");
 assert(main.includes('"CynUpdater.ps1"'),"Invoke the existing secure SHA-256 updater");
 assert(main.includes('"-CurrentVersion",version,"-Interactive"'),
