@@ -267,6 +267,31 @@ function renderDisconnected(message){
   $("fx-engine-reconnect").textContent="Reconnect engine";
   $("fx-engine-reconnect").disabled=false;
   setEngineState(false,"Engine offline");
+  if(hadNativeSnapshot){
+    // Do not erase the user's EQ, AI, device or power display on one failed
+    // Windows status probe. Everything is *unverified and non-editable* until
+    // CYN reconnects; this is not a claim that the audio is still processing.
+    const previous=deviceTracker.offline();
+    for(const id of ["device-top","device-page"]){
+      opts($(id),previous.items,previous.selected);
+      $(id).disabled=true;
+    }
+    $("fx-engine-output").textContent=previous.selected
+      ?"Last selected output (not verified): "+previous.selected
+      :"Windows output connection not verified";
+    $("fx-engine-detail").textContent="Native CYN status unavailable; controls are paused. "+String(message||"");
+    for(const id of ["preset","power","smart","pin","sensitivity","ai-model",
+      "drawer-ai-model","listening-mode","headroom","preset-cycling",
+      "audonic-intensity","train-ai","feedback-more","feedback-less",
+      "dj-enable","dj-download","dj-remove","dj-cancel","dj-intensity",
+      "dj-spacing","dj-stereo","eq-band-select","eq-balance",
+      "eq-master-gain","eq-volume-leveling","eq-filter-q"])$(id).disabled=true;
+    for(const [name] of fx){
+      const slider=$("effect-"+name);if(slider)slider.disabled=true;
+    }
+    for(const input of $("eq-sliders").querySelectorAll("input"))input.disabled=true;
+    return;
+  }
   for(const id of ["preset","device-top","device-page","power","smart","pin","sensitivity","ai-model"])$(id).disabled=true;
   for(const id of ["listening-mode","headroom","preset-cycling","audonic-intensity","train-ai","feedback-more","feedback-less"])$(id).disabled=true;
   $("training-fill").style.width="0%";
