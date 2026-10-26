@@ -1,3 +1,21 @@
+# CYN Studio Android 0.2.33 preview — Library and layout polish
+
+This update follows the signed 0.2.32-preview build. It preserves the existing Android package identity, trained LIBERTY asset workflow, AI profiles, Connect routing, native DSP, presets, and user data.
+
+- Adds breathing room between stacked Material 3 action buttons in Settings and other pages.
+- Separates Library, Favorites, and Downloads with dedicated Library filters.
+- Adding an Audius track saves it to Library without making it a favorite.
+- Favorites are toggled independently; removing a heart leaves the song in Library and keeps previously downloaded audio.
+- Permitted Audius downloads no longer require favoriting a song first.
+- Adds an Add-and-Download option beside Audius search results, with permissions verified by Audius for each download.
+- Keeps offline music in Music/CYN when Android supports MediaStore storage.
+- Adds regression coverage for saved but unliked music and for download eligibility.
+- Does not add YouTube Music, SoundCloud or Spotify account integration in this release.
+
+Release publishing requires passing build, lint and Android device tests, verifying the original signing certificate, and validating in-place upgrade from the signed 0.2.32-preview APK. Installation continues to require user approval.
+
+---
+
 # CYN Studio Android v0.2.32-preview — LIBERTY trained kick awareness
 
 - Bundles the separately trained **LIBERTY kick recognizer** from the public Magenta Groove recorded-drum set (Creative Commons Attribution 4.0). Small 5,185-weight ONNX model, 90 measured training epochs.
