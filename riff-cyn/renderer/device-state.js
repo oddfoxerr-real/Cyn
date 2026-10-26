@@ -25,8 +25,10 @@
       // native device snapshot. A blank/partial scan must never erase a known choice.
       const confirmed=Boolean(native&&live.includes(native));
       if(live.length)knownDevices=live;
-      if(confirmed)selected=native;
-      else if(!selected&&native)selected=native;
+      // An explicit native engine selection always supersedes a cached UI
+      // value. The UI may keep a known name across an empty Windows scan,
+      // but may never label JBL as selected when the engine says Speakers.
+      if(native)selected=native;
       return view(live.length?live:knownDevices,confirmed?native:selected,confirmed,live.length>0);
     }
     function offline(){return view(knownDevices,selected,false,false)}
