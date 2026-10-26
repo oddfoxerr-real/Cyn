@@ -39,12 +39,12 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     TextView likedDownloadStatus,favoritesCount;
     String query="";
     final ServiceConnection connection=new ServiceConnection(){
-        @Override public void onServiceConnected(ComponentName name,IBinder binder){service=((AudioService.LocalBinder)binder).service();build(false);processControlIntent(getIntent());}
+        @Override public void onServiceConnected(ComponentName name,IBinder binder){service=((AudioService.LocalBinder)binder).service();build(false);processControlIntent(getIntent());processShareIntent(getIntent());}
         @Override public void onServiceDisconnected(ComponentName name){service=null;build(false);}
     };
     @Override public void onCreate(Bundle state){ui=getSharedPreferences("ui",0);applyPaletteTheme();super.onCreate(state);installBackNavigation();if(state!=null){page=state.getInt("page",0);query=state.getString("query","");libraryFilter=Math.max(0,Math.min(2,state.getInt("libraryFilter",0)));publicQuery=state.getString("publicQuery","");}if(getIntent().getBooleanExtra("updates",false))page=4;build(false);bound=bindService(new Intent(this,AudioService.class),connection,BIND_AUTO_CREATE);UpdateManager.schedule(this);UpdateManager.checkOnLaunch(this);}
     @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);state.putInt("page",page);state.putString("query",query);state.putInt("libraryFilter",libraryFilter);state.putString("publicQuery",publicQuery);}
-    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);if(i.getBooleanExtra("updates",false)){page=4;build(false);}processControlIntent(i);}
+    @Override protected void onNewIntent(Intent i){super.onNewIntent(i);setIntent(i);if(i.getBooleanExtra("updates",false)){page=4;build(false);}processControlIntent(i);processShareIntent(i);}
     void processControlIntent(Intent i){if(service!=null&&AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL.equals(i.getAction())){notifications();startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.MONITOR).putExtra("session",i.getIntExtra(AudioEffect.EXTRA_AUDIO_SESSION,-1)));i.setAction(null);page=0;build(false);offerLiveVisuals();}}
     String asset(String name)throws IOException{try(InputStream in=getAssets().open(name)){return Streams.text(in);}}
     int dp(float v){return Math.round(v*getResources().getDisplayMetrics().density);}
@@ -397,20 +397,111 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             "\n\nThis panel does not expose your phone identity, app names or audio session identifiers. For optional local troubleshooting, open Style → Audio diagnostics.";
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle("CYN connection").setMessage(message).setPositiveButton("Done",null).show();
     }
+    void processShareIntent(Intent incoming){
+        if(incoming==null||service==null||!Intent.ACTION_SEND.equals(incoming.getAction()))return;
+        String source=incoming.getStringExtra(Intent.EXTRA_TEXT);
+        incoming.setAction(null);
+        if(source==null)return;
+        String url=source.trim();
+        java.util.regex.Matcher found=java.util.regex.Pattern.compile("https://[^\\\\s]+").matcher(url);
+        if(found.find())url=found.group();
+        while(url.endsWith(".")||url.endsWith(")")||url.endsWith(","))url=url.substring(0,url.length()-1);
+        if(LinkedMusic.parse(url)==null){toast("Only YouTube Music or SoundCloud links can be saved");return;}
+        page=2;build(false);
+        final String selected=url;
+        handler.post(()->{if(!isFinishing()&&!isDestroyed())promptMusicLink(selected);});
+    }
+
+    void buildMusicConnections(){
+        LinearLayout providers=section("Music connections",
+            "Keep YouTube Music and SoundCloud tracks in CYN without another login. Links open the original music app.");
+        buttons(providers,new String[]{"YouTube Music","SoundCloud"},new Runnable[]{
+            ()->browser("https://music.youtube.com/"),
+            ()->browser("https://soundcloud.com/")
+        });
+        add(providers,button("Save shared music link",()->promptMusicLink("")));
+        add(providers,button("Save currently playing song",this::saveCurrentProviderSong));
+        add(providers,label("Share a song or playlist from either app to CYN, or paste its link. Saved provider tracks are shortcuts, not downloaded audio. Account playlist sync is not enabled.",12,hint));
+    }
+
+    void promptMusicLink(String suggestedUrl){
+        LinearLayout fields=column();fields.setPadding(dp(20),dp(4),dp(20),0);
+        EditText titleInput=new EditText(this);
+        titleInput.setHint("Song or playlist title (optional)");
+        titleInput.setSingleLine(true);titleInput.setTextColor(text);titleInput.setHintTextColor(hint);
+        titleInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        add(fields,titleInput);
+        EditText linkInput=new EditText(this);
+        linkInput.setHint("https://music.youtube.com/watch?...");
+        linkInput.setSingleLine(true);linkInput.setTextColor(text);linkInput.setHintTextColor(hint);
+        linkInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT|
+            android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        linkInput.setText(suggestedUrl);add(fields,linkInput);
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Save a music link")
+            .setMessage("YouTube Music or SoundCloud. Playback stays in that app; this is not an offline download.")
+            .setView(fields).setNegativeButton("Cancel",null)
+            .setPositiveButton("Save to Library",(dialog,which)->{
+                Uri link=LinkedMusic.parse(linkInput.getText().toString());
+                if(link==null){toast("Paste a valid YouTube Music or SoundCloud link");return;}
+                String supplied=titleInput.getText().toString().trim();
+                String title=supplied.isEmpty()?"Saved "+LinkedMusic.provider(link)+" link":supplied;
+                if(title.length()>160)title=title.substring(0,160);
+                saveMusicBookmark(new AudioLibrary.Track(link,title,LinkedMusic.provider(link),
+                    "Linked music",0,false));
+            }).show();
+    }
+
+    void saveCurrentProviderSong(){
+        ExternalNowPlaying.Track now=ExternalNowPlaying.current(this);
+        Uri link=LinkedMusic.searchFromPlayback(now);
+        if(link==null){
+            toast("Play music in YouTube Music or SoundCloud and allow media access");
+            return;
+        }
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Save a song shortcut?")
+            .setMessage("Android exposes the song title, not its original URL. This saves a "+
+                LinkedMusic.provider(link)+" search shortcut for "+now.title+
+                ". For an exact track link, share it from the music app instead.")
+            .setNegativeButton("Cancel",null)
+            .setPositiveButton("Save search shortcut",(d,w)->{
+                saveMusicBookmark(new AudioLibrary.Track(link,now.title,
+                    now.artist.isEmpty()?LinkedMusic.provider(link):now.artist,
+                    LinkedMusic.provider(link)+" search shortcut",0,false));
+            }).show();
+    }
+
+    void saveMusicBookmark(AudioLibrary.Track track){
+        if(service==null){toast("Audio engine connecting");return;}
+        filesWorker.execute(()->{
+            try{
+                service.library.merge(Collections.singletonList(track));
+                handler.post(()->{
+                    if(isFinishing()||isDestroyed())return;
+                    toast("Saved to Library · favorites unchanged");
+                    if(page==2)renderTracks();
+                });
+            }catch(Exception e){handler.post(()->{if(!isDestroyed())toast("Couldn't save music link");});}
+        });
+    }
+
     void files(){
         add(content,label("Library",29,text));add(content,label(service.library.all().size()+" saved tracks · favorites and downloads are separate",13,hint));
         LinearLayout player=section("NOW PLAYING","");playLabel=label(service.title,21,text);playLabel.setTypeface(null,Typeface.BOLD);add(player,playLabel);positionLabel=label("",12,hint);add(player,positionLabel);position=new ExpressiveSeekBar(this,accent,outline,reduced);position.setContentDescription("Track position");position.setMinimumHeight(dp(48));position.setProgressTintList(ColorStateList.valueOf(accent));position.setThumbTintList(ColorStateList.valueOf(accent));position.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar b,int n,boolean user){}public void onStartTrackingTouch(SeekBar b){seeking=true;}public void onStopTrackingTouch(SeekBar b){seeking=false;service.seek(b.getProgress());}});add(player,position);
         LinearLayout transport=buttons(player,new String[]{"Previous",service.playing?"Pause":"Play","Next"},new Runnable[]{()->service.previous(),()->{if(service.player==null)toast("Choose a track below");else if(service.playing)service.pause();else startForegroundService(new Intent(this,AudioService.class).setAction(AudioService.TOGGLE));build();},()->service.next()});playButton=(TextView)transport.getChildAt(1);transportStyle(transport);
         toggle(player,"Shuffle",service.prefs.getBoolean("shuffle",false),service::shuffle);category(player,"Repeat",body->segments(body,new String[]{"Off","All","One"},service.prefs.getInt("repeat",0)==0?0:service.prefs.getInt("repeat",0)==2?1:2,index->service.repeat(new int[]{0,2,1}[index])));liveStatus=label("",12,accent);add(player,liveStatus);
         buttons(content,new String[]{"Add files","Scan phone"},new Runnable[]{this::pickTracks,this::scanPermission});gap(content,12);
-        buildPublicMusic();
+        buildMusicConnections();
 
         LinearLayout saved=section("Saved music","Save any song here without adding it to Favorites. Use the heart to like it, or the download action to save it offline.");
         EditText search=new EditText(this);search.setSingleLine(true);search.setTextColor(text);search.setHintTextColor(hint);search.setHint("Search saved tracks or artists");search.setContentDescription("Search audio library");search.setText(query);search.setMinHeight(dp(52));search.setPadding(dp(16),dp(8),dp(16),dp(8));search.setBackground(shape(card,28));add(saved,search);
         segments(saved,new String[]{"All songs","Favorites","Downloads"},libraryFilter,index->{libraryFilter=index;visibleTracks=60;renderTracks();});
+        gap(saved,12);
         libraryRows=column();add(saved,libraryRows);
         search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){query=s.toString();visibleTracks=60;renderTracks();}public void afterTextChanged(Editable e){}});
         renderTracks();
+        buildPublicMusic();
         long likedCount=service.library.all().stream().filter(t->t.favorite).count();
         LinearLayout liked=section("Favorites","Unliking only removes the heart, never the song.");
         favoritesCount=label(likedCount+" liked songs",13,hint);add(liked,favoritesCount);
@@ -596,64 +687,144 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         });
     }
     List<AudioLibrary.Track> filteredTracks(){ArrayList<AudioLibrary.Track> list=new ArrayList<>();String q=query.toLowerCase(Locale.ROOT);for(AudioLibrary.Track t:service.library.all())if((libraryFilter!=1||t.favorite)&&(libraryFilter!=2||t.offlineUri!=null)&&(t.title+" "+t.artist+" "+t.album).toLowerCase(Locale.ROOT).contains(q))list.add(t);return list;}
-    void renderTracks(){if(libraryRows==null)return;
+    void renderTracks(){
+        if(libraryRows==null||service==null)return;
         if(favoritesCount!=null){
             long count=service.library.all().stream().filter(t->t.favorite).count();
             favoritesCount.setText(count+" liked songs");
         }
-        libraryRows.removeAllViews();List<AudioLibrary.Track> tracks=filteredTracks();if(tracks.isEmpty()){LinearLayout empty=column();empty.setPadding(dp(14),dp(20),dp(14),dp(20));add(empty,label(libraryBusy?"Reading your music…":libraryFilter==1?"No favorites yet":libraryFilter==2?"No downloads yet":"Your library is empty",19,text));add(empty,label(query.isEmpty()?(libraryFilter==1?"Tap a heart on any saved song to favorite it.":libraryFilter==2?"Download an eligible Audius song to see it here.":"Add a song from Audius, your files, or your phone."): "No tracks match this search.",13,hint));add(libraryRows,empty);return;}
-        for(int i=0;i<Math.min(visibleTracks,tracks.size());i++){AudioLibrary.Track t=tracks.get(i);final int index=i;LinearLayout r=row();r.setPadding(dp(12),dp(8),dp(8),dp(8));r.setBackground(shape(card,18));TextView art=label(t.title.substring(0,1).toUpperCase(Locale.ROOT),20,accent);art.setGravity(Gravity.CENTER);art.setBackground(gradient(14));r.addView(art,new LinearLayout.LayoutParams(dp(48),dp(48)));LinearLayout words=column();words.setPadding(dp(12),0,dp(4),0);TextView title=label(t.title,14,text);title.setMaxLines(2);title.setEllipsize(TextUtils.TruncateAt.END);add(words,title);add(words,label(t.artist+" · "+time((int)t.duration),11,hint));r.addView(words,new LinearLayout.LayoutParams(0,-2,1));androidx.appcompat.widget.AppCompatImageButton favorite=new androidx.appcompat.widget.AppCompatImageButton(this);
-            favorite.setImageResource(t.favorite?R.drawable.ic_favorite_filled:R.drawable.ic_favorite_outline);
-            favorite.setImageTintList(ColorStateList.valueOf(t.favorite?accent:hint));
-            favorite.setBackground(new RippleDrawable(ColorStateList.valueOf(androidx.core.graphics.ColorUtils.setAlphaComponent(accent,50)),shape(card,16),null));
-            favorite.setPadding(dp(11),dp(11),dp(11),dp(11));
-            favorite.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            favorite.setSelected(t.favorite);
-            favorite.setTag(t.uri.toString());
-            favorite.setContentDescription((t.favorite?"Remove favorite ":"Favorite ")+t.title);
-            favorite.setOnClickListener(v->{try{service.library.favorite(t.uri);renderTracks();}catch(Exception e){toast("Could not save favorite");}});
-            r.addView(favorite,new LinearLayout.LayoutParams(dp(48),dp(48)));
-            if(LikedDownloads.isAudiusStream(t.uri)){
-                if(t.offlineUri!=null){
-                    TextView saved=label("✓",17,accent);
+        libraryRows.removeAllViews();
+        List<AudioLibrary.Track> tracks=filteredTracks();
+        if(tracks.isEmpty()){
+            LinearLayout empty=column();empty.setPadding(dp(12),dp(16),dp(12),dp(16));
+            add(empty,label(libraryBusy?"Reading music…":libraryFilter==1?"No favorites yet":
+                libraryFilter==2?"No downloads yet":"Your library is empty",18,text));
+            add(empty,label(query.isEmpty()?(libraryFilter==1?"Tap a heart to favorite a saved song.":
+                libraryFilter==2?"Download an artist-permitted Audius song to see it here.":
+                "Add a file, Audius song, or music-service link."):
+                "No tracks match this search.",13,hint));
+            add(libraryRows,empty);
+            return;
+        }
+        for(int i=0;i<Math.min(visibleTracks,tracks.size());i++){
+            AudioLibrary.Track track=tracks.get(i);
+            final int index=i;
+            final boolean linked=LinkedMusic.isLinked(track.uri);
+            LinearLayout item=column();
+            item.setPadding(dp(12),dp(12),dp(12),dp(8));
+            item.setBackground(shape(card,22));
+            LinearLayout headline=row();
+            TextView art=label(track.title.isEmpty()?"♪":
+                track.title.substring(0,1).toUpperCase(Locale.ROOT),18,accent);
+            art.setGravity(Gravity.CENTER);art.setBackground(gradient(15));
+            headline.addView(art,new LinearLayout.LayoutParams(dp(44),dp(44)));
+            LinearLayout info=column();info.setPadding(dp(12),0,dp(4),0);
+            TextView title=label(track.title,15,text);
+            title.setMaxLines(2);title.setEllipsize(TextUtils.TruncateAt.END);
+            add(info,title);
+            String source=linked?LinkedMusic.provider(track.uri):
+                "Audius".equals(track.album)?"Audius":track.artist;
+            TextView subtitle=label(linked?
+                (LinkedMusic.isSearchShortcut(track.uri)?"Search shortcut · ":"Opens in app · ")+source:
+                track.artist+" · "+time((int)track.duration),12,hint);
+            subtitle.setMaxLines(1);subtitle.setEllipsize(TextUtils.TruncateAt.END);
+            add(info,subtitle);
+            headline.addView(info,new LinearLayout.LayoutParams(0,-2,1));
+            add(item,headline);
+            headline.setOnClickListener(v->playTrack(tracks,index));
+            headline.setContentDescription((linked?"Open ":"Play ")+track.title);
+            headline.setFocusable(true);
+
+            LinearLayout actions=row();actions.setGravity(Gravity.END|Gravity.CENTER_VERTICAL);
+            TextView open=label(linked?"Open in app":"Play",13,accent);
+            open.setGravity(Gravity.CENTER_VERTICAL);
+            open.setPadding(dp(8),0,dp(12),0);
+            open.setMinHeight(dp(48));open.setFocusable(true);open.setClickable(true);
+            open.setContentDescription((linked?"Open ":"Play ")+track.title);
+            open.setOnClickListener(v->playTrack(tracks,index));
+            actions.addView(open,new LinearLayout.LayoutParams(0,dp(48),1));
+
+            androidx.appcompat.widget.AppCompatImageButton heart=new androidx.appcompat.widget.AppCompatImageButton(this);
+            heart.setImageResource(track.favorite?R.drawable.ic_favorite_filled:R.drawable.ic_favorite_outline);
+            heart.setImageTintList(ColorStateList.valueOf(track.favorite?accent:hint));
+            heart.setBackground(new RippleDrawable(ColorStateList.valueOf(
+                androidx.core.graphics.ColorUtils.setAlphaComponent(accent,50)),shape(card,18),null));
+            heart.setPadding(dp(12),dp(12),dp(12),dp(12));
+            heart.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            heart.setSelected(track.favorite);
+            heart.setTag(track.uri.toString());
+            heart.setContentDescription((track.favorite?"Remove favorite ":"Favorite ")+track.title);
+            heart.setOnClickListener(v->{
+                try{service.library.favorite(track.uri);renderTracks();}
+                catch(Exception e){toast("Could not update favorite");}
+            });
+            actions.addView(heart,new LinearLayout.LayoutParams(dp(48),dp(48)));
+
+            if(LikedDownloads.isAudiusStream(track.uri)){
+                if(track.offlineUri!=null){
+                    TextView saved=label("Offline ✓",12,accent);
                     saved.setGravity(Gravity.CENTER);
-                    saved.setContentDescription(t.title+" downloaded for offline playback");
-                    r.addView(saved,new LinearLayout.LayoutParams(dp(40),dp(48)));
+                    saved.setContentDescription(track.title+" downloaded for offline listening");
+                    LinearLayout.LayoutParams offlineParams=new LinearLayout.LayoutParams(dp(72),dp(48));
+                    offlineParams.setMarginStart(dp(8));actions.addView(saved,offlineParams);
                 }else{
-                    TextView download=button("↓",()->downloadTrack(t));
-                    download.setContentDescription("Download "+t.title+" for offline listening");
-                    download.setGravity(Gravity.CENTER);
-                    download.setMinWidth(0);
-                    r.addView(download,new LinearLayout.LayoutParams(dp(40),dp(48)));
+                    com.google.android.material.button.MaterialButton download=
+                        (com.google.android.material.button.MaterialButton)
+                        button("↓",()->downloadTrack(track));
+                    download.setTextSize(22);download.setMinWidth(0);download.setMinimumWidth(0);
+                    download.setPadding(0,0,0,0);download.setInsetLeft(0);download.setInsetRight(0);
+                    download.setContentDescription("Download "+track.title+" for offline listening");
+                    LinearLayout.LayoutParams dpParams=new LinearLayout.LayoutParams(dp(48),dp(48));
+                    dpParams.setMarginStart(dp(8));actions.addView(download,dpParams);
                 }
             }
-            words.setOnClickListener(v->playTrack(tracks,index));
-            r.setOnClickListener(v->playTrack(tracks,index));
-            r.setFocusable(true);
-            r.setContentDescription("Play "+t.title+" by "+t.artist);
-            r.setOnLongClickListener(v->{
-                ArrayList<String> actions=new ArrayList<>();
-                actions.add("Play now");
-                actions.add(t.favorite?"Remove favorite":"Add to favorites");
-                if(LikedDownloads.canDownload(t))actions.add("Download for offline listening");
-                actions.add("Remove from CYN Library");
+            add(item,actions);
+            item.setOnLongClickListener(v->{
+                ArrayList<String> choices=new ArrayList<>();
+                choices.add(linked?"Open in music app":"Play now");
+                choices.add(track.favorite?"Remove favorite":"Add to favorites");
+                if(LikedDownloads.canDownload(track))choices.add("Download for offline listening");
+                choices.add("Remove from CYN Library");
                 new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                    .setTitle(t.title).setItems(actions.toArray(new String[0]),(d,n)->{
-                        String action=actions.get(n);
-                        if("Play now".equals(action))playTrack(tracks,index);
-                        else if("Download for offline listening".equals(action))downloadTrack(t);
+                    .setTitle(track.title)
+                    .setItems(choices.toArray(new String[0]),(dialog,n)->{
+                        String selected=choices.get(n);
+                        if("Play now".equals(selected)||"Open in music app".equals(selected))
+                            playTrack(tracks,index);
+                        else if("Download for offline listening".equals(selected))
+                            downloadTrack(track);
                         else try{
-                            if("Remove from CYN Library".equals(action))service.library.remove(t.uri);
-                            else service.library.favorite(t.uri);
+                            if("Remove from CYN Library".equals(selected))
+                                service.library.remove(track.uri);
+                            else service.library.favorite(track.uri);
                             renderTracks();
                         }catch(Exception e){toast("Could not update Library");}
                     }).show();
                 return true;
             });
-            add(libraryRows,r);gap(libraryRows,8);}
-        if(tracks.size()>visibleTracks)add(libraryRows,button("Show more tracks",()->{visibleTracks+=60;renderTracks();}));
+            add(libraryRows,item);
+            gap(libraryRows,10);
+        }
+        if(tracks.size()>visibleTracks)
+            add(libraryRows,button("Show more tracks",()->{visibleTracks+=60;renderTracks();}));
     }
-    void playTrack(List<AudioLibrary.Track> queue,int index){notifications();startForegroundService(new Intent(this,AudioService.class).setAction("cyn.QUEUE"));service.playQueue(queue,index);update();}
+    void playTrack(List<AudioLibrary.Track> queue,int index){
+        if(service==null||index<0||index>=queue.size())return;
+        AudioLibrary.Track requested=queue.get(index);
+        if(LinkedMusic.isLinked(requested.uri)){browser(requested.uri.toString());return;}
+        // Linked shortcuts must never reach ExoPlayer, even as adjacent queue entries.
+        ArrayList<AudioLibrary.Track> playable=new ArrayList<>();
+        int selectedIndex=-1;
+        for(AudioLibrary.Track track:queue){
+            if(LinkedMusic.isLinked(track.uri))continue;
+            if(track==requested)selectedIndex=playable.size();
+            playable.add(track);
+        }
+        if(selectedIndex<0)return;
+        notifications();
+        startForegroundService(new Intent(this,AudioService.class).setAction("cyn.QUEUE"));
+        service.playQueue(playable,selectedIndex);update();
+    }
     void pickTracks(){startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("audio/*").addCategory(Intent.CATEGORY_OPENABLE).putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION),10);}
     void scanPermission(){String permission=Build.VERSION.SDK_INT>=33?Manifest.permission.READ_MEDIA_AUDIO:Manifest.permission.READ_EXTERNAL_STORAGE;if(checkSelfPermission(permission)!=PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{permission},23);else scan();}
     void scan(){if(libraryBusy)return;libraryBusy=true;renderTracks();AudioLibrary library=service.library;filesWorker.execute(()->{try{List<AudioLibrary.Track> found=library.scan();library.merge(found);handler.post(()->{libraryBusy=false;toast(found.size()+" songs found");if(page==2)build();});}catch(Exception e){handler.post(()->{libraryBusy=false;toast("Music access unavailable. You can still add files.");renderTracks();});}});}
