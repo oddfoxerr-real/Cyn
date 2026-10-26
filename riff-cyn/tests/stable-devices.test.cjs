@@ -43,7 +43,7 @@ test("offline native status keeps the device label for troubleshooting but block
   const stopped=tracker.offline();
   assert.equal(stopped.selected,"Headphones (JBL Tune 520BT)");
   assert.equal(stopped.confirmed,false);
-  assert.equal(stopped.canSelect,true,"Available options are retained only as display metadata; renderer disables controls while offline");
+  assert.equal(stopped.canSelect,false,"Previously seen devices must never be interactive when the engine is offline");
 });
 test("native FxSound reports a single consistent audio-device snapshot",()=>{
   const native=read("fxsound/Source/GUI/FxController.cpp");
