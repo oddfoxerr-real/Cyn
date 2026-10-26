@@ -22,11 +22,32 @@ public final class LikedSongsTest {
         AudioLibrary.Track track=new AudioLibrary.Track(valid,"My Song","An Artist","Audius",36000,true);
         assertTrue(LikedDownloads.canDownload(track));
         track.favorite=false;
-        assertFalse(LikedDownloads.canDownload(track));
+        assertTrue("Unliked tracks remain download-eligible",LikedDownloads.canDownload(track));
         track.favorite=true;
         track.offlineUri=Uri.parse("content://media/external/audio/media/17");
         assertFalse(LikedDownloads.canDownload(track));
         assertEquals(track.offlineUri,track.playbackUri());
+    }
+
+    @Test public void unlikingRetainsSavedTrackAndDownloadEligibility()throws Exception{
+        AudioLibrary library=new AudioLibrary(InstrumentationRegistry.getInstrumentation().getTargetContext());
+        Uri source=Uri.parse("https://api.audius.co/v1/tracks/CynLibraryIndependent20261026/stream?app_name=CYN");
+        try{
+            library.merge(Collections.singletonList(new AudioLibrary.Track(source,"Independent","Artist","Audius",9000,false)));
+            AudioLibrary.Track track=null;
+            for(AudioLibrary.Track value:library.all())if(value.uri.equals(source))track=value;
+            assertNotNull(track);
+            assertFalse(track.favorite);
+            assertTrue(LikedDownloads.canDownload(track));
+            library.favorite(source);
+            library.favorite(source);
+            AudioLibrary reloaded=new AudioLibrary(InstrumentationRegistry.getInstrumentation().getTargetContext());
+            AudioLibrary.Track retained=null;
+            for(AudioLibrary.Track value:reloaded.all())if(value.uri.equals(source))retained=value;
+            assertNotNull("Unfavourite must not remove Library membership",retained);
+            assertFalse(retained.favorite);
+            assertTrue(LikedDownloads.canDownload(retained));
+        }finally{new AudioLibrary(InstrumentationRegistry.getInstrumentation().getTargetContext()).remove(source);}
     }
 
     @Test public void downloadedLikedMusicPersistsAndClearingLikesDoesNotDeleteTracks()throws Exception{
