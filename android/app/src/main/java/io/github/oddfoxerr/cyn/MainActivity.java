@@ -416,7 +416,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         Intent launch=new Intent(this,ProviderBrowserActivity.class);
         launch.putExtra("provider",source);
         launch.putExtra("query",term);
-        startActivity(launch);
+        startActivityForResult(launch,72);
     }
 
     void openMusicLink(Uri link){
@@ -425,7 +425,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         launch.putExtra("provider",LinkedMusic.provider(link).equals("SoundCloud")?
             ProviderBrowserActivity.SOUNDCLOUD:ProviderBrowserActivity.YOUTUBE);
         launch.putExtra("url",link.toString());
-        startActivity(launch);
+        startActivityForResult(launch,72);
     }
 
     void buildMusicConnections(){
@@ -1280,6 +1280,18 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     @Override protected void onPause(){handler.removeCallbacks(refresh);super.onPause();}
     @Override protected void onDestroy(){handler.removeCallbacksAndMessages(null);searchGeneration++;searchWorker.shutdownNow();filesWorker.shutdown();if(bound)unbindService(connection);super.onDestroy();}
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==71){if(getPackageManager().canRequestPackageInstalls())UpdateManager.install(this);return;}if(result!=RESULT_OK||data==null||service==null)return;
+        if(request==72){
+            Uri linked=LinkedMusic.parse(data.getDataString());
+            if(linked==null||!LinkedMusic.isExactItem(linked)){
+                toast("Select a valid track or playlist");return;
+            }
+            String name=data.getStringExtra("title");
+            if(name==null||name.trim().isEmpty())name="Saved "+LinkedMusic.provider(linked)+" track";
+            if(name.length()>160)name=name.substring(0,160);
+            saveMusicBookmark(new AudioLibrary.Track(linked,name,LinkedMusic.provider(linked),
+                "Linked music",0,false));
+            return;
+        }
         if(request==10){ArrayList<Uri>uris=new ArrayList<>();if(data.getClipData()!=null)for(int i=0;i<data.getClipData().getItemCount();i++)uris.add(data.getClipData().getItemAt(i).getUri());else if(data.getData()!=null)uris.add(data.getData());for(Uri uri:uris)try{getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);}catch(SecurityException ignored){}AudioLibrary library=service.library;libraryBusy=true;filesWorker.execute(()->{try{ArrayList<AudioLibrary.Track> tracks=new ArrayList<>();for(Uri uri:uris)tracks.add(library.read(uri));library.merge(tracks);handler.post(()->{libraryBusy=false;page=2;build();toast(tracks.size()+" tracks added");});}catch(Exception e){handler.post(()->{libraryBusy=false;toast("Could not add audio files");});}});}
         else if(request==30&&data.getData()!=null){if(service.training){toast("Wait for training to finish");return;}try(InputStream in=getContentResolver().openInputStream(data.getData())){service.learning.importModel(in);toast("Desktop preference weights imported");}catch(Exception e){toast("Model import failed: "+e.getMessage());}}
         else if(request==31&&data.getData()!=null){try(OutputStream out=getContentResolver().openOutputStream(data.getData(),"wt")){out.write(service.learning.exportModel().getBytes(java.nio.charset.StandardCharsets.UTF_8));toast("Personal model exported");}catch(Exception e){toast("Could not export model");}}
