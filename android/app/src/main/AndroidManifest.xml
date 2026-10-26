@@ -30,6 +30,7 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+        <activity android:name=".ProviderBrowserActivity" android:exported="false" />
         <service android:name=".AudioService" android:exported="false" android:foregroundServiceType="mediaPlayback|specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="User-enabled equalizer for audio sessions opened by compatible music players; persistent stop control." />
