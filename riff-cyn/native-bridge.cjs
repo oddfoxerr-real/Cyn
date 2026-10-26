@@ -48,8 +48,13 @@ function makeBridge(override){
    if(!isWin())return {connected:false,error:"CYN's native audio engine runs on Windows."};
    const exe=locate();
    if(!exe)return {connected:false,error:"Cyn.exe not found. Locate your installed native CYN engine."};
-   if(!(await running(exe)))return {connected:false,
-     error:startupFailure()||"Native FxSound/CYN is not running. Close other FxSound instances from the system tray, then press Connect engine."};
+   // Process enumeration occasionally misses an existing host on slower
+   // Windows machines. Confirm once more before telling the UI to disconnect.
+   if(!(await running(exe))){
+     await pause(200);
+     if(!(await running(exe)))return {connected:false,
+       error:startupFailure()||"Native FxSound/CYN is not running. Close other FxSound instances from the system tray, then press Connect engine."};
+   }
    const statusPath=path.join(process.env.APPDATA||"","Cyn","status.json");
    const previous=fs.existsSync(statusPath)?fs.statSync(statusPath).mtimeMs:0;
    // The 39-band DSP state, presets and neural profile inventory exceed 4 KB.
@@ -59,7 +64,15 @@ function makeBridge(override){
    for(let i=0;i<45;i++){
      await pause(110);
      if(!fs.existsSync(statusPath)||fs.statSync(statusPath).mtimeMs<=previous)continue;
-     const data=JSON.parse(fs.readFileSync(statusPath,"utf8"));
+     let data;
+     try{
+       // CYN writes status.json from the native JUCE thread. Do not treat
+       // one in-progress file replacement as an engine disconnection.
+       data=JSON.parse(fs.readFileSync(statusPath,"utf8"));
+     }catch{
+       await pause(80);
+       continue;
+     }
      if(data.cyn_build!=="identity-2")throw new Error("The running audio engine is not CYN.");
      lastState=data;
      return {connected:true,status:data};
@@ -122,7 +135,20 @@ function makeBridge(override){
    if(!state.connected)throw new Error(state.error);
    const arg=commandFor(action,state.status);
    await exec(exe,[arg],{windowsHide:true,timeout:8500,maxBuffer:4096});
-   return getStatus();
+   // A renderer poll can have started before this native command. Never
+   // return that old pending status as proof of the newly selected device.
+   if(pending)await pending;
+   let result=null;
+   for(let attempt=0;attempt<3;attempt++){
+     if(attempt)await pause(260);
+     result=await getStatus();
+     const observed=result.connected&&result.status;
+     if(!observed)continue;
+     if(action.type==="power"&&result.status.power!==action.value)continue;
+     if(action.type==="output"&&result.status.selected_output!==action.value)continue;
+     return result;
+   }
+   return result||{connected:false,error:"CYN did not return fresh native audio state."};
  }
  return {getStatus,telemetry,launch,apply,selectNative,findExe:()=>locate()};
 }
