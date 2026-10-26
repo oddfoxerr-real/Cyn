@@ -1,0 +1,76 @@
+"use strict";
+const test=require("node:test");
+const assert=require("node:assert/strict");
+const fs=require("node:fs");
+const path=require("node:path");
+const root=path.resolve(__dirname,"../..");
+const read=p=>fs.readFileSync(path.join(root,p),"utf8");
+const {makeTracker}=require("../renderer/device-state.js");
+
+test("temporary Bluetooth device-enumeration gaps never empty the last selected output",()=>{
+  const tracker=makeTracker();
+  const real=tracker.update({output_devices:["Headphones (JBL Tune 520BT)"],selected_output:"Headphones (JBL Tune 520BT)"});
+  assert.equal(real.selected,"Headphones (JBL Tune 520BT)");
+  assert.equal(real.confirmed,true);
+  assert.equal(real.canSelect,true);
+  const transient=tracker.update({output_devices:[],selected_output:""});
+  assert.equal(transient.selected,real.selected);
+  assert.equal(transient.items[0].value,real.selected);
+  assert.equal(transient.stale,true);
+  assert.equal(transient.canSelect,false,"Never claim missing Windows audio devices are writable");
+  const reconnected=tracker.update({output_devices:["Headphones (JBL Tune 520BT)"],selected_output:"Headphones (JBL Tune 520BT)"});
+  assert.equal(reconnected.confirmed,true);
+  assert.equal(reconnected.selected,real.selected);
+});
+test("device list change preserves an unavailable selection without silently choosing another speaker",()=>{
+  const tracker=makeTracker();
+  tracker.update({output_devices:["Headphones (JBL Tune 520BT)"],selected_output:"Headphones (JBL Tune 520BT)"});
+  const changed=tracker.update({output_devices:["Speakers (Realtek Audio)"],selected_output:""});
+  assert.equal(changed.selected,"Headphones (JBL Tune 520BT)");
+  assert.match(changed.items[0].label,/temporarily unavailable/);
+  assert.equal(changed.confirmed,false);
+  assert.equal(changed.canSelect,true,"User may choose currently available speakers");
+  const selected=tracker.update({output_devices:["Speakers (Realtek Audio)"],selected_output:"Speakers (Realtek Audio)"});
+  assert.equal(selected.selected,"Speakers (Realtek Audio)");
+  assert.equal(selected.confirmed,true);
+});
+test("offline native status keeps the device label for troubleshooting but blocks editing",()=>{
+  const tracker=makeTracker();
+  const start=tracker.offline();
+  assert.equal(start.selected,"");
+  assert.equal(start.canSelect,false);
+  tracker.update({output_devices:["Headphones (JBL Tune 520BT)"],selected_output:"Headphones (JBL Tune 520BT)"});
+  const stopped=tracker.offline();
+  assert.equal(stopped.selected,"Headphones (JBL Tune 520BT)");
+  assert.equal(stopped.confirmed,false);
+  assert.equal(stopped.canSelect,true,"Available options are retained only as display metadata; renderer disables controls while offline");
+});
+test("native FxSound reports a single consistent audio-device snapshot",()=>{
+  const native=read("fxsound/Source/GUI/FxController.cpp");
+  const begin=native.indexOf("void FxController::printStatus()");
+  const end=native.indexOf("void FxController::init(",begin);
+  assert(begin>=0&&end>begin);
+  const body=native.slice(begin,end);
+  assert.equal((body.match(/audio_passthru_->getSoundDevices\(/g)||[]).length,1);
+  assert(body.includes("const auto deviceSnapshot=audio_passthru_->getSoundDevices(false)"));
+  assert(body.includes("for (const auto& device : deviceSnapshot)"));
+  assert(body.includes("getOutputName()"),"Selected physical output remains native-owned");
+});
+test("polling cannot overwrite a later native output/power command",()=>{
+  const renderer=read("riff-cyn/renderer/renderer.js");
+  const bridge=read("riff-cyn/native-bridge.cjs");
+  const html=read("riff-cyn/renderer/index.html");
+  assert(html.indexOf('src="device-state.js"')<html.indexOf('src="renderer.js"'));
+  assert(renderer.includes('const deviceTracker=window.cynDeviceState.makeTracker()'));
+  assert(renderer.includes("if(refreshInFlight)return refreshInFlight"));
+  assert(renderer.includes("if(busy||revision!==actionRevision)return"));
+  assert(renderer.includes("++actionRevision;"));
+  assert(renderer.includes("if(refreshInFlight)await refreshInFlight"));
+  assert(renderer.includes('if(typeof status.power==="boolean")$("power").checked=status.power'));
+  assert(renderer.includes("if(document.activeElement===select)return"));
+  assert(renderer.includes('if(action.type==="output"&&result.status.selected_output!==action.value)'));
+  assert(bridge.includes("if(pending)await pending"));
+  assert(bridge.includes("if(action.type==="output"&&result.status.selected_output!==action.value)"));
+  assert(bridge.includes("if(action.type==="power"&&result.status.power!==action.value)"));
+  assert(bridge.includes("data=JSON.parse(fs.readFileSync(statusPath,\"utf8\"))"));
+});
