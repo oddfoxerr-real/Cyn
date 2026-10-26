@@ -412,16 +412,55 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         handler.post(()->{if(!isFinishing()&&!isDestroyed())promptMusicLink(selected);});
     }
 
+    void openMusicSearch(String source,String term){
+        Intent launch=new Intent(this,ProviderBrowserActivity.class);
+        launch.putExtra("provider",source);
+        launch.putExtra("query",term);
+        startActivity(launch);
+    }
+
+    void openMusicLink(Uri link){
+        if(!LinkedMusic.isLinked(link)){toast("Unsupported music link");return;}
+        Intent launch=new Intent(this,ProviderBrowserActivity.class);
+        launch.putExtra("provider",LinkedMusic.provider(link).equals("SoundCloud")?
+            ProviderBrowserActivity.SOUNDCLOUD:ProviderBrowserActivity.YOUTUBE);
+        launch.putExtra("url",link.toString());
+        startActivity(launch);
+    }
+
     void buildMusicConnections(){
-        LinearLayout providers=section("Music connections",
-            "Keep YouTube Music and SoundCloud tracks in CYN without another login. Links open the original music app.");
+        LinearLayout providers=section("Search music services",
+            "Search YouTube Music and SoundCloud inside CYN. Results, playlists and playback come from each service's own website.");
+        EditText providerSearch=new EditText(this);
+        providerSearch.setSingleLine(true);
+        providerSearch.setTextSize(16);
+        providerSearch.setTextColor(text);
+        providerSearch.setHintTextColor(hint);
+        providerSearch.setHint("Find a song, artist or playlist");
+        providerSearch.setContentDescription("Search YouTube Music or SoundCloud");
+        providerSearch.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        providerSearch.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        providerSearch.setMinHeight(dp(54));
+        providerSearch.setPadding(dp(14),dp(6),dp(14),dp(6));
+        providerSearch.setBackground(shape(card,20));
+        add(providers,providerSearch);
         buttons(providers,new String[]{"YouTube Music","SoundCloud"},new Runnable[]{
-            ()->browser("https://music.youtube.com/"),
-            ()->browser("https://soundcloud.com/")
+            ()->openMusicSearch(ProviderBrowserActivity.YOUTUBE,
+                providerSearch.getText().toString().trim()),
+            ()->openMusicSearch(ProviderBrowserActivity.SOUNDCLOUD,
+                providerSearch.getText().toString().trim())
         });
-        add(providers,button("Save shared music link",()->promptMusicLink("")));
-        add(providers,button("Save currently playing song",this::saveCurrentProviderSong));
-        add(providers,label("Share a song or playlist from either app to CYN, or paste its link. Saved provider tracks are shortcuts, not downloaded audio. Account playlist sync is not enabled.",12,hint));
+        providerSearch.setOnEditorActionListener((view,action,event)->{
+            if(action==android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH){
+                openMusicSearch(ProviderBrowserActivity.YOUTUBE,
+                    providerSearch.getText().toString().trim());
+                return true;
+            }
+            return false;
+        });
+        add(providers,button("Save a shared music link",()->promptMusicLink("")));
+        add(providers,button("Save current music as search shortcut",this::saveCurrentProviderSong));
+        add(providers,label("Tap a provider to search in CYN, then open a result and save its exact link. Some sign-ins or playback may require the original app. Audius remains the native CYN audio source.",12,hint));
     }
 
     void promptMusicLink(String suggestedUrl){
@@ -839,7 +878,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     void playTrack(List<AudioLibrary.Track> queue,int index){
         if(service==null||index<0||index>=queue.size())return;
         AudioLibrary.Track requested=queue.get(index);
-        if(LinkedMusic.isLinked(requested.uri)){browser(requested.uri.toString());return;}
+        if(LinkedMusic.isLinked(requested.uri)){openMusicLink(requested.uri);return;}
         // Linked shortcuts must never reach ExoPlayer, even as adjacent queue entries.
         ArrayList<AudioLibrary.Track> playable=new ArrayList<>();
         int selectedIndex=-1;
