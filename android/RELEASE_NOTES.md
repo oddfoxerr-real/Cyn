@@ -1,3 +1,17 @@
+# CYN Studio Android v0.2.32-preview — LIBERTY trained kick awareness
+
+- Bundles the separately trained **LIBERTY kick recognizer** from the public Magenta Groove recorded-drum set (Creative Commons Attribution 4.0). Small 5,185-weight ONNX model, 90 measured training epochs.
+- Held-out test kick recognition: F1 **0.7626** versus a simple onset baseline **0.5422**, using 55 independent test recordings. Model achieved 0.8769 precision and 0.6746 recall; these are *detection metrics*, not audible sound-quality scores.
+- In **AI → LIBERTY**, adds an *off-by-default* **Experimental trained kick guard**. When Library music has fresh PCM features, confidently detected kick and low headroom, it may gently reduce low-frequency EQ by **up to 0.6 dB**, never boost, duplicate, synthesize or replace audio.
+- **External music stays unchanged**: LIBERTY continues to use Android-compatible EQ routing and cannot run this trained PCM recognizer against third-party music without legal and technical access to audio. AUDONIC creative mode stays in its Library-only Creative Lab.
+- Preserves the liked-song download/removal interface, APEX 6M/10M, AUDONIC, the CYN native engine, saved settings and in-app updater.
+
+**Research limitations:** Training audio is drum performances, not complete mixed songs; no perceptual listening advantage is established. Headroom policy is hand-designed, not learned. The model remains experimental and disabled by default. Training workflow: https://github.com/oddfoxerr-real/Cyn/actions/runs/40233691628
+
+**Attribution:** Google Magenta Groove MIDI Dataset v1.0.0, CC BY 4.0; Gillick et al., *Learning to Groove with Inverse Sequence Transformations* (ICML 2019), https://magenta.tensorflow.org/datasets/groove.
+
+**Upgrade:** `io.github.oddfoxerr.cyn.studio`, versionCode **36** (0.2.32-preview). The signed APK must retain the existing Studio signing key and verify in-place upgrade from signed 0.2.31-preview.
+
 # CYN Studio Android v0.2.31-preview — LIBERTY AI and Liked Music Downloads
 
 - Adds **LIBERTY**, a separate non-generative AI mode using AUDONIC's existing on-device control model for CYN Library music. It applies adaptive EQ to original sound rather than triggering creative FX. External music receives bounded session-FFT-driven EQ adjustments **only where Android exposes a compatible, controllable effect session**. Inaccessible third-party audio remains inaccessible.
