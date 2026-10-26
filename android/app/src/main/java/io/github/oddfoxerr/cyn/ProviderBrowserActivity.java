@@ -26,7 +26,6 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
-import java.util.Collections;
 import java.util.Locale;
 
 /**
@@ -275,12 +274,11 @@ public final class ProviderBrowserActivity extends AppCompatActivity {
                 String name=title.getText().toString().trim();
                 if(name.isEmpty())name="Saved "+LinkedMusic.provider(current)+" track";
                 if(name.length()>160)name=name.substring(0,160);
-                try{
-                    new AudioLibrary(this).merge(Collections.singletonList(
-                        new AudioLibrary.Track(current,name,LinkedMusic.provider(current),
-                            "Linked music",0,false)));
-                    Toast.makeText(this,"Saved to CYN Library",Toast.LENGTH_SHORT).show();
-                }catch(Exception e){Toast.makeText(this,"Could not save link",Toast.LENGTH_SHORT).show();}
+                Intent result=new Intent();
+                result.setData(current);
+                result.putExtra("title",name);
+                setResult(RESULT_OK,result);
+                finish();
             }).show();
     }
 
