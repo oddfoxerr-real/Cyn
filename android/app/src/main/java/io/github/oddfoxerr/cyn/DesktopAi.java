@@ -30,6 +30,21 @@ final class DesktopAi {
             at=SystemClock.elapsedRealtime();
         }
     }
+    // Independently trained 5,185-weight LIBERTY kick recognizer (Magenta Groove).
+    // It has no audio synthesis output and is opt-in for Library headroom protection.
+    static final String LIBERTY_KICK_SHA="dae1f140959f3cbc444b3323b394dc3fd7037170c36023f42e17f778804fb52b";
+    static final class LibertyKickDecision {
+        final float confidence,headroom;
+        final long at;
+        LibertyKickDecision(float probability,float availableHeadroom) {
+            confidence=probability;headroom=availableHeadroom;at=SystemClock.elapsedRealtime();
+        }
+    }
+    volatile boolean libertyKickEnabled;
+    volatile LibertyKickDecision libertyKickDecision;
+    volatile String libertyKickStatus="Optional real-audio kick guard off";
+    private OrtSession libertyKickSession;
+    private long libertyKickRetryAt;
     volatile boolean audonicEnabled;
     volatile AudonicPolicy audonicPolicy;
     volatile String audonicStatus="Creative engine ready";
@@ -58,7 +73,7 @@ final class DesktopAi {
     private float[] previousScene, previousEmbedding;
     private volatile long generation;
     private long workerGeneration=-1;
-    void reset(){generation++;latest=null;partialPolicy=null;audonicPolicy=null;}
+    void reset(){generation++;latest=null;partialPolicy=null;audonicPolicy=null;libertyKickDecision=null;}
     private long retryAt;
     private volatile boolean closed;
     DesktopAi(Context context){this.context=context.getApplicationContext();worker.scheduleWithFixedDelay(this::infer,0,650,TimeUnit.MILLISECONDS);}
@@ -88,6 +103,39 @@ final class DesktopAi {
         if(previousEmbedding!=null){float similarity=0;for(int i=0;i<24;i++)similarity+=projected[i]*previousEmbedding[i];s[10]=Math.max(0,Math.min(1,(1-similarity)*.8f));}previousEmbedding=projected;
         if(previousScene!=null)for(int i=0;i<11;i++)s[i]=previousScene[i]*.55f+s[i]*.45f;
         previousScene=s.clone();return s;
+    }
+    private void inferLibertyKick(long epoch) {
+        if(!active||!libertyKickEnabled){libertyKickDecision=null;return;}
+        if(SystemClock.elapsedRealtime()<libertyKickRetryAt)return;
+        try {
+            float[] window=NativeEngine.spatialPolicyWindow(engine);
+            if(window==null||window.length!=160){
+                libertyKickDecision=null;libertyKickStatus="Collecting real stereo music";
+                return;
+            }
+            for(float value:window)if(!Float.isFinite(value))throw new IOException("Invalid LIBERTY stereo features");
+            if(libertyKickSession==null)
+                libertyKickSession=open("liberty-kick-candidate.onnx",LIBERTY_KICK_SHA);
+            float[][] predicted;
+            try(OnnxTensor sample=OnnxTensor.createTensor(environment,FloatBuffer.wrap(window),new long[]{1,160});
+                OrtSession.Result result=libertyKickSession.run(Collections.singletonMap("audio_window",sample))) {
+                OnnxValue output=result.get("kick_probability").orElseThrow(
+                    ()->new IOException("LIBERTY output absent"));
+                if(!(output.getValue() instanceof float[][]))throw new IOException("LIBERTY output shape");
+                predicted=(float[][])output.getValue();
+                if(predicted.length!=1||predicted[0].length!=1||!Float.isFinite(predicted[0][0]))
+                    throw new IOException("Invalid LIBERTY output");
+            }
+            if(active&&libertyKickEnabled&&!closed&&epoch==generation){
+                libertyKickDecision=new LibertyKickDecision(finite(predicted[0][0]),
+                    finite(window[6*20+19]));
+                libertyKickStatus="Kick recognition live · recorded-drum experimental model";
+            }
+        }catch(Exception|LinkageError failure){
+            libertyKickDecision=null;
+            libertyKickStatus="Kick model unavailable · safe original EQ";
+            libertyKickRetryAt=SystemClock.elapsedRealtime()+15000;
+        }
     }
     private void inferAudonic(long epoch){
         if(!audonicEnabled||!active){audonicPolicy=null;return;}
@@ -230,13 +278,14 @@ final class DesktopAi {
     }
     private void infer(){
         if(closed)return;
-        if(!active){latest=null;partialPolicy=null;audonicPolicy=null;previousScene=null;previousEmbedding=null;return;}
+        if(!active){latest=null;partialPolicy=null;audonicPolicy=null;libertyKickDecision=null;previousScene=null;previousEmbedding=null;return;}
         // APEX 10M inference is independent of YAMNet availability. The
         // previous placement after scene classification delayed or prevented
         // neural-triggered animations when scene analysis was unavailable.
         final long epoch=generation;
         inferPartial(epoch);
         inferAudonic(epoch);
+        inferLibertyKick(epoch);
         if(SystemClock.elapsedRealtime()<retryAt)return;
         try{
             if(workerGeneration!=epoch){previousScene=null;previousEmbedding=null;workerGeneration=epoch;}
@@ -266,5 +315,5 @@ final class DesktopAi {
             if(active&&!closed&&epoch==generation){latest=new Result(f,s,decisions,goals,SystemClock.elapsedRealtime()-started);status=(apexEnabled?"APEX 6M + YAMNet":"YAMNet")+" · running locally";}
         }catch(Exception|LinkageError e){latest=null;partialPolicy=null;status="AI unavailable: "+e.getClass().getSimpleName()+" · manual sound remains active";retryAt=SystemClock.elapsedRealtime()+15000;}
     }
-    void closeAfterPlayer(){closed=true;active=false;worker.execute(()->{try{if(yamnet!=null)yamnet.close();if(apex!=null)apex.close();if(partialSession!=null)partialSession.close();if(audonicSession!=null)audonicSession.close();}catch(Exception ignored){}finally{NativeEngine.destroy(engine);}});worker.shutdown();}
+    void closeAfterPlayer(){closed=true;active=false;worker.execute(()->{try{if(yamnet!=null)yamnet.close();if(apex!=null)apex.close();if(partialSession!=null)partialSession.close();if(audonicSession!=null)audonicSession.close();if(libertyKickSession!=null)libertyKickSession.close();}catch(Exception ignored){}finally{NativeEngine.destroy(engine);}});worker.shutdown();}
 }
