@@ -403,7 +403,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         incoming.setAction(null);
         if(source==null)return;
         String url=source.trim();
-        java.util.regex.Matcher found=java.util.regex.Pattern.compile("https://[^\\\\s]+").matcher(url);
+        java.util.regex.Matcher found=java.util.regex.Pattern.compile("https://\\S+").matcher(url);
         if(found.find())url=found.group();
         while(url.endsWith(".")||url.endsWith(")")||url.endsWith(","))url=url.substring(0,url.length()-1);
         if(LinkedMusic.parse(url)==null){toast("Only YouTube Music or SoundCloud links can be saved");return;}
@@ -744,6 +744,18 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             open.setOnClickListener(v->playTrack(tracks,index));
             actions.addView(open,new LinearLayout.LayoutParams(0,dp(48),1));
 
+            TextView remove=label("Remove",13,hint);
+            remove.setGravity(Gravity.CENTER);
+            remove.setMinHeight(dp(48));
+            remove.setFocusable(true);
+            remove.setClickable(true);
+            remove.setBackground(shape(androidx.core.graphics.ColorUtils.blendARGB(card,accent,.06f),16));
+            remove.setContentDescription("Remove "+track.title+" from CYN Library");
+            remove.setOnClickListener(v->confirmRemoveFromLibrary(track));
+            LinearLayout.LayoutParams removeParams=new LinearLayout.LayoutParams(dp(72),dp(48));
+            removeParams.setMarginEnd(dp(8));
+            actions.addView(remove,removeParams);
+
             androidx.appcompat.widget.AppCompatImageButton heart=new androidx.appcompat.widget.AppCompatImageButton(this);
             heart.setImageResource(track.favorite?R.drawable.ic_favorite_filled:R.drawable.ic_favorite_outline);
             heart.setImageTintList(ColorStateList.valueOf(track.favorite?accent:hint));
@@ -793,12 +805,12 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
                             playTrack(tracks,index);
                         else if("Download for offline listening".equals(selected))
                             downloadTrack(track);
+                        else if("Remove from CYN Library".equals(selected))
+                            confirmRemoveFromLibrary(track);
                         else try{
-                            if("Remove from CYN Library".equals(selected))
-                                service.library.remove(track.uri);
-                            else service.library.favorite(track.uri);
+                            service.library.favorite(track.uri);
                             renderTracks();
-                        }catch(Exception e){toast("Could not update Library");}
+                        }catch(Exception e){toast("Could not update favorite");}
                     }).show();
                 return true;
             });
@@ -808,6 +820,22 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         if(tracks.size()>visibleTracks)
             add(libraryRows,button("Show more tracks",()->{visibleTracks+=60;renderTracks();}));
     }
+    void confirmRemoveFromLibrary(AudioLibrary.Track track){
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Remove from CYN Library?")
+            .setMessage(track.title+" will be removed from your saved Library and Favorites in CYN. " +
+                "Any downloaded or original audio file stays on your phone. This also works for songs you have not favorited.")
+            .setNegativeButton("Cancel",null)
+            .setPositiveButton("Remove",(dialog,which)->{
+                if(service==null){toast("Audio engine connecting");return;}
+                try{
+                    service.library.remove(track.uri);
+                    toast("Removed from CYN Library");
+                    renderTracks();
+                }catch(Exception error){toast("Could not remove the saved song");}
+            }).show();
+    }
+
     void playTrack(List<AudioLibrary.Track> queue,int index){
         if(service==null||index<0||index>=queue.size())return;
         AudioLibrary.Track requested=queue.get(index);
