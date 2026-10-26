@@ -160,37 +160,28 @@ function renderBands(status){
 }
 function renderConnected(status){
   window.dispatchEvent(new CustomEvent("cyn-native-status",{detail:status}));
-  const fx=status.fx_engine;
-  const hasNativeEngineReport=fx&&typeof fx.ready==="boolean";
-  const ready=hasNativeEngineReport&&fx.ready===true;
-  const routed=hasNativeEngineReport&&fx.route_enabled===true;
-  const processing=hasNativeEngineReport&&fx.processing===true;
-  const virtualActive=hasNativeEngineReport&&fx.virtual_device_active===true;
-  const physicalReady=hasNativeEngineReport&&fx.physical_output_ready===true;
+  const engine=status.fx_engine;
+  const hasNativeEngineReport=engine&&typeof engine.ready==="boolean";
+  const driverReady=hasNativeEngineReport&&engine.virtual_device_active===true;
+  const outputReady=hasNativeEngineReport&&engine.physical_output_ready===true;
+  const nativeSamples=hasNativeEngineReport&&engine.processing===true;
+  // Riff is presentation only: the original CYN host owns the driver, Windows
+  // default playback, active hardware, AI models and all DSP state.
   $("fx-engine-detail").textContent=!hasNativeEngineReport
-    ?"Original CYN connected; update the native host for Windows audio-routing diagnostics."
-    :!virtualActive
-      ?"Original FxSound virtual audio driver is missing or disabled. Repair the CYN installation."
-      :!physicalReady
-        ?"Select an active speaker or headphone output. CYN cannot forward audio without one."
+    ?"CYN's original audio engine is connected. Open Original controls for native device setup."
+    :!driverReady
+      ?"FxSound's original playback device is not active. Check its driver in Original controls."
+      :!outputReady
+        ?"The original CYN engine has no confirmed physical output. Choose one in Original controls."
         :!status.power
-          ?"Original FxSound DSP is switched off. Restore system audio to enable it."
-          :!routed
-            ?"Windows audio is bypassing CYN. Restore system audio to select the original FxSound virtual device."
-            :processing
-              ?"Original FxSound DSP is processing live Windows audio."
-              :"Windows is routed through CYN. Waiting for sound from an app.";
-  $("fx-engine-output").textContent="Playback: "+String(status.selected_output||"Not selected")+
-    " · Windows via CYN: "+(routed?"Yes":"No");
-  $("fx-engine-route").hidden=!hasNativeEngineReport;
-  $("fx-engine-route").disabled=!writable()||!virtualActive||!physicalReady||Boolean(routed);
-  $("fx-engine-reconnect").textContent=ready?"Refresh engine":"Reconnect engine";
+          ?"CYN processing is off. Enable audio to use the original FxSound engine."
+          :nativeSamples
+            ?"The original CYN audio engine is actively processing samples."
+            :"Native CYN is running. Play audio to test its processing.";
+  $("fx-engine-output").textContent="CYN output: "+String(status.selected_output||"No physical output selected");
+  $("fx-engine-reconnect").textContent="Refresh engine";
   $("fx-engine-reconnect").disabled=false;
-  setEngineState(true,(routed?"ROUTED":ready?"NOT ROUTED":"DRIVER ISSUE")+" / v"+String(status.version||"?"));
-  // Green status means Windows is really routed via FxSound, not merely
-  // that Electron can reach a native process.
-  $("engine-state").classList.toggle("on",routed);
-  $("rail-led").classList.toggle("on",routed);
+  setEngineState(true,(nativeSamples?"PROCESSING":status.power?"ENGINE ON":"ENGINE OFF")+" / v"+String(status.version||"?"));
   if(typeof status.power==="boolean")$("power").checked=status.power;
   $("smart").checked=Boolean(status.smart_listening?.enabled);
   $("pin").checked=Boolean(status.output_pinned);
@@ -262,8 +253,6 @@ function renderDisconnected(message){
   window.dispatchEvent(new CustomEvent("cyn-native-status",{detail:null}));
   $("fx-engine-detail").textContent=String(message||"Native CYN audio engine is offline.");
   $("fx-engine-output").textContent="Audio effects and neural processing require the real Cyn.exe engine.";
-  $("fx-engine-route").hidden=true;
-  $("fx-engine-route").disabled=true;
   $("fx-engine-reconnect").textContent="Reconnect engine";
   $("fx-engine-reconnect").disabled=false;
   setEngineState(false,"Engine offline");
@@ -368,7 +357,7 @@ async function apply(action){
     if(action.type==="power"&&result.status.power!==action.value)
       throw new Error("CYN did not confirm the processing switch. Check the native engine and audio driver.");
     if(action.type==="output"&&result.status.selected_output!==action.value)
-      throw new Error("Windows did not confirm the selected output. The previous device is preserved.");
+      throw new Error("The original CYN engine still reports another output. Check its native device selector in Original controls.");
     current=result;
     succeeded=true;
     actionError="";
@@ -379,6 +368,11 @@ async function apply(action){
   }finally{
     busy=false;
     if(refreshInFlight)await refreshInFlight;
+    // Once a selection has been submitted, stop treating the focused select
+    // as an in-progress user edit. Reconcile it to native CYN's actual state.
+    if(action.type==="output")
+      for(const id of ["device-top","device-page"])
+        if(document.activeElement===$(id))$(id).blur();
     await refresh();
     if(actionError)showError(actionError);
   }
@@ -521,20 +515,6 @@ $("fx-engine-classic").addEventListener("click",()=>{
 });
 $("fx-engine-repair").addEventListener("click",()=>{
   window.cyn.openLink("updates").catch(error=>showError("Could not open the CYN installer page: "+error.message));
-});
-$("fx-engine-route").addEventListener("click",async()=>{
-  const control=$("fx-engine-route");
-  control.disabled=true;
-  $("fx-engine-detail").textContent="Restoring original FxSound Windows audio routing…";
-  const result=await apply({type:"restoreAudio"});
-  if(result) {
-    const report=current?.status?.fx_engine;
-    if(report?.virtual_device_active!==true||report?.physical_output_ready!==true)
-      showError("CYN audio device is unavailable. Use Repair install or select a connected output.");
-    // Audio endpoint and actual DSP activity are confirmed on the next
-    // native status refresh, never simulated from a successful button click.
-  }
-  await refresh();
 });
 $("fx-engine-reconnect").addEventListener("click",async()=>{
   const control=$("fx-engine-reconnect");
