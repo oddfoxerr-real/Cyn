@@ -36,7 +36,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     int page=0,feedbackEffect=4,visibleTracks=60,libraryFilter=0;
     int bg=0xff141416,card=0xff1e1f22,text=0xffe6e6e8,hint=0xffbcbcc2,accent=0xffd9dade,secondary=0xffa1a2a8,outline=0xff38393d;
     boolean bound,seeking,reduced,libraryBusy,downloadingLikes;
-    TextView likedDownloadStatus;
+    TextView likedDownloadStatus,favoritesCount;
     String query="";
     final ServiceConnection connection=new ServiceConnection(){
         @Override public void onServiceConnected(ComponentName name,IBinder binder){service=((AudioService.LocalBinder)binder).service();build(false);processControlIntent(getIntent());}
@@ -189,7 +189,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         if(!description.isEmpty())add(c,label(description,13,hint));gap(c,10);return c;
     }
     void build(){build(false);}
-    void build(boolean transition){if(isFinishing()||isDestroyed())return;palette();liveControlMarkers.clear();liveStatus=learningStatus=playLabel=positionLabel=powerButton=connectionTitle=connectionHint=externalStatus=processingDetails=playButton=updateState=null;position=null;timeline=null;neural=null;spectrum=null;brainScan=null;libraryRows=null;likedDownloadStatus=null;
+    void build(boolean transition){if(isFinishing()||isDestroyed())return;palette();liveControlMarkers.clear();liveStatus=learningStatus=playLabel=positionLabel=powerButton=connectionTitle=connectionHint=externalStatus=processingDetails=playButton=updateState=null;position=null;timeline=null;neural=null;spectrum=null;brainScan=null;libraryRows=null;likedDownloadStatus=favoritesCount=null;
         if(shell==null){shell=column();shell.setBackgroundColor(bg);setContentView(shell);if(Build.VERSION.SDK_INT>=29)shell.setForceDarkAllowed(false);shell.setOnApplyWindowInsetsListener((v,insets)->{if(Build.VERSION.SDK_INT>=30){Insets e=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());v.setPadding(e.left,e.top,e.right,e.bottom);}else v.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());return insets;});shell.requestApplyInsets();
             LinearLayout header=row();header.setPadding(dp(22),dp(10),dp(22),dp(6));TextView brand=label("CYN",27,text);brand.setTypeface(null,Typeface.BOLD);brand.setLetterSpacing(.09f);header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));TextView badge=label("SOUND STUDIO",10,hint);badge.setLetterSpacing(.12f);header.addView(badge);add(shell,header);
             pages=new LiquidPage(this);shell.addView(pages,new LinearLayout.LayoutParams(-1,0,1));
@@ -412,7 +412,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int before,int count){query=s.toString();visibleTracks=60;renderTracks();}public void afterTextChanged(Editable e){}});
         renderTracks();
         long likedCount=service.library.all().stream().filter(t->t.favorite).count();
-        LinearLayout liked=section("Favorites",likedCount+" liked songs · unlike a song by tapping its heart. Unlike never removes it from Library.");
+        LinearLayout liked=section("Favorites","Unliking only removes the heart, never the song.");
+        favoritesCount=label(likedCount+" liked songs",13,hint);add(liked,favoritesCount);
         add(liked,button("Download eligible favorites",this::downloadFavorites));
         likedDownloadStatus=label(downloadingLikes?"Downloading favorites…":"Downloads require artist permission and are saved to Music/CYN.",12,hint);
         likedDownloadStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
@@ -500,11 +501,16 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         AudioLibrary library=service.library;
         filesWorker.execute(()->{
             try{
-                library.merge(Collections.singletonList(song.asTrack()));
+                AudioLibrary.Track requested=song.asTrack();
+                library.merge(Collections.singletonList(requested));
                 handler.post(()->{
                     if(isDestroyed()||isFinishing())return;
                     if(page==2)renderTracks();
-                    if(startDownload)downloadTrack(song.asTrack());
+                    if(startDownload){
+                        AudioLibrary.Track selected=requested;
+                        for(AudioLibrary.Track item:library.all())if(item.uri.equals(requested.uri)){selected=item;break;}
+                        downloadTrack(selected);
+                    }
                     else toast("Saved to Library · not automatically favorited");
                 });
             }catch(Exception failure){handler.post(()->{if(!isDestroyed())toast("Could not save track");});}
@@ -562,7 +568,8 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         });
     }
     void downloadTrack(AudioLibrary.Track track){
-        if(service==null||downloadingLikes)return;
+        if(service==null)return;
+        if(downloadingLikes){toast("Another download is already running");return;}
         if(track.offlineUri!=null){toast("Already downloaded");return;}
         if(!LikedDownloads.isAudiusStream(track.uri)){toast("This song is already on your phone");return;}
         downloadingLikes=true;
@@ -589,7 +596,12 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         });
     }
     List<AudioLibrary.Track> filteredTracks(){ArrayList<AudioLibrary.Track> list=new ArrayList<>();String q=query.toLowerCase(Locale.ROOT);for(AudioLibrary.Track t:service.library.all())if((libraryFilter!=1||t.favorite)&&(libraryFilter!=2||t.offlineUri!=null)&&(t.title+" "+t.artist+" "+t.album).toLowerCase(Locale.ROOT).contains(q))list.add(t);return list;}
-    void renderTracks(){if(libraryRows==null)return;libraryRows.removeAllViews();List<AudioLibrary.Track> tracks=filteredTracks();if(tracks.isEmpty()){LinearLayout empty=column();empty.setPadding(dp(14),dp(20),dp(14),dp(20));add(empty,label(libraryBusy?"Reading your music…":libraryFilter==1?"No favorites yet":libraryFilter==2?"No downloads yet":"Your library is empty",19,text));add(empty,label(query.isEmpty()?(libraryFilter==1?"Tap a heart on any saved song to favorite it.":libraryFilter==2?"Download an eligible Audius song to see it here.":"Add a song from Audius, your files, or your phone."): "No tracks match this search.",13,hint));add(libraryRows,empty);return;}
+    void renderTracks(){if(libraryRows==null)return;
+        if(favoritesCount!=null){
+            long count=service.library.all().stream().filter(t->t.favorite).count();
+            favoritesCount.setText(count+" liked songs");
+        }
+        libraryRows.removeAllViews();List<AudioLibrary.Track> tracks=filteredTracks();if(tracks.isEmpty()){LinearLayout empty=column();empty.setPadding(dp(14),dp(20),dp(14),dp(20));add(empty,label(libraryBusy?"Reading your music…":libraryFilter==1?"No favorites yet":libraryFilter==2?"No downloads yet":"Your library is empty",19,text));add(empty,label(query.isEmpty()?(libraryFilter==1?"Tap a heart on any saved song to favorite it.":libraryFilter==2?"Download an eligible Audius song to see it here.":"Add a song from Audius, your files, or your phone."): "No tracks match this search.",13,hint));add(libraryRows,empty);return;}
         for(int i=0;i<Math.min(visibleTracks,tracks.size());i++){AudioLibrary.Track t=tracks.get(i);final int index=i;LinearLayout r=row();r.setPadding(dp(12),dp(8),dp(8),dp(8));r.setBackground(shape(card,18));TextView art=label(t.title.substring(0,1).toUpperCase(Locale.ROOT),20,accent);art.setGravity(Gravity.CENTER);art.setBackground(gradient(14));r.addView(art,new LinearLayout.LayoutParams(dp(48),dp(48)));LinearLayout words=column();words.setPadding(dp(12),0,dp(4),0);TextView title=label(t.title,14,text);title.setMaxLines(2);title.setEllipsize(TextUtils.TruncateAt.END);add(words,title);add(words,label(t.artist+" · "+time((int)t.duration),11,hint));r.addView(words,new LinearLayout.LayoutParams(0,-2,1));androidx.appcompat.widget.AppCompatImageButton favorite=new androidx.appcompat.widget.AppCompatImageButton(this);
             favorite.setImageResource(t.favorite?R.drawable.ic_favorite_filled:R.drawable.ic_favorite_outline);
             favorite.setImageTintList(ColorStateList.valueOf(t.favorite?accent:hint));
