@@ -24,13 +24,18 @@ test("native commands are validated and only write approved DSP values",()=>{
   assert.equal(commandFor({type:"aiModel",value:"audonic"},status),'--select_ai="audonic"');
 });
 test("Windows physical endpoint names survive one unquoted UTF-8 native argument",()=>{
-  for(const name of ['Headphones (JBL)', 'Headphones (Realtek) \\ "Special"', 'Hörlurar — Bose', '耳机 (蓝牙)']){
+  for(const name of ['Headphones (JBL)', 'Headphones (Realtek) & USB', 'Hörlurar — Bose', '耳机 (蓝牙)']){
     const target={...status,output_devices:[name]};
     const arg=commandFor({type:"output",value:name},target);
     assert.match(arg,/^--output_hex=[0-9a-f]+$/);
     assert.equal(Buffer.from(arg.slice("--output_hex=".length),"hex").toString("utf8"),name);
     assert(!arg.includes('"'),"No quote or backslash should ever be emitted in the native argument");
   }
+});
+
+test("reject quoted device values instead of passing them to Windows",()=>{
+  const name='Headphones "Injected"';
+  assert.throws(()=>commandFor({type:"output",value:name},{...status,output_devices:[name]}),TypeError);
 });
 
 test("reject unrecognized commands, values and profile impersonation",()=>{
