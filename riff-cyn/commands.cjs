@@ -115,7 +115,9 @@ function commandFor(action,status){
     }
     case "output": {
       assert(safeName(action.value)&&(status.output_devices||[]).includes(action.value),"Unknown output device");
-      return '--output="'+action.value+'"';
+      // One unquoted ASCII argument is safe across Node/Windows/JUCE command
+      // parsers. The former --output="Name" was stored with an escaped quote.
+      return "--output_hex="+Buffer.from(action.value,"utf8").toString("hex");
     }
     case "aiModel": {
       const profiles=Array.isArray(status.ai_profiles)?status.ai_profiles:[];
