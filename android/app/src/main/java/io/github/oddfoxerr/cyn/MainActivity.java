@@ -20,6 +20,8 @@ import org.json.*;
 
 public final class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     AudioService service;
+    private final CynConnectionStreak easterEggStreak = new CynConnectionStreak();
+    private android.speech.tts.TextToSpeech easterEggSpeech;
     final Handler handler=new Handler(Looper.getMainLooper());
     final ExecutorService filesWorker=Executors.newSingleThreadExecutor();
     final ExecutorService searchWorker=Executors.newSingleThreadExecutor();
@@ -369,8 +371,14 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
         LinearLayout external=section("Connect CYN","Enable real-time sound control for compatible music apps. Android determines which audio sessions accept enhancement.");
         externalStatus=label(service.connectionState()+"\n"+service.connectionHint(),12,hint);externalStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);add(external,externalStatus);
         powerButton=button(service.monitor?"Disconnect CYN":"Connect CYN",()->{
-            if(service.monitor) service.stopMonitor();
-            else { enableConnectAi(); }
+            if(service.monitor){
+                service.stopMonitor();
+                if(easterEggStreak.onDisconnect(SystemClock.elapsedRealtime()))
+                    playConnectEasterEgg();
+            }else{
+                enableConnectAi();
+                easterEggStreak.onConnect(SystemClock.elapsedRealtime());
+            }
             update();
         });primaryAction(powerButton);add(external,powerButton);
         if(ExternalNowPlaying.instance==null)
@@ -1258,6 +1266,30 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
             }
           });
     }
+    private void playConnectEasterEgg(){
+        // Synthesize the familiar phrase rather than bundle an unlicensed meme recording.
+        // This sound is intentionally unrelated to the phone's Bluetooth connections.
+        if(easterEggSpeech!=null){speakConnectEasterEgg();return;}
+        easterEggSpeech=new android.speech.tts.TextToSpeech(getApplicationContext(),status->{
+            if(status==android.speech.tts.TextToSpeech.SUCCESS&&!isFinishing()&&!isDestroyed())
+                speakConnectEasterEgg();
+        });
+    }
+
+    private void speakConnectEasterEgg(){
+        if(easterEggSpeech==null)return;
+        int language=easterEggSpeech.setLanguage(Locale.ENGLISH);
+        if(language==android.speech.tts.TextToSpeech.LANG_MISSING_DATA||
+           language==android.speech.tts.TextToSpeech.LANG_NOT_SUPPORTED)return;
+        easterEggSpeech.setPitch(1.19f);
+        easterEggSpeech.setSpeechRate(.83f);
+        easterEggSpeech.setAudioAttributes(new android.media.AudioAttributes.Builder()
+            .setUsage(android.media.AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH).build());
+        easterEggSpeech.speak("The Bluetooth device is connected, uh, successfully.",
+            android.speech.tts.TextToSpeech.QUEUE_FLUSH,null,"cyn-four-connect-easter-egg");
+    }
+
     void enableConnectAi(){
         // Native audio-session processing only. No MediaProjection or screen-sharing consent.
         if(service==null)return;
@@ -1302,7 +1334,7 @@ public final class MainActivity extends androidx.appcompat.app.AppCompatActivity
     final Runnable refresh=new Runnable(){public void run(){update();handler.postDelayed(this,250);}};
     @Override protected void onResume(){super.onResume();handler.removeCallbacks(refresh);handler.post(refresh);}
     @Override protected void onPause(){handler.removeCallbacks(refresh);super.onPause();}
-    @Override protected void onDestroy(){handler.removeCallbacksAndMessages(null);searchGeneration++;searchWorker.shutdownNow();filesWorker.shutdown();if(bound)unbindService(connection);super.onDestroy();}
+    @Override protected void onDestroy(){handler.removeCallbacksAndMessages(null);searchGeneration++;searchWorker.shutdownNow();filesWorker.shutdown();easterEggStreak.reset();if(easterEggSpeech!=null){easterEggSpeech.stop();easterEggSpeech.shutdown();easterEggSpeech=null;}if(bound)unbindService(connection);super.onDestroy();}
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==71){if(getPackageManager().canRequestPackageInstalls())UpdateManager.install(this);return;}if(result!=RESULT_OK||data==null||service==null)return;
         if(request==72){
             Uri linked=LinkedMusic.parse(data.getDataString());
