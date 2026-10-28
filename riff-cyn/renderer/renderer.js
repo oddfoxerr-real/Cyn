@@ -168,11 +168,11 @@ function renderConnected(status){
   // Riff is presentation only: the original CYN host owns the driver, Windows
   // default playback, active hardware, AI models and all DSP state.
   $("fx-engine-detail").textContent=!hasNativeEngineReport
-    ?"CYN's original audio engine is connected. Open Original controls for native device setup."
+    ?"CYN's original audio engine is connected. Use Output Devices in CYN to select and verify the FxSound route."
     :!driverReady
-      ?"FxSound's original playback device is not active. Check its driver in Original controls."
+      ?"FxSound's original playback device is not active. Use Output Devices or Repair install."
       :!outputReady
-        ?"The original CYN engine has no confirmed physical output. Choose one in Original controls."
+        ?"The original CYN engine has no confirmed physical output. Choose one in Output Devices."
         :!status.power
           ?"CYN processing is off. Enable audio to use the original FxSound engine."
           :nativeSamples
@@ -357,7 +357,7 @@ async function apply(action){
     if(action.type==="power"&&result.status.power!==action.value)
       throw new Error("CYN did not confirm the processing switch. Check the native engine and audio driver.");
     if(action.type==="output"&&result.status.selected_output!==action.value)
-      throw new Error("The original CYN engine still reports another output. Check its native device selector in Original controls.");
+      throw new Error("The original CYN engine still reports another output. Choose another device in the CYN Output Devices tab.");
     current=result;
     succeeded=true;
     actionError="";
