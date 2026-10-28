@@ -259,9 +259,8 @@ void FxSystemTrayView::showContextMenu()
     };
 
     auto settingsClicked = []() {
-        FxSettingsDialog settings_dialog;
-        settings_dialog.runModalLoop();
-        FxController::getInstance().refreshOutputList();
+        // Native tray is a transport for the FxSound host, not a second UI.
+        FxController::getInstance().showMainWindow();
     };
 
     auto darkModeClicked = [this]() {
@@ -321,7 +320,7 @@ void FxSystemTrayView::showContextMenu()
     context_menu.addSubMenu(TRANS("Theme"), theme_menu);
     context_menu.addItem("Smooth animations", true, FxTheme::isSmoothAnimations(), [] { FxController::getInstance().setSmoothAnimations(!FxTheme::isSmoothAnimations()); });
     context_menu.addItem("Reduce motion",true,FxTheme::isReducedMotion(),[]{ FxController::getInstance().setReducedMotion(!FxTheme::isReducedMotion()); });
-    context_menu.addItem(TRANS("Always On Top"), true, FxController::getInstance().getMainWindow()->isAlwaysOnTop(), alwaysOnTopClicked);
+    context_menu.addItem(TRANS("Always On Top"), true, FxController::getInstance().isAlwaysOnTop(), alwaysOnTopClicked);
     context_menu.addItem(donate);
     context_menu.addItem(exit);
 
