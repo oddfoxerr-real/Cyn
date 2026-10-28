@@ -17,6 +17,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: cyn-riff-fx-host-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   native-ui-integration:
     runs-on: windows-2022
