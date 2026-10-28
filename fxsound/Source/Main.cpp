@@ -146,7 +146,9 @@ public:
 
     void shutdown() override
     {
-        if (main_window_.get() != nullptr)
+        // Headless FxSound hosts still own and must release the audio driver,
+        // timers, tray and preset state. The legacy GUI is optional.
+        if (audio_passthru_ != nullptr)
         {
             FxController::getInstance().autoSaveModifiedPreset();
             FxController::getInstance().stopTimer();
