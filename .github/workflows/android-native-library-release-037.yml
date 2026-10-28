@@ -1,0 +1,144 @@
+name: CYN Studio Android 0.2.37 signed preview
+on:
+  push:
+    branches:
+      - release/android-native-library-v0.2.37-20261028
+    paths:
+      - android/**
+      - .github/workflows/android-native-library-release-037.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cyn-android-studio-037
+  cancel-in-progress: false
+
+jobs:
+  validate-sign-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 13114758
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install Android SDK, NDK, CMake and verified model inputs
+        run: |
+          set -euo pipefail
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
+          python android/scripts/prepare_models.py
+      - name: Validate release identity and native unified search
+        run: |
+          set -euo pipefail
+          grep -Fq "versionCode 41" android/app/build.gradle
+          grep -Fq "versionName '0.2.37-preview'" android/app/build.gradle
+          ! grep -Fq 'Show song sources' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          grep -Fq 'playableTrack()' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          grep -Fq 'linkOnlyResultsAreNotPresentedAsPlayableAudio' android/app/src/androidTest/java/io/github/oddfoxerr/cyn/UnifiedMusicSearchTest.java
+          grep -Fxq '045d9c122b2158d569c0ef8d10bbb08496a9f19e7397b702e99e9330c780bcb7' android/release-signing.sha256
+      - name: Build app, compile Android tests and run lint
+        run: bash android/gradlew -p android :app:assembleRelease :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
+      - name: Enable Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Verify playback and Library regression tests on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: bash android/gradlew -p android :app:connectedDebugAndroidTest
+      - name: Stage unsigned build and matching source snapshot
+        run: |
+          set -euo pipefail
+          mkdir -p dist/android
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/android/Cyn-Studio-Android-0.2.37-preview-unsigned.apk
+          git archive --format=zip --output=dist/android/Cyn-Studio-Android-0.2.37-Source.zip HEAD android
+      - name: Sign original CYN Studio identity and verify in-place upgrade
+        env:
+          KEYSTORE_BASE64: ${{ secrets.CYN_STUDIO_ANDROID_KEYSTORE_BASE64 }}
+          CYN_KEY_PASSWORD: ${{ secrets.CYN_STUDIO_ANDROID_KEY_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$CYN_KEY_PASSWORD" ]; then
+            echo '::error::Signed release unavailable: original CYN Studio signing secrets are missing.'
+            exit 1
+          fi
+          keyfile="$RUNNER_TEMP/cyn-studio.jks"
+          trap 'rm -f "$keyfile"' EXIT
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keyfile"
+          signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          signed="dist/android/Cyn-Studio-Android-0.2.37-preview.apk"
+          "$signer" sign --ks "$keyfile" --ks-key-alias cyn-studio --ks-pass env:CYN_KEY_PASSWORD --key-pass env:CYN_KEY_PASSWORD --out "$signed" dist/android/Cyn-Studio-Android-0.2.37-preview-unsigned.apk
+          "$signer" verify --verbose --print-certs "$signed" > "$RUNNER_TEMP/new-cert.txt"
+          grep -Fiq 'certificate SHA-256 digest: 045d9c122b2158d569c0ef8d10bbb08496a9f19e7397b702e99e9330c780bcb7' "$RUNNER_TEMP/new-cert.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$signed"
+          "$aapt" dump badging "$signed" > "$RUNNER_TEMP/new-package.txt"
+          grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='41' versionName='0.2.37-preview'" "$RUNNER_TEMP/new-package.txt"
+          previous="$RUNNER_TEMP/Cyn-Studio-Android-0.2.36-preview.apk"
+          gh release download android-studio-v0.2.36-preview --repo oddfoxerr-real/Cyn --pattern Cyn-Studio-Android-0.2.36-preview.apk --output "$previous"
+          "$signer" verify --verbose --print-certs "$previous" > "$RUNNER_TEMP/old-cert.txt"
+          old_cert=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/old-cert.txt" | head -1 | tr '[:upper:]' '[:lower:]')
+          new_cert=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/new-cert.txt" | head -1 | tr '[:upper:]' '[:lower:]')
+          test -n "$old_cert" && test "$old_cert" = "$new_cert"
+          "$aapt" dump badging "$previous" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='40' versionName='0.2.36-preview'"
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+          apk=Path("dist/android/Cyn-Studio-Android-0.2.37-preview.apk")
+          models=Path("android/app/src/main/assets/models")
+          with zipfile.ZipFile(apk) as z:
+              contents=set(z.namelist())
+              for name in ("arm64-v8a","x86_64"):
+                  assert any(p.startswith("lib/"+name+"/") and p.endswith(".so") for p in contents), name
+              for item in models.iterdir():
+                  if item.is_file():
+                      assert z.read("assets/models/"+item.name)==item.read_bytes(),item.name
+          print("PASS: signed APK contains matching model assets and native engines")
+          PY
+          sha256sum "$signed" > "$signed.sha256"
+      - name: Publish verified 0.2.37 Android preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=android-studio-v0.2.37-preview
+          if gh release view "$tag" --repo oddfoxerr-real/Cyn >/dev/null 2>&1; then
+            echo '::error::Release tag exists; refusing to modify existing signed assets.'
+            exit 1
+          fi
+          gh release create "$tag" --repo oddfoxerr-real/Cyn --target "$GITHUB_SHA" --title 'CYN Studio Android 0.2.37 preview' --notes-file android/RELEASE_NOTES.md --draft --prerelease
+          gh release upload "$tag" --repo oddfoxerr-real/Cyn \
+            dist/android/Cyn-Studio-Android-0.2.37-preview.apk \
+            dist/android/Cyn-Studio-Android-0.2.37-preview.apk.sha256 \
+            dist/android/Cyn-Studio-Android-0.2.37-Source.zip
+          gh release edit "$tag" --repo oddfoxerr-real/Cyn --draft=false --prerelease --latest=false
+      - name: Preserve Android test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CYN-Android-0.2.37-validation
+          path: |
+            android/app/build/reports/lint-results-debug.*
+            android/app/build/reports/androidTests/
+            android/app/build/outputs/androidTest-results/
+          if-no-files-found: ignore
+          retention-days: 14
