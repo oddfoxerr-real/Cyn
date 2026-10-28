@@ -12,7 +12,7 @@ import static org.junit.Assert.*;
 
 @RunWith(AndroidJUnit4.class)
 public final class UnifiedMusicSearchTest {
-    @Test public void oneSearchGroupsLocalSavedLinksAndAudiusWithoutFakeProviderClaims(){
+    @Test public void oneSearchPrefersActualPhoneFileOverAudiusWithoutProviderSelection(){
         PublicMusic.Song audius=new PublicMusic.Song("cynSearch123","Faded","Alan Walker",200000);
         AudioLibrary.Track linked=new AudioLibrary.Track(
             Uri.parse("https://music.youtube.com/watch?v=dQw4w9WgXcQ"),
@@ -25,12 +25,33 @@ public final class UnifiedMusicSearchTest {
         assertEquals(1,results.size());
         UnifiedMusicSearch.Result match=results.get(0);
         assertNotNull(match.audius);
-        assertTrue(match.savedFrom("YouTube Music"));
+        assertSame(local,match.playableTrack());
+        assertSame(local,match.savedPlayableTrack());
         assertTrue(match.savedFrom("Local"));
-        assertFalse("Do not invent SoundCloud availability",match.savedFrom("SoundCloud"));
-        assertTrue(match.availableSources().contains("Audius · found"));
-        assertTrue(match.availableSources().contains("YouTube Music · saved link"));
-        assertFalse(match.availableSources().contains("SoundCloud"));
+        assertFalse(match.savedFrom("YouTube Music"));
+        assertFalse(match.savedFrom("SoundCloud"));
+        assertTrue(match.availableSources().contains("Audius"));
+        assertFalse(match.availableSources().contains("YouTube Music"));
+    }
+
+    @Test public void linkOnlyResultsAreNotPresentedAsPlayableAudio(){
+        AudioLibrary.Track yt=new AudioLibrary.Track(
+            Uri.parse("https://music.youtube.com/watch?v=dQw4w9WgXcQ"),
+            "Faded","Alan Walker","Linked music",0,false);
+        AudioLibrary.Track sc=new AudioLibrary.Track(
+            Uri.parse("https://soundcloud.com/artist/track"),
+            "Faded","Alan Walker","Linked music",0,false);
+        assertTrue(UnifiedMusicSearch.combine("faded",Arrays.asList(yt,sc),
+            Collections.emptyList()).isEmpty());
+    }
+
+    @Test public void audiusResultPlaysNativelyWhenNoLocalCopyExists(){
+        PublicMusic.Song remote=new PublicMusic.Song("cynTest123","Phonk Song","DJ CYN",150000);
+        UnifiedMusicSearch.Result result=UnifiedMusicSearch.combine(
+            "phonk",Collections.emptyList(),Collections.singletonList(remote)).get(0);
+        assertNotNull(result.playableTrack());
+        assertTrue(LikedDownloads.isAudiusStream(result.playableTrack().uri));
+        assertNull(result.savedPlayableTrack());
     }
 
     @Test public void filtersOutUnrelatedMusicAndHandlesEmptyQueries(){

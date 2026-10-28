@@ -37,6 +37,17 @@ final class UnifiedMusicSearch {
             }
             return null;
         }
+        AudioLibrary.Track savedPlayableTrack(){
+            AudioLibrary.Track local=from("Local");
+            return local!=null?local:from("Audius");
+        }
+        AudioLibrary.Track playableTrack(){
+            AudioLibrary.Track local=from("Local");
+            if(local!=null)return local;
+            AudioLibrary.Track savedAudius=from("Audius");
+            if(savedAudius!=null)return savedAudius;
+            return audius==null?null:audius.asTrack();
+        }
         String availableSources(){
             ArrayList<String> sources=new ArrayList<>();
             if(audius!=null||savedFrom("Audius"))sources.add("Audius · found");
@@ -53,7 +64,8 @@ final class UnifiedMusicSearch {
         if(term.isEmpty())return Collections.emptyList();
         LinkedHashMap<String,Result> combined=new LinkedHashMap<>();
         if(existing!=null)for(AudioLibrary.Track track:existing){
-            if(track==null||!matches(term,track.title,track.artist))continue;
+            // Saved SoundCloud/YouTube links are bookmarks, never playable search results.
+            if(track==null||LinkedMusic.isLinked(track.uri)||!matches(term,track.title,track.artist))continue;
             String key=key(track.title,track.artist);
             Result item=combined.get(key);
             if(item==null){item=new Result(track.title,track.artist);combined.put(key,item);}
