@@ -42,6 +42,8 @@ Name: repairvcruntime; Description: "Repair Microsoft Visual C++ x64 runtime (AP
 
 [InstallDelete]
 Type: files; Name: "{app}\SPOTIFY.md"
+; Remove the old second-interface shortcut left by previous stable versions.
+Type: files; Name: "{autoprograms}\Cyn (Classic).lnk"
 
 [Files]
 Source: "{#PayloadDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
