@@ -16,7 +16,7 @@ const launcher = read("LAUNCH_CYN.ps1");
 
 assert(nativeMain.includes('const bool classicUi = commandline.trim().equalsIgnoreCase("--classic");'),
   "Native FxSound host may only construct the legacy UI with an explicit --classic developer switch");
-assert(nativeMain.includes("if (classicUi)\n                main_window_ = std::make_unique<FxMainWindow>();"),
+assert(/if\s*\(classicUi\)\s*main_window_\s*=\s*std::make_unique<FxMainWindow>\(\)/.test(nativeMain),
   "Never construct the old JUCE GUI during a normal Riff launch");
 assert(nativeMain.includes("FxController::getInstance().init(main_window_.get(), system_tray_view_.get(), audio_passthru_.get())"),
   "The original FxSound controller and audio passthrough must be retained");
