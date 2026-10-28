@@ -64,6 +64,9 @@ public:
         // the Material UI. Do not quit and respawn the native engine: that
         // races Electron's connection and can leave system audio offline.
         const bool launchMaterial = CynMaterialShell::isUiLaunchRequest(commandline);
+        // Riff is CYN's only normal desktop UI. This JUCE process is a native
+        // FxSound DSP host and must not construct the legacy window in that mode.
+        const bool classicUi = commandline.trim().equalsIgnoreCase("--classic");
         // This method is where you should put your application's initialisation code..
         try
         {
@@ -112,7 +115,8 @@ public:
                 launchMaterial ? String("--run_minimized") : commandline);
 
             audio_passthru_ = std::make_unique<AudioPassthru>();
-            main_window_ = std::make_unique<FxMainWindow>();
+            if (classicUi)
+                main_window_ = std::make_unique<FxMainWindow>();
             system_tray_view_.reset(new FxSystemTrayView());
 
             FxController::getInstance().init(main_window_.get(), system_tray_view_.get(), audio_passthru_.get());
@@ -142,7 +146,9 @@ public:
 
     void shutdown() override
     {
-        if (main_window_.get() != nullptr)
+        // Headless FxSound hosts still own and must release the audio driver,
+        // timers, tray and preset state. The legacy GUI is optional.
+        if (audio_passthru_ != nullptr)
         {
             FxController::getInstance().autoSaveModifiedPreset();
             FxController::getInstance().stopTimer();

@@ -100,7 +100,6 @@
     undo:async()=>{await apply({type:"undo"});notify("Preset changes undone.");},
     rename:()=>ask("rename"),
     delete:()=>ask("delete"),
-    native:()=>window.cyn.openNative(),
     mobile:()=>window.cyn.openLink("mobile"),
     updates:()=>window.cynUpdate.open(),
     release:()=>window.cyn.openLink("updates"),

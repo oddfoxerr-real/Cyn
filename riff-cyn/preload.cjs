@@ -13,7 +13,6 @@ contextBridge.exposeInMainWorld("cyn",Object.freeze({
   },
   closeComplete:()=>ipcRenderer.send("cyn:close-complete"),
   alwaysOnTop:(enabled)=>ipcRenderer.invoke("cyn:on-top",enabled),
-  openNative:()=>ipcRenderer.invoke("cyn:open-native"),
   openLink:(type)=>ipcRenderer.invoke("cyn:open-link",type),
   inspectUpdates:()=>ipcRenderer.invoke("cyn:updates-inspect"),
   checkUpdates:()=>ipcRenderer.invoke("cyn:check-updates")

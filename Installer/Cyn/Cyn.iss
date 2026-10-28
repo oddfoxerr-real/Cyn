@@ -8,8 +8,8 @@
 [Setup]
 AppId={{3049F105-E971-49A1-876E-50FDB14EF351}
 AppName=Cyn
-AppVersion=2.0.93
-AppVerName=Cyn 2.0.93
+AppVersion=2.0.94
+AppVerName=Cyn 2.0.94
 AppPublisher=Cyn contributors
 DefaultDirName={autopf}\Cyn
 DefaultGroupName=Cyn
@@ -19,9 +19,9 @@ ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 PrivilegesRequired=admin
 OutputDir={#OutputDir}
-OutputBaseFilename=Cyn-Setup-2.0.93-x64
+OutputBaseFilename=Cyn-Setup-2.0.94-x64
 SetupIconFile=..\..\fxsound\Project\icon.ico
-UninstallDisplayIcon={app}\Cyn.exe
+UninstallDisplayIcon={app}\CYN-Interface\CYN Audio.exe
 LicenseFile=..\..\LICENSE
 InfoBeforeFile=SETUP-NOTES.txt
 Compression=lzma2
@@ -31,7 +31,7 @@ DisableWelcomePage=no
 CloseApplications=no
 RestartApplications=no
 SetupLogging=yes
-VersionInfoVersion=2.0.93.0
+VersionInfoVersion=2.0.94.0
 
 [Tasks]
 Name: desktopicon; Description: "Create a &desktop shortcut"; GroupDescription: "Shortcuts:"
@@ -42,6 +42,8 @@ Name: repairvcruntime; Description: "Repair Microsoft Visual C++ x64 runtime (AP
 
 [InstallDelete]
 Type: files; Name: "{app}\SPOTIFY.md"
+; Remove the old second-interface shortcut left by previous stable versions.
+Type: files; Name: "{autoprograms}\Cyn (Classic).lnk"
 
 [Files]
 Source: "{#PayloadDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -57,12 +59,11 @@ Source: "runtime-x86\vcruntime140.dll"; Flags: dontcopy
 Source: "..\..\.build-tools\vc-redist-x64\VC_redist.x64.exe"; Flags: dontcopy
 
 [Icons]
-Name: "{autoprograms}\Cyn"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"
-Name: "{autoprograms}\Cyn (Classic)"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Parameters: "--classic"
-Name: "{autodesktop}\Cyn"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autoprograms}\Cyn"; Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"
+Name: "{autodesktop}\Cyn"; Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Description: "Open Cyn with the Material UI"; Flags: nowait postinstall skipifsilent runasoriginaluser
+Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"; Description: "Open CYN"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [Code]
 var

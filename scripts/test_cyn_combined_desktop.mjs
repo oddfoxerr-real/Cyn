@@ -16,9 +16,9 @@ assert(installer.includes(`OutputBaseFilename=Cyn-Setup-${version}-x64`),
   "Installer filename must match AppVersion");
 assert.match(installer,/^AppId=\{\{3049F105-E971-49A1-876E-50FDB14EF351\}$/m);
 assert(installer.includes('Source: "{#PayloadDir}\\*"'),"Keep the native driver, assets and Material interface together");
-assert(installer.includes('Name: "{autoprograms}\\Cyn"; Filename: "{app}\\Cyn.exe"'),"Default CYN launcher must boot the original audio engine first");
-assert(installer.includes('Name: "{autoprograms}\\Cyn (Classic)"'),"Keep the full native AI/driver troubleshooting UI available");
-assert(installer.includes('Parameters: "--classic"'),"The Classic shortcut must launch original CYN audio controls, not reopen Material");
+assert(installer.includes('Name: "{autoprograms}\\Cyn"; Filename: "{app}\\CYN-Interface\\CYN Audio.exe"'),"CYN must launch Riff as the one main UI");
+assert(!installer.includes('Name: "{autoprograms}\\Cyn (Classic)"'),"No parallel Classic UI shortcut");
+assert(native.includes('spawn(exe,["--engine-host"]'),"Riff must start the native FxSound host headlessly");
 assert(installer.includes('Name="CYN Audio.exe"'),"Updates must not overwrite an actively running Electron frontend");
 assert(native.includes('function bundledNative(executable=process.execPath)') && native.includes('path.dirname(executable),"..","Cyn.exe"') && native.includes('chooseNative(bundledNative(),nativeExe,candidates())'),"Use the bundled original audio processor beside Material instead of stale saved executables");
 assert(main.includes('bridge.launch().then(result=>') && main.includes('bridge.ensureRunning()'),"Material must initialize/reconnect original native CYN independently of Classic");

@@ -272,13 +272,13 @@ $clock.Add_Tick({
                 if (!(Test-Path -LiteralPath $material)) {
                     throw 'The redesigned CYN interface is missing after installation. Repair this installation; do not launch Classic as a fallback.'
                 }
-                # Start the original native CYN audio host first. Its startup
-                # initializes FxSound audio/DSP before opening the Material UI.
+                # Riff is the main UI. It starts and validates the native FxSound
+                # DSP host directly; never bootstrap through the old JUCE GUI.
                 $native=Join-Path $PSScriptRoot 'Cyn.exe'
                 if (!(Test-Path -LiteralPath $native)) {
-                    throw 'The original Cyn.exe audio engine is missing after installation.'
+                    throw 'The FxSound native host is missing after installation.'
                 }
-                Start-Process -FilePath $native -WorkingDirectory $PSScriptRoot -ErrorAction Stop | Out-Null
+                Start-Process -FilePath $material -WorkingDirectory (Split-Path -Parent $material) -ErrorAction Stop | Out-Null
                 $script:allowedToClose=$true
                 $window.Close()
             } catch {

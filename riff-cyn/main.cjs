@@ -291,13 +291,6 @@ if(primaryInstance)app.whenReady().then(()=>{
       });
     });
   });
-  ipcMain.handle("cyn:open-native",async()=>{
-    const exe=bridge.findExe();
-    if(!exe)throw new Error("Install native CYN or locate Cyn.exe first");
-    const child=require("node:child_process").spawn(exe,["--classic"],{detached:true,stdio:"ignore",windowsHide:false});
-    child.unref();
-    return true;
-  });
   const ALLOWED_LINKS={
     updates:"https://github.com/oddfoxerr-real/Cyn/releases",
     mobile:"https://github.com/oddfoxerr-real/Cyn/releases?q=android-studio",

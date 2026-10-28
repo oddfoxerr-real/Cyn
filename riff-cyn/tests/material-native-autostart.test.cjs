@@ -33,11 +33,12 @@ test("Material boots/reconnects the original native host without ever launching 
   assert(bridge.includes("async function ensureRunning()"));
   assert(bridge.includes("autoRestartPending=launch().catch"));
   assert(bridge.includes("lastAutoRestart<30000"));
-  assert(bridge.includes('spawn(exe,["--run_minimized"]'));
+  assert(bridge.includes('spawn(exe,["--engine-host"]'));
   assert(bridge.includes('cwd:path.dirname(exe)'));
   assert(bridge.includes('const state=await ensureRunning()'));
   assert(main.includes('ipcMain.handle("cyn:status",()=>bridge.ensureRunning())'));
   assert(main.includes("bridge.launch().then(result=>"));
+  assert(classic.includes("if (classicUi)") && classic.includes("main_window_ = std::make_unique<FxMainWindow>()"),"Legacy UI object is constructed only on explicit Classic");
   assert(classic.includes("FxController::getInstance().init(main_window_.get(), system_tray_view_.get(), audio_passthru_.get())"));
   assert(!bridge.includes('spawn(exe,["--classic"]'));
 });

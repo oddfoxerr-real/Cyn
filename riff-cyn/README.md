@@ -1,6 +1,6 @@
 # CYN on Riff — Windows desktop migration
 
-This is the Riff-first implementation. Instead of repainting old JUCE widgets to resemble Riff, it uses the actual rootscripts/riff Electron visual foundation as a standalone CYN frontend while delegating system-wide processing to existing installed native Cyn.exe.
+Riff is the **only user-facing CYN Windows interface**. The one combined CYN installer places the Riff-based Electron UI at `CYN-Interface/CYN Audio.exe` and the original FxSound DSP/AI host at `Cyn.exe`. The Riff app starts the host with `--engine-host`, controls it using its typed native command interface, and renders verified native status. The old JUCE CYN application window is not constructed in normal operation. No Riff DSP engine or nested old CYN UI is involved.
 
 ## Implemented
 
@@ -22,9 +22,9 @@ Keep your current CYN installation. Use Node.js 22+.
 3. Run npm run vendor:riff to stage the exact upstream Riff stylesheet and MIT license.
 4. Run npm start to preview or npm run build:win for an independent Windows installer.
 
-The standalone CYN Riff frontend searches default CYN locations including Program Files, or you can use Settings > Locate Cyn.exe. Press Start engine to launch installed CYN minimized.
+On an installed release, **CYN** shortcuts launch `CYN-Interface/CYN Audio.exe` directly. The interface starts the bundled native FxSound host headlessly; if that host fails it displays diagnostics and offers Repair install. The standalone development mode may locate a manually installed `Cyn.exe` for testing.
 
-The preview installer is a separate product named CYN Riff. It does not modify native CYN installation or its audio driver. Existing v2.0.82/v2.0.83 native installations support core commands but will not advertise the new optional AI profile bridge until a later native backend update.
+The production installer is a single CYN package. The old Classic shortcut and the Riff option to open another native CYN interface have been removed. Advanced sound, AI, EQ, Presets, Settings, and updater controls remain routed to the native CYN/FxSound controller. The deprecated standalone preview should not be installed alongside the combined product.
 
 ## Security
 
@@ -34,7 +34,7 @@ Electron renderer uses sandbox=true, contextIsolation=true, nodeIntegration=fals
 
 Native BrainScan activity, neural learning/training, AI DJ controls, richer telemetry and genuine FFT metering require real data/commands from FxController before the JUCE GUI can be retired. This preview intentionally does not invent live inference visualizations or simulate playback.
 
-This preview has its own CI artifact and is not a CYN stable-release update. The existing native CYN updater remains unchanged.
+The Riff-first refactor is validated on a separate Windows CI branch before a stable signed release. Windows update checks, verified installer downloads and existing presets remain with the native CYN updater. A physical Windows PC playback/output-device test is still required before shipping this restructuring.
 
 ## Licenses
 
