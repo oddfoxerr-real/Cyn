@@ -1,7 +1,7 @@
 "use strict";
 const $=id=>document.getElementById(id);
 const pages={
-  overview:["Sound Studio","Your audio, with CYN's real DSP underneath."],
+  overview:["Sound Studio","CYN audio processing, powered directly by FxSound."],
   equalizer:["Equalizer","Precision control of every active frequency band."],
   ai:["Smart Listening","Native neural processing and adaptive sound."],
   devices:["Output Devices","Control your actual Windows audio hardware."],
@@ -165,23 +165,29 @@ function renderConnected(status){
   const driverReady=hasNativeEngineReport&&engine.virtual_device_active===true;
   const outputReady=hasNativeEngineReport&&engine.physical_output_ready===true;
   const nativeSamples=hasNativeEngineReport&&engine.processing===true;
-  // Riff is presentation only: the original CYN host owns the driver, Windows
-  // default playback, active hardware, AI models and all DSP state.
+  const virtualDefault=hasNativeEngineReport&&engine.virtual_device_default===true;
+  const physicalTargeted=hasNativeEngineReport&&engine.physical_output_targeted===true;
+  // This is the authoritative native audio route, not a second DSP.
+  // Power ON does not imply processing: Windows can bypass FxSound entirely.
   $("fx-engine-detail").textContent=!hasNativeEngineReport
-    ?"CYN's original audio engine is connected. Use Output Devices in CYN to select and verify the FxSound route."
+    ?"Waiting for FxSound's actual Windows audio endpoint status."
     :!driverReady
-      ?"FxSound's original playback device is not active. Use Output Devices or Repair install."
+      ?"FxSound virtual device is inactive. Check Windows Sound or use Repair install."
       :!outputReady
-        ?"The original CYN engine has no confirmed physical output. Choose one in Output Devices."
+        ?"No active physical output confirmed. Select your headphones or speakers in Output Devices."
         :!status.power
-          ?"CYN processing is off. Enable audio to use the original FxSound engine."
-          :nativeSamples
-            ?"The original CYN audio engine is actively processing samples."
-            :"Native CYN is running. Play audio to test its processing.";
+          ?"FxSound processing is disabled. Enable audio to activate the native DSP."
+          :!virtualDefault
+            ?"Windows is bypassing CYN: set 'FxSound Audio Enhancer' as the default Windows playback device."
+            :!physicalTargeted
+              ?"Your physical output is not the FxSound target. Select a connected device under Output Devices."
+              :nativeSamples
+                ?"FxSound is processing audio through the selected physical output."
+                :"FxSound is routed correctly; play audio to confirm live processing.";
   $("fx-engine-output").textContent="CYN output: "+String(status.selected_output||"No physical output selected");
   $("fx-engine-reconnect").textContent="Refresh engine";
   $("fx-engine-reconnect").disabled=false;
-  setEngineState(true,(nativeSamples?"PROCESSING":status.power?"ENGINE ON":"ENGINE OFF")+" / v"+String(status.version||"?"));
+  setEngineState(true,(nativeSamples?"PROCESSING":status.power&&(!driverReady||!virtualDefault||!outputReady||!physicalTargeted)?"ROUTING REQUIRED":status.power?"ENGINE ON":"ENGINE OFF")+" / v"+String(status.version||"?"));
   if(typeof status.power==="boolean")$("power").checked=status.power;
   $("smart").checked=Boolean(status.smart_listening?.enabled);
   $("pin").checked=Boolean(status.output_pinned);
@@ -357,7 +363,7 @@ async function apply(action){
     if(action.type==="power"&&result.status.power!==action.value)
       throw new Error("CYN did not confirm the processing switch. Check the native engine and audio driver.");
     if(action.type==="output"&&result.status.selected_output!==action.value)
-      throw new Error("The original CYN engine still reports another output. Choose another device in the CYN Output Devices tab.");
+      throw new Error("FxSound did not switch to that physical output. The device may have disconnected; refresh Output Devices and try again.");
     current=result;
     succeeded=true;
     actionError="";
