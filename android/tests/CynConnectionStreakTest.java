@@ -60,7 +60,7 @@ public final class CynConnectionStreakTest {
         complete(streak, 6000L);
         complete(streak, 8000L);
         streak.onConnect(10000L);
-        check(!streak.onDisconnect(11000L), "Repeated Connect broke previous streak");
+        check(streak.onDisconnect(11000L), "Only four complete pairs since the reset may trigger");
     }
 
     private static void resetOnRecreation() {
