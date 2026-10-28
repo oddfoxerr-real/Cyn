@@ -1,0 +1,93 @@
+name: Windows Riff Direct FxSound Host
+
+on:
+  push:
+    branches:
+      - refactor/windows-riff-direct-fx-host-20261028
+    paths:
+      - riff-cyn/**
+      - fxsound/**
+      - Installer/Cyn/**
+      - LAUNCH_CYN.ps1
+      - CynUpdater.ps1
+      - scripts/**
+      - .github/workflows/windows-riff-direct-fx-host.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-ui-integration:
+    runs-on: windows-2022
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check one main UI and native host contract
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          node scripts/test_riff_direct_fx_host.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Riff/FxSound architecture regression' }
+          node scripts/test_cyn_combined_desktop.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Combined Windows app regression' }
+          node scripts/test_cyn_material_launch.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Native launch regression' }
+          Push-Location riff-cyn
+          try {
+            node --test tests/*.test.cjs
+            if ($LASTEXITCODE -ne 0) { throw 'Riff frontend regression' }
+          } finally { Pop-Location }
+      - name: Compile original FxSound engine and CYN AI workers
+        shell: pwsh
+        run: |
+          .\BUILD_CYN.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Native FxSound / AI build failed' }
+          if (!(Test-Path 'dist/Cyn/Cyn.exe')) { throw 'Native FxSound host not built' }
+      - name: Checkout pinned upstream Riff visuals
+        uses: actions/checkout@v4
+        with:
+          repository: rootscripts/riff
+          ref: 398c3dac976bd7b4a7a4b4d7a6d7636ea868a0a8
+          path: riff-upstream
+          persist-credentials: false
+      - name: Package Riff as the Windows main UI
+        shell: pwsh
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          $ErrorActionPreference='Stop'
+          Push-Location riff-cyn
+          try {
+            npm install --no-audit --no-fund
+            if ($LASTEXITCODE -ne 0) { throw 'Node dependencies failed' }
+            npm run vendor:riff
+            if ($LASTEXITCODE -ne 0) { throw 'Riff assets failed validation' }
+            npx electron-builder --win --x64 --dir
+            if ($LASTEXITCODE -ne 0) { throw 'Electron GUI package failed' }
+          } finally { Pop-Location }
+          New-Item -ItemType Directory -Path 'dist/Cyn/CYN-Interface' -Force | Out-Null
+          Copy-Item 'riff-cyn/dist/win-unpacked/*' -Destination 'dist/Cyn/CYN-Interface' -Recurse -Force
+          if (!(Test-Path 'dist/Cyn/CYN-Interface/CYN Audio.exe')) { throw 'Riff main executable missing' }
+          if (!(Test-Path 'dist/Cyn/Cyn.exe')) { throw 'FxSound native host missing' }
+      - name: Verify core artifacts and installer startup
+        shell: pwsh
+        run: |
+          node scripts/test_riff_direct_fx_host.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged startup regression' }
+          $installer=Get-Content 'Installer/Cyn/Cyn.iss' -Raw
+          if (-not $installer.Contains('Filename: "{app}\CYN-Interface\CYN Audio.exe"')) { throw 'Inno installer does not launch Riff' }
+          if ($installer.Contains('Name: "{autoprograms}\Cyn (Classic)"')) { throw 'Duplicate Classic GUI shortcut' }
+      - name: Keep staged output for review, not production release
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CYN-Riff-Direct-FxSound-Windows-Preview
+          path: |
+            dist/Cyn/
+            riff-cyn/dist/*.yml
+          if-no-files-found: ignore
+          retention-days: 7
