@@ -48,11 +48,11 @@ assert(updater.includes("CYN-Interface\\CYN Audio.exe"),"Updater must know the b
 assert(updater.includes("CloseMainWindow()"),"Request graceful shutdown; do not kill the audio/UI processes");
 assert(updater.includes("$running.Count -eq 0 -and $materialRunning.Count -eq 0"),
   "Inno installation must wait for both native DSP and Electron GUI to close");
-assert(updater.includes("Start-Process -FilePath $native -WorkingDirectory $PSScriptRoot"),
-  "After an in-place update, native CYN must initialize audio before the Material interface opens");
-assert(installer.includes('Name: "{autoprograms}\\Cyn"; Filename: "{app}\\Cyn.exe"'),"Normal shortcut must start original CYN before Material");
-assert(installer.includes('Name: "{autoprograms}\\Cyn (Classic)"'));
-assert(installer.includes('Parameters: "--classic"'),"Original CYN must remain accessible for audio routing and driver repair");
+assert(updater.includes("Start-Process -FilePath $material -WorkingDirectory (Split-Path -Parent $material)"),
+  "After update Riff must launch before the native FxSound host");
+assert(installer.includes('Name: "{autoprograms}\\Cyn"; Filename: "{app}\\CYN-Interface\\CYN Audio.exe"'),"Default shortcut should launch Riff directly");
+assert(!installer.includes('Name: "{autoprograms}\\Cyn (Classic)"'));
+assert(!installer.includes('Parameters: "--classic"'),"Legacy JUCE window is not an installed app entry point");
 assert(installer.includes("AppVersion=2.0.93"),"Bump version for new distributable instead of overwriting release");
 assert(workflow.includes('run: .\\BUILD_INSTALLER.ps1'));
-console.log("PASS: v2.0.93 Material launch and update flow, explicit Classic fallback, protected native DSP");
+console.log("PASS: Riff-first launch, headless FxSound host, safe update handoff");
