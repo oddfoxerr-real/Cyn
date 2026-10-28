@@ -87,7 +87,7 @@ test("CYN updates remain verified, report installation errors and reopen Materia
   assert(main.includes(".VersionInfo.FileVersion"));
   assert(main.includes('"-NonInteractive","-Command",powershell'));
   assert(!main.includes('if(!live.connected)throw new Error(live.error||"Start CYN to check for updates")'));
-  assert(main.includes('spawn(exe,["--classic"]'));
+  assert(!main.includes('spawn(exe,["--classic"]'),"Riff must not launch the redundant old CYN UI");
   assert(worker.includes('SHA256')||worker.includes('SHA-256'));
   assert(updater.includes("CYN-Interface\\CYN Audio.exe"));
   assert(updater.includes("CYN updated but could not restart the native engine and redesigned interface"));
