@@ -8,8 +8,8 @@
 [Setup]
 AppId={{3049F105-E971-49A1-876E-50FDB14EF351}
 AppName=Cyn
-AppVersion=2.0.94
-AppVerName=Cyn 2.0.94
+AppVersion=2.0.95
+AppVerName=Cyn 2.0.95
 AppPublisher=Cyn contributors
 DefaultDirName={autopf}\Cyn
 DefaultGroupName=Cyn
@@ -19,7 +19,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 PrivilegesRequired=admin
 OutputDir={#OutputDir}
-OutputBaseFilename=Cyn-Setup-2.0.94-x64
+OutputBaseFilename=Cyn-Setup-2.0.95-x64
 SetupIconFile=..\..\fxsound\Project\icon.ico
 UninstallDisplayIcon={app}\CYN-Interface\CYN Audio.exe
 LicenseFile=..\..\LICENSE
@@ -31,7 +31,7 @@ DisableWelcomePage=no
 CloseApplications=no
 RestartApplications=no
 SetupLogging=yes
-VersionInfoVersion=2.0.94.0
+VersionInfoVersion=2.0.95.0
 
 [Tasks]
 Name: desktopicon; Description: "Create a &desktop shortcut"; GroupDescription: "Shortcuts:"
