@@ -70,7 +70,8 @@ test("polling cannot overwrite a later native output/power command",()=>{
   assert(renderer.includes("if(document.activeElement===select)return"));
   assert(renderer.includes('if(action.type==="output"&&result.status.selected_output!==action.value)'));
   assert(bridge.includes("if(pending)await pending"));
-  assert(bridge.includes('if(action.type==="output"&&result.status.selected_output!==action.value)'));
+  assert(bridge.includes('if(result.status.selected_output!==action.value)continue;'));
+  assert(bridge.includes('result.status.fx_engine?.physical_output_targeted!==true'));
   assert(bridge.includes('if(action.type==="power"&&result.status.power!==action.value)'));
   assert(bridge.includes("data=JSON.parse(fs.readFileSync(statusPath,\"utf8\"))"));
 });

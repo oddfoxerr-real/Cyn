@@ -188,15 +188,24 @@ function makeBridge(override){
    // return that old pending status as proof of the newly selected device.
    if(pending)await pending;
    let result=null;
-   for(let attempt=0;attempt<3;attempt++){
-     if(attempt)await pause(260);
+   for(let attempt=0;attempt<(action.type==="output"?6:3);attempt++){
+     if(attempt)await pause(action.type==="output"?450:260);
      result=await getStatus();
      const observed=result.connected&&result.status;
      if(!observed)continue;
      if(action.type==="power"&&result.status.power!==action.value)continue;
-     if(action.type==="output"&&result.status.selected_output!==action.value)continue;
+     if(action.type==="output"){
+       // The native model must select the requested active device, and when
+       // processing is enabled the Windows passthrough must target it too.
+       // A remembered CYN string is not proof of a real audio route.
+       if(result.status.selected_output!==action.value)continue;
+       if(result.status.power===true&&
+          result.status.fx_engine?.physical_output_targeted!==true)continue;
+     }
      return result;
    }
+   if(action.type==="output")throw new Error(
+     "FxSound could not confirm the physical output switch. Check that the device is active and the FxSound virtual playback endpoint is enabled.");
    return result||{connected:false,error:"CYN did not return fresh native audio state."};
  }
  return {getStatus,ensureRunning,telemetry,launch,apply,selectNative,findExe:()=>locate()};

@@ -19,9 +19,25 @@ test("native commands are validated and only write approved DSP values",()=>{
   assert.equal(commandFor({type:"effect",name:"bass",value:7.25},status),"--set_effect=bass:7.25");
   assert.equal(commandFor({type:"band",index:38,value:-9},status),"--set_band_gain=38:-9.00");
   assert.equal(commandFor({type:"preset",value:"Bass Boost"},status),'--preset="Bass Boost"');
-  assert.equal(commandFor({type:"output",value:"Speakers (HD Audio)"},status),'--output="Speakers (HD Audio)"');
+  assert.equal(commandFor({type:"output",value:"Speakers (HD Audio)"},status),
+    "--output_hex="+Buffer.from("Speakers (HD Audio)","utf8").toString("hex"));
   assert.equal(commandFor({type:"aiModel",value:"audonic"},status),'--select_ai="audonic"');
 });
+test("Windows physical endpoint names survive one unquoted UTF-8 native argument",()=>{
+  for(const name of ['Headphones (JBL)', 'Headphones (Realtek) & USB', 'Hörlurar — Bose', '耳机 (蓝牙)']){
+    const target={...status,output_devices:[name]};
+    const arg=commandFor({type:"output",value:name},target);
+    assert.match(arg,/^--output_hex=[0-9a-f]+$/);
+    assert.equal(Buffer.from(arg.slice("--output_hex=".length),"hex").toString("utf8"),name);
+    assert(!arg.includes('"'),"No quote or backslash should ever be emitted in the native argument");
+  }
+});
+
+test("reject quoted device values instead of passing them to Windows",()=>{
+  const name='Headphones "Injected"';
+  assert.throws(()=>commandFor({type:"output",value:name},{...status,output_devices:[name]}),TypeError);
+});
+
 test("reject unrecognized commands, values and profile impersonation",()=>{
   const bad=[
     {type:"band",index:39,value:1},{type:"band",index:-1,value:1},
