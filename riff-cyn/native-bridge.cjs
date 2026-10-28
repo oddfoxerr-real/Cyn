@@ -28,7 +28,7 @@ function validExe(p){
   return typeof p==="string"&&path.win32.basename(p).toLowerCase()==="cyn.exe"&&
     fs.existsSync(p)&&fs.statSync(p).isFile();
 }
-// A bundled release must never silently redirect its IPC, updater or DSP
+// The Riff UI controls the native FxSound host directly. A bundled release must never silently redirect its IPC, updater or DSP
 // commands to an unrelated/old Cyn.exe saved by standalone previews.
 function chooseNative(bundled,saved,paths){
   if(validExe(bundled))return bundled;
@@ -137,7 +137,7 @@ function makeBridge(override){
    const exe=locate();
    if(!exe)throw new Error("The original Cyn.exe DSP executable is missing. Repair the complete CYN Windows installation.");
    if(await running(exe))return getStatus();
-   const child=spawn(exe,["--run_minimized"],{
+   const child=spawn(exe,["--engine-host"],{
      detached:true,windowsHide:true,stdio:"ignore",cwd:path.dirname(exe)
    });
    // Do not report a successful launch if Windows refused to start the host.
