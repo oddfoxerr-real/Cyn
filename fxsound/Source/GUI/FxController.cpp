@@ -35,6 +35,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 namespace {
+// An unquoted UTF-8 hex value survives Node's execFile / Windows command-line
+// quoting / JUCE ArgumentList unchanged. Reject malformed values, embedded
+// NUL and oversized device names rather than persisting a phantom endpoint.
+String decodeCynOutputHex(const String& hex)
+{
+    if(hex.length()<2 || hex.length()>1024 || (hex.length()%2)!=0 ||
+       !hex.containsOnly("0123456789abcdefABCDEF"))
+        return {};
+    std::string bytes;
+    bytes.reserve(static_cast<size_t>(hex.length()/2));
+    for(int i=0;i<hex.length();i+=2)
+    {
+        const auto b=static_cast<char>(hex.substring(i,i+2).getHexValue32());
+        if(b=='\0')return {};
+        bytes.push_back(b);
+    }
+    return String::fromUTF8(bytes.data(),static_cast<int>(bytes.size()));
+}
 bool launchCynUpdater(bool interactive)
 {
     const auto script=File::getSpecialLocation(File::currentExecutableFile)
@@ -322,6 +340,9 @@ void FxController::initConfig(const String& commandline)
 	auto preset = arg_list.getValueForOption("--preset").unquoted();
 	auto view = arg_list.getValueForOption("--view");
 	auto output_device = arg_list.getValueForOption("--output").unquoted();
+    const auto outputHex = arg_list.getValueForOption("--output_hex");
+    if(outputHex.isNotEmpty())
+        output_device=decodeCynOutputHex(outputHex);
 	auto language = arg_list.getValueForOption("--language");
 	auto numbands = arg_list.getValueForOption("--num_bands");
 	auto balance = arg_list.getValueForOption("--balance");
@@ -542,6 +563,9 @@ void FxController::applyConfig(const String& commandline)
 	auto power_state = arg_list.getValueForOption("--power");
 	auto view = arg_list.getValueForOption("--view");
 	auto output_device = arg_list.getValueForOption("--output").unquoted();
+    const auto outputHex = arg_list.getValueForOption("--output_hex");
+    if(outputHex.isNotEmpty())
+        output_device=decodeCynOutputHex(outputHex);
 	auto language = arg_list.getValueForOption("--language");
 	auto numbands = arg_list.getValueForOption("--num_bands");
 	auto balance = arg_list.getValueForOption("--balance");
@@ -636,18 +660,24 @@ void FxController::applyConfig(const String& commandline)
 		}
 	}
 
-	if (output_device.isNotEmpty())
-	{
-		setOutputName(output_device);
-		std::vector<SoundDevice> sound_devices = audio_passthru_->getSoundDevices();
-		for (auto& sound_device : sound_devices)
-		{
-			if (output_device == sound_device.deviceFriendlyName.c_str())
-			{
-				setOutput(sound_device.pwszID.c_str());
-			}
-		}
-	}
+    if (output_device.isNotEmpty())
+    {
+        // Only the authoritative native controller may change a physical
+        // endpoint. Do NOT save the desired name before successfully finding
+        // the matching active stereo device; a bad CLI argument used to leave
+        // an escaped-quote phantom "Headphones" in CYN settings.
+        const auto sound_devices=audio_passthru_->getSoundDevices(false);
+        for(const auto& sound_device:sound_devices)
+        {
+            if(sound_device.isRealDevice && sound_device.isActive &&
+               sound_device.deviceNumChannel>=2 &&
+               output_device==sound_device.deviceFriendlyName.c_str())
+            {
+                setOutput(sound_device.pwszID.c_str());
+                break;
+            }
+        }
+    }
 
 	// ------------------------------------------------------------------------------------------
 	//  NumBands / Balance / FilterQ / MasterGain / Volume Leveling
@@ -811,6 +841,7 @@ void FxController::printStatus()
     // Report endpoint routing separately from engine/process connectivity.
     bool virtualPresent=false,virtualActive=false,virtualDefault=false;
     bool physicalOutputReady=false;
+    bool physicalOutputTargeted=false;
     // A single enumeration must drive both health and the exposed device list.
     // Two consecutive Windows endpoint scans can disagree while a Bluetooth
     // device is reconnecting, making Material CYN clear a still-valid choice.
@@ -825,12 +856,16 @@ void FxController::printStatus()
             virtualDefault=device.isDefaultDevice;
         }
         if(device.isRealDevice && device.isActive && device.pwszID==selectedPhysical)
+        {
             physicalOutputReady=true;
+            physicalOutputTargeted=device.isTargetedRealPlaybackDevice;
+        }
     }
     engine->setProperty("virtual_device_present",virtualPresent);
     engine->setProperty("virtual_device_active",virtualActive);
     engine->setProperty("virtual_device_default",virtualDefault);
     engine->setProperty("physical_output_ready",physicalOutputReady);
+    engine->setProperty("physical_output_targeted",physicalOutputTargeted);
     engine->setProperty("ready",dfx_enabled_ && virtualActive && physicalOutputReady);
     engine->setProperty("route_enabled",virtualActive && virtualDefault && physicalOutputReady && model.getPowerState());
     engine->setProperty("processing",virtualActive && virtualDefault && physicalOutputReady
@@ -911,11 +946,22 @@ void FxController::printStatus()
 	Array<var> output_devices;
 	for (const auto& device : deviceSnapshot)
 	{
-		if (device.isRealDevice && device.isActive)
-			output_devices.add(String(device.deviceFriendlyName.c_str()));
+        if(device.isRealDevice && device.isActive && device.deviceNumChannel>=2)
+            output_devices.add(String(device.deviceFriendlyName.c_str()));
 	}
 	settings->setProperty("output_devices", output_devices);
-	settings->setProperty("selected_output", getOutputName());
+    // Report what the controller really selected in this same device scan,
+    // not a remembered display label which can be stale or malformed.
+    String activeSelectedOutput;
+    for(const auto& device:deviceSnapshot)
+        if(device.isRealDevice && device.isActive && device.deviceNumChannel>=2 &&
+           device.pwszID==selectedPhysical)
+        {
+            activeSelectedOutput=String(device.deviceFriendlyName.c_str());
+            break;
+        }
+    settings->setProperty("selected_output",activeSelectedOutput);
+    settings->setProperty("configured_output",getOutputName());
 
 	Array<var> bands;
 	for (int i = 0; i < getNumEqBands(); i++)
