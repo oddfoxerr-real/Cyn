@@ -21,7 +21,7 @@ PrivilegesRequired=admin
 OutputDir={#OutputDir}
 OutputBaseFilename=Cyn-Setup-2.0.93-x64
 SetupIconFile=..\..\fxsound\Project\icon.ico
-UninstallDisplayIcon={app}\Cyn.exe
+UninstallDisplayIcon={app}\CYN-Interface\CYN Audio.exe
 LicenseFile=..\..\LICENSE
 InfoBeforeFile=SETUP-NOTES.txt
 Compression=lzma2
@@ -57,12 +57,11 @@ Source: "runtime-x86\vcruntime140.dll"; Flags: dontcopy
 Source: "..\..\.build-tools\vc-redist-x64\VC_redist.x64.exe"; Flags: dontcopy
 
 [Icons]
-Name: "{autoprograms}\Cyn"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"
-Name: "{autoprograms}\Cyn (Classic)"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Parameters: "--classic"
-Name: "{autodesktop}\Cyn"; Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autoprograms}\Cyn"; Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"
+Name: "{autodesktop}\Cyn"; Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\Cyn.exe"; WorkingDir: "{app}"; Description: "Open Cyn with the Material UI"; Flags: nowait postinstall skipifsilent runasoriginaluser
+Filename: "{app}\CYN-Interface\CYN Audio.exe"; WorkingDir: "{app}\CYN-Interface"; Description: "Open CYN"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [Code]
 var
