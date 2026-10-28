@@ -8,14 +8,14 @@
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
     "vendor:riff": "node scripts/vendor-riff.mjs",
-    "build:win": "npm run vendor:riff && electron-builder --win nsis --x64"
+    "build:win": "npm run vendor:riff && electron-builder --win --x64 --dir"
   },
   "devDependencies": {
     "electron": "41.7.1",
     "electron-builder": "26.15.3"
   },
   "build": {
-    "appId": "co.cyn.audio.desktop.preview",
+    "appId": "co.cyn.audio.desktop",
     "productName": "CYN Audio",
     "artifactName": "CYN-Audio-Preview-${version}-${arch}.${ext}",
     "directories": {
