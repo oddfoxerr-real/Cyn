@@ -1,0 +1,57 @@
+name: CYN Connect Easter Egg Validation
+
+on:
+  push:
+    branches:
+      - feature/android-connect-streak-easter-egg-20261028
+    paths:
+      - android/**
+      - .github/workflows/android-cyn-easter-egg.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  streak-and-android-compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify consecutive in-app connection streak
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/cyn-easter-test
+          javac -d /tmp/cyn-easter-test             android/app/src/main/java/io/github/oddfoxerr/cyn/CynConnectionStreak.java             android/tests/CynConnectionStreakTest.java
+          java -cp /tmp/cyn-easter-test io.github.oddfoxerr.cyn.CynConnectionStreakTest
+          grep -Fq 'easterEggStreak.onDisconnect' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          grep -Fq 'easterEggStreak.onConnect' android/app/src/main/java/io/github/oddfoxerr/cyn/MainActivity.java
+          ! grep -Fq 'BluetoothDevice' android/app/src/main/java/io/github/oddfoxerr/cyn/CynConnectionStreak.java
+      - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 13114758
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install pinned Android tools and model assets
+        run: |
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
+          python android/scripts/prepare_models.py
+      - name: Build and lint Android app
+        run: bash android/gradlew -p android :app:assembleDebug :app:lintDebug
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cyn-connect-easter-egg-validation
+          path: |
+            android/app/build/reports/lint-results-debug.*
+            android/app/build/outputs/apk/debug/
+          if-no-files-found: ignore
+          retention-days: 7
