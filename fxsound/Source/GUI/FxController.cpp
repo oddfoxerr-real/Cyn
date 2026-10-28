@@ -3312,7 +3312,9 @@ void FxController::setLaunchOnStartup(bool launch_on_startup)
 
 	if (launch_on_startup)
 	{
-		const String command = "\"" + String(szPath) + "\"";
+		const auto riffGui = CynMaterialShell::executable();
+		const String entryPoint = riffGui.existsAsFile() ? riffGui.getFullPathName() : String(szPath);
+		const String command = "\\"" + entryPoint + "\\"";
         RegSetValueEx(hkey, L"Cyn", 0, REG_SZ, (const BYTE*)command.toWideCharPointer(), (DWORD)((command.length()+1)*sizeof(wchar_t)));
 	}
 	else
