@@ -510,9 +510,6 @@ document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",(
 document.querySelectorAll("[data-window]").forEach(b=>b.addEventListener("click",()=>window.cyn.window(b.dataset.window)));
 $("toolbar-settings").addEventListener("click",()=>transition("settings"));
 $("go-eq").addEventListener("click",()=>transition("equalizer"));
-$("fx-engine-classic").addEventListener("click",()=>{
-  window.cyn.openNative().catch(error=>showError("Could not open original CYN audio controls: "+error.message));
-});
 $("fx-engine-repair").addEventListener("click",()=>{
   window.cyn.openLink("updates").catch(error=>showError("Could not open the CYN installer page: "+error.message));
 });
