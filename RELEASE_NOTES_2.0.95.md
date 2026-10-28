@@ -3,7 +3,7 @@
 This is a targeted fix for **CYN v2.0.94** showing a headphone name beginning with an escaped quote (for example, `\\"Headphones`) and reporting that native CYN selected a different output.
 
 ## Corrected
-- Riff sends device names through one unquoted UTF-8 hex command argument rather than nested quoted `--output="..."` values; spaces, Unicode device names and Windows quote escaping are preserved exactly.
+- The Riff/Material main interface sends device names through one unquoted UTF-8 hex command argument rather than nested quoted `--output="..."` values; spaces, Unicode device names and Windows quote escaping are preserved exactly.
 - The original native FxSound/CYN host decodes and validates the requested name against **active stereo physical Windows audio endpoints** before committing a device selection. Invalid/phantom selections are not saved.
 - Native status now reports the **actually selected physical endpoint** from the same Windows device snapshot, while `configured_output` remains available separately for troubleshooting old saved settings.
 - Output changes are not marked successful until the native controller confirms the real endpoint. When audio is powered on, the FxSound playback target must also match.
