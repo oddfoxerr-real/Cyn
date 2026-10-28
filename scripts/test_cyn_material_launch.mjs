@@ -53,6 +53,6 @@ assert(updater.includes("Start-Process -FilePath $material -WorkingDirectory (Sp
 assert(installer.includes('Name: "{autoprograms}\\Cyn"; Filename: "{app}\\CYN-Interface\\CYN Audio.exe"'),"Default shortcut should launch Riff directly");
 assert(!installer.includes('Name: "{autoprograms}\\Cyn (Classic)"'));
 assert(!installer.includes('Parameters: "--classic"'),"Legacy JUCE window is not an installed app entry point");
-assert(installer.includes("AppVersion=2.0.93"),"Bump version for new distributable instead of overwriting release");
+assert(installer.includes("AppVersion=2.0.94"),"Bump version for new distributable instead of overwriting release");
 assert(workflow.includes('run: .\\BUILD_INSTALLER.ps1'));
 console.log("PASS: Riff-first launch, headless FxSound host, safe update handoff");
