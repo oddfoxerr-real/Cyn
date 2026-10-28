@@ -305,6 +305,9 @@ void FxController::initConfig(const String& commandline)
 	auto arg_list = ArgumentList(File::getSpecialLocation(File::SpecialLocationType::invokedExecutableFile).getFileName(), commandline);
     if (arg_list.containsOption("--classic"))
         classic_ui_requested_ = true;
+    // Direct FxSound host is owned by the Riff window, not another UI.
+    if (arg_list.containsOption("--engine-host"))
+        settings_.setBool("run_minimized", true);
     // Legacy --theme values are ignored: stable CYN has one Dark Theme.
     auto reduced=arg_list.getValueForOption("--reduce_motion");
     if(reduced=="0" || reduced=="1") setReducedMotion(reduced=="1");
@@ -734,7 +737,7 @@ void FxController::applyConfig(const String& commandline)
 
 		if (view_ == ViewType::Pro)
 		{
-			main_window_->update();
+			if (main_window_) main_window_->update();
 		}
 	}
 
@@ -753,7 +756,7 @@ void FxController::applyConfig(const String& commandline)
 
 		if (view_ == ViewType::Pro)
 		{
-			main_window_->update();
+			if (main_window_) main_window_->update();
 		}
 	}
 
@@ -781,7 +784,7 @@ void FxController::applyConfig(const String& commandline)
 
 			if (view_ == ViewType::Pro)
 			{
-				main_window_->update();
+				if (main_window_) main_window_->update();
 			}
 		}
 	}
@@ -1007,7 +1010,9 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
                 .getChildFile("Cyn").getChildFile("engine-startup-error.txt");
             failure.getParentDirectory().createDirectory();
             failure.replaceWithText("The FxSound virtual audio device is not ready. Reinstall or repair CYN to restore the original signed FxSound driver.");
-			main_window_->removeFromDesktop();
+            // Report headless startup failure to Riff; never display the legacy modal window.
+            if (!main_window_) { JUCEApplication::getInstance()->systemRequestedQuit(); return; }
+			if (main_window_) main_window_->removeFromDesktop();
 			FxDeviceErrorMessage error_message;
 			error_message.runModalLoop();
 			JUCEApplication::getInstance()->systemRequestedQuit();
@@ -1051,7 +1056,7 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
         // safely inside FxTheme::setThemeMode.
         FxTheme::setThemeMode(static_cast<FxThemeMode>(
             settings_.getInt("theme_mode",(int)FxThemeMode::DarkMesh)));
-        main_window_->sendLookAndFeelChange();
+        if (main_window_) main_window_->sendLookAndFeelChange();
         if(auto* theme=dynamic_cast<FxTheme*>(&LookAndFeel::getDefaultLookAndFeel()))
             theme->loadFont(language_);
 
@@ -1067,7 +1072,7 @@ void FxController::init(FxMainWindow* main_window, FxSystemTrayView* system_tray
 		}
 
 		auto power = FxModel::getModel().getPowerState();
-		main_window_->setIcon(power, false);
+		if (main_window_) main_window_->setIcon(power, false);
 		system_tray_view_->setStatus(power, false);
 
         // Check GitHub on the UI timer whether sound processing is on or off.
@@ -1178,28 +1183,30 @@ void FxController::initPresets()
 
 void FxController::showView()
 {
+	if (!main_window_) return;
 	if (view_ == ViewType::Pro)
 	{
-		main_window_->showProView();
+		if (main_window_) main_window_->showProView();
 	}
 	else
 	{
-		main_window_->showLiteView();
+		if (main_window_) main_window_->showLiteView();
 	}
 }
 
 void FxController::switchView()
 {
+	if (!main_window_) return;
 	if (view_ == ViewType::Pro)
 	{
 		view_ = ViewType::Lite;
-		main_window_->showLiteView();
+		if (main_window_) main_window_->showLiteView();
 		settings_.setInt("view", static_cast<int>(view_));
 	}
 	else
 	{
 		view_ = ViewType::Pro;
-		main_window_->showProView();
+		if (main_window_) main_window_->showProView();
 		settings_.setInt("view", static_cast<int>(view_));
 	}
 }
@@ -1211,10 +1218,11 @@ ViewType FxController::getCurrentView()
 
 void FxController::hideMainWindow()
 {
-	if (main_window_->isOnDesktop())
+	if (!main_window_) { settings_.setBool("run_minimized", true); return; }
+	if (main_window_ && main_window_->isOnDesktop())
 	{
-		main_window_->removeFromDesktop();
-		main_window_->setVisible(false);
+		if (main_window_) main_window_->removeFromDesktop();
+		if (main_window_) main_window_->setVisible(false);
 		settings_.setBool("run_minimized", true);
 	}
 
@@ -1241,10 +1249,10 @@ void FxController::showMainWindow()
 	if (main_window_ != nullptr)
 	{
 		settings_.setBool("run_minimized", false);
-		main_window_->show();
+		if (main_window_) main_window_->show();
 
 		auto power = FxModel::getModel().getPowerState();
-		main_window_->setIcon(power, audio_process_on_);
+		if (main_window_) main_window_->setIcon(power, audio_process_on_);
 
 		if (survey_tip_)
 		{
@@ -1326,7 +1334,7 @@ void FxController::setPowerState(bool power_state)
     restoreSmartBaseline();
 	if (!dfx_enabled_ || SysInfo::isRemoteSession())
 	{
-		main_window_->enablePowerButton(false);
+		if (main_window_) main_window_->enablePowerButton(false);
 
 		FxModel::getModel().setPowerState(false);
         if(apex_worker_) apex_worker_->setProcessingEnabled(false);
@@ -1334,19 +1342,19 @@ void FxController::setPowerState(bool power_state)
 		powerOn(false);
 
 		system_tray_view_->setStatus(false, false);
-		main_window_->setIcon(false, false);
+		if (main_window_) main_window_->setIcon(false, false);
 		
 		return;
     }
 	
-	main_window_->enablePowerButton(true);
+	if (main_window_) main_window_->enablePowerButton(true);
 
 	FxModel::getModel().setPowerState(power_state);	
 	powerOn(power_state);
 	settings_.setBool("power", power_state);
 
 	system_tray_view_->setStatus(power_state, audio_process_on_);
-	main_window_->setIcon(power_state, audio_process_on_);
+	if (main_window_) main_window_->setIcon(power_state, audio_process_on_);
 }
 
 bool FxController::setPreset(const String& preset_name, bool notify)
@@ -1966,9 +1974,8 @@ void FxController::selectProcessingOutput(std::vector<SoundDevice>& sound_device
 			stopTimer();
 			if (!SysInfo::isRemoteSession())
 			{
-				main_window_->removeFromDesktop();
-				FxDeviceErrorMessage error_message;
-				error_message.runModalLoop();
+				if (main_window_) main_window_->removeFromDesktop();
+				if (main_window_) { FxDeviceErrorMessage error_message; error_message.runModalLoop(); }
 				JUCEApplication::getInstance()->systemRequestedQuit();
 				return;
 			}
@@ -2313,7 +2320,7 @@ LRESULT CALLBACK FxController::eventCallback(HWND hwnd, const UINT message, cons
 		}
 		if (w_param == CMD_OPEN_CLOSE)
 		{
-			if (controller->main_window_->isOnDesktop())
+			if (controller->main_window_ && controller->main_window_->isOnDesktop())
 			{
 				controller->hideMainWindow();
 			}
@@ -2536,24 +2543,24 @@ void FxController::timerCallback()
 	{
 		audio_process_on_ = true;
 		system_tray_view_->setStatus(power, true);
-		main_window_->setIcon(power, true);
-		main_window_->startLogoAnimation();
+		if (main_window_) main_window_->setIcon(power, true);
+		if (main_window_) main_window_->startLogoAnimation();
 		if (view_ == ViewType::Pro)
 		{
-			main_window_->showProView();
-			main_window_->startVisualizer();
+			if (main_window_) main_window_->showProView();
+			if (main_window_) main_window_->startVisualizer();
 		}
 	}
 	if (audio_process_off_counter_ == 5 && audio_process_on_)
 	{
 		audio_process_on_ = false;
 		system_tray_view_->setStatus(power, false);
-		main_window_->setIcon(power, false);
-		main_window_->stopLogoAnimation();
+		if (main_window_) main_window_->setIcon(power, false);
+		if (main_window_) main_window_->stopLogoAnimation();
 		if (view_ == ViewType::Pro)
 		{
-			main_window_->showProView();
-			main_window_->pauseVisualizer();
+			if (main_window_) main_window_->showProView();
+			if (main_window_) main_window_->pauseVisualizer();
 		}
 	}
 
@@ -2772,7 +2779,7 @@ void FxController::setHelpTooltipsHidden(bool status)
 {
 	hide_help_tooltips_ = status;
 	settings_.setBool("hide_help_tooltips", status);
-	main_window_->repaint();
+	if (main_window_) main_window_->repaint();
 }
 
 bool FxController::isNotificationsHidden()
@@ -2928,7 +2935,7 @@ void FxController::setLanguage(String language_code)
 
 	if (main_window_ != nullptr)
 	{
-		main_window_->sendLookAndFeelChange();
+		if (main_window_) main_window_->sendLookAndFeelChange();
 	}
 }
 
@@ -3257,18 +3264,18 @@ void FxController::setThemeMode(FxThemeMode mode)
 		return;
 	}
     if (main_window_)
-        main_window_->beginThemeTransition();
+        if (main_window_) main_window_->beginThemeTransition();
 
 	FxTheme::setThemeMode(mode);
 	settings_.setInt("theme_mode", static_cast<int>(mode));
     if(!main_window_) return;
 	setLanguage(getLanguage()); // To reload font for the new theme
-	main_window_->sendLookAndFeelChange();
+	if (main_window_) main_window_->sendLookAndFeelChange();
 
 	auto power = FxModel::getModel().getPowerState();
-	main_window_->setIcon(power, audio_process_on_);
+	if (main_window_) main_window_->setIcon(power, audio_process_on_);
 	system_tray_view_->setStatus(power, audio_process_on_);
-    main_window_->finishThemeTransition();
+    if (main_window_) main_window_->finishThemeTransition();
 }
 
 bool FxController::isAlwaysOnTop()
@@ -3280,7 +3287,7 @@ void FxController::setAlwaysOnTop(bool always_on_top)
 {
 	always_on_top_ = always_on_top;
 	settings_.setBool("always_on_top", always_on_top);
-	main_window_->setAlwaysOnTop(always_on_top);
+	if (main_window_) main_window_->setAlwaysOnTop(always_on_top);
 }
 
 bool FxController::isLaunchOnStartup()
