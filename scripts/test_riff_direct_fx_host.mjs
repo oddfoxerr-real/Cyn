@@ -20,6 +20,10 @@ assert(/if\s*\(classicUi\)\s*main_window_\s*=\s*std::make_unique<FxMainWindow>\(
   "Never construct the old JUCE GUI during a normal Riff launch");
 assert(nativeMain.includes("FxController::getInstance().init(main_window_.get(), system_tray_view_.get(), audio_passthru_.get())"),
   "The original FxSound controller and audio passthrough must be retained");
+assert(nativeMain.includes("if (audio_passthru_ != nullptr)"),
+  "Headless FxSound host must release its audio driver and save presets on exit");
+assert(!nativeMain.includes("if (main_window_.get() != nullptr)"),
+  "Audio host shutdown must not depend on constructing the old GUI");
 
 assert(bridge.includes('spawn(exe,["--engine-host"]'),
   "Riff must start the actual native FxSound process headlessly");
