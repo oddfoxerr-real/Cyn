@@ -1,3 +1,18 @@
+# CYN Studio Android v0.2.37-preview — Native Library playback
+
+- Removes the extra `Show song sources` chooser from the unified Library search.
+- Presents one search list with direct Play, Save, Like/Unlike, and artist-permitted Download controls.
+- Automatically resolves local phone audio first, a saved Audius track next, or a public Audius stream when no saved version exists.
+- Uses CYN's existing Media3 / native PCM enhancement route for supported tracks, retaining AI, DSP, Connect, and update flows.
+- Keeps Favorites separate from saving and downloading; a liked Audius result can be added and liked with one action.
+- Existing YouTube Music and SoundCloud bookmarks remain saved but are not presented as playable media or downloadable files.
+- Does not add authenticated SoundCloud catalog playback or unrestricted YouTube Music playback/downloads. Provider APIs, permissions, and licensing still apply.
+- Adds Android regression tests for automatic local/Audius playback choice and bookmark filtering.
+
+Signed in-place update from 0.2.36-preview (versionCode 40) to 0.2.37-preview (versionCode 41), with the original CYN Studio signing certificate and SHA-256 integrity verification.
+
+---
+
 # CYN Studio Android v0.2.36-preview — One music search
 
 - Replaces separate YouTube Music, SoundCloud and Audius search boxes with one simple Library search field.
