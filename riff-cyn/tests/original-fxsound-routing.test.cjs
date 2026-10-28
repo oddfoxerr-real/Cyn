@@ -20,9 +20,9 @@ test("Material is a UI only: no custom Windows routing commands",()=>{
   assert(!native.includes("restoreCynRouting"));
   assert(!engine.includes("restoreCynRouting"));
   assert.throws(()=>commandFor({type:"restoreAudio"},{cyn_build:"identity-2"}),/Unknown|Unsupported|Invalid/i);
-  assert(html.includes('id="fx-engine-classic"'),"Original controls remain reachable");
-  assert(renderer.includes("window.cyn.openNative()"));
-  assert(bridge.includes('spawn(exe,["--run_minimized"]'),"Original host remains native CYN.exe");
+  assert(!html.includes('id="fx-engine-classic"'),"No duplicated legacy CYN interface");
+  assert(!renderer.includes("window.cyn.openNative()"));
+  assert(bridge.includes('spawn(exe,["--engine-host"]'),"Riff starts the FxSound host headlessly");
   assert(!renderer.includes("AudioContext"));
   assert(!renderer.includes("getUserMedia"));
 });
@@ -48,5 +48,5 @@ test("Material reports original engine output rather than inventing audio-routin
   assert(renderer.includes('"ENGINE ON"'));
   assert(!renderer.includes('"ROUTED"'));
   assert(!renderer.includes('"Windows via CYN: "'));
-  assert(renderer.includes('window.cyn.openNative()'));
+  assert(!renderer.includes('window.cyn.openNative()'));
 });
