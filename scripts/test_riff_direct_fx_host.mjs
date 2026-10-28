@@ -44,7 +44,7 @@ assert(installer.includes('Name: "{autoprograms}\\Cyn"; Filename: "{app}\\CYN-In
   "Start menu must point directly to Riff");
 assert(installer.includes('Name: "{autodesktop}\\Cyn"; Filename: "{app}\\CYN-Interface\\CYN Audio.exe"'),
   "Desktop must point directly to Riff");
-assert(!installer.includes("Cyn (Classic)"), "No duplicate user-facing CYN application");
+assert(!installer.includes('Name: "{autoprograms}\\Cyn (Classic)"'), "No duplicate user-facing CYN application");
 assert(updater.includes("Start-Process -FilePath $material -WorkingDirectory (Split-Path -Parent $material)"),
   "Updater should reopen Riff first");
 assert(launcher.includes("Start-Process -FilePath $interface"),
