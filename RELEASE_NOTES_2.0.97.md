@@ -1,6 +1,6 @@
 # CYN Windows 2.0.97 — Restore original Riff UI
 
-This corrective release undoes the unintended **Quiet UI** layout introduced in CYN v2.0.96. The UI simplification was requested for the separate HALO Android project, not CYN.
+This corrective release restores CYN's original **Riff / Material** interface and undoes the unintended **Quiet UI** layout introduced in CYN v2.0.96. The UI simplification was requested for the separate HALO Android project, not CYN.
 
 ## Restored
 - Original CYN v2.0.95 Riff renderer layout, navigation, and control presentation.
