@@ -23,6 +23,13 @@ function showError(message){
   $("error-banner").textContent=String(message||"");
   $("error-banner").hidden=!message;
 }
+let engineDetailsManuallyOpen=false,engineAttention=false;
+function syncEngineDetails(){
+  const show=engineAttention||engineDetailsManuallyOpen;
+  $("fx-engine-panel").hidden=!show;
+  $("engine-details-toggle").setAttribute("aria-expanded",String(show));
+  $("engine-details-toggle").textContent=show?"Hide engine details":"Engine details";
+}
 function setEngineState(on,label){
   $("engine-state").classList.toggle("on",on);
   $("rail-led").classList.toggle("on",on);
@@ -70,7 +77,7 @@ function renderGraph(bands){
   if(realAppliedLine)svg.append(realAppliedLine);
 }
 function renderEffects(status){
-  const box=$("effects-grid");
+  const box=$("effects-grid"),advanced=$("effects-advanced-grid");
   if(!box.childElementCount){
     for(const [name,label,description] of fx){
       const article=document.createElement("article");
@@ -87,7 +94,8 @@ function renderEffects(status){
       live.textContent="Native AI applied: ";
       const liveValue=document.createElement("output");liveValue.id="effect-applied-"+name;
       liveValue.textContent="—";live.append(liveValue);
-      article.append(h,output,slider,desc,live);box.append(article);
+      article.append(h,output,slider,desc,live);
+      (name==="ambience"||name==="dynamicboost"?advanced:box).append(article);
     }
   }
   for(const [name] of fx){
@@ -188,6 +196,8 @@ function renderConnected(status){
   $("fx-engine-reconnect").textContent="Refresh engine";
   $("fx-engine-reconnect").disabled=false;
   setEngineState(true,(nativeSamples?"PROCESSING":status.power&&(!driverReady||!virtualDefault||!outputReady||!physicalTargeted)?"ROUTING REQUIRED":status.power?"ENGINE ON":"ENGINE OFF")+" / v"+String(status.version||"?"));
+  engineAttention=Boolean(status.power)&&(!driverReady||!outputReady||!virtualDefault||!physicalTargeted);
+  syncEngineDetails();
   if(typeof status.power==="boolean")$("power").checked=status.power;
   $("smart").checked=Boolean(status.smart_listening?.enabled);
   $("pin").checked=Boolean(status.output_pinned);
@@ -262,6 +272,8 @@ function renderDisconnected(message){
   $("fx-engine-reconnect").textContent="Reconnect engine";
   $("fx-engine-reconnect").disabled=false;
   setEngineState(false,"Engine offline");
+  engineAttention=true;
+  syncEngineDetails();
   if(hadNativeSnapshot){
     // Do not erase the user's EQ, AI, device or power display on one failed
     // Windows status probe. Everything is *unverified and non-editable* until
@@ -516,6 +528,10 @@ document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",(
 document.querySelectorAll("[data-window]").forEach(b=>b.addEventListener("click",()=>window.cyn.window(b.dataset.window)));
 $("toolbar-settings").addEventListener("click",()=>transition("settings"));
 $("go-eq").addEventListener("click",()=>transition("equalizer"));
+$("engine-details-toggle").addEventListener("click",()=>{
+  engineDetailsManuallyOpen=!engineDetailsManuallyOpen;
+  syncEngineDetails();
+});
 $("fx-engine-repair").addEventListener("click",()=>{
   window.cyn.openLink("updates").catch(error=>showError("Could not open the CYN installer page: "+error.message));
 });
