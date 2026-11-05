@@ -308,6 +308,8 @@ function renderConnected(status){
   $("preset-cycling").disabled=!writable()||smartMeta.listening_mode===1;
   syncBoundRange("audonic-intensity",Number(smartMeta.audonic_intensity)||0,"audonic-intensity-value",n=>Math.round(n)+"%");
   $("audonic-intensity").disabled=!writable()||status.active_ai_profile!=="audonic";
+  $("audonic-intensity").title=status.active_ai_profile==="audonic"
+    ?"Adjust the installed AUDONIC model":"Select AUDONIC under Engine Profile to enable this control";
   $("training-fill").style.width=(Math.max(0,Math.min(1,Number(smartMeta.training_progress)||0))*100).toFixed(1)+"%";
   $("train-ai").disabled=!writable()||Boolean(smartMeta.training);
   $("training-status").textContent=smartMeta.training?"Native CYN is learning from saved feedback":"Training ready";
@@ -338,8 +340,10 @@ function renderConnected(status){
     $("fx-engine-output").textContent="Last selected output: "+view.selected+
       " · Device connection not yet confirmed by Windows";
   }
-  for(const id of ["preset","power","smart","pin","sensitivity"])
+  for(const id of ["power","smart","pin","sensitivity"])
     $(id).disabled=!writable();
+  $("preset").disabled=!writable()||!powerOn;
+  $("preset").title=powerOn?"Select an installed CYN sound preset":"Turn on audio enhancement to change presets";
   const dj=status.ai_dj||{};
   $("dj-status").textContent=String(dj.status||"Native AI DJ unavailable");
   $("dj-enable").checked=Boolean(dj.enabled);

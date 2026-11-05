@@ -4,7 +4,7 @@
 const near=(actual,expected,tolerance=0.15)=>
   actual!==undefined&&actual!==null&&Number.isFinite(Number(actual))&&
   Math.abs(Number(actual)-Number(expected))<=tolerance;
-function actionConfirmed(action,status){
+function actionConfirmed(action,status,previous=null){
   if(!status||status.cyn_build!=="identity-2")return false;
   const smart=status.smart_listening||{},eq=status.equalizer||{},dj=status.ai_dj||{};
   switch(action.type){
@@ -26,6 +26,17 @@ function actionConfirmed(action,status){
     case "presetCycling":return smart.preset_cycling===action.value;
     case "pin":return status.output_pinned===action.value;
     case "preset":return status.selected_preset===action.value;
+    case "saveNew":return Boolean(status.presets?.user_defined?.some(p=>p.name===action.value));
+    case "delete":return Boolean(previous?.selected_preset)&&
+      !status.presets?.user_defined?.some(p=>p.name===previous.selected_preset);
+    case "rename":return status.selected_preset===action.value &&
+      Boolean(status.presets?.user_defined?.some(p=>p.name===action.value));
+    case "overwrite":
+    case "undo":{
+      const selected=[...(status.presets?.built_in||[]),...(status.presets?.user_defined||[])]
+        .find(p=>p.name===status.selected_preset);
+      return Boolean(selected)&&selected.modified===false;
+    }
     case "aiModel":return status.active_ai_profile===action.value;
     case "djEnable":return dj.enabled===action.value;
     case "djIntensity":return near(Number(dj.intensity)*100,action.value,1);

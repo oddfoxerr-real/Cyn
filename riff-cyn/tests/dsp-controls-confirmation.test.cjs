@@ -44,6 +44,16 @@ test("native confirmations reject silently ignored DSP changes",()=>{
    assert(!actionConfirmed(action,modified),action.type+" must reject stale native value");
  }
 });
+test("preset operations require actual native changes",()=>{
+ const before={...status,presets:{user_defined:[{name:"Custom",modified:true}]},selected_preset:"Custom"};
+ const saved={...before,presets:{user_defined:[{name:"Custom",modified:true},{name:"New Sound",modified:false}]}};
+ assert(actionConfirmed({type:"saveNew",value:"New Sound"},saved,before));
+ assert(!actionConfirmed({type:"saveNew",value:"New Sound"},before,before));
+ assert(actionConfirmed({type:"delete"}, {...before,presets:{user_defined:[]}},before));
+ assert(!actionConfirmed({type:"delete"},before,before));
+ assert(actionConfirmed({type:"overwrite"}, {...before,presets:{user_defined:[{name:"Custom",modified:false}]}},before));
+ assert(!actionConfirmed({type:"overwrite"},before,before));
+});
 test("Windows physical output requires confirmed passthrough",()=>{
  const a={type:"output",value:"Headphones (JBL Tune 520BT)"};
  assert(actionConfirmed(a,status));
