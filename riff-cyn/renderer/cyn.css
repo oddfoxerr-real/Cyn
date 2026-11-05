@@ -742,3 +742,47 @@ body.cyn-closing .app-layout,body.cyn-closing .titlebar{
 .cyn-power-button:focus-visible{outline:2px solid #a8cef9;outline-offset:3px}
 .fx-engine-actions .button[hidden]{display:none!important}
 @media(prefers-reduced-motion:reduce){.cyn-power-button{transition:none}}
+
+
+/* Live Windows output cards and accessible one-tap CYN power. */
+.device-quick-row{display:flex;align-items:center;gap:8px;min-width:0}
+.device-quick-row select{flex:1;min-width:0}
+.device-refresh-icon{width:42px;height:42px;flex:none;display:grid;place-items:center;color:#dce9f8;background:#303d4d;border:1px solid #53657a;border-radius:13px;cursor:pointer}
+.device-refresh-icon svg{width:19px;height:19px}
+.device-refresh-icon:hover,.device-scan-button:hover{background:#38495e}
+.device-refresh-icon:disabled,.device-scan-button:disabled{opacity:.55;cursor:wait}
+.device-refresh-icon.is-scanning svg{animation:cyn-scan-spin .6s linear infinite}
+.device-quick-status{color:#a9bed5;font-size:11px;line-height:1.35;min-height:14px}
+.cyn-power-switch{width:100%;min-height:56px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px 9px 15px;border:1px solid #4e5a6c;border-radius:16px;background:#292f3a;color:#e8edf6;text-align:left;cursor:pointer;transition:background .14s ease,border-color .14s ease}
+.cyn-power-switch:hover:not(:disabled){background:#333c4b}
+.cyn-power-switch:disabled{opacity:.58;cursor:not-allowed}
+.cyn-power-switch.is-on{background:#19382f;border-color:#458d73}
+.cyn-power-switch.is-on:hover:not(:disabled){background:#214638}
+.cyn-power-copy{min-width:0;display:flex;flex-direction:column;gap:3px}
+.cyn-power-copy strong{font-size:15px;letter-spacing:0;font-weight:720;line-height:1.1}
+.cyn-power-copy small{font-size:10px;letter-spacing:0;font-weight:500;color:#b6c5d6;line-height:1.15}
+.cyn-power-switch.is-on .cyn-power-copy small{color:#a2e5cb}
+.cyn-power-track{flex:none;width:51px;height:29px;display:flex;align-items:center;padding:3px;border-radius:30px;box-sizing:border-box;background:#667284;transition:background .14s ease}
+.cyn-power-knob{width:23px;height:23px;border-radius:50%;background:#f4f7ff;box-shadow:0 2px 5px #0004;transition:transform .14s cubic-bezier(.2,0,0,1)}
+.cyn-power-switch.is-on .cyn-power-track{background:#3fc796}
+.cyn-power-switch.is-on .cyn-power-knob{transform:translateX(22px);background:#062f24}
+.cyn-power-switch.is-pending .cyn-power-track{outline:2px solid #b7d8ee55;outline-offset:2px}
+.device-list-status{color:#a8b9cb;font-size:12px;line-height:1.5;margin:0 0 13px}
+.device-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:10px;margin-bottom:18px}
+.device-choice{display:flex;align-items:center;gap:13px;text-align:left;min-width:0;min-height:72px;padding:13px 16px;background:#222c3a;color:#f3f6fa;border:1px solid #3c4b60;border-radius:17px;cursor:pointer;transition:background .13s ease,border-color .13s ease}
+.device-choice:hover:not(:disabled){background:#2b3d50;border-color:#6d98c2}
+.device-choice.is-selected{background:#203b39;border-color:#4dc5a0}
+.device-choice:disabled{opacity:.55;cursor:not-allowed}
+.device-choice-icon{width:39px;height:39px;display:grid;place-items:center;flex:none;border-radius:12px;background:#394b61;font-size:23px}
+.device-choice.is-selected .device-choice-icon{background:#2c5a50}
+.device-choice-description{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}
+.device-choice-description strong{font-size:13px;font-weight:670;overflow-wrap:anywhere;line-height:1.35}
+.device-choice-subtitle{font-size:11px;color:#aabbce}
+.device-choice.is-selected .device-choice-subtitle{color:#98eccb}
+.device-choice-check{display:grid;place-items:center;width:24px;height:24px;flex:none;border-radius:50%;background:#41bd91;color:#0b2b21;font-size:15px;font-weight:800;opacity:0}
+.device-choice.is-selected .device-choice-check{opacity:1}
+.device-list-empty{grid-column:1/-1;background:#222c3a;border:1px dashed #4b5b70;border-radius:15px;padding:20px;color:#afc0d2;line-height:1.5;font-size:13px}
+@keyframes cyn-scan-spin{to{transform:rotate(360deg)}}
+body.reduce-motion .cyn-power-switch,body.reduce-motion .cyn-power-track,body.reduce-motion .cyn-power-knob,body.reduce-motion .device-choice{transition:none}
+@media(prefers-reduced-motion:reduce){.cyn-power-switch,.cyn-power-track,.cyn-power-knob,.device-choice{transition:none!important}.device-refresh-icon.is-scanning svg{animation:none!important}}
+@media(max-width:760px){.power-field{align-items:stretch;flex-direction:column}.device-list{grid-template-columns:1fr}.cyn-power-switch{min-height:54px}}
