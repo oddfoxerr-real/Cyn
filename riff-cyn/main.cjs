@@ -1,5 +1,5 @@
 "use strict";
-const {app,BrowserWindow,ipcMain,dialog,shell}=require("electron");
+const {app,BrowserWindow,ipcMain,shell}=require("electron");
 const fs=require("node:fs");
 const path=require("node:path");
 const {makeBridge}=require("./native-bridge.cjs");
@@ -17,17 +17,6 @@ else app.on("second-instance",()=>{
     win.show();win.focus();
   }
 });
-const settingsFile=()=>path.join(app.getPath("userData"),"native-engine.json");
-function loadConfig(){
-  try{
-    const v=JSON.parse(fs.readFileSync(settingsFile(),"utf8"));
-    return typeof v.executable==="string"?v.executable:null;
-  }catch{return null;}
-}
-function saveConfig(executable){
-  fs.mkdirSync(path.dirname(settingsFile()),{recursive:true});
-  fs.writeFileSync(settingsFile(),JSON.stringify({executable},null,2));
-}
 function createWindow(){
   win=new BrowserWindow({
     width:1370,height:840,minWidth:760,minHeight:580,
@@ -85,7 +74,7 @@ function createWindow(){
         // Catch a UI regression where the full native CYN Settings and
         // Update controls exist in markup but cannot be reached by users.
         const coreControls=JSON.parse(await win.webContents.executeJavaScript(
-          'JSON.stringify((()=>{const ids=["toolbar-settings","toolbar-updates","fx-engine-reconnect","fx-engine-detail"];return ids.map(id=>{const e=document.getElementById(id);if(!e)return {id,missing:true};const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {id,visible:r.width>25&&r.height>10&&s.visibility!=="hidden"&&s.display!=="none",left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:innerWidth,height:innerHeight};})})())'));
+          'JSON.stringify((()=>{const ids=["toolbar-settings","toolbar-updates","power","fx-engine-detail"];return ids.map(id=>{const e=document.getElementById(id);if(!e)return {id,missing:true};const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {id,visible:r.width>25&&r.height>10&&s.visibility!=="hidden"&&s.display!=="none",left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:innerWidth,height:innerHeight};})})())'));
         if(coreControls.some(x=>x.missing||!x.visible||x.left<0||x.right>x.width||x.top<0||x.bottom>x.height))
           throw new Error("Critical FX engine, Settings or Update controls are inaccessible: "+JSON.stringify(coreControls));
         await win.webContents.executeJavaScript('document.getElementById("toolbar-settings").click()');
@@ -169,25 +158,12 @@ function createWindow(){
   win.webContents.on("will-navigate",event=>event.preventDefault());
 }
 if(primaryInstance)app.whenReady().then(()=>{
-  bridge=makeBridge(loadConfig());
-  // Material boots and reconnects its own bundled original FxSound engine.
-  // Classic remains optional for advanced controls, never an audio prerequisite.
+  bridge=makeBridge({packaged:app.isPackaged});
+  // CYN automatically manages its bundled FxSound audio service. The modern
+  // interface is the only app window; no separate engine action is required.
   ipcMain.handle("cyn:status",()=>bridge.ensureRunning());
   ipcMain.handle("cyn:telemetry",()=>bridge.telemetry());
   ipcMain.handle("cyn:apply",async (_e,action)=>bridge.apply(action));
-  ipcMain.handle("cyn:start",()=>bridge.launch());
-  ipcMain.handle("cyn:select-native",async()=>{
-    const result=await dialog.showOpenDialog(win,{
-      title:"Select your installed native CYN engine",
-      filters:[{name:"CYN native executable",extensions:["exe"]}],
-      properties:["openFile"]
-    });
-    if(result.canceled||!result.filePaths.length)return {selected:false};
-    const executable=result.filePaths[0];
-    bridge.selectNative(executable);
-    saveConfig(executable);
-    return {selected:true};
-  });
   ipcMain.on("cyn:window",(_e,action)=>{
     if(!win||win.isDestroyed())return;
     if(action==="minimize")win.minimize();
