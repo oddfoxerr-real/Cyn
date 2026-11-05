@@ -63,6 +63,9 @@ public:
         // the Material UI. Do not quit and respawn the native engine: that
         // races Electron's connection and can leave system audio offline.
         const bool launchMaterial = CynMaterialShell::isUiLaunchRequest(commandline);
+        // The Electron app owns diagnostics for its hidden DSP host.
+        // Suppress extra JUCE warning windows during automatic recovery.
+        const bool headlessHost = commandline.trim().equalsIgnoreCase("--engine-host");
         // The JUCE process owns DSP/AI only; it never creates the retired window.
         // This method is where you should put your application's initialisation code..
         try
@@ -71,7 +74,7 @@ public:
             HANDLE snapshot=CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);
             if(snapshot==INVALID_HANDLE_VALUE) {
                 engineStartupError("CYN could not inspect the Windows audio host. Close any existing FxSound/CYN instance and launch CYN again.");
-                AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Unable to check the active audio host. Restart Cyn after closing FxSound.");
+                if (!headlessHost) AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Unable to check the active audio host. Restart Cyn after closing FxSound.");
                 quit(); return;
             }
             PROCESSENTRY32W process{}; process.dwSize=sizeof(process);
@@ -82,15 +85,15 @@ public:
             } while(Process32NextW(snapshot,&process));
             CloseHandle(snapshot);
             if(otherHost) {
-                engineStartupError("Another FxSound or CYN audio host is running. Exit it from its Windows tray menu before connecting the native engine.");
-                AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Close the other FxSound or Cyn audio app from its tray menu, then open Cyn again. Only one host can process the shared audio driver.");
+                engineStartupError("Another FxSound or CYN audio host is running. Exit it from its Windows tray menu so CYN can restore its audio service.");
+                if (!headlessHost) AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Close the other FxSound or Cyn audio app from its tray menu, then open Cyn again. Only one host can process the shared audio driver.");
                 quit(); return;
             }
             // Keep the upstream single-host lock while using Cyn's own IPC channel.
             // This also prevents stock FxSound starting later against our driver.
             if(!legacy_audio_lock_.enter(0)) {
-                engineStartupError("The FxSound audio engine lock is owned by another process. Exit the original FxSound/CYN application from its system tray, then reconnect.");
-                AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Another FxSound audio host is active. Exit it from its tray menu, then open Cyn.");
+                engineStartupError("The FxSound audio engine lock is owned by another process. Exit the original FxSound/CYN application from its system tray and reopen CYN.");
+                if (!headlessHost) AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Another FxSound audio host is active. Exit it from its tray menu, then open Cyn.");
                 quit(); return;
             }
             SetCurrentProcessExplicitAppUserModelID(L"Cyn.PersonalAudio");
