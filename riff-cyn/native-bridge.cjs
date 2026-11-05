@@ -52,6 +52,8 @@ function makeBridge({packaged=false}={}){
  let launchPending=null;
  let autoRestartPending=null;
  let lastAutoRestart=0;
+ let lastHostCheck=0;
+ let lastStatusAt=0;
  function locate(){
    const bundled=bundledNative();
    // An installed single-app CYN never binds to an old or unrelated Cyn.exe.
@@ -70,10 +72,19 @@ function makeBridge({packaged=false}={}){
    if(!exe)return {connected:false,error:"CYN audio components are missing. Repair the combined CYN installation."};
    // Process enumeration occasionally misses an existing host on slower
    // Windows machines. Confirm once more before telling the UI to disconnect.
-   if(!(await running(exe))){
-     await pause(200);
-     if(!(await running(exe)))return {connected:false,
-       error:startupFailure()||"CYN is restoring the audio service automatically. If another FxSound instance is running, close it from the Windows tray."};
+   // Avoid repeated multi-second PowerShell process scans. Every UI poll still
+   // triggers a fresh status snapshot from the original Windows audio host.
+   if(!lastState||Date.now()-lastHostCheck>12000){
+     if(!(await running(exe))){
+       await pause(200);
+       if(!(await running(exe))){
+         lastState=null;
+         lastHostCheck=0;
+         return {connected:false,
+           error:startupFailure()||"CYN is restoring the audio service automatically. If another FxSound instance is running, close it from the Windows tray."};
+       }
+     }
+     lastHostCheck=Date.now();
    }
    const statusPath=path.join(process.env.APPDATA||"","Cyn","status.json");
    const previous=fs.existsSync(statusPath)?fs.statSync(statusPath).mtimeMs:0;
@@ -95,6 +106,7 @@ function makeBridge({packaged=false}={}){
      }
      if(data.cyn_build!=="identity-2")throw new Error("The running audio engine is not CYN.");
      lastState=data;
+     lastStatusAt=Date.now();
      return {connected:true,status:data};
    }
    throw new Error(startupFailure()||"CYN audio is not responding. Automatic recovery is active; repair CYN if the issue continues.");
@@ -177,7 +189,11 @@ function makeBridge({packaged=false}={}){
    if(!exe)throw new Error("Original Cyn.exe is not installed.");
    // An action from Material must connect the exact bundled native engine,
    // instead of requiring the separate Classic window to bootstrap it.
-   const state=await ensureRunning();
+   // Reuse a freshly verified native snapshot rather than paying for a full
+   // --status IPC round-trip before every power or output command.
+   const state=lastState&&Date.now()-lastStatusAt<2500
+     ?{connected:true,status:lastState}
+     :await ensureRunning();
    if(!state.connected)throw new Error(state.error||"Original CYN engine could not start");
    const arg=commandFor(action,state.status);
    await exec(exe,[arg],{windowsHide:true,timeout:8500,maxBuffer:4096});
