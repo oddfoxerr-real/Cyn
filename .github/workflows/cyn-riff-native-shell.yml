@@ -88,13 +88,18 @@ jobs:
           path: riff-cyn/artifacts/screenshots/*
           if-no-files-found: error
           retention-days: 14
-      - name: Build CYN Windows NSIS installer after visual QA passes
+      - name: Package CYN Electron preview after visual QA passes
         shell: pwsh
         working-directory: riff-cyn
-        run: npm run build:win
+        run: |
+          npm run build:win
+          if ($LASTEXITCODE -ne 0) { throw 'Electron desktop preview build failed' }
+          if (!(Test-Path 'dist/win-unpacked/CYN Audio.exe')) { throw 'Preview executable missing' }
+          Compress-Archive -Path 'dist/win-unpacked/*' -DestinationPath 'dist/CYN-Audio-UI-Preview-x64.zip' -Force
+          if (!(Test-Path 'dist/CYN-Audio-UI-Preview-x64.zip')) { throw 'Preview archive missing' }
       - uses: actions/upload-artifact@v4
         with:
           name: CYN-Audio-Desktop-Preview
-          path: riff-cyn/dist/CYN-Audio-Preview-*.exe
+          path: riff-cyn/dist/CYN-Audio-UI-Preview-x64.zip
           if-no-files-found: error
           retention-days: 14
