@@ -24,15 +24,14 @@ assert(source.includes("Reinstall the complete CYN update."),
   "Broken Material installations must explain repair, not display an unrelated old UI");
 assert(source.includes('launchMaterial ? String("--run_minimized") : commandline'),
   "Normal UI launch must keep the real DSP host alive and hidden rather than quitting it");
-assert(source.indexOf('FxController::getInstance().init(main_window_.get()')<
+assert(source.indexOf('FxController::getInstance().init(nullptr,')<
        source.indexOf('if (launchMaterial && !CynMaterialShell::launch())'),
   "Launch Material only after native DSP initialization to avoid a startup race");
 assert(shell.includes('inline bool isUiLaunchRequest('));
 assert(!shell.includes('trimmed.contains("--run_minimized")'),
   "DSP background invocation must never redirect into a visible shell");
-assert(header.includes("classic_ui_requested_ = false"),"Classic session must be explicit and nonpersistent");
-assert.equal((native.match(/if \(arg_list\.containsOption\("--classic"\)\)/g)||[]).length,3,
-  "Native startup, IPC and explicit classic-view handling must all require --classic");
+assert(shell.includes('trimmed.equalsIgnoreCase("--classic")'),"Old Classic shortcuts must redirect to CYN Audio");
+assert(!source.includes("std::make_unique<FxMainWindow>()"),"Old window is never created");
 assert(!native.includes('arg_list.containsOption("--classic") || arg_list.containsOption("--view")'),
   "Legacy --view is normal CYN UI navigation, not permission to show JUCE");
 assert(native.includes('else if (arg_list.containsOption("--classic"))'),

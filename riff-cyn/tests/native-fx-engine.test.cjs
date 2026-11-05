@@ -9,12 +9,12 @@ test("Material CYN exposes FXSound engine and direct Settings/Updates without DS
   const html=read("riff-cyn/renderer/index.html");
   const app=read("riff-cyn/renderer/renderer.js");
   const settings=read("riff-cyn/renderer/settings.js");
-  for(const id of ["toolbar-settings","toolbar-updates","fx-engine-reconnect","fx-engine-repair","fx-engine-detail","fx-engine-output"])
+  for(const id of ["toolbar-settings","toolbar-updates","power","power-label","fx-engine-repair","fx-engine-detail","fx-engine-output"])
     assert(html.includes('id="'+id+'"'),"Missing visible engine or update control: "+id);
   assert(html.indexOf('id="toolbar-settings"')<html.indexOf('class="app-layout"'));
   assert(html.indexOf('id="fx-engine-detail"')<html.indexOf('class="eq-hero"'),"Show native DSP state before scrollable EQ");
   assert(app.includes('$("toolbar-settings").addEventListener("click",()=>transition("settings"))'));
-  assert(app.includes('$("fx-engine-reconnect").addEventListener("click",async()=>'));
+  assert(app.includes('$("power").addEventListener("click",()=>'));
   assert(settings.includes('toolbarUpdates.addEventListener("click",async()=>'));
   assert(settings.includes("window.cynUpdate.open()"));
   assert(html.includes('data-setting="updates"'));

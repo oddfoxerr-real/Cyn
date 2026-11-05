@@ -29,7 +29,7 @@ test("Material boots/reconnects the original native host without ever launching 
   const bridge=read("riff-cyn/native-bridge.cjs");
   const main=read("riff-cyn/main.cjs");
   const classic=read("fxsound/Source/Main.cpp");
-  assert(bridge.includes("return chooseNative(bundledNative(),nativeExe,candidates())"));
+  assert(bridge.includes("return chooseNative(bundled,null,candidates());"));
   assert(bridge.includes("async function ensureRunning()"));
   assert(bridge.includes("autoRestartPending=launch().catch"));
   assert(bridge.includes("lastAutoRestart<30000"));
@@ -38,8 +38,8 @@ test("Material boots/reconnects the original native host without ever launching 
   assert(bridge.includes('const state=await ensureRunning()'));
   assert(main.includes('ipcMain.handle("cyn:status",()=>bridge.ensureRunning())'));
   assert(main.includes("bridge.launch().then(result=>"));
-  assert(classic.includes("if (classicUi)") && classic.includes("main_window_ = std::make_unique<FxMainWindow>()"),"Legacy UI object is constructed only on explicit Classic");
-  assert(classic.includes("FxController::getInstance().init(main_window_.get(), system_tray_view_.get(), audio_passthru_.get())"));
+  assert(!classic.includes("std::make_unique<FxMainWindow>()"),"Legacy UI must never be constructed");
+  assert(classic.includes("FxController::getInstance().init(nullptr, system_tray_view_.get(), audio_passthru_.get())"));
   assert(!bridge.includes('spawn(exe,["--classic"]'));
 });
 test("Native power and selected-output settings remain managed only by the original FxSound controller",()=>{
