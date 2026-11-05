@@ -66,7 +66,9 @@ test("polling cannot overwrite a later native output/power command",()=>{
   assert(renderer.includes("if(busy||revision!==actionRevision)return"));
   assert(renderer.includes("++actionRevision;"));
   assert(renderer.includes("if(refreshInFlight)await refreshInFlight"));
-  assert(renderer.includes('if(typeof status.power==="boolean")$("power").checked=status.power'));
+  assert(renderer.includes('const powerOn=status.power===true'));
+  assert(renderer.includes('powerButton.setAttribute("aria-pressed",String(powerOn))'));
+  assert(renderer.includes('apply({type:"power",value:!current.status.power})'));
   assert(renderer.includes("if(document.activeElement===select)return"));
   assert(renderer.includes('if(action.type==="output"&&result.status.selected_output!==action.value)'));
   assert(bridge.includes("if(pending)await pending"));
