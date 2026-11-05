@@ -475,6 +475,12 @@ void FxController::applyConfig(const String& commandline)
 		printStatus();
 		return;
 	}
+    if(arg_list.containsOption("--rescan_outputs"))
+    {
+        output_devices_=audio_passthru_->getSoundDevices(false, true);
+        DeviceConfig::updateDeviceConfigs(settings_,output_devices_);
+        return;
+    }
     // Legacy --theme values are ignored: stable CYN has one Dark Theme.
     auto reduced=arg_list.getValueForOption("--reduce_motion");
     if(reduced=="0" || reduced=="1") setReducedMotion(reduced=="1");

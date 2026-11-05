@@ -119,8 +119,8 @@
       <div class="error-banner" id="error-banner" role="alert" hidden></div>
       <div class="control-deck">
         <label class="control-field"><span>ACTIVE PRESET</span><select id="preset" aria-label="Active preset"><option>Connect CYN</option></select></label>
-        <label class="control-field"><span>OUTPUT DEVICE</span><select id="device-top" aria-label="Output device"><option>Connect CYN</option></select></label>
-        <div class="control-field power-field"><span>CYN POWER</span><button id="power" type="button" class="cyn-power-button" aria-pressed="false" aria-label="Turn CYN audio processing on" disabled><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v10M5.64 5.64a9 9 0 1 0 12.72 0"/></svg><span id="power-label">CHECKING</span></button></div>
+        <div class="control-field device-quick-field"><span>OUTPUT DEVICE</span><div class="device-quick-row"><select id="device-top" aria-label="Output device"><option>Checking audio devices</option></select><button type="button" id="device-refresh-top" class="device-refresh-icon" aria-label="Scan for newly connected audio devices" title="Refresh audio devices"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.7 9a7.5 7.5 0 0 1 12.7-2L20 12M4 12l1.6 4a7.5 7.5 0 0 0 12.7-1"/></svg></button></div><small id="device-quick-status" class="device-quick-status">Detecting Windows outputs…</small></div>
+        <div class="control-field power-field"><span>AUDIO ENHANCEMENT</span><button id="power" type="button" class="cyn-power-switch" aria-pressed="false" aria-label="Turn CYN audio processing on" disabled><span class="cyn-power-copy"><strong id="power-label">Checking</strong><small id="power-hint">Connecting to audio service</small></span><span class="cyn-power-track" aria-hidden="true"><span class="cyn-power-knob"></span></span></button></div>
       </div>
 
       <section class="content-view active" id="view-overview" aria-labelledby="overview-title">
@@ -234,9 +234,11 @@
       </section>
 
       <section class="content-view" id="view-devices" aria-labelledby="device-title">
-        <div class="section-heading"><div><span class="section-kicker">WINDOWS AUDIO OUTPUT</span><h2 id="device-title">Devices</h2></div></div>
+        <div class="section-heading"><div><span class="section-kicker">WINDOWS AUDIO OUTPUT</span><h2 id="device-title">Devices</h2></div><button type="button" id="device-refresh-page" class="button secondary device-scan-button">Scan for devices</button></div>
+        <div class="device-list-status" id="device-list-status" role="status" aria-live="polite">Looking for connected speakers and headphones…</div>
+        <div class="device-list" id="device-list" role="group" aria-label="Connected Windows audio outputs"></div>
         <div class="feature-grid">
-          <article class="surface-card"><label class="detail-select-field"><span>SELECT OUTPUT</span><select id="device-page" aria-label="Output device"><option>Connect CYN</option></select></label><p class="support-text">Uses the selected Windows output from the actual CYN processing engine.</p></article>
+          <article class="surface-card"><label class="detail-select-field"><span>SELECT OUTPUT</span><select id="device-page" aria-label="Output device"><option>Connect CYN</option></select></label><p class="support-text">Bluetooth, USB and wired outputs appear automatically. Select any output above or use the dropdown.</p></article>
           <article class="surface-card"><div class="feature-heading"><h3>Keep preferred device</h3><label class="toggle only-toggle"><input type="checkbox" id="pin" disabled><span class="toggle-track"></span></label></div><p class="support-text">Preserve this audio device as the preferred output when it reconnects.</p></article>
         </div>
       </section>

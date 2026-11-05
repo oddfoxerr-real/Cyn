@@ -16,9 +16,9 @@ test("CYN has exactly one visible audio-power control, no engine launcher",()=>{
   assert.equal((html.match(/id="power"/g)||[]).length,1);
   for(const id of ["start-native","fx-engine-reconnect","select-native","fx-engine-classic"])
     assert(!html.includes('id="'+id+'"'),"Obsolete extra app control: "+id);
-  assert(renderer.includes('powerOn?"TURN OFF":"TURN ON"'));
-  assert(renderer.includes('apply({type:"power",value:!current.status.power})'));
-  assert(renderer.includes('setAttribute("aria-pressed",String(powerOn))'));
+  assert(renderer.includes('$("power-label").textContent=on?"On":"Off"'));
+  assert(renderer.includes('apply({type:"power",value:requested})'));
+  assert(renderer.includes('setAttribute("aria-pressed",String(on))'));
   assert(!renderer.includes("window.cyn.start("));
   assert(!renderer.includes("window.cyn.selectNative("));
   assert(!preload.includes('cyn:start'));

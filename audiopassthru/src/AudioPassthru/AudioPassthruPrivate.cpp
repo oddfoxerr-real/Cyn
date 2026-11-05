@@ -129,16 +129,13 @@ void AudioPassthruPrivate::setDspProcessingModule(DfxDsp* p_dfx_dsp)
 }
 
 
-std::vector<SoundDevice> AudioPassthruPrivate::getSoundDevices(bool active_devices)
+std::vector<SoundDevice> AudioPassthruPrivate::getSoundDevices(bool active_devices, bool force_rescan)
 {
-	if (checkDeviceChanges())
-	{
-		int numRealDevices;
-		int DfxDeviceEnabledFlag;
-		int statusFlag;
-
+	// An explicit scan re-enumerates real Windows outputs even if a Bluetooth
+	// or USB reconnection did not generate a device-change notification.
+	const bool changed=checkDeviceChanges();
+	if(changed || force_rescan)
 		sndDevices_GetAll(hp_sndDevices_, &(s_sndDevices_.totalNumDevices));
-	}
 
 	sndDeviceHandleToSoundDevices(active_devices);
 	return sound_devices_;

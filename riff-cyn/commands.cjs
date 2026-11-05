@@ -76,6 +76,7 @@ function commandFor(action,status){
       assert(status.smart_listening?.training!==true,"AI training already running");
       return "--smart_train";
     case "preset": {
+      assert(status.power===true,"Turn CYN on before changing presets");
       const names=[...(status.presets?.built_in||[]),...(status.presets?.user_defined||[])].map(p=>p.name);
       assert(safeName(action.value)&&names.includes(action.value),"Preset must exist in CYN");
       return '--preset="'+action.value+'"';
