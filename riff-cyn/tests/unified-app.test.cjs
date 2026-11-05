@@ -53,5 +53,8 @@ test("packaged CYN always uses its bundled headless native FxSound host",()=>{
   assert(!native.includes("std::make_unique<FxMainWindow>()"));
   assert(native.includes("FxController::getInstance().init(nullptr, system_tray_view_.get(), audio_passthru_.get())"));
   assert(shell.includes('trimmed.equalsIgnoreCase("--classic")'));
+  assert(native.includes('const bool headlessHost = commandline.trim().equalsIgnoreCase("--engine-host")'));
+  assert((native.match(/if \(!headlessHost\) AlertWindow::showMessageBox/g)||[]).length===3,
+    "Automatic CYN audio recovery must not spawn a second warning window");
   assert(installer.includes('Name: "{autoprograms}\\Cyn"; Filename: "{app}\\CYN-Interface\\CYN Audio.exe"'));
 });
