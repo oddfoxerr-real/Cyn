@@ -35,7 +35,7 @@ test("Material boots/reconnects the original native host without ever launching 
   assert(bridge.includes("lastAutoRestart<30000"));
   assert(bridge.includes('spawn(exe,["--engine-host"]'));
   assert(bridge.includes('cwd:path.dirname(exe)'));
-  assert(bridge.includes('const state=await ensureRunning()'));
+  assert(bridge.includes('const state=lastState&&Date.now()-lastStatusAt<2500')&&bridge.includes(":await ensureRunning();"));
   assert(main.includes('ipcMain.handle("cyn:status",()=>bridge.ensureRunning())'));
   assert(main.includes("bridge.launch().then(result=>"));
   assert(!classic.includes("std::make_unique<FxMainWindow>()"),"Legacy UI must never be constructed");
