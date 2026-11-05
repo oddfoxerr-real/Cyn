@@ -18,7 +18,8 @@ namespace CynMaterialShell
             || trimmed.equalsIgnoreCase("--view=1")
             || trimmed.equalsIgnoreCase("--view=2")
             || trimmed.equalsIgnoreCase("--view 1")
-            || trimmed.equalsIgnoreCase("--view 2");
+            || trimmed.equalsIgnoreCase("--view 2")
+            || trimmed.equalsIgnoreCase("--classic");
     }
 
     inline juce::File executable()
