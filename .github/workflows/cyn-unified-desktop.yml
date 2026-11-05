@@ -84,3 +84,17 @@ jobs:
         run: |
           node scripts/test_cyn_combined_desktop.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Unified installer payload contract failed' }
+
+      - name: Archive unified Windows review build
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'dist/Cyn/Cyn.exe')) { throw 'Native CYN engine missing from review build' }
+          if (!(Test-Path 'dist/Cyn/CYN-Interface/CYN Audio.exe')) { throw 'CYN unified window missing from review build' }
+          Compress-Archive -Path 'dist/Cyn/*' -DestinationPath 'dist/CYN-Unified-Windows-Review-x64.zip' -Force
+          if (!(Test-Path 'dist/CYN-Unified-Windows-Review-x64.zip')) { throw 'Combined Windows review archive missing' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CYN-Unified-Windows-Review
+          path: dist/CYN-Unified-Windows-Review-x64.zip
+          if-no-files-found: error
+          retention-days: 14
