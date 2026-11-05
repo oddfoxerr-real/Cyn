@@ -195,6 +195,7 @@ if(primaryInstance)app.whenReady().then(()=>{
   // CYN automatically manages its bundled FxSound audio service. The modern
   // interface is the only app window; no separate engine action is required.
   ipcMain.handle("cyn:status",()=>bridge.ensureRunning());
+  ipcMain.handle("cyn:scan-devices",()=>bridge.scanDevices());
   ipcMain.handle("cyn:telemetry",()=>bridge.telemetry());
   ipcMain.handle("cyn:apply",async (_e,action)=>bridge.apply(action));
   ipcMain.on("cyn:window",(_e,action)=>{

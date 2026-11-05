@@ -184,6 +184,16 @@ function makeBridge({packaged=false}={}){
      .finally(()=>{autoRestartPending=null;});
    return autoRestartPending;
  }
+ async function scanDevices(){
+   if(!isWin())throw new Error("Audio device discovery requires Windows.");
+   const state=await ensureRunning();
+   if(!state.connected)return state;
+   const exe=locate();
+   if(!exe)throw new Error("The original CYN audio host is missing.");
+   await exec(exe,["--rescan_outputs"],{windowsHide:true,timeout:8500,maxBuffer:4096});
+   if(pending)await pending;
+   return getStatus();
+ }
  async function apply(action){
    if(!isWin())throw new Error("This backend only runs on Windows");
    const exe=locate();
@@ -224,6 +234,6 @@ function makeBridge({packaged=false}={}){
    if(!result?.connected)throw new Error("CYN did not return fresh native audio state.");
    throw new Error("CYN did not confirm "+action.type+". The setting was not applied; the control will return to its last verified value.");
  }
- return {getStatus,ensureRunning,telemetry,launch,apply,findExe:()=>locate()};
+ return {getStatus,ensureRunning,telemetry,launch,apply,scanDevices,findExe:()=>locate()};
 }
 module.exports={makeBridge,chooseNative,bundledNative};

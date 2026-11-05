@@ -132,8 +132,24 @@ function renderDeviceCards(status,view){
 async function scanDevices(){
   if(busy)return;
   for(const id of ["device-refresh-top","device-refresh-page"])$(id).classList.add("is-scanning");
-  try{await refresh();}
-  finally{for(const id of ["device-refresh-top","device-refresh-page"])$(id).classList.remove("is-scanning");}
+  $("device-list-status").textContent="Scanning Windows audio endpoints…";
+  try{
+    const result=await window.cyn.scanDevices();
+    if(!result.connected||!result.status)
+      throw new Error(result.error||"Windows endpoint enumeration is unavailable.");
+    if(busy)return;
+    ++actionRevision;
+    current=result;
+    hadNativeSnapshot=true;
+    renderConnected(result.status);
+    actionError="";
+    showError("");
+  }catch(error){
+    actionError=String(error.message||error);
+    showError("Output device scan failed: "+actionError);
+  }finally{
+    for(const id of ["device-refresh-top","device-refresh-page"])$(id).classList.remove("is-scanning");
+  }
 }
 const value=(n,fallback="—")=>(n==null||n==="")?fallback:(Number.isFinite(Number(n))?Number(n).toFixed(1):fallback);
 const writable=()=>Boolean(current?.connected);

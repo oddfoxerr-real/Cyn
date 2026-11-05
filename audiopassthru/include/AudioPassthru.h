@@ -66,7 +66,7 @@ public:
 	~AudioPassthru();
 	int init();
 	void mute(bool mute);
-	std::vector<SoundDevice> getSoundDevices(bool active_devices = true);
+	std::vector<SoundDevice> getSoundDevices(bool active_devices = true, bool force_rescan = false);
 	int setBufferLength(int i_buffer_length_msecs);
 	int processTimer();
 	void setDspProcessingModule(DfxDsp* pDspProcessingModule);

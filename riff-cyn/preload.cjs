@@ -2,6 +2,7 @@
 const {contextBridge,ipcRenderer}=require("electron");
 contextBridge.exposeInMainWorld("cyn",Object.freeze({
   status:()=>ipcRenderer.invoke("cyn:status"),
+  scanDevices:()=>ipcRenderer.invoke("cyn:scan-devices"),
   telemetry:()=>ipcRenderer.invoke("cyn:telemetry"),
   apply:(action)=>ipcRenderer.invoke("cyn:apply",action),
   window:(action)=>ipcRenderer.send("cyn:window",action),

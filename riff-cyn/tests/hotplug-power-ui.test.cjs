@@ -41,3 +41,20 @@ test("host checks are cached but device scans still request actual native status
   assert(bridge.includes('await exec(exe,["--status"]'));
   assert(bridge.includes('data=JSON.parse(fs.readFileSync(statusPath,"utf8"))'));
 });
+
+test("manual refresh really forces Windows native MMDevice enumeration",()=>{
+ const renderer=read("riff-cyn/renderer/renderer.js");
+ const main=read("riff-cyn/main.cjs");
+ const bridge=read("riff-cyn/native-bridge.cjs");
+ const preload=read("riff-cyn/preload.cjs");
+ const native=read("fxsound/Source/GUI/FxController.cpp");
+ const pub=read("audiopassthru/include/AudioPassthru.h");
+ const priv=read("audiopassthru/src/AudioPassthru/AudioPassthruPrivate.cpp");
+ assert(renderer.includes("await window.cyn.scanDevices()"));
+ assert(preload.includes('scanDevices:()=>ipcRenderer.invoke("cyn:scan-devices")'));
+ assert(main.includes('ipcMain.handle("cyn:scan-devices",()=>bridge.scanDevices())'));
+ assert(bridge.includes('await exec(exe,["--rescan_outputs"]'));
+ assert(native.includes('arg_list.containsOption("--rescan_outputs")'));
+ assert(pub.includes("bool force_rescan = false"));
+ assert(priv.includes("if(changed || force_rescan)"));
+});
