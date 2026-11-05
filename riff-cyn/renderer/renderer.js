@@ -16,6 +16,52 @@ const fx=[
 ];
 let current=null, activeView="overview", busy=false;
 let refreshInFlight=null, actionRevision=0, actionError="", hadNativeSnapshot=false;
+let pendingPowerState=null;
+const activeRanges=new Set(),pendingRanges=new Set(),actionQueue=[];
+let drainingActions=false;
+function formatDecimal(n){return Number(n).toFixed(1)}
+function isRangeEditing(input){
+  return activeRanges.has(input.id)||pendingRanges.has(input.id)||document.activeElement===input;
+}
+function syncRange(input,numeric,output,formatter=formatDecimal){
+  if(!input||!output||!Number.isFinite(Number(numeric)))return;
+  if(isRangeEditing(input))return;
+  input.value=String(numeric);
+  output.textContent=formatter(Number(numeric));
+}
+function bindRange(input,output,actionForValue,formatter=formatDecimal){
+  const id=input.id;
+  input.addEventListener("pointerdown",()=>activeRanges.add(id));
+  input.addEventListener("input",()=>{
+    activeRanges.add(id);
+    output.textContent=formatter(Number(input.value));
+  });
+  input.addEventListener("change",async()=>{
+    const value=Number(input.value);
+    pendingRanges.add(id);
+    try{await apply(actionForValue(value));}
+    finally{
+      pendingRanges.delete(id);
+      activeRanges.delete(id);
+      if(current?.connected&&current.status)renderConnected(current.status);
+    }
+  });
+  input.addEventListener("blur",()=>{
+    if(pendingRanges.has(id))return;
+    activeRanges.delete(id);
+    if(current?.connected&&current.status)
+      syncRange(input,input.dataset.lastNativeValue,output,formatter);
+  });
+  input.addEventListener("pointercancel",()=>{
+    if(!pendingRanges.has(id))activeRanges.delete(id);
+  });
+}
+function syncBoundRange(id,numeric,outputId,formatter=formatDecimal){
+  const input=$(id),output=$(outputId);
+  if(!input||!output)return;
+  input.dataset.lastNativeValue=String(numeric);
+  syncRange(input,numeric,output,formatter);
+}
 const deviceTracker=window.cynDeviceState.makeTracker();
 function setPowerView(on,pending=false){
   const button=$("power");
@@ -90,7 +136,7 @@ async function scanDevices(){
   finally{for(const id of ["device-refresh-top","device-refresh-page"])$(id).classList.remove("is-scanning");}
 }
 const value=(n,fallback="—")=>(n==null||n==="")?fallback:(Number.isFinite(Number(n))?Number(n).toFixed(1):fallback);
-const writable=()=>Boolean(current?.connected)&&!busy;
+const writable=()=>Boolean(current?.connected);
 function showError(message){
   $("error-banner").textContent=String(message||"");
   $("error-banner").hidden=!message;
@@ -151,8 +197,7 @@ function renderEffects(status){
       const slider=document.createElement("input");
       slider.type="range";slider.min="0";slider.max="10";slider.step=".1";slider.id="effect-"+name;
       slider.setAttribute("aria-label",label+" gain");
-      slider.addEventListener("input",()=>{output.textContent=value(slider.value)});
-      slider.addEventListener("change",()=>apply({type:"effect",name,value:Number(slider.value)}));
+      bindRange(slider,output,v=>({type:"effect",name,value:v}),formatDecimal);
       const desc=document.createElement("p");desc.textContent=description;
       const live=document.createElement("p");live.className="live-effect-label";
       live.textContent="Native AI applied: ";
@@ -164,11 +209,8 @@ function renderEffects(status){
   for(const [name] of fx){
     const slider=$("effect-"+name),output=$("effect-value-"+name);
     slider.disabled=!writable();
-    if(document.activeElement!==slider){
-      const val=status?.effects?.[name];
-      slider.value=Number.isFinite(Number(val))?Number(val):0;
-      output.textContent=value(val);
-    }
+    const val=status?.effects?.[name];
+    syncBoundRange(slider.id,Number.isFinite(Number(val))?Number(val):0,output.id,formatDecimal);
   }
 }
 function renderBands(status){
@@ -186,10 +228,7 @@ function renderBands(status){
       input.type="range";input.min="-12";input.max="12";input.step=".1";
       input.value=Number(b.gain)||0;input.id="band-"+b.index;
       input.setAttribute("aria-label","EQ band "+(b.index+1)+" at "+b.frequency+" Hz");
-      input.addEventListener("input",()=>{
-        val.textContent=value(input.value);
-      });
-      input.addEventListener("change",()=>apply({type:"band",index:b.index,value:Number(input.value)}));
+      bindRange(input,val,v=>({type:"band",index:b.index,value:v}),formatDecimal);
       const frequency=document.createElement("span");frequency.className="freq";
       const freq=Number(b.frequency);
       frequency.textContent=freq>=1000?(freq/1000).toFixed(freq%1000?1:0)+"k":String(Math.round(freq));
@@ -206,7 +245,7 @@ function renderBands(status){
     const slider=$("band-"+b.index),val=$("band-value-"+b.index);
     if(!slider)continue;
     slider.disabled=!writable();
-    if(document.activeElement!==slider){slider.value=Number(b.gain)||0;val.textContent=value(b.gain)}
+    syncBoundRange(slider.id,Number(b.gain)||0,val.id,formatDecimal);
   }
   renderGraph(bands);
   const eq=status?.equalizer||{};
@@ -223,10 +262,7 @@ function renderBands(status){
     const control=$(id),output=$(id+"-value");
     control.disabled=!writable()||!bands.length;
     const numeric=Number(eq[key]);
-    if(document.activeElement!==control&&Number.isFinite(numeric)){
-      control.value=numeric;
-      output.textContent=numeric.toFixed(1);
-    }
+    if(Number.isFinite(numeric))syncBoundRange(id,numeric,output.id,formatDecimal);
   }
 }
 function renderConnected(status){
@@ -258,22 +294,19 @@ function renderConnected(status){
   $("fx-engine-output").textContent="CYN output: "+String(status.selected_output||"No physical output selected");
   $("fx-engine-repair").hidden=driverReady;
   const powerOn=status.power===true;
-  setPowerView(powerOn);
+  if(pendingPowerState===null)setPowerView(powerOn);
   setEngineState(powerOn&&driverReady&&outputReady&&virtualDefault,(nativeSamples?"PROCESSING":powerOn&&(!driverReady||!virtualDefault||!outputReady||!physicalTargeted)?"CHECK ROUTING":powerOn?"CYN ON":"CYN OFF")+" / v"+String(status.version||"?"));
   $("smart").checked=Boolean(status.smart_listening?.enabled);
   $("pin").checked=Boolean(status.output_pinned);
-  $("sensitivity").value=Number(status.smart_listening?.sensitivity)||0;
-  $("sensitivity-value").textContent=Math.round(Number(status.smart_listening?.sensitivity)||0)+"%";
+  syncBoundRange("sensitivity",Number(status.smart_listening?.sensitivity)||0,"sensitivity-value",n=>Math.round(n)+"%");
   const smartMeta=status.smart_listening||{};
   $("listening-mode").value=String(smartMeta.listening_mode===1?1:0);
   $("listening-mode").disabled=!writable()||Boolean(smartMeta.training);
-  $("headroom").value=Number(smartMeta.headroom_cap)||0;
-  $("headroom-value").textContent=Math.round(Number(smartMeta.headroom_cap)||0)+"%";
+  syncBoundRange("headroom",Number(smartMeta.headroom_cap)||0,"headroom-value",n=>Math.round(n)+"%");
   $("headroom").disabled=!writable();
   $("preset-cycling").checked=Boolean(smartMeta.preset_cycling);
   $("preset-cycling").disabled=!writable()||smartMeta.listening_mode===1;
-  $("audonic-intensity").value=Number(smartMeta.audonic_intensity)||0;
-  $("audonic-intensity-value").textContent=Math.round(Number(smartMeta.audonic_intensity)||0)+"%";
+  syncBoundRange("audonic-intensity",Number(smartMeta.audonic_intensity)||0,"audonic-intensity-value",n=>Math.round(n)+"%");
   $("audonic-intensity").disabled=!writable()||status.active_ai_profile!=="audonic";
   $("training-fill").style.width=(Math.max(0,Math.min(1,Number(smartMeta.training_progress)||0))*100).toFixed(1)+"%";
   $("train-ai").disabled=!writable()||Boolean(smartMeta.training);
@@ -318,10 +351,8 @@ function renderConnected(status){
   $("dj-progress-track").hidden=!dj.busy;
   $("dj-progress-fill").style.width=(Math.max(0,Math.min(1,Number(dj.progress)||0))*100).toFixed(1)+"%";
   $("dj-recent").textContent=String(dj.last_effect||"AI DJ ready")+" · "+String(dj.remixes||0)+" remixes";
-  $("dj-intensity").value=Math.round((Number(dj.intensity)||0)*100);
-  $("dj-intensity-value").textContent=Math.round((Number(dj.intensity)||0)*100)+"%";
-  $("dj-spacing").value=Math.round(Number(dj.spacing)||18);
-  $("dj-spacing-value").textContent=$("dj-spacing").value+" s";
+  syncBoundRange("dj-intensity",Math.round((Number(dj.intensity)||0)*100),"dj-intensity-value",n=>Math.round(n)+"%");
+  syncBoundRange("dj-spacing",Math.round(Number(dj.spacing)||18),"dj-spacing-value",n=>Math.round(n)+" s");
   $("dj-stereo").checked=Boolean(dj.stereo);
   for(const id of ["dj-intensity","dj-spacing","dj-stereo"])$(id).disabled=!writable()||!dj.installed||Boolean(dj.busy);
   renderEffects(status);
@@ -332,6 +363,7 @@ function renderDisconnected(message){
   $("fx-engine-detail").textContent=String(message||"Native CYN audio engine is offline.");
   $("fx-engine-output").textContent="Audio effects and neural processing require the real Cyn.exe engine.";
   $("fx-engine-repair").hidden=false;
+  pendingPowerState=null;
   setPowerView(false);
   $("power").setAttribute("aria-label","CYN audio is reconnecting automatically");
   $("power-hint").textContent="Reconnecting…";
@@ -427,8 +459,26 @@ async function refresh(){
   try{return await work}
   finally{if(refreshInFlight===work)refreshInFlight=null}
 }
-async function apply(action){
-  if(!writable())return false;
+function apply(action){
+  if(!current?.connected)return Promise.resolve(false);
+  return new Promise(resolve=>{
+    actionQueue.push({action,resolve});
+    if(!drainingActions)void drainActionQueue();
+  });
+}
+async function drainActionQueue(){
+  if(drainingActions)return;
+  drainingActions=true;
+  try{
+    while(actionQueue.length){
+      const job=actionQueue.shift();
+      try{job.resolve(await executeAction(job.action));}
+      catch(error){showError(String(error.message||error));job.resolve(false);}
+    }
+  }finally{drainingActions=false;}
+}
+async function executeAction(action){
+  if(!current?.connected)return false;
   ++actionRevision; // invalidate an in-flight read before changing Windows audio
   busy=true;
   let succeeded=false;
@@ -445,6 +495,7 @@ async function apply(action){
     succeeded=true;
     actionError="";
     showError("");
+    renderConnected(result.status);
   }catch(error){
     actionError=String(error.message||error);
     showError(actionError);
@@ -456,7 +507,7 @@ async function apply(action){
     if(action.type==="output")
       for(const id of ["device-top","device-page"])
         if(document.activeElement===$(id))$(id).blur();
-    await refresh();
+    if(!succeeded)await refresh();
     if(actionError)showError(actionError);
   }
   return succeeded;
@@ -597,19 +648,23 @@ $("fx-engine-repair").addEventListener("click",()=>{
   window.cyn.openLink("updates").catch(error=>showError("Could not open the CYN installer page: "+error.message));
 });
 $("power").addEventListener("click",async()=>{
-  if(!writable()||typeof current?.status?.power!=="boolean")return;
+  if(!current?.connected||pendingPowerState!==null||typeof current?.status?.power!=="boolean")return;
   const requested=!current.status.power;
-  // Show the requested state in the same frame; the DSP response remains authoritative.
+  pendingPowerState=requested;
   setPowerView(requested,true);
-  const succeeded=await apply({type:"power",value:!current.status.power});
-  if(!succeeded)setPowerView(current?.status?.power===true);
+  $("power").disabled=true;
+  try{await apply({type:"power",value:requested});}
+  finally{
+    pendingPowerState=null;
+    setPowerView(current?.status?.power===true);
+    $("power").disabled=!current?.connected;
+  }
 });
 for(const id of ["device-refresh-top","device-refresh-page"])
   $(id).addEventListener("click",scanDevices);
 $("smart").addEventListener("change",e=>apply({type:"smart",value:e.target.checked}));
 $("pin").addEventListener("change",e=>apply({type:"pin",value:e.target.checked}));
-$("sensitivity").addEventListener("input",e=>{$("sensitivity-value").textContent=Math.round(Number(e.target.value))+"%"});
-$("sensitivity").addEventListener("change",e=>apply({type:"sensitivity",value:Number(e.target.value)}));
+bindRange($("sensitivity"),$("sensitivity-value"),v=>({type:"sensitivity",value:v}),n=>Math.round(n)+"%");
 $("preset").addEventListener("change",e=>apply({type:"preset",value:e.target.value}));
 for(const id of ["device-top","device-page"])
   $(id).addEventListener("change",e=>apply({type:"output",value:e.target.value}));
@@ -618,26 +673,19 @@ for(const [id,type] of [
   ["eq-balance","balance"],["eq-master-gain","masterGain"],
   ["eq-volume-leveling","volumeLeveling"],["eq-filter-q","filterQ"]
 ]){
-  $(id).addEventListener("input",event=>{
-    $(id+"-value").textContent=Number(event.target.value).toFixed(1);
-  });
-  $(id).addEventListener("change",event=>apply({type,value:Number(event.target.value)}));
+  bindRange($(id),$(id+"-value"),v=>({type,value:v}),formatDecimal);
 }
 $("listening-mode").addEventListener("change",e=>apply({type:"listeningMode",value:Number(e.target.value)}));
-$("headroom").addEventListener("input",e=>$("headroom-value").textContent=Math.round(Number(e.target.value))+"%");
-$("headroom").addEventListener("change",e=>apply({type:"headroom",value:Number(e.target.value)}));
+bindRange($("headroom"),$("headroom-value"),v=>({type:"headroom",value:v}),n=>Math.round(n)+"%");
 $("preset-cycling").addEventListener("change",e=>apply({type:"presetCycling",value:e.target.checked}));
-$("audonic-intensity").addEventListener("input",e=>$("audonic-intensity-value").textContent=Math.round(Number(e.target.value))+"%");
-$("audonic-intensity").addEventListener("change",e=>apply({type:"audonicIntensity",value:Number(e.target.value)}));
+bindRange($("audonic-intensity"),$("audonic-intensity-value"),v=>({type:"audonicIntensity",value:v}),n=>Math.round(n)+"%");
 $("train-ai").addEventListener("click",()=>apply({type:"train"}));
 $("dj-download").addEventListener("click",()=>apply({type:"djCommand",value:"download"}));
 $("dj-cancel").addEventListener("click",()=>apply({type:"djCommand",value:"cancel"}));
 $("dj-remove").addEventListener("click",()=>apply({type:"djCommand",value:"remove"}));
 $("dj-enable").addEventListener("change",e=>apply({type:"djEnable",value:e.target.checked}));
-$("dj-intensity").addEventListener("input",e=>$("dj-intensity-value").textContent=Math.round(Number(e.target.value))+"%");
-$("dj-intensity").addEventListener("change",e=>apply({type:"djIntensity",value:Number(e.target.value)}));
-$("dj-spacing").addEventListener("input",e=>$("dj-spacing-value").textContent=Math.round(Number(e.target.value))+" s");
-$("dj-spacing").addEventListener("change",e=>apply({type:"djSpacing",value:Number(e.target.value)}));
+bindRange($("dj-intensity"),$("dj-intensity-value"),v=>({type:"djIntensity",value:v}),n=>Math.round(n)+"%");
+bindRange($("dj-spacing"),$("dj-spacing-value"),v=>({type:"djSpacing",value:v}),n=>Math.round(n)+" s");
 $("dj-stereo").addEventListener("change",e=>apply({type:"djStereo",value:e.target.checked}));
 function rangeLabel(){
   const newer=$("feedback-from"),older=$("feedback-to");
