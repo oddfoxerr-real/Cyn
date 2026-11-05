@@ -1,6 +1,6 @@
 # CYN on Riff — Windows desktop migration
 
-Riff is the **only user-facing CYN Windows interface**. The one combined CYN installer places the Riff-based Electron UI at `CYN-Interface/CYN Audio.exe` and the original FxSound DSP/AI host at `Cyn.exe`. The Riff app starts the host with `--engine-host`, controls it using its typed native command interface, and renders verified native status. The old JUCE CYN application window is not constructed in normal operation. No Riff DSP engine or nested old CYN UI is involved.
+Riff is the **only user-facing CYN Windows interface**. The one combined CYN installer places the Riff-based Electron UI at `CYN-Interface/CYN Audio.exe` and the original FxSound DSP/AI host at `Cyn.exe`. The Riff app starts the host with `--engine-host`, controls it using its typed native command interface, and renders verified native status. The old JUCE CYN application window is never constructed, even by a legacy `--classic` launch. No Riff DSP engine or nested old CYN UI is involved.
 
 ## Implemented
 
@@ -24,7 +24,7 @@ Keep your current CYN installation. Use Node.js 22+.
 
 On an installed release, **CYN** shortcuts launch `CYN-Interface/CYN Audio.exe` directly. The interface starts the bundled native FxSound host headlessly; if that host fails it displays diagnostics and offers Repair install. The standalone development mode may locate a manually installed `Cyn.exe` for testing.
 
-The production installer is a single CYN package. The old Classic shortcut and the Riff option to open another native CYN interface have been removed. Advanced sound, AI, EQ, Presets, Settings, and updater controls remain routed to the native CYN/FxSound controller. The deprecated standalone preview should not be installed alongside the combined product.
+The production installer is a single CYN package. The old Classic shortcut, second native UI, manual engine selection and Start/Connect Engine buttons have been removed. One power button controls native FxSound processing and the audio service starts and recovers automatically. Advanced sound, AI, EQ, Presets, Settings, and updater controls remain routed to the native CYN/FxSound controller. The deprecated standalone preview should not be installed alongside the combined product.
 
 ## Security
 
@@ -32,10 +32,16 @@ Electron renderer uses sandbox=true, contextIsolation=true, nodeIntegration=fals
 
 ## Remaining migration
 
-Native BrainScan activity, neural learning/training, AI DJ controls, richer telemetry and genuine FFT metering require real data/commands from FxController before the JUCE GUI can be retired. This preview intentionally does not invent live inference visualizations or simulate playback.
+BrainScan neural activity, AI training, AI DJ, live spectrum, DSP controls and presets remain connected to the native FxController. When a live signal is unavailable, CYN reports it instead of generating fabricated data.
 
 The Riff-first refactor is validated on a separate Windows CI branch before a stable signed release. Windows update checks, verified installer downloads and existing presets remain with the native CYN updater. A physical Windows PC playback/output-device test is still required before shipping this restructuring.
 
 ## Licenses
 
 Riff by rootscripts: MIT, included at renderer/vendor/Riff-LICENSE.txt at packaging. CYN/FxSound native: AGPL-3.0-or-later, with existing source and JUCE attributions retained. Distributors must preserve applicable upstream notices and source availability.
+
+## One app and one power control
+
+The combined Windows installer exposes only **CYN Audio.exe** as the user-facing application. The bundled **Cyn.exe** is an implementation detail: the headless FxSound DSP/driver and AI host, not a second interface. CYN starts it automatically and uses rate-limited recovery after transient failures. **Turn on / Turn off** maps to the original native `--power=1` / `--power=0` command and does not spawn or kill audio services, delete presets or reset the selected device. Legacy taskbar shortcuts redirect into the new interface. Packaged CYN will never silently adopt a stale native executable from an older installation; driver repair remains available from the official installer.
+
+One installed app does not mean one operating-system process: Electron presents the single window while the original Windows audio host runs headlessly for driver compatibility.
