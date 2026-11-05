@@ -216,7 +216,7 @@ function makeBridge({packaged=false}={}){
      }
      // Every slider, toggle and model selection must be reflected in real
      // native status before the renderer acknowledges a successful write.
-     if(!actionConfirmed(action,result.status))continue;
+     if(!actionConfirmed(action,result.status,state.status))continue;
      return result;
    }
    if(action.type==="output")throw new Error(
