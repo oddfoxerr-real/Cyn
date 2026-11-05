@@ -46,20 +46,17 @@ function startupFailure(){
     return reason.length>0&&reason.length<1000?reason:null;
   }catch{return null;}
 }
-function makeBridge(override){
- let nativeExe=validExe(override)?override:null;
+function makeBridge({packaged=false}={}){
  let pending=null;
  let lastState=null;
  let launchPending=null;
  let autoRestartPending=null;
  let lastAutoRestart=0;
- function locate(){return chooseNative(bundledNative(),nativeExe,candidates());}
- function selectNative(p){
-   if(!validExe(p))throw new Error("Select the real Cyn.exe, not another program");
-   const bundle=bundledNative();
-   if(validExe(bundle)&&path.resolve(p).toLowerCase()!==path.resolve(bundle).toLowerCase())
-     throw new Error("Installed CYN always uses its bundled native FxSound engine. An older standalone Cyn.exe cannot replace it.");
-   nativeExe=p;lastState=null;return true;
+ function locate(){
+   const bundled=bundledNative();
+   // An installed single-app CYN never binds to an old or unrelated Cyn.exe.
+   if(packaged)return validExe(bundled)?bundled:null;
+   return chooseNative(bundled,null,candidates());
  }
  async function running(exe){
    const command='$found=@(Get-Process -Name Cyn,FxSound -ErrorAction SilentlyContinue | Where-Object { $_.Path -and [string]::Equals($_.Path,$env:CYN_BRIDGE_EXE,[StringComparison]::OrdinalIgnoreCase) }); if($found.Count -gt 0) { Write-Output "RUNNING" }';
@@ -70,13 +67,13 @@ function makeBridge(override){
  async function statusImpl(){
    if(!isWin())return {connected:false,error:"CYN's native audio engine runs on Windows."};
    const exe=locate();
-   if(!exe)return {connected:false,error:"Cyn.exe not found. Locate your installed native CYN engine."};
+   if(!exe)return {connected:false,error:"CYN audio components are missing. Repair the combined CYN installation."};
    // Process enumeration occasionally misses an existing host on slower
    // Windows machines. Confirm once more before telling the UI to disconnect.
    if(!(await running(exe))){
      await pause(200);
      if(!(await running(exe)))return {connected:false,
-       error:startupFailure()||"Native FxSound/CYN is not running. Close other FxSound instances from the system tray, then press Connect engine."};
+       error:startupFailure()||"CYN is restoring the audio service automatically. If another FxSound instance is running, close it from the Windows tray."};
    }
    const statusPath=path.join(process.env.APPDATA||"","Cyn","status.json");
    const previous=fs.existsSync(statusPath)?fs.statSync(statusPath).mtimeMs:0;
@@ -100,7 +97,7 @@ function makeBridge(override){
      lastState=data;
      return {connected:true,status:data};
    }
-   throw new Error(startupFailure()||"The FxSound DSP host is running but not responding. Try reconnecting or repairing CYN.");
+   throw new Error(startupFailure()||"CYN audio is not responding. Automatic recovery is active; repair CYN if the issue continues.");
  }
  function getStatus(){
    if(!pending)pending=statusImpl().catch(e=>({connected:false,error:e.message})).finally(()=>{pending=null;});
@@ -208,6 +205,6 @@ function makeBridge(override){
      "FxSound could not confirm the physical output switch. Check that the device is active and the FxSound virtual playback endpoint is enabled.");
    return result||{connected:false,error:"CYN did not return fresh native audio state."};
  }
- return {getStatus,ensureRunning,telemetry,launch,apply,selectNative,findExe:()=>locate()};
+ return {getStatus,ensureRunning,telemetry,launch,apply,findExe:()=>locate()};
 }
 module.exports={makeBridge,chooseNative,bundledNative};
