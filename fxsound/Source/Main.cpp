@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "GUI/FxSystemTrayView.h"
 #include "GUI/FxController.h"
 #include "GUI/FxTheme.h"
-#include "GUI/FxMainWindow.h"
 #include "GUI/CynMaterialShell.h"
 #include "AudioPassthru.h"
 #include <dbghelp.h>
@@ -64,9 +63,10 @@ public:
         // the Material UI. Do not quit and respawn the native engine: that
         // races Electron's connection and can leave system audio offline.
         const bool launchMaterial = CynMaterialShell::isUiLaunchRequest(commandline);
-        // Riff is CYN's only normal desktop UI. This JUCE process is a native
-        // FxSound DSP host and must not construct the legacy window in that mode.
-        const bool classicUi = commandline.trim().equalsIgnoreCase("--classic");
+        // The Electron app owns diagnostics for its hidden DSP host.
+        // Suppress extra JUCE warning windows during automatic recovery.
+        const bool headlessHost = commandline.trim().equalsIgnoreCase("--engine-host");
+        // The JUCE process owns DSP/AI only; it never creates the retired window.
         // This method is where you should put your application's initialisation code..
         try
         {
@@ -74,7 +74,7 @@ public:
             HANDLE snapshot=CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0);
             if(snapshot==INVALID_HANDLE_VALUE) {
                 engineStartupError("CYN could not inspect the Windows audio host. Close any existing FxSound/CYN instance and launch CYN again.");
-                AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Unable to check the active audio host. Restart Cyn after closing FxSound.");
+                if (!headlessHost) AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Unable to check the active audio host. Restart Cyn after closing FxSound.");
                 quit(); return;
             }
             PROCESSENTRY32W process{}; process.dwSize=sizeof(process);
@@ -85,15 +85,15 @@ public:
             } while(Process32NextW(snapshot,&process));
             CloseHandle(snapshot);
             if(otherHost) {
-                engineStartupError("Another FxSound or CYN audio host is running. Exit it from its Windows tray menu before connecting the native engine.");
-                AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Close the other FxSound or Cyn audio app from its tray menu, then open Cyn again. Only one host can process the shared audio driver.");
+                engineStartupError("Another FxSound or CYN audio host is running. Exit it from its Windows tray menu so CYN can restore its audio service.");
+                if (!headlessHost) AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Close the other FxSound or Cyn audio app from its tray menu, then open Cyn again. Only one host can process the shared audio driver.");
                 quit(); return;
             }
             // Keep the upstream single-host lock while using Cyn's own IPC channel.
             // This also prevents stock FxSound starting later against our driver.
             if(!legacy_audio_lock_.enter(0)) {
-                engineStartupError("The FxSound audio engine lock is owned by another process. Exit the original FxSound/CYN application from its system tray, then reconnect.");
-                AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Another FxSound audio host is active. Exit it from its tray menu, then open Cyn.");
+                engineStartupError("The FxSound audio engine lock is owned by another process. Exit the original FxSound/CYN application from its system tray and reopen CYN.");
+                if (!headlessHost) AlertWindow::showMessageBox(AlertWindow::WarningIcon,"Cyn","Another FxSound audio host is active. Exit it from its tray menu, then open Cyn.");
                 quit(); return;
             }
             SetCurrentProcessExplicitAppUserModelID(L"Cyn.PersonalAudio");
@@ -115,11 +115,9 @@ public:
                 launchMaterial ? String("--run_minimized") : commandline);
 
             audio_passthru_ = std::make_unique<AudioPassthru>();
-            if (classicUi)
-                main_window_ = std::make_unique<FxMainWindow>();
             system_tray_view_.reset(new FxSystemTrayView());
 
-            FxController::getInstance().init(main_window_.get(), system_tray_view_.get(), audio_passthru_.get());
+            FxController::getInstance().init(nullptr, system_tray_view_.get(), audio_passthru_.get());
             if (launchMaterial && !CynMaterialShell::launch())
                 AlertWindow::showMessageBox(AlertWindow::WarningIcon, "CYN",
                     "The Material interface is missing or could not open. Reinstall the complete CYN update.");
@@ -147,7 +145,7 @@ public:
     void shutdown() override
     {
         // Headless FxSound hosts still own and must release the audio driver,
-        // timers, tray and preset state. The legacy GUI is optional.
+        // timers, tray and preset state. The legacy GUI is retired.
         if (audio_passthru_ != nullptr)
         {
             FxController::getInstance().autoSaveModifiedPreset();
@@ -169,7 +167,6 @@ public:
 
             system_tray_view_.reset();
 
-            main_window_.reset(); // (deletes our window)
         }
 
         LocalisedStrings::setCurrentMappings(nullptr);
@@ -384,7 +381,6 @@ private:
         }
     };
 
-    std::unique_ptr<FxMainWindow> main_window_;
     
     std::unique_ptr<FxSystemTrayView> system_tray_view_;
     std::unique_ptr<AudioPassthru> audio_passthru_;

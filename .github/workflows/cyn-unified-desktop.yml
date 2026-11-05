@@ -1,0 +1,100 @@
+name: CYN Unified Desktop Validation
+
+on:
+  pull_request:
+    paths:
+      - 'riff-cyn/**'
+      - 'fxsound/Source/Main.cpp'
+      - 'fxsound/Source/GUI/CynMaterialShell.h'
+      - 'scripts/test_cyn_material_launch.mjs'
+      - 'scripts/test_riff_direct_fx_host.mjs'
+      - 'scripts/test_cyn_combined_desktop.mjs'
+      - '.github/workflows/cyn-unified-desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cyn-unified-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify JavaScript syntax
+        shell: pwsh
+        run: |
+          node --check riff-cyn/main.cjs
+          node --check riff-cyn/native-bridge.cjs
+          node --check riff-cyn/preload.cjs
+          node --check riff-cyn/renderer/renderer.js
+          node --check riff-cyn/renderer/settings.js
+          if ($LASTEXITCODE -ne 0) { throw 'Unified interface syntax validation failed' }
+      - name: Verify one-window/native-DSP regression contracts
+        shell: pwsh
+        run: |
+          node --test riff-cyn/tests/*.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'CYN desktop tests failed' }
+          node scripts/test_riff_direct_fx_host.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Direct native DSP regression failed' }
+          node scripts/test_cyn_combined_desktop.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Combined CYN installer regression failed' }
+          node scripts/test_cyn_material_launch.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Unified launch regression failed' }
+      - name: Compile original native FxSound DSP and CYN AI
+        shell: pwsh
+        run: |
+          .\BUILD_CYN.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Original CYN DSP compilation failed' }
+          if (!(Test-Path dist/Cyn/Cyn.exe)) { throw 'Missing native CYN host' }
+      - name: Check out pinned upstream Riff visual assets
+        uses: actions/checkout@v4
+        with:
+          repository: rootscripts/riff
+          ref: 398c3dac976bd7b4a7a4b4d7a6d7636ea868a0a8
+          path: riff-upstream
+          persist-credentials: false
+      - name: Build unified Windows interface
+        shell: pwsh
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          Push-Location riff-cyn
+          try {
+            npm install --no-audit --no-fund
+            if ($LASTEXITCODE -ne 0) { throw 'Electron install failed' }
+            npm run vendor:riff
+            if ($LASTEXITCODE -ne 0) { throw 'Riff validation failed' }
+            npx electron-builder --win --x64 --dir
+            if ($LASTEXITCODE -ne 0) { throw 'Unified UI package failed' }
+          } finally { Pop-Location }
+          New-Item -ItemType Directory 'dist/Cyn/CYN-Interface' -Force | Out-Null
+          Copy-Item 'riff-cyn/dist/win-unpacked/*' 'dist/Cyn/CYN-Interface' -Recurse -Force
+          if (!(Test-Path 'dist/Cyn/CYN-Interface/CYN Audio.exe')) { throw 'Missing user-facing CYN application' }
+          if (!(Test-Path 'dist/Cyn/Cyn.exe')) { throw 'Missing bundled native audio service' }
+      - name: Stage combined installer validation
+        shell: pwsh
+        run: |
+          node scripts/test_cyn_combined_desktop.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Unified installer payload contract failed' }
+
+      - name: Archive unified Windows review build
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'dist/Cyn/Cyn.exe')) { throw 'Native CYN engine missing from review build' }
+          if (!(Test-Path 'dist/Cyn/CYN-Interface/CYN Audio.exe')) { throw 'CYN unified window missing from review build' }
+          Compress-Archive -Path 'dist/Cyn/*' -DestinationPath 'dist/CYN-Unified-Windows-Review-x64.zip' -Force
+          if (!(Test-Path 'dist/CYN-Unified-Windows-Review-x64.zip')) { throw 'Combined Windows review archive missing' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CYN-Unified-Windows-Review
+          path: dist/CYN-Unified-Windows-Review-x64.zip
+          if-no-files-found: error
+          retention-days: 14

@@ -45,7 +45,7 @@ test("Material reports original engine output rather than inventing audio-routin
   const renderer=read("riff-cyn/renderer/renderer.js");
   assert(renderer.includes("status.selected_output"));
   assert(renderer.includes("engine.processing===true"));
-  assert(renderer.includes('"ENGINE ON"'));
+  assert(renderer.includes('"CYN ON"'));
   assert(!renderer.includes('"ROUTED"'));
   assert(!renderer.includes('"Windows via CYN: "'));
   assert(!renderer.includes('window.cyn.openNative()'));

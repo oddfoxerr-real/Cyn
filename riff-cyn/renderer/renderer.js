@@ -5,7 +5,7 @@ const pages={
   equalizer:["Equalizer","Precision control of every active frequency band."],
   ai:["Smart Listening","Native neural processing and adaptive sound."],
   devices:["Output Devices","Control your actual Windows audio hardware."],
-  settings:["Settings","Manage your native CYN connection and appearance."]
+  settings:["Settings","Manage CYN updates, sound preferences and appearance."]
 };
 const fx=[
   ["clarity","Clarity","Detail and vocal presence"],
@@ -27,7 +27,6 @@ function setEngineState(on,label){
   $("engine-state").classList.toggle("on",on);
   $("rail-led").classList.toggle("on",on);
   $("engine-label").textContent=label;
-  $("start-native").hidden=on;
 }
 function opts(select,items,selected){
   // Never replace a select's children while the user is choosing an item.
@@ -103,7 +102,7 @@ function renderEffects(status){
 function renderBands(status){
   const box=$("eq-sliders"),bands=Array.isArray(status?.equalizer?.bands)?status.equalizer.bands:[];
   $("eq-band-mode").textContent=bands.length?bands.length+" BANDS":"NO NATIVE EQ";
-  $("eq-mode-label").textContent=bands.length?bands.length+" BAND MODE":"CONNECT ENGINE";
+  $("eq-mode-label").textContent=bands.length?bands.length+" BAND MODE":"AUDIO UNAVAILABLE";
   const signature=bands.map(b=>String(b.index)+":"+String(b.frequency)).join("|");
   box.style.setProperty("--band-count",String(Math.max(1,bands.length)));
   if(box.dataset.signature!==signature){
@@ -185,10 +184,14 @@ function renderConnected(status){
                 ?"FxSound is processing audio through the selected physical output."
                 :"FxSound is routed correctly; play audio to confirm live processing.";
   $("fx-engine-output").textContent="CYN output: "+String(status.selected_output||"No physical output selected");
-  $("fx-engine-reconnect").textContent="Refresh engine";
-  $("fx-engine-reconnect").disabled=false;
-  setEngineState(true,(nativeSamples?"PROCESSING":status.power&&(!driverReady||!virtualDefault||!outputReady||!physicalTargeted)?"ROUTING REQUIRED":status.power?"ENGINE ON":"ENGINE OFF")+" / v"+String(status.version||"?"));
-  if(typeof status.power==="boolean")$("power").checked=status.power;
+  $("fx-engine-repair").hidden=driverReady;
+  const powerButton=$("power");
+  const powerOn=status.power===true;
+  powerButton.setAttribute("aria-pressed",String(powerOn));
+  powerButton.setAttribute("aria-label",powerOn?"Turn CYN audio processing off":"Turn CYN audio processing on");
+  powerButton.classList.toggle("is-on",powerOn);
+  $("power-label").textContent=powerOn?"TURN OFF":"TURN ON";
+  setEngineState(powerOn&&driverReady&&outputReady&&virtualDefault,(nativeSamples?"PROCESSING":powerOn&&(!driverReady||!virtualDefault||!outputReady||!physicalTargeted)?"CHECK ROUTING":powerOn?"CYN ON":"CYN OFF")+" / v"+String(status.version||"?"));
   $("smart").checked=Boolean(status.smart_listening?.enabled);
   $("pin").checked=Boolean(status.output_pinned);
   $("sensitivity").value=Number(status.smart_listening?.sensitivity)||0;
@@ -259,9 +262,12 @@ function renderDisconnected(message){
   window.dispatchEvent(new CustomEvent("cyn-native-status",{detail:null}));
   $("fx-engine-detail").textContent=String(message||"Native CYN audio engine is offline.");
   $("fx-engine-output").textContent="Audio effects and neural processing require the real Cyn.exe engine.";
-  $("fx-engine-reconnect").textContent="Reconnect engine";
-  $("fx-engine-reconnect").disabled=false;
-  setEngineState(false,"Engine offline");
+  $("fx-engine-repair").hidden=false;
+  $("power").setAttribute("aria-pressed","false");
+  $("power").setAttribute("aria-label","CYN audio is reconnecting automatically");
+  $("power").classList.remove("is-on");
+  $("power-label").textContent="UNAVAILABLE";
+  setEngineState(false,"RECONNECTING");
   if(hadNativeSnapshot){
     // Do not erase the user's EQ, AI, device or power display on one failed
     // Windows status probe. Everything is *unverified and non-editable* until
@@ -290,14 +296,14 @@ function renderDisconnected(message){
   for(const id of ["preset","device-top","device-page","power","smart","pin","sensitivity","ai-model"])$(id).disabled=true;
   for(const id of ["listening-mode","headroom","preset-cycling","audonic-intensity","train-ai","feedback-more","feedback-less"])$(id).disabled=true;
   $("training-fill").style.width="0%";
-  $("training-status").textContent="Connect native CYN for training";
+  $("training-status").textContent="Waiting for CYN audio service";
   $("dj-status").textContent="Native AI DJ unavailable";
-  $("dj-recent").textContent="Connect CYN to read AI DJ status";
+  $("dj-recent").textContent="Audio service unavailable";
   for(const id of ["dj-enable","dj-download","dj-remove","dj-cancel","dj-intensity","dj-spacing","dj-stereo"])$(id).disabled=true;
-  $("feedback-result").textContent="Connect CYN to label recent audio activity";
-  $("smart-summary").textContent=String(message||"Connect native CYN to access processing");
+  $("feedback-result").textContent="Audio service unavailable";
+  $("smart-summary").textContent=String(message||"Audio service unavailable");
   $("active-model").textContent="Not connected";
-  $("learning-status").textContent="Start native CYN to read its actual learning state.";
+  $("learning-status").textContent="Audio service unavailable; reconnecting automatically.";
   $("sensitivity-value").textContent="—";
   opts($("preset"),[{value:"",label:"Connect CYN"}],"");
   const lastKnown=deviceTracker.offline();
@@ -308,7 +314,7 @@ function renderDisconnected(message){
   }
   for(const id of ["ai-model","drawer-ai-model"])opts($(id),[{value:"",label:"Unavailable"}],"");
   $("drawer-ai-model").disabled=true;
-  $("drawer-ai-summary").textContent="Start CYN to load installed AI models.";
+  $("drawer-ai-summary").textContent="Audio service unavailable; reconnecting automatically.";
   window.cynRail.setPresets(null,()=>{});
   if(!hadNativeSnapshot){
     renderEffects(null);
@@ -519,29 +525,10 @@ $("go-eq").addEventListener("click",()=>transition("equalizer"));
 $("fx-engine-repair").addEventListener("click",()=>{
   window.cyn.openLink("updates").catch(error=>showError("Could not open the CYN installer page: "+error.message));
 });
-$("fx-engine-reconnect").addEventListener("click",async()=>{
-  const control=$("fx-engine-reconnect");
-  control.disabled=true;
-  $("fx-engine-detail").textContent="Connecting to the native CYN engine…";
-  try{
-    const result=await window.cyn.start();
-    if(!result.connected)showError(result.error||"Native FX engine could not start");
-  }catch(error){showError("Native FX engine: "+error.message)}
-  finally{control.disabled=false;await refresh()}
+$("power").addEventListener("click",()=>{
+  if(!writable()||typeof current?.status?.power!=="boolean")return;
+  return apply({type:"power",value:!current.status.power});
 });
-$("start-native").addEventListener("click",async()=>{
-  $("start-native").disabled=true;
-  try{const r=await window.cyn.start();if(!r.connected)showError(r.error||"Native CYN is not yet available")}
-  catch(e){showError(e.message)}
-  finally{$("start-native").disabled=false;await refresh()}
-});
-$("select-native").addEventListener("click",async()=>{
-  try{
-    const selected=await window.cyn.selectNative();
-    if(selected.selected){$("native-path-state").textContent="Native CYN path selected.";await refresh()}
-  }catch(e){showError(e.message)}
-});
-$("power").addEventListener("change",e=>apply({type:"power",value:e.target.checked}));
 $("smart").addEventListener("change",e=>apply({type:"smart",value:e.target.checked}));
 $("pin").addEventListener("change",e=>apply({type:"pin",value:e.target.checked}));
 $("sensitivity").addEventListener("input",e=>{$("sensitivity-value").textContent=Math.round(Number(e.target.value))+"%"});

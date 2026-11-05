@@ -20,7 +20,7 @@ assert(installer.includes('Name: "{autoprograms}\\Cyn"; Filename: "{app}\\CYN-In
 assert(!installer.includes('Name: "{autoprograms}\\Cyn (Classic)"'),"No parallel Classic UI shortcut");
 assert(native.includes('spawn(exe,["--engine-host"]'),"Riff must start the native FxSound host headlessly");
 assert(installer.includes('Name="CYN Audio.exe"'),"Updates must not overwrite an actively running Electron frontend");
-assert(native.includes('function bundledNative(executable=process.execPath)') && native.includes('path.dirname(executable),"..","Cyn.exe"') && native.includes('chooseNative(bundledNative(),nativeExe,candidates())'),"Use the bundled original audio processor beside Material instead of stale saved executables");
+assert(native.includes('function bundledNative(executable=process.execPath)') && native.includes('path.dirname(executable),"..","Cyn.exe"') && native.includes('return chooseNative(bundled,null,candidates());') && native.includes('if(packaged)return validExe(bundled)?bundled:null;'),"Use the bundled original audio processor beside Material instead of stale saved executables");
 assert(main.includes('bridge.launch().then(result=>') && main.includes('bridge.ensureRunning()'),"Material must initialize/reconnect original native CYN independently of Classic");
 assert(main.includes('ipcMain.handle("cyn:check-updates"'),"Material CYN needs the actual Windows updater");
 assert(main.includes('"CynUpdater.ps1"'),"Invoke the existing secure SHA-256 updater");

@@ -100,7 +100,7 @@
           <label class="toggle drawer-motion"><input type="checkbox" id="reduced-motion"><span class="toggle-track"></span><span>Reduce animations</span></label>
         </div>
       </div>
-      <div class="rail-foot"><span class="rail-led" id="rail-led"></span><span>CYN ENGINE</span></div>
+      <div class="rail-foot"><span class="rail-led" id="rail-led"></span><span>CYN AUDIO</span></div>
     </aside>
 
     <main class="main-content" id="main-content">
@@ -108,11 +108,11 @@
         <div>
           <p class="eyebrow">CYN / PERSONAL AUDIO</p>
           <h1 id="page-title">Sound Studio</h1>
-          <p class="subheading" id="page-subtitle">Your sound, driven by the real native CYN engine.</p>
+          <p class="subheading" id="page-subtitle">Your sound, managed by one CYN application.</p>
         </div>
         <div class="connection">
           <div class="status-pill" id="engine-state" role="status"><span class="status-light"></span><span id="engine-label">Checking engine</span></div>
-          <button type="button" class="button primary" id="start-native">Start engine</button>
+          
         </div>
       </div>
 
@@ -120,7 +120,7 @@
       <div class="control-deck">
         <label class="control-field"><span>ACTIVE PRESET</span><select id="preset" aria-label="Active preset"><option>Connect CYN</option></select></label>
         <label class="control-field"><span>OUTPUT DEVICE</span><select id="device-top" aria-label="Output device"><option>Connect CYN</option></select></label>
-        <div class="control-field power-field"><span>PROCESSING</span><label class="toggle"><input type="checkbox" id="power" disabled><span class="toggle-track"></span><span>Enable audio</span></label></div>
+        <div class="control-field power-field"><span>CYN POWER</span><button id="power" type="button" class="cyn-power-button" aria-pressed="false" aria-label="Turn CYN audio processing on" disabled><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v10M5.64 5.64a9 9 0 1 0 12.72 0"/></svg><span id="power-label">CHECKING</span></button></div>
       </div>
 
       <section class="content-view active" id="view-overview" aria-labelledby="overview-title">
@@ -128,11 +128,11 @@
         <section class="fx-engine-panel" aria-labelledby="fx-engine-title">
           <div class="fx-engine-icon" aria-hidden="true">FX</div>
           <div class="fx-engine-copy">
-            <h3 id="fx-engine-title">FxSound / CYN Native Engine</h3>
-            <p id="fx-engine-detail" role="status" aria-live="polite">Checking native processing engine and audio driver…</p>
+            <h3 id="fx-engine-title">Audio routing</h3>
+            <p id="fx-engine-detail" role="status" aria-live="polite">Checking audio output and processing…</p>
             <p id="fx-engine-output">Output device: awaiting native CYN</p>
           </div>
-          <div class="fx-engine-actions"><button class="button secondary" type="button" id="fx-engine-reconnect">Connect engine</button><button class="button secondary" type="button" id="fx-engine-repair" title="Open official CYN Windows installer" aria-label="Open official CYN Windows repair installer">Repair install</button></div>
+          <div class="fx-engine-actions"><button class="button secondary" type="button" id="fx-engine-repair" title="Open official CYN Windows installer" aria-label="Open official CYN Windows repair installer" hidden>Repair audio</button></div>
         </section>
         <div class="eq-hero">
           <div class="eq-hero-top"><div><h3>Frequency response</h3><p>Current equalizer gain values from CYN</p></div><span class="mode-tag" id="eq-band-mode">— BANDS</span></div>
@@ -244,7 +244,7 @@
       <section class="content-view" id="view-settings" aria-labelledby="settings-title">
         <div class="section-heading"><div><span class="section-kicker">CYN / AUDIO</span><h2 id="settings-title">Settings</h2></div></div>
         <div class="settings-surface">
-          <div class="settings-group-label">Updates & engine</div>
+          <div class="settings-group-label">Updates</div>
           <button class="settings-row settings-priority" type="button" data-setting="updates"><span>Check for CYN Updates</span><span aria-hidden="true">↻</span></button>
           <button class="settings-row" type="button" data-setting="release"><span>Open latest Windows release</span><span aria-hidden="true">↗</span></button>
           <div class="settings-divider"></div>
@@ -256,7 +256,7 @@
           <button class="settings-row" data-setting="delete"><span>Delete Preset</span><span aria-hidden="true">›</span></button>
           <div class="settings-divider"></div>
           <div class="settings-group-label">Management</div>
-          <button class="settings-row" data-setting="native"><span>Import / Export Presets in Native CYN</span><span aria-hidden="true">›</span></button>
+          
           <button class="settings-row" data-setting="mobile"><span>Add Mobile Version</span><span aria-hidden="true">↗</span></button>
 
           <label class="settings-row settings-check"><span>Automatic update checks</span><input id="automatic-updates" type="checkbox" disabled aria-label="Check for CYN updates automatically"/></label>
@@ -271,11 +271,7 @@
           <button class="settings-row" data-setting="support"><span>Support the FxSound Engine</span><span aria-hidden="true">↗</span></button>
           <button class="settings-row settings-exit" data-setting="exit"><span>Exit CYN</span><span aria-hidden="true">×</span></button>
         </div>
-        <article class="settings-native">
-          <div><h3>Native Audio Engine</h3><p class="support-text">Uses your existing CYN DSP, presets, and AI models. Closing this interface does not stop the native audio engine.</p></div>
-          <button id="select-native" class="button secondary" type="button">Locate Cyn.exe</button>
-          <p class="support-text" id="native-path-state">CYN is detected automatically when installed in its default location.</p>
-        </article>
+        <article class="settings-native"><div><h3>Integrated CYN audio</h3><p class="support-text">CYN manages its FxSound DSP, neural models, presets, and audio driver automatically. The power button controls processing; no separate engine setup or app is required. Closing the window leaves saved audio preferences intact.</p></div></article>
         <p class="legal">CYN Audio · Riff MIT UI attribution and FxSound AGPL source notices are included in the application.</p>
       </section>
       <dialog id="cyn-updates-dialog" class="cyn-updates-dialog" aria-labelledby="cyn-updates-title" aria-describedby="cyn-updates-detail">
