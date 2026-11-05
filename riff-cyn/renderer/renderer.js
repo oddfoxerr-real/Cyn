@@ -17,6 +17,78 @@ const fx=[
 let current=null, activeView="overview", busy=false;
 let refreshInFlight=null, actionRevision=0, actionError="", hadNativeSnapshot=false;
 const deviceTracker=window.cynDeviceState.makeTracker();
+function setPowerView(on,pending=false){
+  const button=$("power");
+  button.setAttribute("aria-pressed",String(on));
+  button.setAttribute("aria-label",on?"Turn CYN audio processing off":"Turn CYN audio processing on");
+  button.setAttribute("aria-busy",String(pending));
+  button.classList.toggle("is-on",on);
+  button.classList.toggle("is-pending",pending);
+  $("power-label").textContent=on?"On":"Off";
+  $("power-hint").textContent=pending?"Applying to audio engine…":on?"Enhancement active":"Enhancement paused";
+}
+function renderDeviceCards(status,view){
+  const live=Array.isArray(status?.output_devices)
+    ?[...new Set(status.output_devices.filter(name=>typeof name==="string"&&name.length>0))]:[];
+  const list=$("device-list");
+  const signature=JSON.stringify(live);
+  if(list.dataset.signature!==signature){
+    list.replaceChildren();
+    for(const name of live){
+      const button=document.createElement("button");
+      button.type="button";
+      button.className="device-choice";
+      button.dataset.output=name;
+      const icon=document.createElement("span");
+      icon.className="device-choice-icon";
+      icon.setAttribute("aria-hidden","true");
+      icon.textContent=/headphone|headset|buds|airpods/i.test(name)?"🎧":
+        /hdmi|display|monitor|digital output/i.test(name)?"▣":"◖))";
+      const description=document.createElement("span");
+      description.className="device-choice-description";
+      const title=document.createElement("strong");
+      title.textContent=name;
+      const subtitle=document.createElement("small");
+      subtitle.className="device-choice-subtitle";
+      description.append(title,subtitle);
+      const check=document.createElement("span");
+      check.className="device-choice-check";
+      check.setAttribute("aria-hidden","true");
+      check.textContent="✓";
+      button.append(icon,description,check);
+      button.addEventListener("click",()=>apply({type:"output",value:name}));
+      list.append(button);
+    }
+    if(!live.length){
+      const empty=document.createElement("p");
+      empty.className="device-list-empty";
+      empty.textContent="No active output found yet. Connect your headphones, speakers or USB device; CYN will rescan automatically.";
+      list.append(empty);
+    }
+    list.dataset.signature=signature;
+  }
+  for(const button of list.querySelectorAll(".device-choice")){
+    const selected=button.dataset.output===view.selected&&view.confirmed;
+    button.classList.toggle("is-selected",selected);
+    button.setAttribute("aria-pressed",String(selected));
+    button.setAttribute("aria-label",button.dataset.output+(selected?", selected output":", select as output"));
+    button.disabled=!writable()||!view.canSelect;
+    button.querySelector(".device-choice-subtitle").textContent=selected?"Current output":"Select output";
+  }
+  const count=live.length;
+  $("device-list-status").textContent=count
+    ?count+" available output"+(count===1?"":"s")+" · Automatically checking for new devices"
+    :"No active outputs · Automatically checking for new devices";
+  $("device-quick-status").textContent=count
+    ?count+" detected · Auto refresh on":"No device detected · Auto refresh on";
+  for(const id of ["device-refresh-top","device-refresh-page"])$(id).disabled=busy;
+}
+async function scanDevices(){
+  if(busy)return;
+  for(const id of ["device-refresh-top","device-refresh-page"])$(id).classList.add("is-scanning");
+  try{await refresh();}
+  finally{for(const id of ["device-refresh-top","device-refresh-page"])$(id).classList.remove("is-scanning");}
+}
 const value=(n,fallback="—")=>(n==null||n==="")?fallback:(Number.isFinite(Number(n))?Number(n).toFixed(1):fallback);
 const writable=()=>Boolean(current?.connected)&&!busy;
 function showError(message){
@@ -185,12 +257,8 @@ function renderConnected(status){
                 :"FxSound is routed correctly; play audio to confirm live processing.";
   $("fx-engine-output").textContent="CYN output: "+String(status.selected_output||"No physical output selected");
   $("fx-engine-repair").hidden=driverReady;
-  const powerButton=$("power");
   const powerOn=status.power===true;
-  powerButton.setAttribute("aria-pressed",String(powerOn));
-  powerButton.setAttribute("aria-label",powerOn?"Turn CYN audio processing off":"Turn CYN audio processing on");
-  powerButton.classList.toggle("is-on",powerOn);
-  $("power-label").textContent=powerOn?"TURN OFF":"TURN ON";
+  setPowerView(powerOn);
   setEngineState(powerOn&&driverReady&&outputReady&&virtualDefault,(nativeSamples?"PROCESSING":powerOn&&(!driverReady||!virtualDefault||!outputReady||!physicalTargeted)?"CHECK ROUTING":powerOn?"CYN ON":"CYN OFF")+" / v"+String(status.version||"?"));
   $("smart").checked=Boolean(status.smart_listening?.enabled);
   $("pin").checked=Boolean(status.output_pinned);
@@ -232,6 +300,7 @@ function renderConnected(status){
     opts(select,view.items,view.selected);
     select.disabled=!writable()||!view.canSelect;
   }
+  renderDeviceCards(status,view);
   if(view.stale&&view.selected){
     $("fx-engine-output").textContent="Last selected output: "+view.selected+
       " · Device connection not yet confirmed by Windows";
@@ -263,10 +332,12 @@ function renderDisconnected(message){
   $("fx-engine-detail").textContent=String(message||"Native CYN audio engine is offline.");
   $("fx-engine-output").textContent="Audio effects and neural processing require the real Cyn.exe engine.";
   $("fx-engine-repair").hidden=false;
-  $("power").setAttribute("aria-pressed","false");
+  setPowerView(false);
   $("power").setAttribute("aria-label","CYN audio is reconnecting automatically");
-  $("power").classList.remove("is-on");
-  $("power-label").textContent="UNAVAILABLE";
+  $("power-hint").textContent="Reconnecting…";
+  $("device-list-status").textContent="CYN is reconnecting. Output selection is temporarily unavailable.";
+  $("device-quick-status").textContent="Audio service offline · Reconnecting";
+  for(const button of $("device-list").querySelectorAll(".device-choice"))button.disabled=true;
   setEngineState(false,"RECONNECTING");
   if(hadNativeSnapshot){
     // Do not erase the user's EQ, AI, device or power display on one failed
@@ -525,10 +596,16 @@ $("go-eq").addEventListener("click",()=>transition("equalizer"));
 $("fx-engine-repair").addEventListener("click",()=>{
   window.cyn.openLink("updates").catch(error=>showError("Could not open the CYN installer page: "+error.message));
 });
-$("power").addEventListener("click",()=>{
+$("power").addEventListener("click",async()=>{
   if(!writable()||typeof current?.status?.power!=="boolean")return;
-  return apply({type:"power",value:!current.status.power});
+  const requested=!current.status.power;
+  // Show the requested state in the same frame; the DSP response remains authoritative.
+  setPowerView(requested,true);
+  const succeeded=await apply({type:"power",value:!current.status.power});
+  if(!succeeded)setPowerView(current?.status?.power===true);
 });
+for(const id of ["device-refresh-top","device-refresh-page"])
+  $(id).addEventListener("click",scanDevices);
 $("smart").addEventListener("change",e=>apply({type:"smart",value:e.target.checked}));
 $("pin").addEventListener("change",e=>apply({type:"pin",value:e.target.checked}));
 $("sensitivity").addEventListener("input",e=>{$("sensitivity-value").textContent=Math.round(Number(e.target.value))+"%"});
@@ -593,4 +670,6 @@ $("reduced-motion").addEventListener("change",e=>{
 renderDisconnected("Checking native CYN installation…");
 requestAnimationFrame(()=>updateSelectedNav(false));
 refresh();
-setInterval(()=>{if(!busy&&!document.hidden)refresh()},4200);
+setInterval(()=>{if(!busy&&!document.hidden)refresh()},1600);
+window.addEventListener("focus",()=>{if(!busy)refresh()});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!busy)refresh()});
