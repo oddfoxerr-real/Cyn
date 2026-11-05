@@ -14,7 +14,7 @@ test("Material CYN exposes FXSound engine and direct Settings/Updates without DS
   assert(html.indexOf('id="toolbar-settings"')<html.indexOf('class="app-layout"'));
   assert(html.indexOf('id="fx-engine-detail"')<html.indexOf('class="eq-hero"'),"Show native DSP state before scrollable EQ");
   assert(app.includes('$("toolbar-settings").addEventListener("click",()=>transition("settings"))'));
-  assert(app.includes('$("power").addEventListener("click",()=>'));
+  assert(app.includes('$("power").addEventListener("click",async()=>'));
   assert(settings.includes('toolbarUpdates.addEventListener("click",async()=>'));
   assert(settings.includes("window.cynUpdate.open()"));
   assert(html.includes('data-setting="updates"'));
