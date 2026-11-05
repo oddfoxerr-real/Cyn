@@ -4,6 +4,7 @@ const path=require("node:path");
 const {execFile,spawn}=require("node:child_process");
 const {promisify}=require("node:util");
 const {commandFor}=require("./commands.cjs");
+const {actionConfirmed}=require("./action-result.cjs");
 const exec=promisify(execFile);
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const isWin=()=>process.platform==="win32";
@@ -208,18 +209,20 @@ function makeBridge({packaged=false}={}){
      if(!observed)continue;
      if(action.type==="power"&&result.status.power!==action.value)continue;
      if(action.type==="output"){
-       // The native model must select the requested active device, and when
-       // processing is enabled the Windows passthrough must target it too.
-       // A remembered CYN string is not proof of a real audio route.
+       // Preserve the physical-device routing guarantee, not just a saved name.
        if(result.status.selected_output!==action.value)continue;
        if(result.status.power===true&&
           result.status.fx_engine?.physical_output_targeted!==true)continue;
      }
+     // Every slider, toggle and model selection must be reflected in real
+     // native status before the renderer acknowledges a successful write.
+     if(!actionConfirmed(action,result.status))continue;
      return result;
    }
    if(action.type==="output")throw new Error(
      "FxSound could not confirm the physical output switch. Check that the device is active and the FxSound virtual playback endpoint is enabled.");
-   return result||{connected:false,error:"CYN did not return fresh native audio state."};
+   if(!result?.connected)throw new Error("CYN did not return fresh native audio state.");
+   throw new Error("CYN did not confirm "+action.type+". The setting was not applied; the control will return to its last verified value.");
  }
  return {getStatus,ensureRunning,telemetry,launch,apply,findExe:()=>locate()};
 }
