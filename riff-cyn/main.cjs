@@ -139,6 +139,39 @@ function createWindow(){
             'document.getElementById("btn-close-rail-drawer").click()');
           await new Promise(resolve=>setTimeout(resolve,240));
         }
+        // CI interaction regression: a telemetry refresh must never snap a
+        // slider backwards while someone is dragging it. Exercise actual
+        // Chromium input elements, not only source-text assertions.
+        const interactionProbe=[
+          '(()=>{',
+          ' const st={cyn_build:"identity-2",version:"test",power:true,',
+          '   fx_engine:{ready:true,virtual_device_active:true,physical_output_ready:true,virtual_device_default:true,physical_output_targeted:true},',
+          '   effects:{clarity:2.1,ambience:3,surround:4,dynamicboost:5,bass:6},',
+          '   smart_listening:{enabled:true,sensitivity:17,headroom_cap:28,audonic_intensity:33,listening_mode:0,preset_cycling:false},',
+          '   active_ai_profile:"audonic",ai_profiles:[{id:"audonic",name:"AUDONIC"}],',
+          '   output_devices:[],presets:{built_in:[],user_defined:[]},',
+          '   ai_dj:{installed:true,enabled:true,intensity:.21,spacing:18,stereo:false},',
+          '   equalizer:{bands:Array.from({length:31},(_,index)=>({index,frequency:20+index*140,gain:0})),balance:1,master_gain:2,volume_leveling:1.2,filter_q:1.8}};',
+          ' current={connected:true,status:st};hadNativeSnapshot=true;renderConnected(st);',
+          ' const targets=[["sensitivity",73],["headroom",67],["audonic-intensity",55],["dj-intensity",80],["dj-spacing",32],["eq-balance",8],["eq-master-gain",9],["eq-volume-leveling",3],["eq-filter-q",2.4],["effect-clarity",7.5],["band-0",8.5]];',
+          ' const output=[];',
+          ' for(const [id,requested] of targets){',
+          '   const node=document.getElementById(id);',
+          '   if(!node||node.disabled){output.push({id,missingOrDisabled:true});continue;}',
+          '   node.value=String(requested);',
+          '   node.dispatchEvent(new Event("input",{bubbles:true}));',
+          '   renderConnected(st);',
+          '   output.push({id,requested,actual:Number(node.value),preserved:Math.abs(Number(node.value)-requested)<.15});',
+          ' }',
+          ' return output;',
+          '})()'
+        ].join("\n");
+        const interactionAudit=await win.webContents.executeJavaScript(interactionProbe);
+        fs.writeFileSync(path.join(directory,"live-controls-interaction-audit.json"),JSON.stringify(interactionAudit,null,2));
+        if(interactionAudit.some(item=>!item.preserved))
+          throw new Error("CYN slider drag was overwritten or disabled: "+JSON.stringify(interactionAudit));
+        const interactionShot=await win.webContents.capturePage();
+        fs.writeFileSync(path.join(directory,"live-controls-interaction.png"),interactionShot.toPNG());
         app.quit();
       })().catch(error=>{console.error("Screenshot capture failed:",error);app.exit(1)});
     });
