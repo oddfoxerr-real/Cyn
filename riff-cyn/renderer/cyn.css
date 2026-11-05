@@ -733,3 +733,12 @@ body.cyn-closing .app-layout,body.cyn-closing .titlebar{
 .cyn-updates-footnote{margin:16px 0 0;font-size:10px;color:#8795a2;line-height:1.5}
 @media(max-width:600px){.cyn-updates-frame{padding:18px 15px}.cyn-updates-frame h3{font-size:21px}.cyn-updates-actions .button{padding:10px 12px}}
 @media(prefers-reduced-motion:reduce){.cyn-updates-orbit-a,.cyn-updates-orbit-b{animation:none!important}}
+
+.cyn-power-button{width:100%;min-height:46px;display:flex;align-items:center;justify-content:center;gap:12px;border:1px solid #515258;border-radius:14px;background:#34363a;color:#f1f1f4;font-size:13px;font-weight:750;letter-spacing:.09em;cursor:pointer;transition:background .18s,border-color .18s,transform .18s}
+.cyn-power-button svg{width:20px;height:20px;flex-shrink:0}
+.cyn-power-button.is-on{background:#25453c;border-color:#64b69b;color:#ceffe9}
+.cyn-power-button:not(:disabled):hover{border-color:#b7b9c2;transform:translateY(-1px)}
+.cyn-power-button:disabled{opacity:.55;cursor:not-allowed}
+.cyn-power-button:focus-visible{outline:2px solid #a8cef9;outline-offset:3px}
+.fx-engine-actions .button[hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){.cyn-power-button{transition:none}}
