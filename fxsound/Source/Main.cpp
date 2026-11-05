@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "GUI/FxSystemTrayView.h"
 #include "GUI/FxController.h"
 #include "GUI/FxTheme.h"
-#include "GUI/FxMainWindow.h"
 #include "GUI/CynMaterialShell.h"
 #include "AudioPassthru.h"
 #include <dbghelp.h>
@@ -64,9 +63,7 @@ public:
         // the Material UI. Do not quit and respawn the native engine: that
         // races Electron's connection and can leave system audio offline.
         const bool launchMaterial = CynMaterialShell::isUiLaunchRequest(commandline);
-        // Riff is CYN's only normal desktop UI. This JUCE process is a native
-        // FxSound DSP host and must not construct the legacy window in that mode.
-        const bool classicUi = commandline.trim().equalsIgnoreCase("--classic");
+        // The JUCE process owns DSP/AI only; it never creates the retired window.
         // This method is where you should put your application's initialisation code..
         try
         {
@@ -115,11 +112,9 @@ public:
                 launchMaterial ? String("--run_minimized") : commandline);
 
             audio_passthru_ = std::make_unique<AudioPassthru>();
-            if (classicUi)
-                main_window_ = std::make_unique<FxMainWindow>();
             system_tray_view_.reset(new FxSystemTrayView());
 
-            FxController::getInstance().init(main_window_.get(), system_tray_view_.get(), audio_passthru_.get());
+            FxController::getInstance().init(nullptr, system_tray_view_.get(), audio_passthru_.get());
             if (launchMaterial && !CynMaterialShell::launch())
                 AlertWindow::showMessageBox(AlertWindow::WarningIcon, "CYN",
                     "The Material interface is missing or could not open. Reinstall the complete CYN update.");
@@ -147,7 +142,7 @@ public:
     void shutdown() override
     {
         // Headless FxSound hosts still own and must release the audio driver,
-        // timers, tray and preset state. The legacy GUI is optional.
+        // timers, tray and preset state. The legacy GUI is retired.
         if (audio_passthru_ != nullptr)
         {
             FxController::getInstance().autoSaveModifiedPreset();
@@ -169,7 +164,6 @@ public:
 
             system_tray_view_.reset();
 
-            main_window_.reset(); // (deletes our window)
         }
 
         LocalisedStrings::setCurrentMappings(nullptr);
@@ -384,7 +378,6 @@ private:
         }
     };
 
-    std::unique_ptr<FxMainWindow> main_window_;
     
     std::unique_ptr<FxSystemTrayView> system_tray_view_;
     std::unique_ptr<AudioPassthru> audio_passthru_;
