@@ -30,7 +30,8 @@ test("power switch responds immediately and rolls back on native errors",()=>{
   assert(html.includes('id="power-hint"'));
   const click=renderer.slice(renderer.indexOf('setPowerView(requested,true)'));
   assert(click.indexOf('setPowerView(requested,true)')<click.indexOf('await apply({type:"power"'));
-  assert(renderer.includes('if(!succeeded)setPowerView(current?.status?.power===true)'));
+  assert(renderer.includes('pendingPowerState=null;'));
+  assert(renderer.includes('setPowerView(current?.status?.power===true)'));
   assert(css.includes(".cyn-power-knob")&&css.includes(".cyn-power-switch.is-on"));
 });
 test("host checks are cached but device scans still request actual native status",()=>{

@@ -786,3 +786,10 @@ body.cyn-closing .app-layout,body.cyn-closing .titlebar{
 body.reduce-motion .cyn-power-switch,body.reduce-motion .cyn-power-track,body.reduce-motion .cyn-power-knob,body.reduce-motion .device-choice{transition:none}
 @media(prefers-reduced-motion:reduce){.cyn-power-switch,.cyn-power-track,.cyn-power-knob,.device-choice{transition:none!important}.device-refresh-icon.is-scanning svg{animation:none!important}}
 @media(max-width:760px){.power-field{align-items:stretch;flex-direction:column}.device-list{grid-template-columns:1fr}.cyn-power-switch{min-height:54px}}
+
+/* Larger pointer hit targets; modern Chromium vertical sliders use writing-mode. */
+.eq-band input[type="range"]{appearance:auto;writing-mode:vertical-lr;direction:rtl;min-width:26px;width:26px;height:226px;touch-action:none;cursor:ns-resize}
+.effect-card input[type="range"],.eq-advanced-field input[type="range"],.range-row input[type="range"]{min-height:28px;touch-action:pan-y}
+input[type="range"]:focus-visible{outline:2px solid var(--cyn-control-accent,#accfff);outline-offset:3px}
+input[type="range"]:disabled{cursor:not-allowed;opacity:.46}
+@media(max-width:760px){.eq-band input[type="range"]{height:205px;min-width:28px;width:28px}}
