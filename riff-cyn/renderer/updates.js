@@ -54,10 +54,15 @@
       if(token!==generation||!dialog.open)return;
       setPhase("error","Update check failed",String(error.message||"CYN could not check for updates."));
       retry.hidden=false;
-    }finally{checking=false}
+    }finally{
+      // A closed dialog may already have started another check. Only the
+      // current request owns its pending state.
+      if(token===generation)checking=false;
+    }
   }
   async function startInstall(){
-    if(openingInstaller||!available||dialog.dataset.phase!=="available")return;
+    // A launch error keeps the verified offer and enables Install for retry.
+    if(openingInstaller||checking||!available||!dialog.open)return;
     openingInstaller=true;
     retry.hidden=true;
     install.disabled=true;
