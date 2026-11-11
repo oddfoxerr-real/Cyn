@@ -1,0 +1,89 @@
+name: Cyn Free Neural Training Lab
+
+on:
+  push:
+    branches:
+      - experiment/open-audio-ai-lab
+    paths:
+      - 'training/train_overnight.py'
+      - 'training/compare_overnight.py'
+      - '.github/workflows/cyn-free-neural-training.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cyn-free-neural-lab
+  cancel-in-progress: false
+
+jobs:
+  candidates:
+    name: Train independent synthetic controller (seed ${{ matrix.seed }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [6021, 6022, 6023, 6024]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install NumPy without GPU or paid services
+        run: python -m pip install --disable-pip-version-check numpy==2.2.6
+      - name: Train real neural weights with independent synthetic sampling and early stopping
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+          OMP_NUM_THREADS: "1"
+        run: |
+          python -u training/train_overnight.py \
+            --seed ${{ matrix.seed }} --steps 80000 --samples 60000 \
+            --output training-candidates/seed-${{ matrix.seed }}
+      - name: Verify checkpoint
+        run: |
+          python - <<'PY'
+          import json
+          import math
+          from pathlib import Path
+          p=next(Path("training-candidates").glob("*/weights.json"))
+          weights=json.loads(p.read_text())
+          meta=json.loads((p.parent/"metrics.json").read_text())
+          assert len(weights)==209 and all(math.isfinite(x) for x in weights)
+          assert meta["steps_completed"]>=1000
+          print("PASS: candidate contains real optimized, finite neural weights")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cyn-neural-seed-${{ matrix.seed }}
+          path: training-candidates/seed-${{ matrix.seed }}/
+          if-no-files-found: error
+          retention-days: 7
+
+  select:
+    name: Held-out comparison and experimental AI package
+    needs: candidates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install --disable-pip-version-check numpy==2.2.6
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cyn-neural-seed-*
+          path: training-candidates/
+      - name: Compare models on independent synthetic holdout
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+        run: python training/compare_overnight.py --inputs training-candidates --output training-selected
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cyn-neural-selected-profile-and-report
+          path: training-selected/
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,0 +1,87 @@
+name: Publish Verified Experimental Cyn AI
+
+on:
+  push:
+    branches:
+      - experiment/open-audio-ai-lab
+    paths:
+      - '.github/workflows/cyn-publish-experimental.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  experimental-release:
+    name: Publish trained Cyn AI Hub profile as pre-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download known-successful free neural training outputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          source_run="38807085684"
+          expected_sha="60e6ec6e48ef3e07b19ea6a5e999d4707f44629c"
+          state="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$source_run" --jq .conclusion)"
+          actual_sha="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$source_run" --jq .head_sha)"
+          if [[ "$state" != "success" || "$actual_sha" != "$expected_sha" ]]; then
+            echo "Source training workflow must be successful and from verified commit" >&2
+            exit 1
+          fi
+          gh run download "$source_run" --name cyn-neural-selected-profile-and-report --dir trained
+      - name: Verify held-out improvement, profile schema and preservation of stable Cyn
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          folder=Path("trained")
+          report=json.loads((folder/"training-report.json").read_text())
+          profile=json.loads((folder/"cyn-neural-experimental.cynai.json").read_text())
+          old=report["baseline_test"]
+          new=next(c["metrics"] for c in report["candidate_tests"] if c["name"]==report["selection"])
+          assert report["status"]=="passed-synthetic-evaluation"
+          assert report["real_audio_listening_verified"] is False
+          assert profile["format"]=="cyn-ai-profile" and profile["schema"]==1
+          assert profile["model"]["architecture"]=="cyn-audio-11x12x5"
+          weights=profile["model"]["weights"]
+          assert len(weights)==209 and all(math.isfinite(v) for v in weights)
+          assert new["mean_mse"]<old["mean_mse"]*.99
+          assert new["clarity_mse"]<old["clarity_mse"]*.99
+          assert new["bass_mse"]<old["bass_mse"]*.99
+          assert new["max_bass"]<.86
+          (folder/"RELEASE-NOTES.md").write_text(
+              "# Cyn AI Lab - Synthetic-Trained Experimental Profile\n\n"
+              "This is an **optional AI Hub model profile**, not a Windows installer or"
+              " an automatic replacement for Cyn's flagship AI.\n\n"
+              "The 209-weight native preference model was trained on diverse, generated"
+              " audio-feature scenarios in four CPU experiments. The chosen model reduced"
+              f" held-out synthetic prediction MSE from {old['mean_mse']:.6f}"
+              f" to {new['mean_mse']:.6f}. Lower synthetic error does **not** establish"
+              " superior audible enhancement, or real speech/music quality.\n\n"
+              "Cyn's existing YAMNet and Cyn Balance scene/spectral controllers remain"
+              " independent components. The experimental Silero VAD and DeepFilterNet"
+              " tests are **not** packaged, trained into this model, or enabled for live"
+              " playback.\n\n"
+              "Import the JSON profile in the Cyn AI Hub only if you wish to compare it"
+              " against your current model. No third-party checkpoint is bundled.\n"
+          )
+          print("PASS: experimental profile verified for optional pre-release")
+          PY
+      - name: Publish prerelease without updating the stable installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="cyn-ai-lab-20261015"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Existing experimental release present; no overwrite."
+            exit 0
+          fi
+          gh release create "$tag" \
+            trained/cyn-neural-experimental.cynai.json \
+            trained/training-report.json \
+            --target 60e6ec6e48ef3e07b19ea6a5e999d4707f44629c \
+            --title "Cyn Experimental Neural AI - Synthetic Training" \
+            --notes-file trained/RELEASE-NOTES.md \
+            --prerelease
