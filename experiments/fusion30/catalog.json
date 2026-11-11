@@ -1,0 +1,309 @@
+{
+  "schema": 1,
+  "purpose": "research-only",
+  "model_count": 30,
+  "release_allowed": false,
+  "model_weights_bundled": false,
+  "models": [
+    {
+      "ordinal": 1,
+      "id": "yamnet",
+      "name": "YAMNet",
+      "source": "https://github.com/tensorflow/models/tree/master/research/audioset/yamnet",
+      "role": "scene",
+      "code_license": "Apache-2.0",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 2,
+      "id": "deepfilternet",
+      "name": "DeepFilterNet",
+      "source": "https://github.com/Rikorose/DeepFilterNet",
+      "role": "speech",
+      "code_license": "MIT OR Apache-2.0",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 3,
+      "id": "rnnoise",
+      "name": "RNNoise",
+      "source": "https://github.com/xiph/rnnoise",
+      "role": "speech",
+      "code_license": "BSD-3-Clause",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 4,
+      "id": "demucs",
+      "name": "Demucs",
+      "source": "https://github.com/facebookresearch/demucs",
+      "role": "stems",
+      "code_license": "MIT",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 5,
+      "id": "clap",
+      "name": "LAION CLAP",
+      "source": "https://github.com/LAION-AI/CLAP",
+      "role": "scene",
+      "code_license": "CC0",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 6,
+      "id": "musicnn",
+      "name": "musicnn",
+      "source": "https://github.com/jordipons/musicnn",
+      "role": "scene",
+      "code_license": "ISC",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 7,
+      "id": "essentia",
+      "name": "Essentia",
+      "source": "https://github.com/MTG/essentia",
+      "role": "music_features",
+      "code_license": "AGPL-3.0",
+      "weights_status": "several weights noncommercial",
+      "enabled": false
+    },
+    {
+      "ordinal": 8,
+      "id": "basic-pitch",
+      "name": "Basic Pitch",
+      "source": "https://github.com/spotify/basic-pitch",
+      "role": "pitch",
+      "code_license": "Apache-2.0",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 9,
+      "id": "ddsp",
+      "name": "DDSP",
+      "source": "https://github.com/magenta/ddsp",
+      "role": "transformation",
+      "code_license": "Apache-2.0",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 10,
+      "id": "musicgen",
+      "name": "MusicGen",
+      "source": "https://github.com/facebookresearch/audiocraft",
+      "role": "generation",
+      "code_license": "MIT",
+      "weights_status": "CC-BY-NC-4.0",
+      "enabled": false
+    },
+    {
+      "ordinal": 11,
+      "id": "spleeter",
+      "name": "Spleeter",
+      "source": "https://github.com/deezer/spleeter",
+      "role": "stems",
+      "code_license": "MIT",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 12,
+      "id": "open-unmix",
+      "name": "Open-Unmix",
+      "source": "https://github.com/sigsep/open-unmix-pytorch",
+      "role": "stems",
+      "code_license": "MIT",
+      "weights_status": "UMXL weights noncommercial",
+      "enabled": false
+    },
+    {
+      "ordinal": 13,
+      "id": "bs-roformer",
+      "name": "BS-RoFormer",
+      "source": "https://github.com/lucidrains/BS-RoFormer",
+      "role": "stems",
+      "code_license": "MIT",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 14,
+      "id": "panns",
+      "name": "PANNs",
+      "source": "https://github.com/qiuqiangkong/audioset_tagging_cnn",
+      "role": "scene",
+      "code_license": "MIT",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 15,
+      "id": "ast",
+      "name": "AST",
+      "source": "https://github.com/YuanGongND/ast",
+      "role": "scene",
+      "code_license": "BSD-3-Clause",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 16,
+      "id": "beats",
+      "name": "BEATs",
+      "source": "https://github.com/microsoft/unilm/tree/master/beats",
+      "role": "scene",
+      "code_license": "MIT",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 17,
+      "id": "passt",
+      "name": "PaSST",
+      "source": "https://github.com/kkoutini/PaSST",
+      "role": "scene",
+      "code_license": "Apache-2.0",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 18,
+      "id": "hts-at",
+      "name": "HTS-AT",
+      "source": "https://github.com/RetroCirce/HTS-Audio-Transformer",
+      "role": "scene",
+      "code_license": "MIT",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 19,
+      "id": "mert",
+      "name": "MERT",
+      "source": "https://github.com/yizhilll/MERT",
+      "role": "embedding",
+      "code_license": "Apache-2.0",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 20,
+      "id": "openl3",
+      "name": "OpenL3",
+      "source": "https://github.com/marl/openl3",
+      "role": "embedding",
+      "code_license": "MIT",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 21,
+      "id": "vggish",
+      "name": "VGGish",
+      "source": "https://github.com/tensorflow/models/tree/master/research/audioset/vggish",
+      "role": "embedding",
+      "code_license": "Apache-2.0",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 22,
+      "id": "whisper",
+      "name": "Whisper",
+      "source": "https://github.com/openai/whisper",
+      "role": "transcription",
+      "code_license": "MIT",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 23,
+      "id": "silero-vad",
+      "name": "Silero VAD",
+      "source": "https://github.com/snakers4/silero-vad",
+      "role": "speech",
+      "code_license": "MIT",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 24,
+      "id": "speechbrain",
+      "name": "SpeechBrain",
+      "source": "https://github.com/speechbrain/speechbrain",
+      "role": "speech",
+      "code_license": "Apache-2.0",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 25,
+      "id": "audiosep",
+      "name": "AudioSep",
+      "source": "https://github.com/Audio-AGI/AudioSep",
+      "role": "stems",
+      "code_license": "MIT",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 26,
+      "id": "audioldm2",
+      "name": "AudioLDM 2",
+      "source": "https://github.com/haoheliu/AudioLDM2",
+      "role": "generation",
+      "code_license": "review-required",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 27,
+      "id": "riffusion",
+      "name": "Riffusion",
+      "source": "https://github.com/iai-project/riffusion",
+      "role": "generation",
+      "code_license": "MIT",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 28,
+      "id": "yue",
+      "name": "YuE",
+      "source": "https://github.com/multimodal-art-projection/YuE",
+      "role": "generation",
+      "code_license": "Apache-2.0",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 29,
+      "id": "ace-step",
+      "name": "ACE-Step",
+      "source": "https://github.com/ace-step/ACE-Step",
+      "role": "generation",
+      "code_license": "Apache-2.0",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    },
+    {
+      "ordinal": 30,
+      "id": "beat-this",
+      "name": "Beat This!",
+      "source": "https://github.com/CPJKU/beat_this",
+      "role": "beat",
+      "code_license": "MIT",
+      "weights_status": "separate-checkpoint-license-review-required",
+      "enabled": false
+    }
+  ]
+}
