@@ -1,0 +1,60 @@
+CYN STUDIO FOR ANDROID — ATTRIBUTION, LICENSES & NO WARRANTY
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+ORIGINAL FXSOUND SOFTWARE
+CYN is an unofficial modified application based on the original FxSound
+open-source audio project. The underlying FxSound DSP, FxSound-derived code
+and original copyright notices belong to FxSound LLC and the respective
+original contributors, NOT to the CYN project or its users.
+
+Original project: https://github.com/fxsound2/fxsound-app
+FxSound website: https://www.fxsound.com/
+Supporting the original team: https://www.fxsound.com/contribute
+
+CYN-SPECIFIC MODIFICATIONS
+Additional CYN code, Android UI, player integration, AI control logic and
+modifications are changes to the upstream project. They are not authored,
+maintained, endorsed or warranted by FxSound LLC merely because the
+original software is credited here. Individual source files preserve
+applicable copyright and modification notices. CYN Android additions:
+2026 CYN contributors, where applicable. Those changes are also made
+available under AGPL-3.0-or-later; corresponding sources and build
+instructions: https://github.com/oddfoxerr-real/Cyn
+
+SOURCE & LICENSE
+The main license is GNU Affero General Public License version 3 or later,
+provided verbatim in LICENSE.txt (and at the repository root).
+Recipients may copy, modify, and convey this software subject to that
+license and its source-code/notice requirements. The exact license terms
+control; this attribution notice does not change them.
+
+NO WARRANTY / LIMITATIONS
+This application is provided WITHOUT ANY WARRANTY, including merchantability
+or fitness for a particular purpose, to the extent permitted by applicable law.
+See AGPL-3.0 sections 15–17 for the complete disclaimer and limits of
+liability. Crediting FxSound does not transfer liability for CYN's
+modifications to FxSound, nor automatically absolve a distributor of
+applicable responsibilities. FxSound LLC is not CYN's support provider.
+
+OTHER THIRD-PARTY COMPONENTS
+AndroidX Media3 1.5.1 and AndroidX Core 1.15.0:
+  Google / Android Open Source Project, Apache License 2.0.
+  https://github.com/androidx/media
+ONNX Runtime Android 1.23.2:
+  Microsoft and contributors, MIT License.
+  https://github.com/microsoft/onnxruntime
+Google YAMNet pretrained model:
+  Google and contributors, Apache License 2.0.
+CYN APEX-6M model:
+  CYN contributors, AGPL-3.0-or-later, experimental synthetic checkpoint.
+See bundled APACHE-2.0.txt and ONNX-LICENSE.txt for the original full texts.
+
+ANDROID AUDIO CLARIFICATION
+CYN Android does not bundle the Windows FxSound virtual driver. Android
+native library playback uses a mobile PCM DSP path adapted from CYN, while
+other apps' audio effects depend on Android session permissions.
+No equivalent Windows-driver audio claim is made.
+
+Personal learning and audio features remain on the device. Update checks
+contact the project's official GitHub releases endpoints, and authorized
+downloads follow the user's chosen automatic-update preference.

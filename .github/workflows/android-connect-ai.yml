@@ -1,0 +1,203 @@
+name: Build CYN Mobile Connect AI routing
+
+on:
+  push:
+    branches:
+      - fix/android-connect-ai-routing
+      - fix/android-connect-isolated-20261021
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-connect-ai.yml'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the verified Connect preview APK
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cyn-android-connect-ai
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 13114758
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install pinned SDK and audio-model fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Large NDK downloads occasionally fail with a corrupt temporary ZIP.
+          # Retry the pinned artifacts; never silently switch toolchain versions.
+          installed=0
+          for attempt in 1 2 3; do
+            if sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'; then
+              installed=1
+              break
+            fi
+            echo "::warning::Android SDK installation attempt $attempt failed; retrying pinned NDK."
+            rm -rf "$ANDROID_HOME/.temp" "$ANDROID_HOME/ndk/27.2.12479018"
+            sleep $((attempt * 4))
+          done
+          test "$installed" -eq 1
+          python -m pip install numpy==2.2.6 onnxruntime==1.23.2
+          python android/scripts/prepare_models.py
+      - name: Validate downloaded frozen neural ONNX model and actual inference
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/cyn-tests
+          python android/scripts/test_audonic_policy.py /tmp/cyn-tests/audonic-controls.bin
+          python android/scripts/test_partial_policy.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest=json.loads(Path('android/app/src/main/assets/models/apex10m-partial-manifest.json').read_text())
+          assert 95.90 <= manifest['frozen_percent_of_15h'] <= 100
+          assert manifest['frozen_measured_training_seconds'] >= 14.3 * 3600
+          assert manifest['real_optimizer_updates'] > 633480
+          assert manifest['name']=='APEX 10M experimental spatial-policy head (synthetic-only)'
+          print(f"PASS: bundled APEX10M release trained {manifest['frozen_percent_of_15h']}% with {manifest['real_optimizer_updates']} updates")
+          PY
+      - name: Validate mobile PCM DSP and APEX spatial safeguards
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/cyn-tests
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror android/tests/native/spatial_preview_test.cpp -o /tmp/cyn-tests/spatial
+          /tmp/cyn-tests/spatial
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/linux" android/tests/native/engine_test.cpp -o /tmp/cyn-tests/engine
+          /tmp/cyn-tests/engine
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/linux" android/tests/native/audonic_engine_test.cpp -o /tmp/cyn-tests/audonic
+          /tmp/cyn-tests/audonic /tmp/cyn-tests/audonic-controls.bin
+          javac -d /tmp/cyn-tests android/app/src/main/java/io/github/oddfoxerr/cyn/{PreferenceModel,AudioFeatures,AndroidRelease,ApexFeatures,AiSelection,ConnectedEffects,UpdateDiscovery}.java android/tests/{AudioModelTest,ApexFeaturesTest,AiSelectionTest,ConnectedMindTraceTest,ConnectedEffectsTest,UpdateDiscoveryTest}.java
+          curl --fail --location --retry 2 --max-time 45 'https://github.com/oddfoxerr-real/Cyn/releases.atom' -o /tmp/cyn-tests/releases.atom
+          java -cp /tmp/cyn-tests io.github.oddfoxerr.cyn.UpdateDiscoveryTest /tmp/cyn-tests/releases.atom
+          java -cp /tmp/cyn-tests io.github.oddfoxerr.cyn.ConnectedEffectsTest
+          java -cp /tmp/cyn-tests io.github.oddfoxerr.cyn.AiSelectionTest
+          java -cp /tmp/cyn-tests io.github.oddfoxerr.cyn.AudioModelTest
+          java -cp /tmp/cyn-tests io.github.oddfoxerr.cyn.ConnectedMindTraceTest
+          java -cp /tmp/cyn-tests io.github.oddfoxerr.cyn.ApexFeaturesTest /tmp/cyn-tests/features.bin
+          python android/scripts/test_models.py /tmp/cyn-tests/features.bin
+      - name: Check APEX release UI and continuous neural scan wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          python android/scripts/test_apex_visual_release.py
+          python android/scripts/test_connected_mind.py
+      - name: Compile full release and run Android Lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash android/gradlew -p android :app:assembleRelease :app:assembleDebug :app:lintDebug
+          test -s android/app/build/outputs/apk/release/app-release-unsigned.apk
+      - name: Package corresponding source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/android
+          git archive --format=zip --output=dist/android/Cyn-Studio-Android-0.2.25-Source.zip HEAD android
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk dist/android/Cyn-Studio-Android-0.2.25-preview-unsigned.apk
+      - name: Sign using existing registered CYN Studio certificate
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.CYN_STUDIO_ANDROID_KEYSTORE_BASE64 }}
+          CYN_KEY_PASSWORD: ${{ secrets.CYN_STUDIO_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$CYN_KEY_PASSWORD" ]; then
+            echo '::error::Original Studio signing key unavailable; will not publish mismatched app identity'
+            exit 1
+          fi
+          keyfile="$RUNNER_TEMP/cyn-studio.jks"
+          trap 'rm -f "$keyfile"' EXIT
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keyfile"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$keyfile" --ks-key-alias cyn-studio --ks-pass env:CYN_KEY_PASSWORD --key-pass env:CYN_KEY_PASSWORD --out dist/android/Cyn-Studio-Android-0.2.25-preview.apk dist/android/Cyn-Studio-Android-0.2.25-preview-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs dist/android/Cyn-Studio-Android-0.2.25-preview.apk > "$RUNNER_TEMP/cyn-apex10m-cert.txt"
+          grep -F 'certificate SHA-256 digest: 045d9c122b2158d569c0ef8d10bbb08496a9f19e7397b702e99e9330c780bcb7' "$RUNNER_TEMP/cyn-apex10m-cert.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 dist/android/Cyn-Studio-Android-0.2.25-preview.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging dist/android/Cyn-Studio-Android-0.2.25-preview.apk > "$RUNNER_TEMP/cyn-apex10m-package.txt"
+          grep -F "package: name='io.github.oddfoxerr.cyn.studio' versionCode='29' versionName='0.2.25-preview'" "$RUNNER_TEMP/cyn-apex10m-package.txt"
+          (cd dist/android && sha256sum Cyn-Studio-Android-0.2.25-preview.apk > Cyn-Studio-Android-0.2.25-preview.apk.sha256)
+      - name: Verify in-place upgrades from v0.2.22, v0.2.23 and v0.2.24
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          current=dist/android/Cyn-Studio-Android-0.2.25-preview.apk
+          signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          new_cert=$("$signer" verify --print-certs "$current" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
+          new_info=$("$aapt" dump badging "$current" | grep '^package:')
+          new_code=$(echo "$new_info" | sed -n "s/.*versionCode='\([^']*\)'.*/\1/p")
+          echo "$new_info" | grep -F "name='io.github.oddfoxerr.cyn.studio' versionCode='29'"
+          for version in 0.2.22 0.2.23 0.2.24; do
+            previous="$RUNNER_TEMP/cyn-$version.apk"
+            gh release download "android-studio-v$version-preview" --pattern "Cyn-Studio-Android-$version-preview.apk" --output "$previous"
+            "$signer" verify --verbose --print-certs "$previous"
+            old_cert=$("$signer" verify --print-certs "$previous" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)
+            test -n "$old_cert" && test "$old_cert" = "$new_cert"
+            old_info=$("$aapt" dump badging "$previous" | grep '^package:')
+            echo "$old_info" | grep -F "name='io.github.oddfoxerr.cyn.studio'"
+            old_code=$(echo "$old_info" | sed -n "s/.*versionCode='\([^']*\)'.*/\1/p")
+            test "$new_code" -gt "$old_code"
+            echo "PASS: upgrade from $version preserves certificate and package, increases version code"
+          done
+          python - <<'PYCODE'
+          import zipfile
+          from pathlib import Path
+          with zipfile.ZipFile('dist/android/Cyn-Studio-Android-0.2.25-preview.apk') as apk:
+              for source in Path('android/app/src/main/assets/models').iterdir():
+                  if source.is_file():
+                      assert apk.read('assets/models/'+source.name)==source.read_bytes(), source.name
+              for abi in ('arm64-v8a','x86_64'):
+                  assert any(n.startswith('lib/'+abi+'/') and n.endswith('.so') for n in apk.namelist())
+          print('PASS: signed APK contains verified model bytes and native ABI libraries')
+          PYCODE
+      - name: Upload verified experimental Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: CYN-Android-APEX10M-RC-v0.2.25
+          path: |
+            dist/android/Cyn-Studio-Android-0.2.25-preview.apk
+            dist/android/Cyn-Studio-Android-0.2.25-preview.apk.sha256
+            dist/android/Cyn-Studio-Android-0.2.25-Source.zip
+          retention-days: 30
+      - name: Publish experimental Android prerelease only
+        if: github.ref == 'refs/heads/fix/android-connect-isolated-20261021' || inputs.publish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=android-studio-v0.2.25-preview
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo 'Release tag already exists; refuse to replace binaries'
+            exit 1
+          fi
+          gh release create "$tag" --target "$GITHUB_SHA" \
+            --title 'CYN Studio Android 0.2.25 · Update discovery without API rate limits' \
+            --notes-file android/CONNECT_AI_RELEASE_NOTES.md \
+            --prerelease --latest=false \
+            dist/android/Cyn-Studio-Android-0.2.25-preview.apk \
+            dist/android/Cyn-Studio-Android-0.2.25-preview.apk.sha256 \
+            dist/android/Cyn-Studio-Android-0.2.25-Source.zip

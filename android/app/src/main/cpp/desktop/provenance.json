@@ -1,0 +1,14 @@
+{
+  "desktop_commit": "74704e8c40c8d0ff93606ab856ced8a5a129ab77",
+  "files": {
+    "dsp/include/InputAudioFeatures.h": "f8132b800883aac4a611e40970365cf39c3d06ab13b6589bfa562fabda3d9d95",
+    "dsp/include/SourceAudioAnalyzer.h": "eb6ab63055598bd11bb349ebacaecd3382901412be85a096b137610e05575559",
+    "fxsound/Source/GUI/CynFlagshipMixer.h": "3a6f33f28125406df291246702f338b8049187e8e9c4213418152ef3c3a1e1fd",
+    "fxsound/Source/GUI/CynBalanceModel.h": "841365155af0161e6447ef2c70b6abfe7608b512def75b65f1ec56967a73d7f7",
+    "fxsound/Source/GUI/CynBalanceWeights.h": "bba1fc7dd0cb579a4ea9ee00d93ae0f02256a849f307044043f302101cf826a2",
+    "fxsound/Source/GUI/CynLevelInvariant.h": "071f46c5cec3075072b845382ce4db3c05e3fe69d998af59b12440944e367be0",
+    "fxsound/Source/GUI/CynCrescendoTracker.h": "eec834e4f2f15e08ea2686d035417ebc0645e898f2baca8fbb6fa89a2b53b4b8",
+    "fxsound/Source/GUI/CynApexFlowHybrid.h": "3f2546ff1828f5dee59534ee44a777fd080f3fcd6b5fe957897fceac82f7b71c",
+    "fxsound/Source/GUI/CynSmartRange.h": "bf4400345df7eff4117e5f5af12ff0394cd06d7e808bf94867c76ebedefc2a1c"
+  }
+}

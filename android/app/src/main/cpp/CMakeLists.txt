@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(cyn_phone LANGUAGES CXX)
+add_library(cyn_phone SHARED phone_engine.cpp)
+target_compile_features(cyn_phone PRIVATE cxx_std_17)
+target_compile_options(cyn_phone PRIVATE -Wall -Wextra -Werror)
+target_link_options(cyn_phone PRIVATE "-Wl,-z,max-page-size=16384")
