@@ -1,0 +1,112 @@
+name: CYN APEX FlowSense Experimental Research Release
+
+on:
+  push:
+    branches:
+      - experiment/cyn-apex-6m-20261017
+    paths:
+      - ".github/workflows/cyn-apex-research-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cyn-apex-flowsense-research-release
+  cancel-in-progress: false
+
+jobs:
+  prepare-and-publish:
+    name: Train APEX-6M, test FlowSense and publish experimental assets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 85
+    env:
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "2"
+      CUDA_VISIBLE_DEVICES: "-1"
+      GH_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        working-directory: experiments/cyn-apex
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CPU PyTorch
+        run: python -m pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+      - name: Install APEX Python requirements
+        run: python -m pip install -r requirements.txt
+      - name: Verify model and music-flow tests
+        run: python -m unittest discover -s tests -v
+      - name: Retrain a reproducible 225-step APEX-6M from scratch
+        run: python -m apex.train --steps 225 --batch-size 2 --test-examples 20 --threads 2 --seed 20261017 --output reports/ai-hub-release
+      - name: Verify full APEX checkpoint parameters and training record
+        run: |
+          python - <<'PY'
+          import torch
+          from apex.model import Apex6M,count_parameters
+          c=torch.load("reports/ai-hub-release/apex6m-225.pt",map_location="cpu",weights_only=True)
+          assert c["training_steps"]==225 and c["sample_rate"]==48000
+          assert c["params"]==count_parameters(Apex6M())==6307477
+          assert c["status"]=="synthetic-only"
+          print("Confirmed 225 genuine gradient steps, 6.3M weights, synthetic-only status.")
+          PY
+      - name: Independent synthetic denoising benchmark
+        run: python -m apex.benchmark --checkpoint reports/ai-hub-release/apex6m-225.pt --trials 32 --output reports/ai-hub-release/benchmark.json
+      - name: Generate objective flow-analysis example from cleared synthetic data
+        run: |
+          python - <<'PY'
+          from apex.data import example
+          from apex.flow import analyze_audio
+          import json
+          audio,clean,labels=example(42)
+          result=analyze_audio(audio.numpy(),48000)
+          assert result["offline_only"] is True and result["ai_model_inference"] is False
+          from pathlib import Path
+          Path("reports/ai-hub-release/flow-example.json").write_text(json.dumps(result,indent=2)+"\n")
+          PY
+      - name: Package checkpoint, source, benchmark and music-flow analysis
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile,hashlib,json
+          root=Path(".")
+          target=Path("reports/ai-hub-release")
+          package=target/"CYN-APEX-6M-FlowSense-Research.zip"
+          paths=[
+            Path("apex/__init__.py"),Path("apex/model.py"),Path("apex/data.py"),
+            Path("apex/train.py"),Path("apex/infer.py"),Path("apex/benchmark.py"),
+            Path("apex/flow.py"),Path("tests/test_apex.py"),Path("tests/test_flow.py"),
+            Path("requirements.txt"),Path("README.md"),Path("MODEL_CARD.md"),
+            Path("FLOWSENSE.md"),
+            target/"apex6m-225.pt",target/"evaluation.json",
+            target/"benchmark.json",target/"flow-example.json"
+          ]
+          assert all(x.exists() for x in paths)
+          with zipfile.ZipFile(package,"w",compression=zipfile.ZIP_DEFLATED,compresslevel=6) as z:
+            for item in paths:
+              z.write(item,arcname=str(item).replace("reports/ai-hub-release/","weights-and-reports/"))
+          manifest={"release_kind":"research-only","weights":"new 225-step CI retrain; not byte-identical to earlier local checkpoint","assets":[]}
+          for item in (package,target/"apex6m-225.pt",target/"benchmark.json",target/"evaluation.json"):
+            manifest["assets"].append({"file":item.name,"sha256":hashlib.sha256(item.read_bytes()).hexdigest()})
+          (target/"SHA256.json").write_text(json.dumps(manifest,indent=2)+"\n")
+          print("Published candidate: ",package,package.stat().st_size)
+          PY
+      - name: Publish opt-in GitHub prerelease (never a Cyn installer)
+        env:
+          TAG: cyn-apex6m-flowsense-research-20261017
+        run: |
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "Research release tag already exists; refusing to overwrite it."
+            exit 0
+          fi
+          gh release create "$TAG" \
+            reports/ai-hub-release/CYN-APEX-6M-FlowSense-Research.zip \
+            reports/ai-hub-release/SHA256.json \
+            reports/ai-hub-release/benchmark.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "CYN APEX-6M FlowSense — Experimental Research" \
+            --prerelease \
+            --notes "Opt-in OFFLINE experiment. Retrained 6,307,477-parameter denoiser for 225 steps on synthetic waveforms. Adds non-neural FlowSense timing/intensity analysis. Not compatible with the 209-weight Cyn AI Hub importer, not a Windows installer, and not proven better on real music. Includes exact checksums and honest benchmark reports. Use the ZIP with a Python 3.11+ environment; DO NOT replace the current Cyn neural preset."
