@@ -25,6 +25,51 @@ function renderHarness(inspectUpdates,checkUpdates=async()=>({started:true})){
   return {els,app:ctx.window.cynUpdate};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
+test("failed native updater launch can be retried with the enabled Install button",async()=>{
+  let starts=0;
+  const {els,app}=renderHarness(async()=>({phase:"available",currentVersion:"2.0.98",latestVersion:"2.0.99"}),async()=>{
+    if(++starts===1)throw new Error("Native updater temporarily unavailable");
+    return {started:true};
+  });
+  app.open();await tick();
+  els["cyn-updates-install"].click();await tick();
+  assert.equal(els["cyn-updates-dialog"].open,true);
+  assert.equal(els["cyn-updates-install"].disabled,false);
+  assert.match(els["cyn-updates-detail"].textContent,/temporarily unavailable/);
+  els["cyn-updates-install"].click();await tick();
+  assert.equal(starts,2);
+  assert.equal(els["cyn-updates-dialog"].open,false);
+});
+test("closing an older check cannot unlock a newer pending check",async()=>{
+  const pending=[];
+  const {els,app}=renderHarness(()=>new Promise(resolve=>pending.push(resolve)));
+  app.open();
+  els["cyn-updates-close"].click();
+  app.open();
+  assert.equal(pending.length,2);
+  pending[0]({phase:"available",currentVersion:"2.0.98",latestVersion:"2.0.99"});
+  await tick();
+  app.open();
+  assert.equal(pending.length,2,"Only the live check may release its pending lock");
+  assert.equal(els["cyn-updates-title"].textContent,"Checking for updates");
+  assert.equal(els["cyn-updates-install"].hidden,true);
+  pending[1]({phase:"current",currentVersion:"2.0.98",latestVersion:"2.0.98"});
+  await tick();
+  assert.equal(els["cyn-updates-title"].textContent,"You're up to date");
+});
+test("repeated Install clicks start only one native updater",async()=>{
+  let starts=0,finish;
+  const {els,app}=renderHarness(async()=>({phase:"available",currentVersion:"2.0.98",latestVersion:"2.0.99"}),()=>{
+    starts++;
+    return new Promise(resolve=>{finish=resolve});
+  });
+  app.open();await tick();
+  els["cyn-updates-install"].click();
+  els["cyn-updates-install"].click();
+  assert.equal(starts,1);
+  finish({started:true});await tick();
+  assert.equal(els["cyn-updates-dialog"].open,false);
+});
 test("CYN checks current version without starting an installer",async()=>{
   let starts=0;
   const {els,app}=renderHarness(async()=>({phase:"current",currentVersion:"2.0.88",latestVersion:"2.0.88"}),async()=>{starts++;return {started:true}});
